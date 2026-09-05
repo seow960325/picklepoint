@@ -180,14 +180,14 @@ function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
                       {ups.map((mm, i) => (
                         <div key={mm.id} className="grid grid-cols-[1.1rem_1fr_auto_1fr] items-center gap-1.5 py-1.5 text-sm">
                           <span className="text-center font-display text-xs font-bold text-gray-600">{i + 1}</span>
-                          <span className="flex min-w-0 items-center justify-end gap-1 truncate text-gray-300">
+                          <span className="flex items-center justify-end gap-1.5 text-gray-300">
                             <Flag name={teamSideName(b, mm.team_a_id)} className="h-3.5 w-auto shrink-0 rounded-[1px]" />
-                            <span className="truncate">{teamName(b, mm.team_a_id)}</span>
+                            <span className="w-16 truncate text-left">{teamName(b, mm.team_a_id)}</span>
                           </span>
-                          <span className="px-1 text-xs text-gray-600">vs</span>
-                          <span className="flex min-w-0 items-center justify-start gap-1 truncate text-gray-300">
+                          <span className="text-xs text-gray-600">vs</span>
+                          <span className="flex items-center justify-start gap-1.5 text-gray-300">
                             <Flag name={teamSideName(b, mm.team_b_id)} className="h-3.5 w-auto shrink-0 rounded-[1px]" />
-                            <span className="truncate">{teamName(b, mm.team_b_id)}</span>
+                            <span className="w-16 truncate text-left">{teamName(b, mm.team_b_id)}</span>
                           </span>
                         </div>
                       ))}
