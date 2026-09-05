@@ -8,7 +8,7 @@ import { displayScores } from '../lib/scoring'
 import type { Bundle, EventCfg, Match } from '../lib/types'
 import { Screen, Pill, Spinner, FullscreenButton, Flag } from '../components/ui'
 import Court from '../components/Court'
-import { IS_DEMO, demo, adminMoveMatch } from '../lib/api'
+import { IS_DEMO, demo } from '../lib/api'
 
 type Tab = 'live' | 'schedule' | 'standings' | 'results'
 
@@ -110,7 +110,7 @@ export default function Board() {
       </div>
 
       {tab === 'live' && <LiveGrid b={bundle} code={code!} tv={false} />}
-      {tab === 'schedule' && <Schedule b={bundle} code={code!} reload={reload} />}
+      {tab === 'schedule' && <Schedule b={bundle} />}
       {tab === 'standings' && <Standings b={bundle} />}
       {tab === 'results' && <Results b={bundle} code={code!} />}
 
@@ -176,10 +176,13 @@ function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
                   {ups.length === 0 ? (
                     <div className="py-1.5 text-xs text-gray-600">No upcoming matches</div>
                   ) : (
-                    <div className="space-y-1">
-                      {ups.map(mm => (
-                        <div key={mm.id} className="truncate text-sm text-gray-300">
-                          <Flag name={teamSideName(b, mm.team_a_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, mm.team_a_id)} <span className="text-gray-600">vs</span> <Flag name={teamSideName(b, mm.team_b_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, mm.team_b_id)}
+                    <div className="divide-y divide-edge/60">
+                      {ups.map((mm, i) => (
+                        <div key={mm.id} className="flex items-center gap-2 py-1.5">
+                          <span className="w-4 shrink-0 text-center font-display text-xs font-bold text-gray-600">{i + 1}</span>
+                          <span className="min-w-0 flex-1 truncate text-sm text-gray-300">
+                            <Flag name={teamSideName(b, mm.team_a_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, mm.team_a_id)} <span className="text-gray-600">vs</span> <Flag name={teamSideName(b, mm.team_b_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, mm.team_b_id)}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -218,100 +221,30 @@ function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
 }
 
 // -------------------------------------------------------------- schedule
-function Schedule({ b, code, reload }: { b: Bundle; code: string; reload: () => void }) {
-  const adminToken = localStorage.getItem(`pp.admin.${code}`)
-  const [openId, setOpenId] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-
+// Read-only on the public board. Reordering lives in the admin panel.
+function Schedule({ b }: { b: Bundle }) {
   const upcoming = b.matches
     .filter(m => m.status !== 'finished')
     .sort((x, y) => x.sequence - y.sequence)
-
-  const open = openId ? b.matches.find(m => m.id === openId) ?? null : null
-  const sibs = open
-    ? b.matches
-        .filter(m => m.court_id === open.court_id && m.status === 'scheduled')
-        .sort((x, y) => x.sequence - y.sequence)
-    : []
-  const idx = open ? sibs.findIndex(m => m.id === open.id) : -1
-  const canUp = idx > 0
-  const canDown = idx >= 0 && idx < sibs.length - 1
-
-  const move = async (dir: 'up' | 'down') => {
-    if (!adminToken || !openId) return
-    setBusy(true)
-    try { await adminMoveMatch(adminToken, openId, dir); setOpenId(null); reload() }
-    finally { setBusy(false) }
-  }
-
-  const courtNo = (id: string | null) => b.courts.find(c => c.id === id)?.number ?? '–'
-
+  const fl = "mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]"
   return (
     <div className="divide-y divide-edge">
-      {adminToken && (
-        <div className="px-4 py-2 text-[11px] text-gray-600">
-          Tap an upcoming match to move it up or down its court's queue.
-        </div>
-      )}
-      {upcoming.map(m => {
-        const canEdit = !!adminToken && m.status === 'scheduled'
-        const inner = (
-          <>
-            <div className="w-10 shrink-0 text-center font-display text-lg font-bold text-gray-600">
-              {courtNo(m.court_id)}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm">
-                <Flag name={teamSideName(b, m.team_a_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_a_id)} <span className="text-gray-600">vs</span> <Flag name={teamSideName(b, m.team_b_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_b_id)}
-              </div>
-              <div className="text-[11px] text-gray-600">{(m.round ?? '').replace(/pod/i, 'Court')} · #{m.sequence}</div>
-            </div>
-            {m.status === 'live'
-              ? <Pill tone="live">live</Pill>
-              : <Pill>{m.status.replace('_', ' ')}</Pill>}
-            {canEdit && <span className="ml-1 shrink-0 text-gray-600">⇅</span>}
-          </>
-        )
-        return canEdit ? (
-          <button key={m.id} onClick={() => setOpenId(m.id)}
-            className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-panel">
-            {inner}
-          </button>
-        ) : (
-          <div key={m.id} className="flex items-center gap-3 px-4 py-3">
-            {inner}
+      {upcoming.map(m => (
+        <div key={m.id} className="flex items-center gap-3 px-4 py-3">
+          <div className="w-10 shrink-0 text-center font-display text-lg font-bold text-gray-600">
+            {b.courts.find(c => c.id === m.court_id)?.number ?? '–'}
           </div>
-        )
-      })}
-
-      {open && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/70 px-6"
-          onClick={() => { if (!busy) setOpenId(null) }}>
-          <div className="w-full max-w-xs rounded-2xl border border-edge bg-panel p-4"
-            onClick={e => e.stopPropagation()}>
-            <div className="mb-1 text-[11px] uppercase tracking-widest text-gray-600">
-              Court {courtNo(open.court_id)} · move match
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm">
+              <Flag name={teamSideName(b, m.team_a_id)} className={fl} />{teamName(b, m.team_a_id)} <span className="text-gray-600">vs</span> <Flag name={teamSideName(b, m.team_b_id)} className={fl} />{teamName(b, m.team_b_id)}
             </div>
-            <div className="mb-4 text-sm font-semibold">
-              {teamName(b, open.team_a_id)} vs {teamName(b, open.team_b_id)}
-            </div>
-            <div className="space-y-2">
-              <button disabled={!canUp || busy} onClick={() => move('up')}
-                className="w-full rounded-xl border border-edge py-3 font-display text-sm font-bold tracking-wide active:bg-edge disabled:opacity-30">
-                ▲ MOVE UP
-              </button>
-              <button disabled={!canDown || busy} onClick={() => move('down')}
-                className="w-full rounded-xl border border-edge py-3 font-display text-sm font-bold tracking-wide active:bg-edge disabled:opacity-30">
-                ▼ MOVE DOWN
-              </button>
-              <button disabled={busy} onClick={() => setOpenId(null)}
-                className="w-full rounded-xl py-2 text-xs text-gray-500">
-                Cancel
-              </button>
-            </div>
+            <div className="text-[11px] text-gray-600">{(m.round ?? '').replace(/pod/i, 'Court')} · #{m.sequence}</div>
           </div>
+          {m.status === 'live'
+            ? <Pill tone="live">live</Pill>
+            : <Pill>{m.status.replace('_', ' ')}</Pill>}
         </div>
-      )}
+      ))}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useCompetition, teamName } from '../lib/store'
+import { useCompetition, teamName, teamSideName } from '../lib/store'
 import * as api from '../lib/api'
 import {
   buildDraw, buildDuelDraw, defaultSwitchAt, validateRules, validateDuelSquads,
@@ -395,21 +395,39 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
         </button>
       )}
 
-      <div className="mt-4 divide-y divide-edge rounded-xl border border-edge text-sm">
-        {bundle.matches.slice().sort((a: any, b: any) => a.sequence - b.sequence).slice(0, 40)
-          .map((m: any) => (
-            <div key={m.id} className="flex items-center gap-3 px-3 py-2">
-              <span className="w-7 text-center text-xs text-gray-600">
-                {bundle.courts.find((c: any) => c.id === m.court_id)?.number ?? '–'}
-              </span>
-              <span className="min-w-0 flex-1 truncate">
-                {teamName(bundle, m.team_a_id)} <span className="text-gray-600">vs</span> {teamName(bundle, m.team_b_id)}
-              </span>
-              <span className="tabular text-xs text-gray-500">
-                {m.status === 'scheduled' ? m.round : `${m.score_a}–${m.score_b}`}
-              </span>
-            </div>
-          ))}
+      <div className="text-xs text-gray-600">Reorder upcoming matches on a court with the arrows.</div>
+      <div className="divide-y divide-edge rounded-xl border border-edge text-sm">
+        {bundle.matches.slice().sort((a: any, b: any) => a.sequence - b.sequence).slice(0, 60)
+          .map((m: any) => {
+            const sibs = bundle.matches
+              .filter((x: any) => x.court_id === m.court_id && x.status === 'scheduled')
+              .sort((a: any, b: any) => a.sequence - b.sequence)
+            const i = sibs.findIndex((x: any) => x.id === m.id)
+            const canUp = m.status === 'scheduled' && i > 0
+            const canDown = m.status === 'scheduled' && i >= 0 && i < sibs.length - 1
+            const fl = "mr-1 inline-block h-3 w-auto shrink-0 rounded-[1px] align-[-2px]"
+            return (
+              <div key={m.id} className="flex items-center gap-2 px-3 py-2">
+                <span className="w-6 text-center text-xs text-gray-600">
+                  {bundle.courts.find((c: any) => c.id === m.court_id)?.number ?? '–'}
+                </span>
+                <span className="min-w-0 flex-1 truncate">
+                  <Flag name={teamSideName(bundle, m.team_a_id)} className={fl} />{teamName(bundle, m.team_a_id)} <span className="text-gray-600">vs</span> <Flag name={teamSideName(bundle, m.team_b_id)} className={fl} />{teamName(bundle, m.team_b_id)}
+                </span>
+                <span className="tabular shrink-0 text-xs text-gray-500">
+                  {m.status === 'scheduled' ? (m.round ?? '').replace(/pod/i, 'Court') : `${m.score_a}–${m.score_b}`}
+                </span>
+                <span className="flex shrink-0 items-center gap-1">
+                  <button disabled={!canUp}
+                    onClick={() => run(() => api.adminMoveMatch(token, m.id, 'up'), 'Match moved up')}
+                    className="grid h-7 w-7 place-items-center rounded-lg border border-edge text-gray-300 active:bg-edge disabled:opacity-20">▲</button>
+                  <button disabled={!canDown}
+                    onClick={() => run(() => api.adminMoveMatch(token, m.id, 'down'), 'Match moved down')}
+                    className="grid h-7 w-7 place-items-center rounded-lg border border-edge text-gray-300 active:bg-edge disabled:opacity-20">▼</button>
+                </span>
+              </div>
+            )
+          })}
       </div>
     </div>
   )
