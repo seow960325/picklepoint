@@ -6,6 +6,7 @@ import type { PointEvent } from '../lib/types'
 import { Screen, TopBar, Spinner } from '../components/ui'
 
 const tokenKey = (courtId: string) => `pp.token.${courtId}`
+const adminTokKey = (code: string) => `pp.admin.${code}`
 
 export default function MatchDetail() {
   const { code, id } = useParams()
@@ -24,7 +25,8 @@ export default function MatchDetail() {
 
   const court = bundle.courts.find(c => c.id === m.court_id)
   const courtToken = court ? localStorage.getItem(tokenKey(court.id)) : null
-  const canReset = m.status === 'finished' && !!courtToken
+  const adminToken = code ? localStorage.getItem(adminTokKey(code)) : null
+  const canReset = m.status === 'finished' && !!(courtToken || adminToken)
 
   const reset = async () => {
     if (!confirmingReset) {
@@ -36,8 +38,13 @@ export default function MatchDetail() {
     setConfirmingReset(false)
     setBusy(true)
     try {
-      await api.resetMatch(m.id, courtToken!)
-      navigate(`/c/${code}/court/${court!.number}`)
+      if (courtToken) {
+        await api.resetMatch(m.id, courtToken)
+      } else {
+        await api.adminResetMatch(adminToken!, m.id)
+      }
+      if (court) navigate(`/c/${code}/court/${court.number}`)
+      else navigate(`/c/${code}`)
     } catch {
       setBusy(false)
     }

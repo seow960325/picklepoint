@@ -191,6 +191,11 @@ export async function adminReplaceSchedule(
   })
 }
 
+export async function adminResetMatch(token: string, matchId: string): Promise<Match> {
+  if (IS_DEMO) return demo.resetMatch(matchId)
+  return rpc<Match>('admin_reset_match', { p_token: token, p_match_id: matchId })
+}
+
 export async function adminOverrideScore(
   matchId: string, adminPin: string, a: number, b: number,
 ) {
