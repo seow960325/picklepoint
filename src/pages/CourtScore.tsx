@@ -289,22 +289,11 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
             ⇄ SWAP
           </button>
 
-          {/* point log — icon, bottom centre of the court */}
-          <Link to={`/c/${code}/match/${m.id}`} title="Point log"
-            className="absolute bottom-3 left-1/2 grid h-9 w-9 -translate-x-1/2 place-items-center rounded-full border border-edge bg-panel/90 text-gray-300 active:bg-edge">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-              strokeLinecap="round" className="h-5 w-5">
-              <path d="M9 6h11M9 12h11M9 18h11" />
-              <circle cx="4.5" cy="6" r="1.2" fill="currentColor" stroke="none" />
-              <circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none" />
-              <circle cx="4.5" cy="18" r="1.2" fill="currentColor" stroke="none" />
-            </svg>
-          </Link>
         </div>
       </div>
 
       {/* control rail */}
-      <div className="flex w-[74px] shrink-0 flex-col items-center justify-center gap-3 border-l border-edge px-2">
+      <div className="flex w-[74px] shrink-0 flex-col items-center justify-center gap-2.5 border-l border-edge px-2 py-2">
         <button onClick={undo} aria-label="Undo"
           className="flex h-20 w-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-edge bg-panel text-gray-300 active:bg-edge">
           <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor"
@@ -326,6 +315,17 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
             {confirmingReset ? 'SURE?' : 'RESET'}
           </span>
         </button>
+        <Link to={`/c/${code}/match/${m.id}`} aria-label="Point log"
+          className="flex h-20 w-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-edge bg-panel text-gray-400 active:bg-edge">
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round">
+            <path d="M9 6h11M9 12h11M9 18h11" />
+            <circle cx="4.5" cy="6" r="1.2" fill="currentColor" stroke="none" />
+            <circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none" />
+            <circle cx="4.5" cy="18" r="1.2" fill="currentColor" stroke="none" />
+          </svg>
+          <span className="font-display text-xs font-bold tracking-wide">LOG</span>
+        </Link>
       </div>
 
       {showSwitch && (
@@ -359,7 +359,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
             </button>
             <button onClick={undo}
               className="w-full rounded-2xl border border-edge py-4 font-display text-xl font-bold text-gray-300">
-              CORRECT
+              REVIEW
             </button>
           </div>
         </div>

@@ -43,6 +43,14 @@ export function useCompetition(code: string | undefined) {
 export const teamName = (b: Bundle, id: string | null) =>
   b.teams.find(t => t.id === id)?.name ?? 'TBD'
 
+/** The country/side name for a team (duel format), for flag lookup. */
+export const teamSideName = (b: Bundle, id: string | null): string | null => {
+  const t = b.teams.find(x => x.id === id)
+  if (!t?.side) return null
+  const e = b.events.find(ev => ev.id === t.event_id)
+  return (t.side === 'A' ? e?.side_a_name : e?.side_b_name) ?? null
+}
+
 export const eventOf = (b: Bundle, m: Match): EventCfg =>
   b.events.find(e => e.id === m.event_id)!
 

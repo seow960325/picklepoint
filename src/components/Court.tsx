@@ -102,13 +102,13 @@ export default function Court({
         </text>
         {leftFlag && (
           <>
-            <rect x={CXL - 27} y="47" width="54" height="38" rx="5"
+            <rect x={CXL - 27} y="31" width="54" height="38" rx="5"
               fill="#0a0e17" opacity="0.45" filter="url(#soft)" />
-            <svg x={CXL - 27} y="46" width="54" height="38"
+            <svg x={CXL - 27} y="30" width="54" height="38"
               viewBox="0 0 28 20" preserveAspectRatio="xMidYMid slice">
               <FlagGlyph name={leftFlag} />
             </svg>
-            <rect x={CXL - 27} y="46" width="54" height="38" rx="5"
+            <rect x={CXL - 27} y="30" width="54" height="38" rx="5"
               fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />
           </>
         )}
@@ -127,13 +127,13 @@ export default function Court({
         </text>
         {rightFlag && (
           <>
-            <rect x={CXR - 27} y="47" width="54" height="38" rx="5"
+            <rect x={CXR - 27} y="31" width="54" height="38" rx="5"
               fill="#0a0e17" opacity="0.45" filter="url(#soft)" />
-            <svg x={CXR - 27} y="46" width="54" height="38"
+            <svg x={CXR - 27} y="30" width="54" height="38"
               viewBox="0 0 28 20" preserveAspectRatio="xMidYMid slice">
               <FlagGlyph name={rightFlag} />
             </svg>
-            <rect x={CXR - 27} y="46" width="54" height="38" rx="5"
+            <rect x={CXR - 27} y="30" width="54" height="38" rx="5"
               fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />
           </>
         )}

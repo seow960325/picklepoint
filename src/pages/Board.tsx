@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  useCompetition, teamName, liveOnCourt, nextOnCourt, results, standings,
+  useCompetition, teamName, teamSideName, liveOnCourt, nextOnCourt, results, standings,
   eventOf, duelTally, duelPods,
 } from '../lib/store'
 import { displayScores } from '../lib/scoring'
@@ -140,7 +140,7 @@ function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
             {deck.map(m => (
               <div key={m.id} className="flex justify-between text-sm">
                 <span className="truncate">
-                  {teamName(b, m.team_a_id)} <span className="text-gray-600">vs</span> {teamName(b, m.team_b_id)}
+                  <Flag name={teamSideName(b, m.team_a_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_a_id)} <span className="text-gray-600">vs</span> <Flag name={teamSideName(b, m.team_b_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_b_id)}
                 </span>
                 <span className="ml-3 shrink-0 text-gray-500">
                   Court {b.courts.find(c => c.id === m.court_id)?.number ?? '—'}
@@ -222,7 +222,7 @@ function Schedule({ b, code, reload }: { b: Bundle; code: string; reload: () => 
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm">
-                {teamName(b, m.team_a_id)} <span className="text-gray-600">vs</span> {teamName(b, m.team_b_id)}
+                <Flag name={teamSideName(b, m.team_a_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_a_id)} <span className="text-gray-600">vs</span> <Flag name={teamSideName(b, m.team_b_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_b_id)}
               </div>
               <div className="text-[11px] text-gray-600">{m.round} · #{m.sequence}</div>
             </div>
@@ -309,9 +309,9 @@ function Side({ name, score, lead, tone, big, align }: {
       <span className={`tabular font-display font-bold leading-none ${color} ${big ? 'text-7xl' : 'text-4xl'}`}>
         {score}
       </span>
-      <span className={`flex min-w-0 items-center gap-2 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
-        <Flag name={name} className={`w-auto shrink-0 rounded-[2px] ${big ? 'h-7' : 'h-4'}`} />
-        <span className={`truncate font-display font-bold tracking-wide ${lead ? 'text-white' : 'text-gray-500'} ${big ? 'text-2xl' : 'text-sm'}`}>
+      <span className={`flex min-w-0 items-center gap-2.5 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
+        <Flag name={name} className={`w-auto shrink-0 rounded-[2px] ${big ? 'h-11' : 'h-6'}`} />
+        <span className={`truncate font-display font-bold tracking-wide ${lead ? 'text-white' : 'text-gray-500'} ${big ? 'text-4xl' : 'text-lg'}`}>
           {name}
         </span>
       </span>
@@ -398,7 +398,7 @@ function Standings({ b }: { b: Bundle }) {
                   <tbody className="divide-y divide-edge">
                     {rows.map(r => (
                       <tr key={r.team.id}>
-                        <td className="truncate px-3 py-2">{r.team.name}</td>
+                        <td className="truncate px-3 py-2"><Flag name={teamSideName(b, r.team.id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{r.team.name}</td>
                         <td className="tabular px-2 py-2 text-right text-gray-400">{r.played}</td>
                         <td className="tabular px-2 py-2 text-right font-bold">{r.won}</td>
                         <td className="tabular px-2 py-2 text-right text-gray-400">{r.lost}</td>
@@ -434,10 +434,10 @@ function Results({ b, code }: { b: Bundle; code: string }) {
             </div>
             <div className="min-w-0 flex-1">
               <div className={`truncate text-sm ${aWon ? 'font-bold text-white' : 'text-gray-500'}`}>
-                {teamName(b, m.team_a_id)}
+                <Flag name={teamSideName(b, m.team_a_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_a_id)}
               </div>
               <div className={`truncate text-sm ${!aWon ? 'font-bold text-white' : 'text-gray-500'}`}>
-                {teamName(b, m.team_b_id)}
+                <Flag name={teamSideName(b, m.team_b_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_b_id)}
               </div>
               <div className="text-[11px] text-gray-600">Match #{m.sequence}{m.round ? ` · ${m.round}` : ''}</div>
             </div>
