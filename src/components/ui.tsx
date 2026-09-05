@@ -64,35 +64,36 @@ export const FullscreenButton = ({ className = '' }: { className?: string }) => 
 }
 
 // ------------------------------------------------------------- flags
-// Simplified inline-SVG national flags — reliable everywhere (unlike emoji
-// flags, which don't render on Windows). Matched by country name.
+// Simplified national flags as inline SVG — reliable everywhere (unlike
+// emoji flags, which don't render on Windows). FlagGlyph renders the raw
+// shapes on a 0 0 28 20 canvas so they can be nested inside another SVG
+// (e.g. the court circles); Flag wraps them for normal HTML use.
 
-function MalaysiaFlag({ className = '' }: { className?: string }) {
-  const red = '#cc0001', blue = '#010066', yellow = '#ffcc00'
+const RED_MY = '#cc0001', BLUE_MY = '#010066', YELLOW_MY = '#ffcc00'
+const STAR_MY = [
+  [11.0,3.0],[11.47,4.353],[12.90,4.382],[11.76,5.247],[12.18,6.618],
+  [11.0,5.8],[9.82,6.618],[10.24,5.247],[9.10,4.382],[10.53,4.353],
+].map(p => p.join(',')).join(' ')
+
+function MalaysiaGlyph() {
   const h = 20 / 14
-  const star = [
-    [11.0,3.0],[11.47,4.353],[12.90,4.382],[11.76,5.247],[12.18,6.618],
-    [11.0,5.8],[9.82,6.618],[10.24,5.247],[9.10,4.382],[10.53,4.353],
-  ].map(p => p.join(',')).join(' ')
   return (
-    <svg viewBox="0 0 28 20" preserveAspectRatio="xMidYMid meet"
-      className={className} role="img" aria-label="Malaysia">
+    <>
       <rect width="28" height="20" fill="#fff" />
       {[0,2,4,6,8,10,12].map(i => (
-        <rect key={i} y={i * h} width="28" height={h} fill={red} />
+        <rect key={i} y={i * h} width="28" height={h} fill={RED_MY} />
       ))}
-      <rect width="14" height="10" fill={blue} />
-      <circle cx="5.5" cy="5" r="3" fill={yellow} />
-      <circle cx="6.7" cy="4.4" r="2.6" fill={blue} />
-      <polygon points={star} fill={yellow} />
-    </svg>
+      <rect width="14" height="10" fill={BLUE_MY} />
+      <circle cx="5.5" cy="5" r="3" fill={YELLOW_MY} />
+      <circle cx="6.7" cy="4.4" r="2.6" fill={BLUE_MY} />
+      <polygon points={STAR_MY} fill={YELLOW_MY} />
+    </>
   )
 }
 
-function CambodiaFlag({ className = '' }: { className?: string }) {
+function CambodiaGlyph() {
   return (
-    <svg viewBox="0 0 28 20" preserveAspectRatio="xMidYMid meet"
-      className={className} role="img" aria-label="Cambodia">
+    <>
       <rect width="28" height="20" fill="#032ea1" />
       <rect y="5" width="28" height="10" fill="#e00025" />
       <g fill="#fff">
@@ -102,14 +103,32 @@ function CambodiaFlag({ className = '' }: { className?: string }) {
         <path d="M10.8 8 L11.6 10 L11.6 11 L10 11 L10 10 Z" />
         <path d="M17.2 8 L18 10 L18 11 L16.4 11 L16.4 10 Z" />
       </g>
-    </svg>
+    </>
   )
 }
 
-/** Renders a flag for a country name, or nothing if unrecognised. */
-export function Flag({ name, className = '' }: { name?: string | null; className?: string }) {
+function match(name?: string | null): 'my' | 'kh' | null {
   const n = (name || '').toLowerCase()
-  if (n.includes('cambodia') || n.includes('khmer') || n.includes('柬')) return <CambodiaFlag className={className} />
-  if (n.includes('malaysia') || n.includes('马来') || n.includes('大马')) return <MalaysiaFlag className={className} />
+  if (n.includes('cambodia') || n.includes('khmer') || n.includes('柬')) return 'kh'
+  if (n.includes('malaysia') || n.includes('马来') || n.includes('大马')) return 'my'
   return null
+}
+
+/** Raw flag shapes on a 0 0 28 20 canvas (no <svg> wrapper). */
+export function FlagGlyph({ name }: { name?: string | null }) {
+  const c = match(name)
+  if (c === 'kh') return <CambodiaGlyph />
+  if (c === 'my') return <MalaysiaGlyph />
+  return null
+}
+
+/** A flag for a country name as a standalone element, or nothing. */
+export function Flag({ name, className = '' }: { name?: string | null; className?: string }) {
+  if (!match(name)) return null
+  return (
+    <svg viewBox="0 0 28 20" preserveAspectRatio="xMidYMid meet"
+      className={className} role="img" aria-label={name || 'flag'}>
+      <FlagGlyph name={name} />
+    </svg>
+  )
 }

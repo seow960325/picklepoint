@@ -141,13 +141,6 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
   const [showSwitch, setShowSwitch] = useState(false)
   const [offline, setOffline] = useState(pending() > 0)
   const [ignoreRotate, setIgnoreRotate] = useState(false)
-  const flipKey = `pp.flip.${match.id}`
-  const [flip, setFlip] = useState<boolean>(() => localStorage.getItem(flipKey) === '1')
-  const toggleFlip = () => setFlip(f => {
-    const n = !f
-    try { localStorage.setItem(flipKey, n ? '1' : '0') } catch { /* noop */ }
-    return n
-  })
   const landscape = useLandscape()
   const history = useRef<[number, number][]>([])
 
@@ -219,14 +212,6 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
   const s = displayScores(m)
   const leftName = teamName(bundle, m.a_on_left ? m.team_a_id : m.team_b_id)
   const rightName = teamName(bundle, m.a_on_left ? m.team_b_id : m.team_a_id)
-  // manual swap is purely presentational: mirror names, scores and the
-  // tap target together so scoring stays correct whichever way it's shown.
-  const dLeftName = flip ? rightName : leftName
-  const dRightName = flip ? leftName : rightName
-  const dLeft = flip ? s.right : s.left
-  const dRight = flip ? s.left : s.right
-  const tap = (side: 'left' | 'right') =>
-    score(flip ? (side === 'left' ? 'right' : 'left') : side)
   const ev = eventOf(bundle, m)
   const sideName = (teamId: string | null): string | null => {
     const t = bundle.teams.find((x: typeof bundle.teams[number]) => x.id === teamId)
@@ -235,9 +220,11 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
   }
   const leftTeamId = m.a_on_left ? m.team_a_id : m.team_b_id
   const rightTeamId = m.a_on_left ? m.team_b_id : m.team_a_id
-  const dLeftTeamId = flip ? rightTeamId : leftTeamId
-  const dRightTeamId = flip ? leftTeamId : rightTeamId
-  const clip = (v: string, n = 14) => (v.length > n ? v.slice(0, n - 1).trimEnd() + '…' : v)
+  // SWAP persists to the server (a_on_left) so the live board and TV mirror it.
+  const swap = async () => {
+    setM(prev => ({ ...prev, a_on_left: !prev.a_on_left }))
+    try { setM(await api.flipSides(m.id, token)) } catch { /* board re-syncs on reload */ }
+  }
   const matchNo = bundle.matches
     .filter((x: typeof bundle.matches[number]) => x.court_id === m.court_id)
     .sort((a: typeof bundle.matches[number], b: typeof bundle.matches[number]) => a.sequence - b.sequence)
@@ -281,25 +268,15 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
 
         <div className="relative min-h-0 flex-1 px-2 pb-2">
           <Court
-            leftName={dLeftName} rightName={dRightName}
-            leftScore={dLeft} rightScore={dRight}
-            onTap={tap} disabled={done} hideNames
+            leftName={leftName} rightName={rightName}
+            leftScore={s.left} rightScore={s.right}
+            leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
+            onTap={score} disabled={done}
           />
 
-          {/* team name + country flag, top corners */}
-          <div className="pointer-events-none absolute left-4 top-1 flex items-center gap-1.5">
-            <Flag name={sideName(dLeftTeamId)} className="h-4 w-auto rounded-[2px]" />
-            <span className="font-display text-sm font-bold uppercase tracking-wide text-lime">{clip(dLeftName)}</span>
-          </div>
-          <div className="pointer-events-none absolute right-4 top-1 flex items-center gap-1.5">
-            <span className="font-display text-sm font-bold uppercase tracking-wide text-cyan">{clip(dRightName)}</span>
-            <Flag name={sideName(dRightTeamId)} className="h-4 w-auto rounded-[2px]" />
-          </div>
-
-          {/* SWAP left/right — top centre of the court */}
-          <button onClick={toggleFlip}
-            className={`absolute left-1/2 top-0.5 -translate-x-1/2 rounded-lg border px-3 py-1 font-display text-xs font-bold tracking-wide active:scale-95 ${
-              flip ? 'border-cyan/60 bg-cyan/20 text-cyan' : 'border-edge bg-panel/90 text-gray-300'}`}>
+          {/* SWAP left/right — top centre of the court, persists to the board */}
+          <button onClick={swap}
+            className="absolute left-1/2 top-0.5 -translate-x-1/2 rounded-lg border border-edge bg-panel/90 px-3 py-1 font-display text-xs font-bold tracking-wide text-gray-300 active:scale-95">
             ⇄ SWAP
           </button>
 
@@ -350,8 +327,8 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
         <div className="absolute inset-0 z-30 flex items-center justify-center gap-10 bg-ink px-10">
           <div className="w-full max-w-sm space-y-2">
             <div className="mb-3 font-display text-xl font-bold tracking-widest text-gray-500">GAME</div>
-            <ResultRow name={dLeftName} flag={sideName(dLeftTeamId)} score={dLeft} win={dLeft > dRight} />
-            <ResultRow name={dRightName} flag={sideName(dRightTeamId)} score={dRight} win={dRight > dLeft} />
+            <ResultRow name={leftName} flag={sideName(leftTeamId)} score={s.left} win={s.left > s.right} />
+            <ResultRow name={rightName} flag={sideName(rightTeamId)} score={s.right} win={s.right > s.left} />
           </div>
           <div className="w-56 space-y-3">
             <div className="text-sm text-gray-500">

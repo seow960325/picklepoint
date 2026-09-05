@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  useCompetition, teamName, liveOnCourt, nextOnCourt, onDeck, results, standings,
-  duelTally, duelPods,
+  useCompetition, teamName, liveOnCourt, nextOnCourt, results, standings,
+  eventOf, duelTally, duelPods,
 } from '../lib/store'
 import { displayScores } from '../lib/scoring'
 import type { Bundle, EventCfg, Match } from '../lib/types'
@@ -98,10 +98,9 @@ export default function Board() {
 
 // ------------------------------------------------------------- live grid
 function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
-  const upIds = new Set(
-    b.courts.map(ct => nextOnCourt(b, ct.id)?.id).filter((id): id is string => !!id)
-  )
-  const deck = onDeck(b, { exclude: upIds, n: b.courts.length })
+  const deck = b.matches
+    .filter(mm => mm.status === 'scheduled' || mm.status === 'on_deck')
+    .sort((x, y) => x.sequence - y.sequence)
   return (
     <div className={tv ? '' : 'p-3'}>
       <div className={`grid gap-3 ${tv ? 'grid-cols-3' : 'grid-cols-2 lg:grid-cols-3'}`}>
@@ -157,12 +156,21 @@ function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
 
 function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
   const s = displayScores(m)
+  const ev = eventOf(b, m)
+  const sideName = (teamId: string | null): string | null => {
+    const t = b.teams.find(x => x.id === teamId)
+    if (!t?.side) return null
+    return (t.side === 'A' ? ev.side_a_name : ev.side_b_name) ?? null
+  }
+  const leftTeamId = m.a_on_left ? m.team_a_id : m.team_b_id
+  const rightTeamId = m.a_on_left ? m.team_b_id : m.team_a_id
   return (
     <div className="aspect-[2/1]">
       <Court
-        leftName={teamName(b, m.a_on_left ? m.team_a_id : m.team_b_id)}
-        rightName={teamName(b, m.a_on_left ? m.team_b_id : m.team_a_id)}
+        leftName={teamName(b, leftTeamId)}
+        rightName={teamName(b, rightTeamId)}
         leftScore={s.left} rightScore={s.right}
+        leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
         onTap={() => {}} disabled
       />
     </div>

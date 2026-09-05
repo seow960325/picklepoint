@@ -2,6 +2,7 @@
  *  the referee taps the side the point was won on, exactly as they see it
  *  in front of them. Circles echo the service boxes so the target is obvious. */
 import { useState } from 'react'
+import { FlagGlyph } from './ui'
 
 // court is 440 x 200 inside a 480 x 240 surround
 const X = 20, Y = 20, W = 440, H = 200
@@ -18,6 +19,8 @@ export interface CourtProps {
   disabled?: boolean
   serving?: 'left' | 'right' | null
   hideNames?: boolean
+  leftFlag?: string | null
+  rightFlag?: string | null
 }
 
 const clip = (n: string, max = 17) =>
@@ -25,6 +28,7 @@ const clip = (n: string, max = 17) =>
 
 export default function Court({
   leftName, rightName, leftScore, rightScore, onTap, disabled, serving, hideNames,
+  leftFlag, rightFlag,
 }: CourtProps) {
   const [down, setDown] = useState<'left' | 'right' | null>(null)
 
@@ -101,6 +105,15 @@ export default function Court({
           style={{ fontVariantNumeric: 'tabular-nums' }}>
           {leftScore}
         </text>
+        {leftFlag && (
+          <>
+            <svg x={X + 75 - 16} y={MIDY - 74} width="32" height="22" viewBox="0 0 28 20">
+              <FlagGlyph name={leftFlag} />
+            </svg>
+            <rect x={X + 75 - 16} y={MIDY - 74} width="32" height="22" rx="3"
+              fill="none" stroke="#0a0e17" strokeWidth="1.5" />
+          </>
+        )}
         {serving === 'left' && (
           <circle cx={X + 75} cy={MIDY + 78} r="5" fill="#c6ff3d" />
         )}
@@ -119,6 +132,15 @@ export default function Court({
           style={{ fontVariantNumeric: 'tabular-nums' }}>
           {rightScore}
         </text>
+        {rightFlag && (
+          <>
+            <svg x={X + W - 75 - 16} y={MIDY - 74} width="32" height="22" viewBox="0 0 28 20">
+              <FlagGlyph name={rightFlag} />
+            </svg>
+            <rect x={X + W - 75 - 16} y={MIDY - 74} width="32" height="22" rx="3"
+              fill="none" stroke="#0a0e17" strokeWidth="1.5" />
+          </>
+        )}
         {serving === 'right' && (
           <circle cx={X + W - 75} cy={MIDY + 78} r="5" fill="#22d3ee" />
         )}

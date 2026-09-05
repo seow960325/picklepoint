@@ -79,6 +79,11 @@ export async function resetMatch(matchId: string, token: string): Promise<Match>
   return rpc<Match>('reset_match', { p_match_id: matchId, p_token: token })
 }
 
+export async function flipSides(matchId: string, token: string): Promise<Match> {
+  if (IS_DEMO) return demo.flipSides(matchId)
+  return rpc<Match>('flip_sides', { p_match_id: matchId, p_token: token })
+}
+
 export async function callTimeout(
   matchId: string, side: 'left' | 'right', token: string,
 ): Promise<void> {

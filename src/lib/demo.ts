@@ -328,6 +328,15 @@ export const demo = {
     save(s)
   },
 
+  flipSides(matchId: string): Match {
+    const s = load()
+    const i = s.bundle.matches.findIndex(m => m.id === matchId)
+    const next: Match = { ...s.bundle.matches[i], a_on_left: !s.bundle.matches[i].a_on_left }
+    s.bundle.matches[i] = next
+    save(s)
+    return next
+  },
+
   resetMatch(matchId: string): Match {
     const s = load()
     s.events = s.events.filter(e => e.match_id !== matchId)
