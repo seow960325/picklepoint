@@ -259,13 +259,13 @@ function Schedule({ b }: { b: Bundle }) {
 function DuelScoreboard({ b, ev, big }: { b: Bundle; ev: EventCfg; big: boolean }) {
   const t = duelTally(b, ev.id)
   const aName = ev.side_a_name || 'Side A', bName = ev.side_b_name || 'Side B'
-  const nameSz = big ? 'text-2xl sm:text-4xl' : 'text-base'
-  const scoreSz = big ? 'text-6xl sm:text-8xl' : 'text-3xl'
-  const flagSz = big ? 'h-9 sm:h-12' : 'h-5'
-  const dashSz = big ? 'text-4xl sm:text-6xl' : 'text-xl'
+  const nameSz = big ? 'text-2xl sm:text-4xl' : 'text-base lg:text-2xl'
+  const scoreSz = big ? 'text-6xl sm:text-8xl' : 'text-3xl lg:text-5xl'
+  const flagSz = big ? 'h-9 sm:h-12' : 'h-5 lg:h-8'
+  const dashSz = big ? 'text-4xl sm:text-6xl' : 'text-xl lg:text-3xl'
   return (
-    <div className={`px-4 ${big ? '' : 'border-b border-edge py-3'}`}>
-      <div className="mx-auto flex max-w-5xl items-center justify-center gap-4 sm:gap-8">
+    <div className={`px-4 ${big ? '' : 'border-b border-edge py-3 lg:py-6'}`}>
+      <div className="mx-auto flex max-w-5xl items-center justify-center gap-4 sm:gap-8 lg:gap-12">
         {/* side A */}
         <div className="flex min-w-0 flex-1 items-center justify-end gap-3 sm:gap-4">
           <Flag name={aName} className={`${flagSz} w-auto shrink-0 rounded-[2px]`} />
@@ -291,7 +291,7 @@ function DuelScoreboard({ b, ev, big }: { b: Bundle; ev: EventCfg; big: boolean 
         </div>
       </div>
 
-      <div className={`mt-2 text-center text-gray-600 ${big ? 'text-sm' : 'text-xs'}`}>
+      <div className={`mt-2 text-center text-gray-600 ${big ? 'text-sm' : 'text-xs lg:mt-3 lg:text-sm'}`}>
         {t.gamesPlayed} of {t.gamesTotal} games played
         {t.gamesPlayed > 0 && ` · points ${t.sideAPoints}–${t.sideBPoints}`}
         {t.gamesPlayed === t.gamesTotal && t.gamesTotal > 0 && (
