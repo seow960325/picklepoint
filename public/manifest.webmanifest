@@ -1,0 +1,10 @@
+{
+  "name": "PicklePoint",
+  "short_name": "PicklePoint",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0a0e17",
+  "theme_color": "#0a0e17",
+  "icons": []
+}

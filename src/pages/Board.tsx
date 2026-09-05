@@ -1,0 +1,358 @@
+import { useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import {
+  useCompetition, teamName, liveOnCourt, nextOnCourt, onDeck, results, standings,
+  duelTally, duelPods,
+} from '../lib/store'
+import { displayScores } from '../lib/scoring'
+import type { Bundle, EventCfg, Match } from '../lib/types'
+import { Screen, Pill, Spinner } from '../components/ui'
+import Court from '../components/Court'
+import { IS_DEMO, demo } from '../lib/api'
+
+type Tab = 'live' | 'schedule' | 'standings' | 'results'
+
+export default function Board() {
+  const { code } = useParams()
+  const { bundle, error, loading } = useCompetition(code)
+  const [tab, setTab] = useState<Tab>('live')
+  const [tv, setTv] = useState(false)
+
+  if (loading) return <Screen><Spinner /></Screen>
+  if (error || !bundle) return (
+    <Screen className="flex flex-col items-center justify-center gap-4 px-6">
+      <div className="text-center text-gray-400">
+        No competition found for code <span className="font-bold text-white">{code}</span>
+      </div>
+      <Link to="/" className="rounded-xl border border-edge px-4 py-2 text-sm">Try again</Link>
+    </Screen>
+  )
+
+  const c = bundle.competition
+  const duelEvent = bundle.events.find(e => e.format === 'duel')
+
+  return (
+    <Screen className={tv ? 'p-4' : ''}>
+      {duelEvent && <DuelScoreboard b={bundle} ev={duelEvent} big={tv} />}
+
+      {!tv && (
+        <div className="border-b border-edge px-4 py-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <div className="min-w-0">
+              <div className="truncate font-display text-2xl font-bold tracking-wide">{c.name}</div>
+              <div className="truncate text-xs text-gray-500">
+                {c.venue} · code <span className="font-bold text-lime">{c.code}</span>
+              </div>
+            </div>
+            <div className="flex shrink-0 gap-1.5">
+              <Link to={`/c/${code}/admin`}
+                className="rounded-lg border border-edge px-3 py-1.5 text-xs text-gray-400">
+                Settings
+              </Link>
+              <button onClick={() => setTv(true)}
+                className="rounded-lg border border-edge px-3 py-1.5 text-xs text-gray-400">
+                TV mode
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3 flex gap-1 overflow-x-auto">
+            {(['live', 'schedule', 'standings', 'results'] as Tab[]).map(t => (
+              <button key={t} onClick={() => setTab(t)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider ${
+                  tab === t ? 'bg-lime text-ink' : 'text-gray-500'}`}>
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tv && (
+        <button onClick={() => setTv(false)}
+          className="mb-3 rounded-lg border border-edge px-3 py-1 text-xs text-gray-600">
+          exit TV mode
+        </button>
+      )}
+
+      {(tv || tab === 'live') && <LiveGrid b={bundle} code={code!} tv={tv} />}
+      {!tv && tab === 'schedule' && <Schedule b={bundle} />}
+      {!tv && tab === 'standings' && <Standings b={bundle} />}
+      {!tv && tab === 'results' && <Results b={bundle} />}
+
+      {!tv && IS_DEMO && (
+        <div className="px-4 py-8 text-center">
+          <button onClick={() => { demo.reset(); location.reload() }}
+            className="text-xs text-gray-600 underline underline-offset-4">
+            reset demo data
+          </button>
+        </div>
+      )}
+    </Screen>
+  )
+}
+
+// ------------------------------------------------------------- live grid
+function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
+  const deck = onDeck(b, 4)
+  return (
+    <div className={tv ? '' : 'p-3'}>
+      <div className={`grid gap-3 ${tv ? 'grid-cols-3' : 'grid-cols-2 lg:grid-cols-3'}`}>
+        {b.courts.map(ct => {
+          const m = liveOnCourt(b, ct.id)
+          const up = nextOnCourt(b, ct.id)
+          return (
+            <Link key={ct.id} to={`/c/${code}/court/${ct.number}`}
+              className="block rounded-2xl border border-edge bg-panel p-3 active:scale-[0.99]">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="font-display text-lg font-bold tracking-widest text-gray-400">
+                  COURT {ct.number}
+                </span>
+                {m ? <Pill tone="live">● live</Pill> : <Pill>open</Pill>}
+              </div>
+
+              {m ? <CourtScoreRow b={b} m={m} tv={tv} /> : (
+                <div className="py-6 text-center text-sm text-gray-600">No match running</div>
+              )}
+
+              {up && (
+                <div className="mt-3 border-t border-edge pt-2 text-[11px] text-gray-500">
+                  Next: {teamName(b, up.team_a_id)} vs {teamName(b, up.team_b_id)}
+                </div>
+              )}
+            </Link>
+          )
+        })}
+      </div>
+
+      {!tv && deck.length > 0 && (
+        <div className="mt-4 rounded-2xl border border-edge bg-panel p-4">
+          <div className="mb-2 font-display text-sm font-bold uppercase tracking-widest text-cyan">
+            On deck
+          </div>
+          <div className="space-y-1.5">
+            {deck.map(m => (
+              <div key={m.id} className="flex justify-between text-sm">
+                <span className="truncate">
+                  {teamName(b, m.team_a_id)} <span className="text-gray-600">vs</span> {teamName(b, m.team_b_id)}
+                </span>
+                <span className="ml-3 shrink-0 text-gray-500">
+                  Court {b.courts.find(c => c.id === m.court_id)?.number ?? '—'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
+  const s = displayScores(m)
+  return (
+    <div className="aspect-[2/1]">
+      <Court
+        leftName={teamName(b, m.a_on_left ? m.team_a_id : m.team_b_id)}
+        rightName={teamName(b, m.a_on_left ? m.team_b_id : m.team_a_id)}
+        leftScore={s.left} rightScore={s.right}
+        onTap={() => {}} disabled
+      />
+    </div>
+  )
+}
+
+// -------------------------------------------------------------- schedule
+function Schedule({ b }: { b: Bundle }) {
+  const upcoming = b.matches
+    .filter(m => m.status !== 'finished')
+    .sort((x, y) => x.sequence - y.sequence)
+  return (
+    <div className="divide-y divide-edge">
+      {upcoming.map(m => (
+        <div key={m.id} className="flex items-center gap-3 px-4 py-3">
+          <div className="w-10 shrink-0 text-center font-display text-lg font-bold text-gray-600">
+            {b.courts.find(c => c.id === m.court_id)?.number ?? '–'}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm">
+              {teamName(b, m.team_a_id)} <span className="text-gray-600">vs</span> {teamName(b, m.team_b_id)}
+            </div>
+            <div className="text-[11px] text-gray-600">{m.round} · #{m.sequence}</div>
+          </div>
+          {m.status === 'live'
+            ? <Pill tone="live">live</Pill>
+            : <Pill>{m.status.replace('_', ' ')}</Pill>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// -------------------------------------------------------------- duel mode
+function DuelScoreboard({ b, ev, big }: { b: Bundle; ev: EventCfg; big: boolean }) {
+  const t = duelTally(b, ev.id)
+  const aName = ev.side_a_name || 'Side A', bName = ev.side_b_name || 'Side B'
+  return (
+    <div className={`border-b border-edge px-4 ${big ? 'py-6' : 'py-4'}`}>
+      <div className="flex items-center justify-center gap-4 sm:gap-8">
+        <Side name={aName} score={t.sideAWins} lead={t.leader === 'A'} tone="lime" big={big} align="right" />
+        <div className={`font-display font-bold text-gray-700 ${big ? 'text-4xl' : 'text-xl'}`}>–</div>
+        <Side name={bName} score={t.sideBWins} lead={t.leader === 'B'} tone="cyan" big={big} align="left" />
+      </div>
+      <div className="mt-1.5 text-center text-xs text-gray-600">
+        {t.gamesPlayed} of {t.gamesTotal} games played
+        {t.gamesPlayed > 0 && ` · points ${t.sideAPoints}–${t.sideBPoints}`}
+        {t.gamesPlayed === t.gamesTotal && t.gamesTotal > 0 && (
+          <span className="ml-2 font-bold text-lime">
+            {t.leader === 'tie' ? '— tied' : `— ${t.leader === 'A' ? aName : bName} win${t.gamesPlayed !== 1 ? '' : 's'}!`}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Side({ name, score, lead, tone, big, align }: {
+  name: string; score: number; lead: boolean; tone: 'lime' | 'cyan'; big: boolean; align: 'left' | 'right'
+}) {
+  const color = tone === 'lime' ? 'text-lime' : 'text-cyan'
+  return (
+    <div className={`flex items-baseline gap-2.5 sm:gap-4 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
+      <span className={`tabular font-display font-bold leading-none ${color} ${big ? 'text-7xl' : 'text-4xl'}`}>
+        {score}
+      </span>
+      <span className={`truncate font-display font-bold tracking-wide ${lead ? 'text-white' : 'text-gray-500'} ${big ? 'text-2xl' : 'text-sm'}`}>
+        {name}
+      </span>
+    </div>
+  )
+}
+
+function DuelBreakdown({ b, ev }: { b: Bundle; ev: EventCfg }) {
+  const pods = duelPods(b, ev.id)
+  const sideOf = (id: string | null) => b.teams.find(t => t.id === id)?.side ?? null
+  const aName = ev.side_a_name || 'Side A', bName = ev.side_b_name || 'Side B'
+  return (
+    <div className="space-y-3">
+      {pods.map(pod => (
+        <div key={pod.label} className="overflow-hidden rounded-xl border border-edge">
+          <div className="flex items-center justify-between bg-panel px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-gray-500">
+            <span>{pod.label}</span>
+            {pod.courtNumber != null && <span>Court {pod.courtNumber}</span>}
+          </div>
+          <div className="divide-y divide-edge">
+            {pod.games.map(g => {
+              const aSide = sideOf(g.team_a_id)
+              const winnerSide = g.status === 'finished'
+                ? (g.winner_id === g.team_a_id ? aSide : (aSide === 'A' ? 'B' : 'A'))
+                : null
+              return (
+                <div key={g.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                  <span className={`w-16 shrink-0 truncate ${winnerSide === 'A' ? 'font-bold text-lime' : 'text-gray-400'}`}>
+                    {teamName(b, g.team_a_id)}
+                  </span>
+                  <span className="tabular shrink-0 text-xs text-gray-600">
+                    {g.status === 'scheduled' ? 'vs' : `${g.score_a}–${g.score_b}`}
+                  </span>
+                  <span className={`min-w-0 flex-1 truncate ${winnerSide === 'B' ? 'font-bold text-cyan' : 'text-gray-400'}`}>
+                    {teamName(b, g.team_b_id)}
+                  </span>
+                  {g.status === 'live'
+                    ? <Pill tone="live">live</Pill>
+                    : g.status === 'finished'
+                    ? <Pill tone="done">{winnerSide === 'A' ? aName : bName}</Pill>
+                    : <Pill>{g.status.replace('_', ' ')}</Pill>}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ------------------------------------------------------------- standings
+function Standings({ b }: { b: Bundle }) {
+  return (
+    <div className="p-3 space-y-5">
+      {b.events.map(ev => {
+        if (ev.format === 'duel') {
+          return (
+            <div key={ev.id}>
+              <div className="mb-2 font-display text-lg font-bold tracking-wide">{ev.name}</div>
+              <DuelBreakdown b={b} ev={ev} />
+            </div>
+          )
+        }
+        const pools = standings(b, ev.id)
+        return (
+          <div key={ev.id}>
+            <div className="mb-2 font-display text-lg font-bold tracking-wide">{ev.name}</div>
+            {Object.entries(pools).map(([pool, rows]) => (
+              <div key={pool} className="mb-4 overflow-hidden rounded-xl border border-edge">
+                <div className="bg-panel px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-gray-500">
+                  Pool {pool}
+                </div>
+                <table className="w-full text-sm">
+                  <thead className="text-[10px] uppercase tracking-wider text-gray-600">
+                    <tr>
+                      <th className="px-3 py-1.5 text-left">Team</th>
+                      <th className="px-2 py-1.5 text-right">P</th>
+                      <th className="px-2 py-1.5 text-right">W</th>
+                      <th className="px-2 py-1.5 text-right">L</th>
+                      <th className="px-3 py-1.5 text-right">Diff</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-edge">
+                    {rows.map(r => (
+                      <tr key={r.team.id}>
+                        <td className="truncate px-3 py-2">{r.team.name}</td>
+                        <td className="tabular px-2 py-2 text-right text-gray-400">{r.played}</td>
+                        <td className="tabular px-2 py-2 text-right font-bold">{r.won}</td>
+                        <td className="tabular px-2 py-2 text-right text-gray-400">{r.lost}</td>
+                        <td className={`tabular px-3 py-2 text-right ${r.diff > 0 ? 'text-lime' : r.diff < 0 ? 'text-gray-500' : ''}`}>
+                          {r.diff > 0 ? '+' : ''}{r.diff}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// --------------------------------------------------------------- results
+function Results({ b }: { b: Bundle }) {
+  const done = results(b)
+  if (!done.length) return <div className="p-10 text-center text-sm text-gray-600">No completed matches yet.</div>
+  return (
+    <div className="divide-y divide-edge">
+      {done.map(m => {
+        const aWon = m.winner_id === m.team_a_id
+        return (
+          <div key={m.id} className="flex items-center gap-3 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <div className={`truncate text-sm ${aWon ? 'font-bold text-white' : 'text-gray-500'}`}>
+                {teamName(b, m.team_a_id)}
+              </div>
+              <div className={`truncate text-sm ${!aWon ? 'font-bold text-white' : 'text-gray-500'}`}>
+                {teamName(b, m.team_b_id)}
+              </div>
+            </div>
+            <div className="tabular text-right font-display text-2xl font-bold leading-tight">
+              <div className={aWon ? 'text-lime' : 'text-gray-500'}>{m.score_a}</div>
+              <div className={!aWon ? 'text-lime' : 'text-gray-500'}>{m.score_b}</div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
