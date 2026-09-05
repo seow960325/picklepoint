@@ -87,6 +87,8 @@ export default function Court({
           <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="6" />
           </filter>
+          <clipPath id="flagL"><rect x={CXL - 30} y={MIDY - R - 48} width="60" height="42" rx="6" /></clipPath>
+          <clipPath id="flagR"><rect x={CXR - 30} y={MIDY - R - 48} width="60" height="42" rx="6" /></clipPath>
         </defs>
 
         {/* left */}
@@ -102,11 +104,14 @@ export default function Court({
         </text>
         {leftFlag && (
           <>
-            <svg x={CXL - 17} y={MIDY - R - 20} width="34" height="24" viewBox="0 0 28 20">
+            <rect x={CXL - 30} y={MIDY - R - 46} width="60" height="42" rx="6"
+              fill="#0a0e17" opacity="0.4" filter="url(#soft)" />
+            <svg x={CXL - 30} y={MIDY - R - 48} width="60" height="42"
+              viewBox="0 0 28 20" preserveAspectRatio="xMidYMid slice" clipPath="url(#flagL)">
               <FlagGlyph name={leftFlag} />
             </svg>
-            <rect x={CXL - 17} y={MIDY - R - 20} width="34" height="24" rx="3"
-              fill="none" stroke="#0a0e17" strokeWidth="1.5" />
+            <rect x={CXL - 30} y={MIDY - R - 48} width="60" height="42" rx="6"
+              fill="none" stroke="#eaf2ff" strokeOpacity="0.85" strokeWidth="2" />
           </>
         )}
         {serving === 'left' && <circle cx={CXL} cy={MIDY + R + 14} r="5" fill="#c6ff3d" />}
@@ -124,11 +129,14 @@ export default function Court({
         </text>
         {rightFlag && (
           <>
-            <svg x={CXR - 17} y={MIDY - R - 20} width="34" height="24" viewBox="0 0 28 20">
+            <rect x={CXR - 30} y={MIDY - R - 46} width="60" height="42" rx="6"
+              fill="#0a0e17" opacity="0.4" filter="url(#soft)" />
+            <svg x={CXR - 30} y={MIDY - R - 48} width="60" height="42"
+              viewBox="0 0 28 20" preserveAspectRatio="xMidYMid slice" clipPath="url(#flagR)">
               <FlagGlyph name={rightFlag} />
             </svg>
-            <rect x={CXR - 17} y={MIDY - R - 20} width="34" height="24" rx="3"
-              fill="none" stroke="#0a0e17" strokeWidth="1.5" />
+            <rect x={CXR - 30} y={MIDY - R - 48} width="60" height="42" rx="6"
+              fill="none" stroke="#eaf2ff" strokeOpacity="0.85" strokeWidth="2" />
           </>
         )}
         {serving === 'right' && <circle cx={CXR} cy={MIDY + R + 14} r="5" fill="#22d3ee" />}
