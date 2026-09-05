@@ -126,9 +126,6 @@ export default function Board() {
 
 // ------------------------------------------------------------- live grid
 function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
-  const deck = b.matches
-    .filter(mm => mm.status === 'scheduled' || mm.status === 'on_deck')
-    .sort((x, y) => x.sequence - y.sequence)
   return (
     <div className={tv ? '' : 'p-3'}>
       <div className={`grid gap-3 ${tv ? 'grid-cols-3' : 'grid-cols-2 lg:grid-cols-3'}`}>
@@ -159,22 +156,35 @@ function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
         })}
       </div>
 
-      {!tv && deck.length > 0 && (
-        <div className="mt-4 rounded-2xl border border-edge bg-panel p-4">
-          <div className="mb-2 font-display text-sm font-bold uppercase tracking-widest text-cyan">
+      {!tv && (
+        <div className="mt-4">
+          <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-cyan">
             On deck
           </div>
-          <div className="space-y-1.5">
-            {deck.map(m => (
-              <div key={m.id} className="flex justify-between text-sm">
-                <span className="truncate">
-                  <Flag name={teamSideName(b, m.team_a_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_a_id)} <span className="text-gray-600">vs</span> <Flag name={teamSideName(b, m.team_b_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_b_id)}
-                </span>
-                <span className="ml-3 shrink-0 text-gray-500">
-                  Court {b.courts.find(c => c.id === m.court_id)?.number ?? '—'}
-                </span>
-              </div>
-            ))}
+          <div className={`grid gap-3 ${tv ? 'grid-cols-3' : 'grid-cols-2 lg:grid-cols-3'}`}>
+            {b.courts.map(ct => {
+              const ups = b.matches
+                .filter(mm => mm.court_id === ct.id && (mm.status === 'scheduled' || mm.status === 'on_deck'))
+                .sort((x, y) => x.sequence - y.sequence)
+              return (
+                <div key={ct.id} className="rounded-2xl border border-edge bg-panel p-3">
+                  <div className="mb-1.5 font-display text-xs font-bold uppercase tracking-widest text-gray-500">
+                    Court {ct.number}
+                  </div>
+                  {ups.length === 0 ? (
+                    <div className="py-1.5 text-xs text-gray-600">No upcoming matches</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {ups.map(mm => (
+                        <div key={mm.id} className="truncate text-sm text-gray-300">
+                          <Flag name={teamSideName(b, mm.team_a_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, mm.team_a_id)} <span className="text-gray-600">vs</span> <Flag name={teamSideName(b, mm.team_b_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, mm.team_b_id)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -252,7 +262,7 @@ function Schedule({ b, code, reload }: { b: Bundle; code: string; reload: () => 
               <div className="truncate text-sm">
                 <Flag name={teamSideName(b, m.team_a_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_a_id)} <span className="text-gray-600">vs</span> <Flag name={teamSideName(b, m.team_b_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_b_id)}
               </div>
-              <div className="text-[11px] text-gray-600">{m.round} · #{m.sequence}</div>
+              <div className="text-[11px] text-gray-600">{(m.round ?? '').replace(/pod/i, 'Court')} · #{m.sequence}</div>
             </div>
             {m.status === 'live'
               ? <Pill tone="live">live</Pill>
@@ -355,9 +365,8 @@ function DuelBreakdown({ b, ev }: { b: Bundle; ev: EventCfg }) {
     <div className="space-y-3">
       {pods.map(pod => (
         <div key={pod.label} className="overflow-hidden rounded-xl border border-edge">
-          <div className="flex items-center justify-between bg-panel px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-gray-500">
-            <span>{pod.label}</span>
-            {pod.courtNumber != null && <span>Court {pod.courtNumber}</span>}
+          <div className="bg-panel px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-gray-500">
+            {pod.courtNumber != null ? `Court ${pod.courtNumber}` : pod.label.replace(/pod/i, 'Court')}
           </div>
           <div className="divide-y divide-edge">
             {pod.games.map(g => {
@@ -367,14 +376,14 @@ function DuelBreakdown({ b, ev }: { b: Bundle; ev: EventCfg }) {
                 : null
               return (
                 <div key={g.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-                  <span className={`w-16 shrink-0 truncate ${winnerSide === 'A' ? 'font-bold text-lime' : 'text-gray-400'}`}>
-                    {teamName(b, g.team_a_id)}
+                  <span className={`w-20 shrink-0 truncate ${winnerSide === 'A' ? 'font-bold text-lime' : 'text-gray-400'}`}>
+                    <Flag name={teamSideName(b, g.team_a_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, g.team_a_id)}
                   </span>
                   <span className="tabular shrink-0 text-xs text-gray-600">
                     {g.status === 'scheduled' ? 'vs' : `${g.score_a}–${g.score_b}`}
                   </span>
                   <span className={`min-w-0 flex-1 truncate ${winnerSide === 'B' ? 'font-bold text-cyan' : 'text-gray-400'}`}>
-                    {teamName(b, g.team_b_id)}
+                    <Flag name={teamSideName(b, g.team_b_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, g.team_b_id)}
                   </span>
                   {g.status === 'live'
                     ? <Pill tone="live">live</Pill>
