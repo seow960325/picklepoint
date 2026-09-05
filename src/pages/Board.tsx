@@ -77,31 +77,31 @@ export default function Board() {
     <Screen>
       {duelEvent && <DuelScoreboard b={bundle} ev={duelEvent} big={false} />}
 
-      <div className="border-b border-edge px-4 py-3">
+      <div className="border-b border-edge px-4 py-3 lg:px-6 lg:py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="truncate font-display text-2xl font-bold tracking-wide">{c.name}</div>
-            <div className="truncate text-xs text-gray-500">
+            <div className="truncate font-display text-2xl font-bold tracking-wide lg:text-3xl">{c.name}</div>
+            <div className="truncate text-xs text-gray-500 lg:text-sm">
               {c.venue} · code <span className="font-bold text-lime">{c.code}</span>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1.5 lg:gap-2">
             <Link to={`/c/${code}/admin`}
-              className="flex h-8 items-center rounded-lg border border-edge px-3 text-xs text-gray-400 active:bg-edge">
+              className="flex h-8 items-center rounded-lg border border-edge px-3 text-xs text-gray-400 active:bg-edge lg:h-10 lg:px-4 lg:text-sm">
               Settings
             </Link>
             <button onClick={() => setTv(true)}
-              className="flex h-8 items-center rounded-lg border border-edge px-3 text-xs text-gray-400 active:bg-edge">
+              className="flex h-8 items-center rounded-lg border border-edge px-3 text-xs text-gray-400 active:bg-edge lg:h-10 lg:px-4 lg:text-sm">
               TV mode
             </button>
-            <FullscreenButton className="grid h-8 w-8 place-items-center rounded-lg border border-edge p-1.5 text-gray-400 active:bg-edge" />
+            <FullscreenButton className="grid h-8 w-8 place-items-center rounded-lg border border-edge p-1.5 text-gray-400 active:bg-edge lg:h-10 lg:w-10" />
           </div>
         </div>
 
-        <div className="mt-3 flex gap-1 overflow-x-auto">
+        <div className="mt-3 flex gap-1 overflow-x-auto lg:mt-4 lg:gap-2">
           {(['live', 'schedule', 'standings', 'results'] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider ${
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider lg:px-4 lg:py-2 lg:text-sm ${
                 tab === t ? 'bg-lime text-ink' : 'text-gray-500'}`}>
               {t}
             </button>
@@ -129,27 +129,27 @@ export default function Board() {
 // ------------------------------------------------------------- live grid
 function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
   return (
-    <div className={tv ? '' : 'p-3'}>
-      <div className={`grid gap-3 ${tv ? 'grid-cols-3' : 'grid-cols-2 lg:grid-cols-3'}`}>
+    <div className={tv ? '' : 'p-3 lg:p-6'}>
+      <div className={`grid gap-3 lg:gap-6 ${tv ? 'grid-cols-3' : 'grid-cols-2 lg:grid-cols-3'}`}>
         {b.courts.map(ct => {
           const m = liveOnCourt(b, ct.id)
           const up = nextOnCourt(b, ct.id)
           return (
             <Link key={ct.id} to={`/c/${code}/court/${ct.number}`}
-              className="block rounded-2xl border border-edge bg-panel p-3 active:scale-[0.99]">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="font-display text-lg font-bold tracking-widest text-gray-400">
+              className="block rounded-2xl border border-edge bg-panel p-3 active:scale-[0.99] lg:p-5">
+              <div className="mb-2 flex items-center justify-between lg:mb-3">
+                <span className="font-display text-lg font-bold tracking-widest text-gray-400 lg:text-xl">
                   COURT {ct.number}
                 </span>
                 {m ? <Pill tone="live">● live</Pill> : <Pill>open</Pill>}
               </div>
 
               {m ? <CourtScoreRow b={b} m={m} tv={tv} /> : (
-                <div className="py-6 text-center text-sm text-gray-600">No match running</div>
+                <div className="py-6 text-center text-sm text-gray-600 lg:py-10">No match running</div>
               )}
 
               {up && (
-                <div className="mt-3 border-t border-edge pt-2 text-[11px] text-gray-500">
+                <div className="mt-3 border-t border-edge pt-2 text-[11px] text-gray-500 lg:mt-4 lg:pt-3 lg:text-sm">
                   Next: {teamName(b, up.team_a_id)} vs {teamName(b, up.team_b_id)}
                 </div>
               )}
@@ -214,7 +214,7 @@ function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
   const leftTeamId = m.a_on_left ? m.team_a_id : m.team_b_id
   const rightTeamId = m.a_on_left ? m.team_b_id : m.team_a_id
   return (
-    <div className="aspect-[2/1]">
+    <div className="aspect-[2/1] lg:aspect-[3/2]">
       <Court
         leftName={teamName(b, leftTeamId)}
         rightName={teamName(b, rightTeamId)}
