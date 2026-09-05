@@ -31,60 +31,88 @@ export default function Board() {
   const c = bundle.competition
   const duelEvent = bundle.events.find(e => e.format === 'duel')
 
-  return (
-    <Screen className={tv ? 'p-4' : ''}>
-      {duelEvent && <DuelScoreboard b={bundle} ev={duelEvent} big={tv} />}
-
-      {!tv && (
-        <div className="border-b border-edge px-4 py-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="truncate font-display text-2xl font-bold tracking-wide">{c.name}</div>
-              <div className="truncate text-xs text-gray-500">
-                {c.venue} · code <span className="font-bold text-lime">{c.code}</span>
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-1.5">
-              <Link to={`/c/${code}/admin`}
-                className="flex h-8 items-center rounded-lg border border-edge px-3 text-xs text-gray-400 active:bg-edge">
-                Settings
-              </Link>
-              <button onClick={() => setTv(true)}
-                className="flex h-8 items-center rounded-lg border border-edge px-3 text-xs text-gray-400 active:bg-edge">
-                TV mode
-              </button>
-              <FullscreenButton className="grid h-8 w-8 place-items-center rounded-lg border border-edge p-1.5 text-gray-400 active:bg-edge" />
-            </div>
-          </div>
-
-          <div className="mt-3 flex gap-1 overflow-x-auto">
-            {(['live', 'schedule', 'standings', 'results'] as Tab[]).map(t => (
-              <button key={t} onClick={() => setTab(t)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider ${
-                  tab === t ? 'bg-lime text-ink' : 'text-gray-500'}`}>
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {tv && (
-        <div className="mb-3 flex items-center gap-2">
+  // ---- TV mode: dedicated, centred fullscreen presentation ----
+  if (tv) {
+    return (
+      <div className="fixed inset-0 flex flex-col bg-ink text-gray-100"
+        style={{
+          paddingTop: 'env(safe-area-inset-top)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          paddingLeft: 'env(safe-area-inset-left)',
+          paddingRight: 'env(safe-area-inset-right)',
+        }}>
+        {/* discreet controls, top-right */}
+        <div className="absolute right-4 top-4 z-10 flex items-center gap-2 opacity-30 transition-opacity hover:opacity-100">
           <button onClick={() => setTv(false)}
-            className="rounded-lg border border-edge px-3 py-1 text-xs text-gray-600">
-            exit TV mode
+            className="rounded-lg border border-edge bg-panel/70 px-3 py-1.5 text-xs text-gray-300">
+            exit TV
           </button>
-          <FullscreenButton className="grid h-7 w-7 place-items-center rounded-lg border border-edge p-1 text-gray-600 active:bg-edge" />
+          <FullscreenButton className="grid h-8 w-8 place-items-center rounded-lg border border-edge bg-panel/70 p-1.5 text-gray-300" />
         </div>
-      )}
 
-      {(tv || tab === 'live') && <LiveGrid b={bundle} code={code!} tv={tv} />}
-      {!tv && tab === 'schedule' && <Schedule b={bundle} code={code!} reload={reload} />}
-      {!tv && tab === 'standings' && <Standings b={bundle} />}
-      {!tv && tab === 'results' && <Results b={bundle} code={code!} />}
+        {/* title + big scoreboard */}
+        <div className="shrink-0 px-8 pt-6 text-center">
+          <div className="font-display text-3xl font-bold tracking-wide sm:text-4xl">{c.name}</div>
+          {c.venue && <div className="mt-0.5 text-sm text-gray-500">{c.venue}</div>}
+        </div>
+        {duelEvent && (
+          <div className="shrink-0 px-8 pt-5">
+            <DuelScoreboard b={bundle} ev={duelEvent} big />
+          </div>
+        )}
 
-      {!tv && IS_DEMO && (
+        {/* courts, centred and filling the remaining space */}
+        <div className="flex min-h-0 flex-1 items-center justify-center px-8 py-6">
+          <div className="w-full max-w-[1600px]">
+            <LiveGrid b={bundle} code={code!} tv />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <Screen>
+      {duelEvent && <DuelScoreboard b={bundle} ev={duelEvent} big={false} />}
+
+      <div className="border-b border-edge px-4 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="truncate font-display text-2xl font-bold tracking-wide">{c.name}</div>
+            <div className="truncate text-xs text-gray-500">
+              {c.venue} · code <span className="font-bold text-lime">{c.code}</span>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Link to={`/c/${code}/admin`}
+              className="flex h-8 items-center rounded-lg border border-edge px-3 text-xs text-gray-400 active:bg-edge">
+              Settings
+            </Link>
+            <button onClick={() => setTv(true)}
+              className="flex h-8 items-center rounded-lg border border-edge px-3 text-xs text-gray-400 active:bg-edge">
+              TV mode
+            </button>
+            <FullscreenButton className="grid h-8 w-8 place-items-center rounded-lg border border-edge p-1.5 text-gray-400 active:bg-edge" />
+          </div>
+        </div>
+
+        <div className="mt-3 flex gap-1 overflow-x-auto">
+          {(['live', 'schedule', 'standings', 'results'] as Tab[]).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider ${
+                tab === t ? 'bg-lime text-ink' : 'text-gray-500'}`}>
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {tab === 'live' && <LiveGrid b={bundle} code={code!} tv={false} />}
+      {tab === 'schedule' && <Schedule b={bundle} code={code!} reload={reload} />}
+      {tab === 'standings' && <Standings b={bundle} />}
+      {tab === 'results' && <Results b={bundle} code={code!} />}
+
+      {IS_DEMO && (
         <div className="px-4 py-8 text-center">
           <button onClick={() => { demo.reset(); location.reload() }}
             className="text-xs text-gray-600 underline underline-offset-4">
