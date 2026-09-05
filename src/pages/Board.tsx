@@ -129,14 +129,14 @@ export default function Board() {
 // ------------------------------------------------------------- live grid
 function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
   return (
-    <div className={tv ? '' : 'p-3 lg:p-6'}>
-      <div className={`grid gap-3 lg:gap-6 ${tv ? 'grid-cols-3' : 'grid-cols-2 lg:grid-cols-3'}`}>
+    <div className={tv ? '' : 'p-3 lg:p-5'}>
+      <div className={`grid gap-3 lg:gap-5 ${tv ? 'grid-cols-3' : 'grid-cols-2 lg:grid-cols-3'}`}>
         {b.courts.map(ct => {
           const m = liveOnCourt(b, ct.id)
           const up = nextOnCourt(b, ct.id)
           return (
             <Link key={ct.id} to={`/c/${code}/court/${ct.number}`}
-              className="block rounded-2xl border border-edge bg-panel p-3 active:scale-[0.99] lg:p-5">
+              className="block rounded-2xl border border-edge bg-panel p-3 active:scale-[0.99] lg:p-4">
               <div className="mb-2 flex items-center justify-between lg:mb-3">
                 <span className="font-display text-lg font-bold tracking-widest text-gray-400 lg:text-xl">
                   COURT {ct.number}
@@ -214,7 +214,7 @@ function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
   const leftTeamId = m.a_on_left ? m.team_a_id : m.team_b_id
   const rightTeamId = m.a_on_left ? m.team_b_id : m.team_a_id
   return (
-    <div className="aspect-[2/1] lg:aspect-[3/2]">
+    <div className="aspect-[2/1] lg:aspect-[7/4]">
       <Court
         leftName={teamName(b, leftTeamId)}
         rightName={teamName(b, rightTeamId)}
