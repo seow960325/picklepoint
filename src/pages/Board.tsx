@@ -232,19 +232,19 @@ function Schedule({ b }: { b: Bundle }) {
   const upcoming = b.matches
     .filter(m => m.status !== 'finished')
     .sort((x, y) => x.sequence - y.sequence)
-  const fl = "mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]"
+  const fl = "mr-1.5 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]"
   return (
     <div className="divide-y divide-edge">
       {upcoming.map(m => (
-        <div key={m.id} className="flex items-center gap-3 px-4 py-3">
+        <div key={m.id} className="flex items-center gap-4 px-4 py-3.5">
           <div className="w-10 shrink-0 text-center font-display text-lg font-bold text-gray-600">
             {b.courts.find(c => c.id === m.court_id)?.number ?? '–'}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm">
-              <Flag name={teamSideName(b, m.team_a_id)} className={fl} />{teamName(b, m.team_a_id)} <span className="text-gray-600">vs</span> <Flag name={teamSideName(b, m.team_b_id)} className={fl} />{teamName(b, m.team_b_id)}
+            <div className="truncate text-sm leading-relaxed">
+              <Flag name={teamSideName(b, m.team_a_id)} className={fl} />{teamName(b, m.team_a_id)}<span className="mx-2 text-gray-600">vs</span><Flag name={teamSideName(b, m.team_b_id)} className={fl} />{teamName(b, m.team_b_id)}
             </div>
-            <div className="text-[11px] text-gray-600">{(m.round ?? '').replace(/pod/i, 'Court')} · #{m.sequence}</div>
+            <div className="mt-1 text-[11px] tracking-wide text-gray-600">{(m.round ?? '').replace(/pod/i, 'Court')} · #{m.sequence}</div>
           </div>
           {m.status === 'live'
             ? <Pill tone="live">live</Pill>
@@ -326,7 +326,7 @@ function DuelBreakdown({ b, ev }: { b: Bundle; ev: EventCfg }) {
                   <span className={`w-20 shrink-0 truncate ${winnerSide === 'A' ? 'font-bold text-lime' : 'text-gray-400'}`}>
                     <Flag name={teamSideName(b, g.team_a_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, g.team_a_id)}
                   </span>
-                  <span className="tabular shrink-0 text-xs text-gray-600">
+                  <span className="tabular w-10 shrink-0 text-center text-xs text-gray-600">
                     {g.status === 'scheduled' ? 'vs' : `${g.score_a}–${g.score_b}`}
                   </span>
                   <span className={`min-w-0 flex-1 truncate ${winnerSide === 'B' ? 'font-bold text-cyan' : 'text-gray-400'}`}>
