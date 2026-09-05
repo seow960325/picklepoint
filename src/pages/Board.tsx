@@ -6,7 +6,7 @@ import {
 } from '../lib/store'
 import { displayScores } from '../lib/scoring'
 import type { Bundle, EventCfg, Match } from '../lib/types'
-import { Screen, Pill, Spinner } from '../components/ui'
+import { Screen, Pill, Spinner, FullscreenButton } from '../components/ui'
 import Court from '../components/Court'
 import { IS_DEMO, demo } from '../lib/api'
 
@@ -44,7 +44,8 @@ export default function Board() {
                 {c.venue} · code <span className="font-bold text-lime">{c.code}</span>
               </div>
             </div>
-            <div className="flex shrink-0 gap-1.5">
+            <div className="flex shrink-0 items-stretch gap-1.5">
+              <FullscreenButton className="grid w-9 place-items-center rounded-lg border border-edge p-1.5 text-gray-400 active:bg-edge" />
               <Link to={`/c/${code}/admin`}
                 className="rounded-lg border border-edge px-3 py-1.5 text-xs text-gray-400">
                 Settings
@@ -69,10 +70,13 @@ export default function Board() {
       )}
 
       {tv && (
-        <button onClick={() => setTv(false)}
-          className="mb-3 rounded-lg border border-edge px-3 py-1 text-xs text-gray-600">
-          exit TV mode
-        </button>
+        <div className="mb-3 flex items-center gap-2">
+          <button onClick={() => setTv(false)}
+            className="rounded-lg border border-edge px-3 py-1 text-xs text-gray-600">
+            exit TV mode
+          </button>
+          <FullscreenButton className="grid h-7 w-7 place-items-center rounded-lg border border-edge p-1 text-gray-600 active:bg-edge" />
+        </div>
       )}
 
       {(tv || tab === 'live') && <LiveGrid b={bundle} code={code!} tv={tv} />}

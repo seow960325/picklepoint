@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { useFullscreen } from '../lib/fullscreen'
 
 export const Screen = ({ children, className = '' }: { children: ReactNode; className?: string }) => (
   <div className={`min-h-full bg-ink text-gray-100 ${className}`}>{children}</div>
@@ -29,3 +30,35 @@ export const Pill = ({ children, tone = 'idle' }: { children: ReactNode; tone?: 
 export const Spinner = () => (
   <div className="flex h-64 items-center justify-center text-gray-500">Loading…</div>
 )
+
+
+/** Enter/exit fullscreen. Hidden on devices with no fullscreen support
+ *  (e.g. iPhone Safari). `className` styles the button wrapper. */
+export const FullscreenButton = ({ className = '' }: { className?: string }) => {
+  const { active, toggle, supported } = useFullscreen()
+  if (!supported) return null
+  return (
+    <button onClick={toggle} title={active ? 'Exit fullscreen' : 'Fullscreen'}
+      aria-label={active ? 'Exit fullscreen' : 'Enter fullscreen'}
+      className={className}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round" className="h-full w-full">
+        {active ? (
+          <>
+            <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+            <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+            <path d="M3 16h3a2 2 0 0 1 2 2v3" />
+            <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+          </>
+        ) : (
+          <>
+            <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+            <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+            <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+            <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+          </>
+        )}
+      </svg>
+    </button>
+  )
+}

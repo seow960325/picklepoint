@@ -8,7 +8,7 @@ import { enqueue, flush, pending } from '../lib/queue'
 import { useWakeLockEffect } from '../lib/wakelock'
 import { useLandscape } from '../lib/orientation'
 import { tapPoint, tapUndo, hornEnd, chimeSwitch } from '../lib/feedback'
-import { Screen, Spinner } from '../components/ui'
+import { Screen, Spinner, FullscreenButton } from '../components/ui'
 import Court from '../components/Court'
 
 const tokenKey = (courtId: string) => `pp.token.${courtId}`
@@ -141,6 +141,13 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
   const [showSwitch, setShowSwitch] = useState(false)
   const [offline, setOffline] = useState(pending() > 0)
   const [ignoreRotate, setIgnoreRotate] = useState(false)
+  const flipKey = `pp.flip.${match.id}`
+  const [flip, setFlip] = useState<boolean>(() => localStorage.getItem(flipKey) === '1')
+  const toggleFlip = () => setFlip(f => {
+    const n = !f
+    try { localStorage.setItem(flipKey, n ? '1' : '0') } catch { /* noop */ }
+    return n
+  })
   const landscape = useLandscape()
   const history = useRef<[number, number][]>([])
 
@@ -212,6 +219,14 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
   const s = displayScores(m)
   const leftName = teamName(bundle, m.a_on_left ? m.team_a_id : m.team_b_id)
   const rightName = teamName(bundle, m.a_on_left ? m.team_b_id : m.team_a_id)
+  // manual swap is purely presentational: mirror names, scores and the
+  // tap target together so scoring stays correct whichever way it's shown.
+  const dLeftName = flip ? rightName : leftName
+  const dRightName = flip ? leftName : rightName
+  const dLeft = flip ? s.right : s.left
+  const dRight = flip ? s.left : s.right
+  const tap = (side: 'left' | 'right') =>
+    score(flip ? (side === 'left' ? 'right' : 'left') : side)
   const done = m.status === 'awaiting_confirm' || isGameOver(m.score_a, m.score_b, rules)
   const hi = Math.max(m.score_a, m.score_b), lo = Math.min(m.score_a, m.score_b)
   const matchPoint = !done && hi >= rules.target_score - 1 && hi - lo >= rules.win_by - 1
@@ -236,6 +251,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
             {matchPoint && <span className="ml-2 animate-pulse text-lime">MATCH POINT</span>}
           </div>
           <div className="flex items-center gap-2">
+            <FullscreenButton className="h-4 w-4 shrink-0 text-gray-600 active:text-gray-400" />
             {recentDone && (
               <Link to={`/c/${code}/match/${recentDone.id}`} className="text-gray-700 underline underline-offset-2">
                 PREV
@@ -249,9 +265,9 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
 
         <div className="min-h-0 flex-1 px-2 pb-2">
           <Court
-            leftName={leftName} rightName={rightName}
-            leftScore={s.left} rightScore={s.right}
-            onTap={score} disabled={done}
+            leftName={dLeftName} rightName={dRightName}
+            leftScore={dLeft} rightScore={dRight}
+            onTap={tap} disabled={done}
           />
         </div>
       </div>
@@ -261,6 +277,11 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
         <button onClick={undo}
           className="flex-1 rounded-xl border border-edge bg-panel font-display text-base font-bold tracking-wide text-gray-300 active:bg-edge">
           UNDO
+        </button>
+        <button onClick={toggleFlip}
+          className={`flex-1 rounded-xl border font-display text-[13px] font-bold tracking-wide active:bg-edge ${
+            flip ? 'border-cyan/50 bg-cyan/15 text-cyan' : 'border-edge bg-panel text-gray-400'}`}>
+          SWAP
         </button>
         <button onClick={() => api.callTimeout(m.id, 'left', token)}
           className="flex-1 rounded-xl border border-edge bg-panel font-display text-[13px] font-bold tracking-wide text-gray-400 active:bg-edge">
@@ -297,8 +318,8 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
         <div className="absolute inset-0 z-30 flex items-center justify-center gap-10 bg-ink px-10">
           <div className="w-full max-w-sm space-y-2">
             <div className="mb-3 font-display text-xl font-bold tracking-widest text-gray-500">GAME</div>
-            <ResultRow name={leftName} score={s.left} win={s.left > s.right} />
-            <ResultRow name={rightName} score={s.right} win={s.right > s.left} />
+            <ResultRow name={dLeftName} score={dLeft} win={dLeft > dRight} />
+            <ResultRow name={dRightName} score={dRight} win={dRight > dLeft} />
           </div>
           <div className="w-56 space-y-3">
             <div className="text-sm text-gray-500">
