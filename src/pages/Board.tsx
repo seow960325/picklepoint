@@ -342,6 +342,9 @@ function Results({ b, code }: { b: Bundle; code: string }) {
         return (
           <Link key={m.id} to={`/c/${code}/match/${m.id}`}
             className="flex items-center gap-3 px-4 py-3 active:bg-panel">
+            <div className="w-10 shrink-0 text-center font-display text-lg font-bold text-gray-600">
+              {b.courts.find(c => c.id === m.court_id)?.number ?? '–'}
+            </div>
             <div className="min-w-0 flex-1">
               <div className={`truncate text-sm ${aWon ? 'font-bold text-white' : 'text-gray-500'}`}>
                 {teamName(b, m.team_a_id)}
@@ -349,6 +352,7 @@ function Results({ b, code }: { b: Bundle; code: string }) {
               <div className={`truncate text-sm ${!aWon ? 'font-bold text-white' : 'text-gray-500'}`}>
                 {teamName(b, m.team_b_id)}
               </div>
+              <div className="text-[11px] text-gray-600">Match #{m.sequence}{m.round ? ` · ${m.round}` : ''}</div>
             </div>
             <div className="tabular text-right font-display text-2xl font-bold leading-tight">
               <div className={aWon ? 'text-lime' : 'text-gray-500'}>{m.score_a}</div>

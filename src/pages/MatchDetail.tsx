@@ -54,7 +54,7 @@ export default function MatchDetail() {
     <Screen>
       <TopBar
         title={`${teamName(bundle, m.team_a_id)} vs ${teamName(bundle, m.team_b_id)}`}
-        sub={`${m.round ?? ''} · ${m.status.replace(/_/g, ' ')}`}
+        sub={`Court ${court?.number ?? '–'} · Match #${m.sequence}${m.round ? ` · ${m.round}` : ''} · ${m.status.replace(/_/g, ' ')}`}
         back={`/c/${code}`}
       />
 
