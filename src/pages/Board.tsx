@@ -34,10 +34,10 @@ export default function Board() {
   // ---- TV mode: dedicated, centred fullscreen presentation ----
   if (tv) {
     return (
-      <div className="fixed inset-0 flex flex-col bg-ink text-gray-100"
+      <div className="fixed inset-0 flex flex-col justify-center gap-5 overflow-auto bg-ink py-6 text-gray-100"
         style={{
-          paddingTop: 'env(safe-area-inset-top)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
+          paddingTop: 'max(env(safe-area-inset-top), 1.5rem)',
+          paddingBottom: 'max(env(safe-area-inset-bottom), 1.5rem)',
           paddingLeft: 'env(safe-area-inset-left)',
           paddingRight: 'env(safe-area-inset-right)',
         }}>
@@ -50,20 +50,22 @@ export default function Board() {
           <FullscreenButton className="grid h-8 w-8 place-items-center rounded-lg border border-edge bg-panel/70 p-1.5 text-gray-300" />
         </div>
 
-        {/* title + big scoreboard */}
-        <div className="shrink-0 px-8 pt-6 text-center">
+        {/* title */}
+        <div className="shrink-0 px-8 text-center">
           <div className="font-display text-3xl font-bold tracking-wide sm:text-4xl">{c.name}</div>
           {c.venue && <div className="mt-0.5 text-sm text-gray-500">{c.venue}</div>}
         </div>
+
+        {/* big scoreboard */}
         {duelEvent && (
-          <div className="shrink-0 px-8 pt-5">
+          <div className="shrink-0 px-8">
             <DuelScoreboard b={bundle} ev={duelEvent} big />
           </div>
         )}
 
-        {/* courts, centred and filling the remaining space */}
-        <div className="flex min-h-0 flex-1 items-center justify-center px-8 py-6">
-          <div className="w-full max-w-[1600px]">
+        {/* courts */}
+        <div className="shrink-0 px-8">
+          <div className="mx-auto w-full max-w-[1600px]">
             <LiveGrid b={bundle} code={code!} tv />
           </div>
         </div>
@@ -318,14 +320,39 @@ function Schedule({ b, code, reload }: { b: Bundle; code: string; reload: () => 
 function DuelScoreboard({ b, ev, big }: { b: Bundle; ev: EventCfg; big: boolean }) {
   const t = duelTally(b, ev.id)
   const aName = ev.side_a_name || 'Side A', bName = ev.side_b_name || 'Side B'
+  const nameSz = big ? 'text-2xl sm:text-4xl' : 'text-base'
+  const scoreSz = big ? 'text-6xl sm:text-8xl' : 'text-3xl'
+  const flagSz = big ? 'h-9 sm:h-12' : 'h-5'
+  const dashSz = big ? 'text-4xl sm:text-6xl' : 'text-xl'
   return (
-    <div className={`border-b border-edge px-4 ${big ? 'py-6' : 'py-4'}`}>
-      <div className="flex items-center justify-center gap-4 sm:gap-8">
-        <Side name={aName} score={t.sideAWins} lead={t.leader === 'A'} tone="lime" big={big} align="right" />
-        <div className={`font-display font-bold text-gray-700 ${big ? 'text-4xl' : 'text-xl'}`}>–</div>
-        <Side name={bName} score={t.sideBWins} lead={t.leader === 'B'} tone="cyan" big={big} align="left" />
+    <div className={`px-4 ${big ? '' : 'border-b border-edge py-3'}`}>
+      <div className="mx-auto flex max-w-5xl items-center justify-center gap-4 sm:gap-8">
+        {/* side A */}
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-3 sm:gap-4">
+          <Flag name={aName} className={`${flagSz} w-auto shrink-0 rounded-[2px]`} />
+          <span className={`truncate font-display font-bold tracking-wide ${nameSz} ${t.leader === 'A' ? 'text-white' : 'text-gray-500'}`}>
+            {aName}
+          </span>
+          <span className={`tabular shrink-0 font-display font-bold leading-none text-lime ${scoreSz}`}>
+            {t.sideAWins}
+          </span>
+        </div>
+
+        <span className={`shrink-0 font-display font-bold leading-none text-gray-700 ${dashSz}`}>–</span>
+
+        {/* side B (mirrored) */}
+        <div className="flex min-w-0 flex-1 items-center justify-start gap-3 sm:gap-4">
+          <span className={`tabular shrink-0 font-display font-bold leading-none text-cyan ${scoreSz}`}>
+            {t.sideBWins}
+          </span>
+          <span className={`truncate font-display font-bold tracking-wide ${nameSz} ${t.leader === 'B' ? 'text-white' : 'text-gray-500'}`}>
+            {bName}
+          </span>
+          <Flag name={bName} className={`${flagSz} w-auto shrink-0 rounded-[2px]`} />
+        </div>
       </div>
-      <div className="mt-1.5 text-center text-xs text-gray-600">
+
+      <div className={`mt-2 text-center text-gray-600 ${big ? 'text-sm' : 'text-xs'}`}>
         {t.gamesPlayed} of {t.gamesTotal} games played
         {t.gamesPlayed > 0 && ` · points ${t.sideAPoints}–${t.sideBPoints}`}
         {t.gamesPlayed === t.gamesTotal && t.gamesTotal > 0 && (
@@ -334,25 +361,6 @@ function DuelScoreboard({ b, ev, big }: { b: Bundle; ev: EventCfg; big: boolean 
           </span>
         )}
       </div>
-    </div>
-  )
-}
-
-function Side({ name, score, lead, tone, big, align }: {
-  name: string; score: number; lead: boolean; tone: 'lime' | 'cyan'; big: boolean; align: 'left' | 'right'
-}) {
-  const color = tone === 'lime' ? 'text-lime' : 'text-cyan'
-  return (
-    <div className={`flex items-baseline gap-2.5 sm:gap-4 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
-      <span className={`tabular font-display font-bold leading-none ${color} ${big ? 'text-7xl' : 'text-4xl'}`}>
-        {score}
-      </span>
-      <span className={`flex min-w-0 items-center gap-2.5 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
-        <Flag name={name} className={`w-auto shrink-0 rounded-[2px] ${big ? 'h-11' : 'h-6'}`} />
-        <span className={`truncate font-display font-bold tracking-wide ${lead ? 'text-white' : 'text-gray-500'} ${big ? 'text-4xl' : 'text-lg'}`}>
-          {name}
-        </span>
-      </span>
     </div>
   )
 }
