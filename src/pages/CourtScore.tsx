@@ -243,7 +243,13 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
   if (!landscape && !ignoreRotate) return <RotatePrompt onIgnore={() => setIgnoreRotate(true)} />
 
   return (
-    <div className="fixed inset-0 flex bg-ink no-select">
+    <div className="fixed inset-0 flex bg-ink no-select"
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)',
+      }}>
       {/* court fills everything left of the control rail */}
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex shrink-0 items-center justify-between px-3 py-1.5 text-[11px]">
@@ -295,17 +301,27 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
       </div>
 
       {/* control rail */}
-      <div className="flex w-[78px] shrink-0 flex-col gap-2 border-l border-edge p-2">
-        <button onClick={undo}
-          className="flex-1 rounded-xl border border-edge bg-panel font-display text-base font-bold tracking-wide text-gray-300 active:bg-edge">
-          UNDO
+      <div className="flex w-[64px] shrink-0 flex-col items-center justify-center gap-3 border-l border-edge px-2">
+        <button onClick={undo} aria-label="Undo"
+          className="flex h-16 w-full flex-col items-center justify-center gap-1 rounded-2xl border border-edge bg-panel text-gray-300 active:bg-edge">
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 14 4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-2" />
+          </svg>
+          <span className="font-display text-[11px] font-bold tracking-wide">UNDO</span>
         </button>
-        <button onClick={reset}
-          className={`flex-1 rounded-xl border font-display text-sm font-bold tracking-wide active:bg-edge ${
+        <button onClick={reset} aria-label="Reset"
+          className={`flex h-16 w-full flex-col items-center justify-center gap-1 rounded-2xl border active:bg-edge ${
             confirmingReset
               ? 'border-red-500 bg-red-500/20 text-red-300'
               : 'border-edge bg-panel text-gray-400'}`}>
-          {confirmingReset ? <>TAP<br />AGAIN</> : 'RESET'}
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 1 0 2.6-6.4L3 8" /><path d="M3 3v5h5" />
+          </svg>
+          <span className="font-display text-[11px] font-bold tracking-wide">
+            {confirmingReset ? 'SURE?' : 'RESET'}
+          </span>
         </button>
       </div>
 

@@ -37,23 +37,23 @@ export default function Board() {
 
       {!tv && (
         <div className="border-b border-edge px-4 py-3">
-          <div className="flex items-baseline justify-between gap-3">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="truncate font-display text-2xl font-bold tracking-wide">{c.name}</div>
               <div className="truncate text-xs text-gray-500">
                 {c.venue} · code <span className="font-bold text-lime">{c.code}</span>
               </div>
             </div>
-            <div className="flex shrink-0 items-stretch gap-1.5">
-              <FullscreenButton className="grid w-9 place-items-center rounded-lg border border-edge p-1.5 text-gray-400 active:bg-edge" />
+            <div className="flex shrink-0 items-center gap-1.5">
               <Link to={`/c/${code}/admin`}
-                className="rounded-lg border border-edge px-3 py-1.5 text-xs text-gray-400">
+                className="flex h-8 items-center rounded-lg border border-edge px-3 text-xs text-gray-400 active:bg-edge">
                 Settings
               </Link>
               <button onClick={() => setTv(true)}
-                className="rounded-lg border border-edge px-3 py-1.5 text-xs text-gray-400">
+                className="flex h-8 items-center rounded-lg border border-edge px-3 text-xs text-gray-400 active:bg-edge">
                 TV mode
               </button>
+              <FullscreenButton className="grid h-8 w-8 place-items-center rounded-lg border border-edge p-1.5 text-gray-400 active:bg-edge" />
             </div>
           </div>
 
