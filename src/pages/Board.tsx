@@ -265,6 +265,16 @@ function DuelScoreboard({ b, ev, big }: { b: Bundle; ev: EventCfg; big: boolean 
   const dashSz = big ? 'text-4xl sm:text-6xl' : 'text-xl lg:text-3xl'
   return (
     <div className={`px-4 ${big ? '' : 'border-b border-edge py-3 lg:py-6'}`}>
+      <div className={`mb-2 text-center text-gray-600 ${big ? 'text-sm' : 'text-xs lg:mb-3 lg:text-sm'}`}>
+        {t.gamesPlayed} of {t.gamesTotal} games played
+        {t.gamesPlayed > 0 && ` · points ${t.sideAPoints}–${t.sideBPoints}`}
+        {t.gamesPlayed === t.gamesTotal && t.gamesTotal > 0 && (
+          <span className="ml-2 font-bold text-lime">
+            {t.leader === 'tie' ? '— tied' : `— ${t.leader === 'A' ? aName : bName} win${t.gamesPlayed !== 1 ? '' : 's'}!`}
+          </span>
+        )}
+      </div>
+
       <div className="mx-auto flex max-w-5xl items-center justify-center gap-4 sm:gap-8 lg:gap-12">
         {/* side A */}
         <div className="flex min-w-0 flex-1 items-center justify-end gap-3 sm:gap-4">
@@ -289,16 +299,6 @@ function DuelScoreboard({ b, ev, big }: { b: Bundle; ev: EventCfg; big: boolean 
           </span>
           <Flag name={bName} className={`${flagSz} w-auto shrink-0 rounded-[2px]`} />
         </div>
-      </div>
-
-      <div className={`mt-2 text-center text-gray-600 ${big ? 'text-sm' : 'text-xs lg:mt-3 lg:text-sm'}`}>
-        {t.gamesPlayed} of {t.gamesTotal} games played
-        {t.gamesPlayed > 0 && ` · points ${t.sideAPoints}–${t.sideBPoints}`}
-        {t.gamesPlayed === t.gamesTotal && t.gamesTotal > 0 && (
-          <span className="ml-2 font-bold text-lime">
-            {t.leader === 'tie' ? '— tied' : `— ${t.leader === 'A' ? aName : bName} win${t.gamesPlayed !== 1 ? '' : 's'}!`}
-          </span>
-        )}
       </div>
     </div>
   )
