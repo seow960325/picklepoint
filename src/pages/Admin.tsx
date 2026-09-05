@@ -287,7 +287,7 @@ function TeamRow({ t, ev, token, run, isDuel }: any) {
       <input className={`${input} min-w-0 flex-1`} value={name} onChange={e => setName(e.target.value)} />
       {isDuel ? (
         <button onClick={() => setSide(side === 'A' ? 'B' : 'A')}
-          className={`w-16 shrink-0 rounded-lg border px-2 py-1.5 text-center text-xs font-bold ${
+          className={`shrink-0 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-center text-xs font-bold ${
             side === 'A' ? 'border-lime/40 text-lime' : 'border-cyan/40 text-cyan'}`}>
           {side === 'A' ? (ev.side_a_name || 'A') : (ev.side_b_name || 'B')}
         </button>
