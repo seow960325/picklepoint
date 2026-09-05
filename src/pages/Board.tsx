@@ -78,7 +78,7 @@ export default function Board() {
       {(tv || tab === 'live') && <LiveGrid b={bundle} code={code!} tv={tv} />}
       {!tv && tab === 'schedule' && <Schedule b={bundle} />}
       {!tv && tab === 'standings' && <Standings b={bundle} />}
-      {!tv && tab === 'results' && <Results b={bundle} />}
+      {!tv && tab === 'results' && <Results b={bundle} code={code!} />}
 
       {!tv && IS_DEMO && (
         <div className="px-4 py-8 text-center">
@@ -94,7 +94,10 @@ export default function Board() {
 
 // ------------------------------------------------------------- live grid
 function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
-  const deck = onDeck(b, 4)
+  const upIds = new Set(
+    b.courts.map(ct => nextOnCourt(b, ct.id)?.id).filter((id): id is string => !!id)
+  )
+  const deck = onDeck(b, { exclude: upIds, n: b.courts.length })
   return (
     <div className={tv ? '' : 'p-3'}>
       <div className={`grid gap-3 ${tv ? 'grid-cols-3' : 'grid-cols-2 lg:grid-cols-3'}`}>
@@ -329,7 +332,7 @@ function Standings({ b }: { b: Bundle }) {
 }
 
 // --------------------------------------------------------------- results
-function Results({ b }: { b: Bundle }) {
+function Results({ b, code }: { b: Bundle; code: string }) {
   const done = results(b)
   if (!done.length) return <div className="p-10 text-center text-sm text-gray-600">No completed matches yet.</div>
   return (
@@ -337,7 +340,8 @@ function Results({ b }: { b: Bundle }) {
       {done.map(m => {
         const aWon = m.winner_id === m.team_a_id
         return (
-          <div key={m.id} className="flex items-center gap-3 px-4 py-3">
+          <Link key={m.id} to={`/c/${code}/match/${m.id}`}
+            className="flex items-center gap-3 px-4 py-3 active:bg-panel">
             <div className="min-w-0 flex-1">
               <div className={`truncate text-sm ${aWon ? 'font-bold text-white' : 'text-gray-500'}`}>
                 {teamName(b, m.team_a_id)}
@@ -350,7 +354,7 @@ function Results({ b }: { b: Bundle }) {
               <div className={aWon ? 'text-lime' : 'text-gray-500'}>{m.score_a}</div>
               <div className={!aWon ? 'text-lime' : 'text-gray-500'}>{m.score_b}</div>
             </div>
-          </div>
+          </Link>
         )
       })}
     </div>

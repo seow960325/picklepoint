@@ -55,11 +55,11 @@ export const nextOnCourt = (b: Bundle, courtId: string): Match | undefined =>
     .filter(m => m.court_id === courtId && (m.status === 'scheduled' || m.status === 'on_deck'))
     .sort((x, y) => x.sequence - y.sequence)[0]
 
-export const onDeck = (b: Bundle, n = 4): Match[] =>
+export const onDeck = (b: Bundle, opts?: { exclude?: Set<string>; n?: number }): Match[] =>
   b.matches
-    .filter(m => m.status === 'scheduled' || m.status === 'on_deck')
+    .filter(m => (m.status === 'scheduled' || m.status === 'on_deck') && !opts?.exclude?.has(m.id))
     .sort((x, y) => x.sequence - y.sequence)
-    .slice(0, n)
+    .slice(0, opts?.n ?? 4)
 
 export const results = (b: Bundle): Match[] =>
   b.matches.filter(m => m.status === 'finished')
