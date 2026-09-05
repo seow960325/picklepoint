@@ -196,6 +196,13 @@ export async function adminResetMatch(token: string, matchId: string): Promise<M
   return rpc<Match>('admin_reset_match', { p_token: token, p_match_id: matchId })
 }
 
+export async function adminMoveMatch(
+  token: string, matchId: string, dir: 'up' | 'down',
+): Promise<void> {
+  if (IS_DEMO) return demo.moveMatch(matchId, dir)
+  await rpc('admin_move_match', { p_token: token, p_match_id: matchId, p_dir: dir })
+}
+
 export async function adminOverrideScore(
   matchId: string, adminPin: string, a: number, b: number,
 ) {

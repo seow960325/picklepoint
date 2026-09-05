@@ -307,6 +307,20 @@ export const demo = {
     return next
   },
 
+  moveMatch(matchId: string, dir: 'up' | 'down') {
+    const s = load()
+    const m = s.bundle.matches.find(x => x.id === matchId)
+    if (m && m.status === 'scheduled') {
+      const sibs = s.bundle.matches
+        .filter(x => x.court_id === m.court_id && x.status === 'scheduled')
+        .sort((a, b) => a.sequence - b.sequence)
+      const i = sibs.findIndex(x => x.id === matchId)
+      const other = dir === 'up' ? sibs[i - 1] : sibs[i + 1]
+      if (other) { const t = m.sequence; m.sequence = other.sequence; other.sequence = t }
+    }
+    save(s)
+  },
+
   overrideScore(matchId: string, a: number, b: number) {
     const s = load()
     const m = s.bundle.matches.find(x => x.id === matchId)

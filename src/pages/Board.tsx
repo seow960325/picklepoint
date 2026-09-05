@@ -8,13 +8,13 @@ import { displayScores } from '../lib/scoring'
 import type { Bundle, EventCfg, Match } from '../lib/types'
 import { Screen, Pill, Spinner, FullscreenButton } from '../components/ui'
 import Court from '../components/Court'
-import { IS_DEMO, demo } from '../lib/api'
+import { IS_DEMO, demo, adminMoveMatch } from '../lib/api'
 
 type Tab = 'live' | 'schedule' | 'standings' | 'results'
 
 export default function Board() {
   const { code } = useParams()
-  const { bundle, error, loading } = useCompetition(code)
+  const { bundle, error, loading, reload } = useCompetition(code)
   const [tab, setTab] = useState<Tab>('live')
   const [tv, setTv] = useState(false)
 
@@ -80,7 +80,7 @@ export default function Board() {
       )}
 
       {(tv || tab === 'live') && <LiveGrid b={bundle} code={code!} tv={tv} />}
-      {!tv && tab === 'schedule' && <Schedule b={bundle} />}
+      {!tv && tab === 'schedule' && <Schedule b={bundle} code={code!} reload={reload} />}
       {!tv && tab === 'standings' && <Standings b={bundle} />}
       {!tv && tab === 'results' && <Results b={bundle} code={code!} />}
 
@@ -170,28 +170,100 @@ function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
 }
 
 // -------------------------------------------------------------- schedule
-function Schedule({ b }: { b: Bundle }) {
+function Schedule({ b, code, reload }: { b: Bundle; code: string; reload: () => void }) {
+  const adminToken = localStorage.getItem(`pp.admin.${code}`)
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
   const upcoming = b.matches
     .filter(m => m.status !== 'finished')
     .sort((x, y) => x.sequence - y.sequence)
+
+  const open = openId ? b.matches.find(m => m.id === openId) ?? null : null
+  const sibs = open
+    ? b.matches
+        .filter(m => m.court_id === open.court_id && m.status === 'scheduled')
+        .sort((x, y) => x.sequence - y.sequence)
+    : []
+  const idx = open ? sibs.findIndex(m => m.id === open.id) : -1
+  const canUp = idx > 0
+  const canDown = idx >= 0 && idx < sibs.length - 1
+
+  const move = async (dir: 'up' | 'down') => {
+    if (!adminToken || !openId) return
+    setBusy(true)
+    try { await adminMoveMatch(adminToken, openId, dir); setOpenId(null); reload() }
+    finally { setBusy(false) }
+  }
+
+  const courtNo = (id: string | null) => b.courts.find(c => c.id === id)?.number ?? '–'
+
   return (
     <div className="divide-y divide-edge">
-      {upcoming.map(m => (
-        <div key={m.id} className="flex items-center gap-3 px-4 py-3">
-          <div className="w-10 shrink-0 text-center font-display text-lg font-bold text-gray-600">
-            {b.courts.find(c => c.id === m.court_id)?.number ?? '–'}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm">
-              {teamName(b, m.team_a_id)} <span className="text-gray-600">vs</span> {teamName(b, m.team_b_id)}
-            </div>
-            <div className="text-[11px] text-gray-600">{m.round} · #{m.sequence}</div>
-          </div>
-          {m.status === 'live'
-            ? <Pill tone="live">live</Pill>
-            : <Pill>{m.status.replace('_', ' ')}</Pill>}
+      {adminToken && (
+        <div className="px-4 py-2 text-[11px] text-gray-600">
+          Tap an upcoming match to move it up or down its court's queue.
         </div>
-      ))}
+      )}
+      {upcoming.map(m => {
+        const canEdit = !!adminToken && m.status === 'scheduled'
+        const inner = (
+          <>
+            <div className="w-10 shrink-0 text-center font-display text-lg font-bold text-gray-600">
+              {courtNo(m.court_id)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm">
+                {teamName(b, m.team_a_id)} <span className="text-gray-600">vs</span> {teamName(b, m.team_b_id)}
+              </div>
+              <div className="text-[11px] text-gray-600">{m.round} · #{m.sequence}</div>
+            </div>
+            {m.status === 'live'
+              ? <Pill tone="live">live</Pill>
+              : <Pill>{m.status.replace('_', ' ')}</Pill>}
+            {canEdit && <span className="ml-1 shrink-0 text-gray-600">⇅</span>}
+          </>
+        )
+        return canEdit ? (
+          <button key={m.id} onClick={() => setOpenId(m.id)}
+            className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-panel">
+            {inner}
+          </button>
+        ) : (
+          <div key={m.id} className="flex items-center gap-3 px-4 py-3">
+            {inner}
+          </div>
+        )
+      })}
+
+      {open && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/70 px-6"
+          onClick={() => { if (!busy) setOpenId(null) }}>
+          <div className="w-full max-w-xs rounded-2xl border border-edge bg-panel p-4"
+            onClick={e => e.stopPropagation()}>
+            <div className="mb-1 text-[11px] uppercase tracking-widest text-gray-600">
+              Court {courtNo(open.court_id)} · move match
+            </div>
+            <div className="mb-4 text-sm font-semibold">
+              {teamName(b, open.team_a_id)} vs {teamName(b, open.team_b_id)}
+            </div>
+            <div className="space-y-2">
+              <button disabled={!canUp || busy} onClick={() => move('up')}
+                className="w-full rounded-xl border border-edge py-3 font-display text-sm font-bold tracking-wide active:bg-edge disabled:opacity-30">
+                ▲ MOVE UP
+              </button>
+              <button disabled={!canDown || busy} onClick={() => move('down')}
+                className="w-full rounded-xl border border-edge py-3 font-display text-sm font-bold tracking-wide active:bg-edge disabled:opacity-30">
+                ▼ MOVE DOWN
+              </button>
+              <button disabled={busy} onClick={() => setOpenId(null)}
+                className="w-full rounded-xl py-2 text-xs text-gray-500">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
