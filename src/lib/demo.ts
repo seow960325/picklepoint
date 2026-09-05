@@ -314,6 +314,20 @@ export const demo = {
     save(s)
   },
 
+  resetMatch(matchId: string): Match {
+    const s = load()
+    s.events = s.events.filter(e => e.match_id !== matchId)
+    const i = s.bundle.matches.findIndex(m => m.id === matchId)
+    const m = s.bundle.matches[i]
+    const next: Match = {
+      ...m, score_a: 0, score_b: 0, a_on_left: true, sides_switched: false,
+      status: 'live', winner_id: null, started_at: null, finished_at: null, duration_seconds: null,
+    }
+    s.bundle.matches[i] = next
+    save(s)
+    return next
+  },
+
   events(matchId: string): PointEvent[] {
     return load().events.filter(e => e.match_id === matchId)
   },

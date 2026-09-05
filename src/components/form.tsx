@@ -31,15 +31,18 @@ export const input =
 /** Most inputs want the full width of their cell; the narrow ones opt out. */
 export const inputFull = input + ' w-full'
 
-export const Stepper = ({ value, onChange, min = 1, max = 99, suffix }: {
+export const Stepper = ({ value, onChange, min = 1, max = 99, suffix, format }: {
   value: number; onChange: (v: number) => void; min?: number; max?: number; suffix?: string
+  format?: (v: number) => string
 }) => (
   <div className="flex items-center gap-1">
     <button type="button" onClick={() => onChange(Math.max(min, value - 1))}
       className="h-9 w-9 shrink-0 rounded-lg border border-edge bg-panel font-display text-lg font-bold text-gray-300 active:bg-edge">
       −
     </button>
-    <div className="tabular w-14 text-center font-display text-2xl font-bold">{value}</div>
+    <div className="tabular w-14 text-center font-display text-2xl font-bold">
+      {format ? format(value) : value}
+    </div>
     <button type="button" onClick={() => onChange(Math.min(max, value + 1))}
       className="h-9 w-9 shrink-0 rounded-lg border border-edge bg-panel font-display text-lg font-bold text-gray-300 active:bg-edge">
       +

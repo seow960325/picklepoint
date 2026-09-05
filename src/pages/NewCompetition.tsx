@@ -200,13 +200,18 @@ export default function NewCompetition() {
               onChange={v => { setTarget(v); setSwitchAt(defaultSwitchAt(v)) }} /></Field>
             <Field label="Win by"><Stepper value={winBy} min={1} max={5} onChange={setWinBy} /></Field>
             <Field label="Hard cap"><Stepper value={cap} min={1} max={120} onChange={setCap} /></Field>
-            <Field label="Switch ends at"><Stepper value={switchAt} min={1} max={99} onChange={setSwitchAt} /></Field>
+            <Field label="Switch ends at">
+              <Stepper value={switchAt} min={0} max={target} onChange={setSwitchAt}
+                format={v => v === 0 ? 'OFF' : String(v)} />
+            </Field>
           </div>
           {ruleError && <Warn>{ruleError}</Warn>}
           <p className="mt-3 text-xs text-gray-600">
             First to {target}, must lead by {winBy}. If it drags on, first to {cap} wins outright.
-            Players change ends when either side reaches {switchAt} — the court flips on screen so the
-            buttons keep matching what the referee sees.
+            {switchAt > 0
+              ? ` Players change ends when either side reaches ${switchAt} — the court flips on
+                 screen so the buttons keep matching what the referee sees.`
+              : ' End-switching is off — teams stay on the same side for the whole game.'}
           </p>
         </Section>
 

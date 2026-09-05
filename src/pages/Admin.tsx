@@ -191,7 +191,9 @@ function ScoringTab({ ev, token, run }: any) {
         </Field>
         <Field label="Win by"><Stepper value={w} min={1} max={5} onChange={setW} /></Field>
         <Field label="Hard cap"><Stepper value={cap} min={1} max={120} onChange={setCap} /></Field>
-        <Field label="Switch ends at"><Stepper value={sw} min={1} max={99} onChange={setSw} /></Field>
+        <Field label="Switch ends at">
+          <Stepper value={sw} min={0} max={t} onChange={setSw} format={v => v === 0 ? 'OFF' : String(v)} />
+        </Field>
       </div>
       {bad && <Warn>{bad}</Warn>}
       <p className="text-xs text-gray-600">

@@ -171,6 +171,20 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
     catch { enqueue({ id: crypto.randomUUID(), kind: 'confirm', matchId: m.id, at: Date.now() }); setOffline(true) }
   }
 
+  const [confirmingReset, setConfirmingReset] = useState(false)
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const reset = async () => {
+    if (!confirmingReset) {
+      setConfirmingReset(true)
+      resetTimer.current = setTimeout(() => setConfirmingReset(false), 3000)
+      return
+    }
+    if (resetTimer.current) clearTimeout(resetTimer.current)
+    setConfirmingReset(false)
+    history.current = []
+    setM(await api.resetMatch(m.id, token))
+  }
+
   const s = displayScores(m)
   const leftName = teamName(bundle, m.a_on_left ? m.team_a_id : m.team_b_id)
   const rightName = teamName(bundle, m.a_on_left ? m.team_b_id : m.team_a_id)
@@ -213,6 +227,13 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
         <button onClick={() => api.callTimeout(m.id, 'left', token)}
           className="flex-1 rounded-xl border border-edge bg-panel font-display text-[13px] font-bold tracking-wide text-gray-400 active:bg-edge">
           TIME<br />OUT
+        </button>
+        <button onClick={reset}
+          className={`flex-1 rounded-xl border font-display text-[13px] font-bold tracking-wide active:bg-edge ${
+            confirmingReset
+              ? 'border-red-500 bg-red-500/20 text-red-300'
+              : 'border-edge bg-panel text-gray-400'}`}>
+          {confirmingReset ? <>TAP<br />AGAIN</> : 'RESET'}
         </button>
         <Link to={`/c/${code}/match/${m.id}`}
           className="flex flex-1 items-center justify-center rounded-xl border border-edge bg-panel font-display text-base font-bold tracking-wide text-gray-400">

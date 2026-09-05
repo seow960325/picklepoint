@@ -138,7 +138,8 @@ export function validateRules(r: {
   if (r.cap < r.target_score) return 'Cap cannot be lower than the winning score.'
   if (r.cap < r.target_score + r.win_by - 1)
     return `With win-by ${r.win_by}, the cap needs to be at least ${r.target_score + r.win_by - 1}.`
-  if (r.switch_at < 1 || r.switch_at > r.target_score)
+  // 0 means "off" — the organizer turned end-switching off entirely.
+  if (r.switch_at !== 0 && (r.switch_at < 1 || r.switch_at > r.target_score))
     return 'Switch-ends score must be between 1 and the winning score.'
   return null
 }

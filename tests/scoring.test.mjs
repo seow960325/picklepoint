@@ -14,21 +14,22 @@ const applyPoint = (m, side, r) => {
   const score_a = m.score_a + (who === 'a' ? 1 : 0)
   const score_b = m.score_b + (who === 'b' ? 1 : 0)
   const hi = Math.max(score_a, score_b)
-  const doSwitch = !m.sides_switched && hi >= r.switch_at
+  // switch_at <= 0 means end-switching is turned off entirely.
+  const doSwitch = r.switch_at > 0 && !m.sides_switched && hi >= r.switch_at
   return {
     ...m, score_a, score_b,
     a_on_left: doSwitch ? !m.a_on_left : m.a_on_left,
-    sides_switched: m.sides_switched || hi >= r.switch_at,
+    sides_switched: doSwitch || m.sides_switched,
     status: isGameOver(score_a, score_b, r) ? 'awaiting_confirm' : 'live',
   }
 }
 const applyUndo = (m, prevA, prevB, r) => {
   const hi = Math.max(prevA, prevB)
-  const unSwitch = m.sides_switched && hi < r.switch_at
+  const unSwitch = r.switch_at > 0 && m.sides_switched && hi < r.switch_at
   return {
     ...m, score_a: prevA, score_b: prevB,
     a_on_left: unSwitch ? !m.a_on_left : m.a_on_left,
-    sides_switched: m.sides_switched && hi >= r.switch_at,
+    sides_switched: m.sides_switched && r.switch_at > 0 && hi >= r.switch_at,
     status: 'live',
   }
 }
@@ -125,4 +126,23 @@ test('undoing back to 0-0 fully resets orientation', () => {
   assert.equal(m.a_on_left, true)
   assert.equal(m.sides_switched, false)
   assert.equal(m.status, 'live')
+})
+
+test('switch_at = 0 means end-switching is off — sides never flip', () => {
+  const OFF = { ...R, switch_at: 0 }
+  let m = fresh()
+  for (let i = 0; i < 14; i++) m = applyPoint(m, m.a_on_left ? 'left' : 'right', OFF)
+  for (let i = 0; i < 13; i++) m = applyPoint(m, m.a_on_left ? 'right' : 'left', OFF)
+  assert.deepEqual([m.score_a, m.score_b], [14, 13])
+  assert.equal(m.sides_switched, false, 'would normally have switched at 8')
+  assert.equal(m.a_on_left, true)
+
+  m = applyPoint(m, m.a_on_left ? 'left' : 'right', OFF)   // 15-13
+  assert.equal(m.status, 'awaiting_confirm', 'the game still ends normally')
+  assert.equal(m.sides_switched, false)
+
+  // undo shouldn't misbehave with switching off either
+  m = applyUndo(m, 14, 13, OFF)
+  assert.equal(m.a_on_left, true)
+  assert.equal(m.sides_switched, false)
 })

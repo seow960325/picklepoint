@@ -32,13 +32,14 @@ export function applyPoint(m: Match, side: 'left' | 'right', r: Rules): Match {
   const hi = Math.max(score_a, score_b)
 
   // Ends are switched exactly once, the first time the leader reaches switch_at.
-  const doSwitch = !m.sides_switched && hi >= r.switch_at
+  // switch_at <= 0 means the organizer turned end-switching off entirely.
+  const doSwitch = r.switch_at > 0 && !m.sides_switched && hi >= r.switch_at
 
   return {
     ...m,
     score_a, score_b,
     a_on_left: doSwitch ? !m.a_on_left : m.a_on_left,
-    sides_switched: m.sides_switched || hi >= r.switch_at,
+    sides_switched: doSwitch || m.sides_switched,
     status: isGameOver(score_a, score_b, r) ? 'awaiting_confirm' : 'live',
   }
 }
@@ -46,12 +47,12 @@ export function applyPoint(m: Match, side: 'left' | 'right', r: Rules): Match {
 /** Roll back to a known previous score (from the point-event log). */
 export function applyUndo(m: Match, prevA: number, prevB: number, r: Rules): Match {
   const hi = Math.max(prevA, prevB)
-  const unSwitch = m.sides_switched && hi < r.switch_at
+  const unSwitch = r.switch_at > 0 && m.sides_switched && hi < r.switch_at
   return {
     ...m,
     score_a: prevA, score_b: prevB,
     a_on_left: unSwitch ? !m.a_on_left : m.a_on_left,
-    sides_switched: m.sides_switched && hi >= r.switch_at,
+    sides_switched: m.sides_switched && r.switch_at > 0 && hi >= r.switch_at,
     status: 'live',
   }
 }
