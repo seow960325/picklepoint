@@ -36,13 +36,37 @@ export default function CourtScore() {
   )
 
   const match = liveOnCourt(bundle, court.id)
-  if (!match) return (
-    <Screen className="flex flex-col items-center justify-center gap-4">
-      <div className="font-display text-3xl font-bold text-gray-600">COURT {court.number}</div>
-      <div className="text-sm text-gray-500">No match assigned yet.</div>
-      <Link to={`/c/${code}`} className="rounded-xl border border-edge px-4 py-2 text-sm">Back to board</Link>
-    </Screen>
-  )
+  if (!match) {
+    const courtDone = bundle.matches
+      .filter(m => m.court_id === court.id && m.status === 'finished')
+      .sort((a, b) => (b.finished_at ?? '').localeCompare(a.finished_at ?? ''))
+    return (
+      <Screen className="flex flex-col items-center justify-center gap-4 px-6">
+        <div className="font-display text-3xl font-bold text-gray-600">COURT {court.number}</div>
+        {courtDone.length > 0 ? (
+          <>
+            <div className="text-sm text-gray-500">All matches complete — tap a result to review or reset.</div>
+            <div className="w-full max-w-xs space-y-2">
+              {courtDone.slice(0, 5).map(fm => (
+                <Link key={fm.id} to={`/c/${code}/match/${fm.id}`}
+                  className="flex items-center justify-between rounded-xl border border-edge px-4 py-3 text-sm active:bg-panel">
+                  <span className="min-w-0 truncate text-gray-300">
+                    {teamName(bundle, fm.team_a_id)} vs {teamName(bundle, fm.team_b_id)}
+                  </span>
+                  <span className="ml-2 shrink-0 font-bold tabular text-gray-400">
+                    {fm.score_a}–{fm.score_b}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="text-sm text-gray-500">No match assigned yet.</div>
+        )}
+        <Link to={`/c/${code}`} className="rounded-xl border border-edge px-4 py-2 text-sm">Back to board</Link>
+      </Screen>
+    )
+  }
 
   return (
     <Scorer key={match.id} bundle={bundle} match={match} token={token}
@@ -191,6 +215,12 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
   const done = m.status === 'awaiting_confirm' || isGameOver(m.score_a, m.score_b, rules)
   const hi = Math.max(m.score_a, m.score_b), lo = Math.min(m.score_a, m.score_b)
   const matchPoint = !done && hi >= rules.target_score - 1 && hi - lo >= rules.win_by - 1
+  const recentDone = useMemo(() =>
+    bundle.matches
+      .filter(x => x.court_id === m.court_id && x.status === 'finished')
+      .sort((a, b) => (b.finished_at ?? '').localeCompare(a.finished_at ?? ''))[0],
+    [bundle.matches, m.court_id]
+  )
 
   if (!landscape && !ignoreRotate) return <RotatePrompt onIgnore={() => setIgnoreRotate(true)} />
 
@@ -204,8 +234,15 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
             COURT {courtNo} · TO {rules.target_score}
             {matchPoint && <span className="ml-2 animate-pulse text-lime">MATCH POINT</span>}
           </div>
-          <div className={offline ? 'text-amber-400' : 'text-gray-700'}>
-            {offline ? `⚠ ${pending()} queued` : '● synced'}
+          <div className="flex items-center gap-2">
+            {recentDone && (
+              <Link to={`/c/${code}/match/${recentDone.id}`} className="text-gray-700 underline underline-offset-2">
+                PREV
+              </Link>
+            )}
+            <div className={offline ? 'text-amber-400' : 'text-gray-700'}>
+              {offline ? `⚠ ${pending()} queued` : '● synced'}
+            </div>
           </div>
         </div>
 
