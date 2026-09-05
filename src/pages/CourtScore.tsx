@@ -217,8 +217,9 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
   const matchPoint = !done && hi >= rules.target_score - 1 && hi - lo >= rules.win_by - 1
   const recentDone = useMemo(() =>
     bundle.matches
-      .filter(x => x.court_id === m.court_id && x.status === 'finished')
-      .sort((a, b) => (b.finished_at ?? '').localeCompare(a.finished_at ?? ''))[0],
+      .filter((x: typeof bundle.matches[number]) => x.court_id === m.court_id && x.status === 'finished')
+      .sort((a: typeof bundle.matches[number], b: typeof bundle.matches[number]) =>
+        (b.finished_at ?? '').localeCompare(a.finished_at ?? ''))[0],
     [bundle.matches, m.court_id]
   )
 
