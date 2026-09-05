@@ -17,13 +17,14 @@ export interface CourtProps {
   onTap: (side: 'left' | 'right') => void
   disabled?: boolean
   serving?: 'left' | 'right' | null
+  hideNames?: boolean
 }
 
 const clip = (n: string, max = 17) =>
   (n.length > max ? n.slice(0, max - 1).trimEnd() + '…' : n).toUpperCase()
 
 export default function Court({
-  leftName, rightName, leftScore, rightScore, onTap, disabled, serving,
+  leftName, rightName, leftScore, rightScore, onTap, disabled, serving, hideNames,
 }: CourtProps) {
   const [down, setDown] = useState<'left' | 'right' | null>(null)
 
@@ -124,14 +125,18 @@ export default function Court({
       </g>
 
       {/* team names, sat on the baselines */}
-      <text x={X + 8} y={Y - 7} fill="#c6ff3d" fontSize="17" fontWeight="700"
-        fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
-        {clip(leftName)}
-      </text>
-      <text x={X + W - 8} y={Y - 7} textAnchor="end" fill="#22d3ee" fontSize="17" fontWeight="700"
-        fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
-        {clip(rightName)}
-      </text>
+      {!hideNames && (
+        <>
+          <text x={X + 8} y={Y - 7} fill="#c6ff3d" fontSize="17" fontWeight="700"
+            fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
+            {clip(leftName)}
+          </text>
+          <text x={X + W - 8} y={Y - 7} textAnchor="end" fill="#22d3ee" fontSize="17" fontWeight="700"
+            fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
+            {clip(rightName)}
+          </text>
+        </>
+      )}
       
     </svg>
   )

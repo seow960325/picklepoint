@@ -6,7 +6,7 @@ import {
 } from '../lib/store'
 import { displayScores } from '../lib/scoring'
 import type { Bundle, EventCfg, Match } from '../lib/types'
-import { Screen, Pill, Spinner, FullscreenButton } from '../components/ui'
+import { Screen, Pill, Spinner, FullscreenButton, Flag } from '../components/ui'
 import Court from '../components/Court'
 import { IS_DEMO, demo, adminMoveMatch } from '../lib/api'
 
@@ -301,8 +301,11 @@ function Side({ name, score, lead, tone, big, align }: {
       <span className={`tabular font-display font-bold leading-none ${color} ${big ? 'text-7xl' : 'text-4xl'}`}>
         {score}
       </span>
-      <span className={`truncate font-display font-bold tracking-wide ${lead ? 'text-white' : 'text-gray-500'} ${big ? 'text-2xl' : 'text-sm'}`}>
-        {name}
+      <span className={`flex min-w-0 items-center gap-2 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
+        <Flag name={name} className={`w-auto shrink-0 rounded-[2px] ${big ? 'h-7' : 'h-4'}`} />
+        <span className={`truncate font-display font-bold tracking-wide ${lead ? 'text-white' : 'text-gray-500'} ${big ? 'text-2xl' : 'text-sm'}`}>
+          {name}
+        </span>
       </span>
     </div>
   )

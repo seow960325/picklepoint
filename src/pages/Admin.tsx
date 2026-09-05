@@ -7,6 +7,7 @@ import {
   type DraftTeam, type DuelTeam,
 } from '../lib/draw'
 import { Screen, Spinner } from '../components/ui'
+import { Flag } from '../components/ui'
 import { Field, Stepper, Choice, Warn, input, inputFull } from '../components/form'
 
 const tokKey = (code: string) => `pp.admin.${code}`
@@ -287,8 +288,9 @@ function TeamRow({ t, ev, token, run, isDuel }: any) {
       <input className={`${input} min-w-0 flex-1`} value={name} onChange={e => setName(e.target.value)} />
       {isDuel ? (
         <button onClick={() => setSide(side === 'A' ? 'B' : 'A')}
-          className={`shrink-0 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-center text-xs font-bold ${
+          className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-center text-xs font-bold ${
             side === 'A' ? 'border-lime/40 text-lime' : 'border-cyan/40 text-cyan'}`}>
+          <Flag name={side === 'A' ? ev.side_a_name : ev.side_b_name} className="h-3.5 w-auto rounded-[1px]" />
           {side === 'A' ? (ev.side_a_name || 'A') : (ev.side_b_name || 'B')}
         </button>
       ) : (

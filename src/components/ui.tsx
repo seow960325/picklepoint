@@ -62,3 +62,54 @@ export const FullscreenButton = ({ className = '' }: { className?: string }) => 
     </button>
   )
 }
+
+// ------------------------------------------------------------- flags
+// Simplified inline-SVG national flags — reliable everywhere (unlike emoji
+// flags, which don't render on Windows). Matched by country name.
+
+function MalaysiaFlag({ className = '' }: { className?: string }) {
+  const red = '#cc0001', blue = '#010066', yellow = '#ffcc00'
+  const h = 20 / 14
+  const star = [
+    [11.0,3.0],[11.47,4.353],[12.90,4.382],[11.76,5.247],[12.18,6.618],
+    [11.0,5.8],[9.82,6.618],[10.24,5.247],[9.10,4.382],[10.53,4.353],
+  ].map(p => p.join(',')).join(' ')
+  return (
+    <svg viewBox="0 0 28 20" preserveAspectRatio="xMidYMid meet"
+      className={className} role="img" aria-label="Malaysia">
+      <rect width="28" height="20" fill="#fff" />
+      {[0,2,4,6,8,10,12].map(i => (
+        <rect key={i} y={i * h} width="28" height={h} fill={red} />
+      ))}
+      <rect width="14" height="10" fill={blue} />
+      <circle cx="5.5" cy="5" r="3" fill={yellow} />
+      <circle cx="6.7" cy="4.4" r="2.6" fill={blue} />
+      <polygon points={star} fill={yellow} />
+    </svg>
+  )
+}
+
+function CambodiaFlag({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 28 20" preserveAspectRatio="xMidYMid meet"
+      className={className} role="img" aria-label="Cambodia">
+      <rect width="28" height="20" fill="#032ea1" />
+      <rect y="5" width="28" height="10" fill="#e00025" />
+      <g fill="#fff">
+        <rect x="8.6" y="12.3" width="10.8" height="1.3" />
+        <rect x="9.8" y="11.1" width="8.4" height="1.2" />
+        <path d="M14 6 L15 9 L15 11 L13 11 L13 9 Z" />
+        <path d="M10.8 8 L11.6 10 L11.6 11 L10 11 L10 10 Z" />
+        <path d="M17.2 8 L18 10 L18 11 L16.4 11 L16.4 10 Z" />
+      </g>
+    </svg>
+  )
+}
+
+/** Renders a flag for a country name, or nothing if unrecognised. */
+export function Flag({ name, className = '' }: { name?: string | null; className?: string }) {
+  const n = (name || '').toLowerCase()
+  if (n.includes('cambodia') || n.includes('khmer') || n.includes('柬')) return <CambodiaFlag className={className} />
+  if (n.includes('malaysia') || n.includes('马来') || n.includes('大马')) return <MalaysiaFlag className={className} />
+  return null
+}

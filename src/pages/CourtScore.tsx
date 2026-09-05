@@ -8,7 +8,7 @@ import { enqueue, flush, pending } from '../lib/queue'
 import { useWakeLockEffect } from '../lib/wakelock'
 import { useLandscape } from '../lib/orientation'
 import { tapPoint, tapUndo, hornEnd, chimeSwitch } from '../lib/feedback'
-import { Screen, Spinner, FullscreenButton } from '../components/ui'
+import { Screen, Spinner, FullscreenButton, Flag } from '../components/ui'
 import Court from '../components/Court'
 
 const tokenKey = (courtId: string) => `pp.token.${courtId}`
@@ -227,6 +227,21 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
   const dRight = flip ? s.left : s.right
   const tap = (side: 'left' | 'right') =>
     score(flip ? (side === 'left' ? 'right' : 'left') : side)
+  const ev = eventOf(bundle, m)
+  const sideName = (teamId: string | null): string | null => {
+    const t = bundle.teams.find((x: typeof bundle.teams[number]) => x.id === teamId)
+    if (!t?.side) return null
+    return (t.side === 'A' ? ev.side_a_name : ev.side_b_name) ?? null
+  }
+  const leftTeamId = m.a_on_left ? m.team_a_id : m.team_b_id
+  const rightTeamId = m.a_on_left ? m.team_b_id : m.team_a_id
+  const dLeftTeamId = flip ? rightTeamId : leftTeamId
+  const dRightTeamId = flip ? leftTeamId : rightTeamId
+  const clip = (v: string, n = 14) => (v.length > n ? v.slice(0, n - 1).trimEnd() + '…' : v)
+  const matchNo = bundle.matches
+    .filter((x: typeof bundle.matches[number]) => x.court_id === m.court_id)
+    .sort((a: typeof bundle.matches[number], b: typeof bundle.matches[number]) => a.sequence - b.sequence)
+    .findIndex((x: typeof bundle.matches[number]) => x.id === m.id) + 1
   const done = m.status === 'awaiting_confirm' || isGameOver(m.score_a, m.score_b, rules)
   const hi = Math.max(m.score_a, m.score_b), lo = Math.min(m.score_a, m.score_b)
   const matchPoint = !done && hi >= rules.target_score - 1 && hi - lo >= rules.win_by - 1
@@ -247,7 +262,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
         <div className="flex shrink-0 items-center justify-between px-3 py-1.5 text-[11px]">
           <Link to={`/c/${code}`} className="text-gray-600">← board</Link>
           <div className="font-display font-bold tracking-widest text-gray-500">
-            COURT {courtNo} · TO {rules.target_score}
+            COURT {courtNo} · MATCH {matchNo}
             {matchPoint && <span className="ml-2 animate-pulse text-lime">MATCH POINT</span>}
           </div>
           <div className="flex items-center gap-2">
@@ -257,47 +272,64 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
                 PREV
               </Link>
             )}
-            <div className={offline ? 'text-amber-400' : 'text-gray-700'}>
-              {offline ? `⚠ ${pending()} queued` : '● synced'}
+            <div title={offline ? 'Points saved on this device, waiting to reach the server' : 'All points saved to the server'}
+              className={offline ? 'text-amber-400' : 'text-gray-700'}>
+              {offline ? `⚠ ${pending()} to sync` : '● synced'}
             </div>
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 px-2 pb-2">
+        <div className="relative min-h-0 flex-1 px-2 pb-2">
           <Court
             leftName={dLeftName} rightName={dRightName}
             leftScore={dLeft} rightScore={dRight}
-            onTap={tap} disabled={done}
+            onTap={tap} disabled={done} hideNames
           />
+
+          {/* team name + country flag, top corners */}
+          <div className="pointer-events-none absolute left-4 top-1 flex items-center gap-1.5">
+            <Flag name={sideName(dLeftTeamId)} className="h-4 w-auto rounded-[2px]" />
+            <span className="font-display text-sm font-bold uppercase tracking-wide text-lime">{clip(dLeftName)}</span>
+          </div>
+          <div className="pointer-events-none absolute right-4 top-1 flex items-center gap-1.5">
+            <span className="font-display text-sm font-bold uppercase tracking-wide text-cyan">{clip(dRightName)}</span>
+            <Flag name={sideName(dRightTeamId)} className="h-4 w-auto rounded-[2px]" />
+          </div>
+
+          {/* SWAP left/right — top centre of the court */}
+          <button onClick={toggleFlip}
+            className={`absolute left-1/2 top-0.5 -translate-x-1/2 rounded-lg border px-3 py-1 font-display text-xs font-bold tracking-wide active:scale-95 ${
+              flip ? 'border-cyan/60 bg-cyan/20 text-cyan' : 'border-edge bg-panel/90 text-gray-300'}`}>
+            ⇄ SWAP
+          </button>
+
+          {/* point log — icon, bottom centre of the court */}
+          <Link to={`/c/${code}/match/${m.id}`} title="Point log"
+            className="absolute bottom-3 left-1/2 grid h-9 w-9 -translate-x-1/2 place-items-center rounded-full border border-edge bg-panel/90 text-gray-300 active:bg-edge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" className="h-5 w-5">
+              <path d="M9 6h11M9 12h11M9 18h11" />
+              <circle cx="4.5" cy="6" r="1.2" fill="currentColor" stroke="none" />
+              <circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none" />
+              <circle cx="4.5" cy="18" r="1.2" fill="currentColor" stroke="none" />
+            </svg>
+          </Link>
         </div>
       </div>
 
       {/* control rail */}
-      <div className="flex w-[86px] shrink-0 flex-col gap-2 border-l border-edge p-2">
+      <div className="flex w-[78px] shrink-0 flex-col gap-2 border-l border-edge p-2">
         <button onClick={undo}
           className="flex-1 rounded-xl border border-edge bg-panel font-display text-base font-bold tracking-wide text-gray-300 active:bg-edge">
           UNDO
         </button>
-        <button onClick={toggleFlip}
-          className={`flex-1 rounded-xl border font-display text-[13px] font-bold tracking-wide active:bg-edge ${
-            flip ? 'border-cyan/50 bg-cyan/15 text-cyan' : 'border-edge bg-panel text-gray-400'}`}>
-          SWAP
-        </button>
-        <button onClick={() => api.callTimeout(m.id, 'left', token)}
-          className="flex-1 rounded-xl border border-edge bg-panel font-display text-[13px] font-bold tracking-wide text-gray-400 active:bg-edge">
-          TIME<br />OUT
-        </button>
         <button onClick={reset}
-          className={`flex-1 rounded-xl border font-display text-[13px] font-bold tracking-wide active:bg-edge ${
+          className={`flex-1 rounded-xl border font-display text-sm font-bold tracking-wide active:bg-edge ${
             confirmingReset
               ? 'border-red-500 bg-red-500/20 text-red-300'
               : 'border-edge bg-panel text-gray-400'}`}>
           {confirmingReset ? <>TAP<br />AGAIN</> : 'RESET'}
         </button>
-        <Link to={`/c/${code}/match/${m.id}`}
-          className="flex flex-1 items-center justify-center rounded-xl border border-edge bg-panel font-display text-base font-bold tracking-wide text-gray-400">
-          LOG
-        </Link>
       </div>
 
       {showSwitch && (
@@ -318,8 +350,8 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
         <div className="absolute inset-0 z-30 flex items-center justify-center gap-10 bg-ink px-10">
           <div className="w-full max-w-sm space-y-2">
             <div className="mb-3 font-display text-xl font-bold tracking-widest text-gray-500">GAME</div>
-            <ResultRow name={dLeftName} score={dLeft} win={dLeft > dRight} />
-            <ResultRow name={dRightName} score={dRight} win={dRight > dLeft} />
+            <ResultRow name={dLeftName} flag={sideName(dLeftTeamId)} score={dLeft} win={dLeft > dRight} />
+            <ResultRow name={dRightName} flag={sideName(dRightTeamId)} score={dRight} win={dRight > dLeft} />
           </div>
           <div className="w-56 space-y-3">
             <div className="text-sm text-gray-500">
@@ -340,11 +372,16 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
   )
 }
 
-function ResultRow({ name, score, win }: { name: string; score: number; win: boolean }) {
+function ResultRow({ name, flag, score, win }: {
+  name: string; flag?: string | null; score: number; win: boolean
+}) {
   return (
     <div className={`flex items-center justify-between rounded-xl border px-4 py-3 ${
       win ? 'border-lime bg-lime/10' : 'border-edge'}`}>
-      <span className="truncate font-display text-xl font-bold">{name}</span>
+      <span className="flex min-w-0 items-center gap-2">
+        <Flag name={flag} className="h-5 w-auto shrink-0 rounded-[2px]" />
+        <span className="truncate font-display text-xl font-bold">{name}</span>
+      </span>
       <span className="tabular font-display text-4xl font-bold">{score}</span>
     </div>
   )
