@@ -144,7 +144,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
   const landscape = useLandscape()
   const history = useRef<[number, number][]>([])
 
-  useEffect(() => { setM(match) }, [match.id, match.score_a, match.score_b, match.status])
+  useEffect(() => { setM(match) }, [match.id, match.score_a, match.score_b, match.status, match.a_on_left])
 
   const sync = async () => {
     await flush(async op => {
@@ -183,16 +183,23 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
   }
 
   const undo = async () => {
+    const snapshot = m
     const prev = history.current.pop()
     if (prev) setM(applyUndo(m, prev[0], prev[1], rules))
     tapUndo()
     try { setM(await api.undoPoint(m.id, token)) }
-    catch { enqueue({ id: crypto.randomUUID(), kind: 'undo', matchId: m.id, at: Date.now() }); setOffline(true) }
+    catch {
+      // undo_point is not idempotent, so we never queue it — a lost response
+      // would double-delete on replay. Revert so local matches the server.
+      if (prev) history.current.push(prev)
+      setM(snapshot)
+      setOffline(pending() > 0)
+    }
   }
 
   const confirm = async () => {
     try { await api.confirmMatch(m.id, token); reload() }
-    catch { enqueue({ id: crypto.randomUUID(), kind: 'confirm', matchId: m.id, at: Date.now() }); setOffline(true) }
+    catch { enqueue({ id: crypto.randomUUID(), kind: 'confirm', matchId: m.id, at: Date.now() }); setOffline(true); reload() }
   }
 
   const [confirmingReset, setConfirmingReset] = useState(false)
@@ -223,7 +230,8 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
   // SWAP persists to the server (a_on_left) so the live board and TV mirror it.
   const swap = async () => {
     setM(prev => ({ ...prev, a_on_left: !prev.a_on_left }))
-    try { setM(await api.flipSides(m.id, token)) } catch { /* board re-syncs on reload */ }
+    try { setM(await api.flipSides(m.id, token)) }
+    catch { setM(prev => ({ ...prev, a_on_left: !prev.a_on_left })) } // revert; retry when online
   }
   const matchNo = bundle.matches
     .filter((x: typeof bundle.matches[number]) => x.court_id === m.court_id)

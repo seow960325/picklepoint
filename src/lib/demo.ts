@@ -342,6 +342,10 @@ export const demo = {
     s.events = s.events.filter(e => e.match_id !== matchId)
     const i = s.bundle.matches.findIndex(m => m.id === matchId)
     const m = s.bundle.matches[i]
+    // keep one live match per court: demote any other live match on this court
+    s.bundle.matches.forEach(x => {
+      if (x.id !== m.id && x.court_id === m.court_id && x.status === 'live') x.status = 'scheduled'
+    })
     const next: Match = {
       ...m, score_a: 0, score_b: 0, a_on_left: true, sides_switched: false,
       status: 'live', winner_id: null, started_at: null, finished_at: null, duration_seconds: null,
