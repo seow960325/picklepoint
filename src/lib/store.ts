@@ -31,10 +31,33 @@ export function useCompetition(code: string | undefined) {
     return () => { alive = false }
   }, [code])
 
+  // Safety net for realtime drops: iOS/mobile browsers suspend WebSocket
+  // connections when a tab is backgrounded or the screen locks (common on
+  // an iPad left open as the live board), and the socket doesn't always
+  // recover on its own. Whenever the page comes back to the foreground or
+  // the device regains network, fetch fresh data and rebuild the channel.
+  const [resubscribeKey, setResubscribeKey] = useState(0)
+  useEffect(() => {
+    const onWake = () => {
+      if (document.visibilityState === 'visible') {
+        reload()
+        setResubscribeKey(k => k + 1)
+      }
+    }
+    document.addEventListener('visibilitychange', onWake)
+    window.addEventListener('focus', onWake)
+    window.addEventListener('online', onWake)
+    return () => {
+      document.removeEventListener('visibilitychange', onWake)
+      window.removeEventListener('focus', onWake)
+      window.removeEventListener('online', onWake)
+    }
+  }, [reload])
+
   useEffect(() => {
     if (!bundle) return
     return api.subscribe(bundle, reload)
-  }, [bundle?.competition.id, reload])
+  }, [bundle?.competition.id, reload, resubscribeKey])
 
   return { bundle, setBundle, error, loading, reload }
 }

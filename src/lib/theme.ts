@@ -7,9 +7,9 @@ const CANVAS: Record<Theme, string> = { light: '#f8fafc', dark: '#0a0e17' }
 
 export function getTheme(): Theme {
   try {
-    return localStorage.getItem(KEY) === 'dark' ? 'dark' : 'light'
+    return localStorage.getItem(KEY) === 'light' ? 'light' : 'dark'
   } catch {
-    return 'light'
+    return 'dark'
   }
 }
 
