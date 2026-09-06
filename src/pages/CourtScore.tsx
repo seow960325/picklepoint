@@ -144,7 +144,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
   const [offline, setOffline] = useState(pending() > 0)
   const [stuck, setStuck] = useState(stalledCount() > 0)
   const [errMsg, setErrMsg] = useState(lastQueueError())
-  const looksLikeAuth = !!errMsg && /token|pin|unauthoriz|expired|permission/i.test(errMsg)
+  const looksLikeAuth = !!errMsg && /token|pin|unauthoriz|expired|permission|session/i.test(errMsg)
   const [ignoreRotate, setIgnoreRotate] = useState(false)
   const landscape = useLandscape()
   const history = useRef<[number, number][]>([])
