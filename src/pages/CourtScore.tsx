@@ -4,7 +4,7 @@ import { useCompetition, teamName, liveOnCourt, eventOf } from '../lib/store'
 import { applyPoint, applyUndo, displayScores, isGameOver, rulesOf } from '../lib/scoring'
 import type { Match } from '../lib/types'
 import * as api from '../lib/api'
-import { enqueue, flush, pending } from '../lib/queue'
+import { enqueue, flush, pending, stalledCount, retryStalled } from '../lib/queue'
 import { useWakeLockEffect } from '../lib/wakelock'
 import { useLandscape } from '../lib/orientation'
 import { tapPoint, tapUndo, hornEnd, chimeSwitch } from '../lib/feedback'
@@ -140,6 +140,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
   const [m, setM] = useState<Match>(match)
   const [showSwitch, setShowSwitch] = useState(false)
   const [offline, setOffline] = useState(pending() > 0)
+  const [stuck, setStuck] = useState(stalledCount() > 0)
   const [ignoreRotate, setIgnoreRotate] = useState(false)
   const landscape = useLandscape()
   const history = useRef<[number, number][]>([])
@@ -153,8 +154,11 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
       if (op.kind === 'confirm') await api.confirmMatch(op.matchId, token)
     })
     setOffline(pending() > 0)
+    setStuck(stalledCount() > 0)
     reload()
   }
+
+  const retrySync = () => { retryStalled(); setStuck(false); sync() }
 
   useEffect(() => {
     window.addEventListener('online', sync)
@@ -179,6 +183,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
     } catch {
       enqueue({ id: evId, kind: 'score', matchId: m.id, side, at: Date.now() })
       setOffline(true)
+      setStuck(stalledCount() > 0)
     }
   }
 
@@ -276,10 +281,14 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
                 PREV
               </Link>
             )}
-            <div title={offline ? 'Points saved on this device, waiting to reach the server' : 'All points saved to the server'}
-              className={offline ? 'text-amber-400' : 'text-fg-subtle'}>
-              {offline ? `⚠ ${pending()} to sync` : '● synced'}
-            </div>
+            <button type="button" onClick={stuck ? retrySync : undefined} disabled={!stuck}
+              title={stuck
+                ? 'Some points keep failing to reach the server — tap to retry now'
+                : offline ? 'Points saved on this device, waiting to reach the server' : 'All points saved to the server'}
+              className={stuck ? 'animate-pulse font-bold text-red-400 underline underline-offset-2'
+                : offline ? 'text-amber-400' : 'text-fg-subtle'}>
+              {stuck ? `⚠ ${pending()} STUCK — TAP TO RETRY` : offline ? `⚠ ${pending()} to sync` : '● synced'}
+            </button>
           </div>
         </div>
 

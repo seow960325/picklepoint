@@ -30,19 +30,33 @@ export const peekAll = () => read()
 export const drop = (id: string) => write(read().filter(o => o.id !== id))
 export const pending = () => read().length
 
-// Give up on an op that keeps failing WHILE ONLINE — that means the server
-// rejected it (e.g. it referenced a match that has since changed), not that
-// the device is offline, so retrying forever just shows a phantom count.
-const MAX_TRIES = 3
+// A scored point is match data, not a cache entry — it is never discarded
+// just because it keeps failing. An op that keeps erroring WHILE ONLINE
+// (the server is reachable but rejecting it — a stale token, a match that
+// changed underneath it) is flagged "stalled" past STALL_THRESHOLD tries so
+// the UI can raise an alarm instead of quietly retrying forever, but it
+// stays queued until a human retries it (retryStalled) or it succeeds.
+const STALL_THRESHOLD = 3
 const bump = (id: string) => {
   const q = read()
   const op = q.find(o => o.id === id)
   if (!op) return
   op.tries = (op.tries ?? 0) + 1
-  write(op.tries >= MAX_TRIES ? q.filter(o => o.id !== id) : q)
+  write(q)
 }
 
-/** Run `send` over every queued op, oldest first, stopping at the first failure. */
+/** Ops that have failed repeatedly while online — the scorer should notice
+ *  and retry manually rather than trust a silently-stuck queue. */
+export const stalledCount = () => read().filter(o => (o.tries ?? 0) >= STALL_THRESHOLD).length
+
+/** Clear every op's failure count so the next flush() retries them fresh. */
+export const retryStalled = () => {
+  write(read().map(o => ({ ...o, tries: 0 })))
+}
+
+/** Run `send` over every queued op, oldest first, stopping at the first
+ *  failure so ops for the same match always apply in order. Nothing is
+ *  ever dropped on failure — see STALL_THRESHOLD above. */
 export async function flush(send: (op: QueuedOp) => Promise<void>) {
   for (const op of read()) {
     try { await send(op); drop(op.id) }
