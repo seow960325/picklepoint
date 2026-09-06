@@ -1,34 +1,36 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useFullscreen } from '../lib/fullscreen'
+import { useTheme } from '../lib/theme'
 
 export const Screen = ({ children, className = '' }: { children: ReactNode; className?: string }) => (
-  <div className={`min-h-full bg-ink text-gray-100 ${className}`}>{children}</div>
+  <div className={`min-h-full bg-canvas text-fg ${className}`}>{children}</div>
 )
 
 export const TopBar = ({ title, sub, back }: { title: string; sub?: string; back?: string }) => (
-  <div className="flex items-center gap-3 border-b border-edge px-4 py-3">
+  <div className="flex items-center gap-3 border-b border-line px-4 py-3">
     {back && (
-      <Link to={back} className="rounded-lg border border-edge px-3 py-1.5 text-sm text-gray-400 hover:text-white">
+      <Link to={back} className="rounded-lg border border-line px-3 py-1.5 text-sm text-fg-muted hover:text-fg">
         ←
       </Link>
     )}
-    <div className="min-w-0">
+    <div className="min-w-0 flex-1">
       <div className="truncate font-display text-xl font-bold tracking-wide">{title}</div>
-      {sub && <div className="truncate text-xs text-gray-500">{sub}</div>}
+      {sub && <div className="truncate text-xs text-fg-subtle">{sub}</div>}
     </div>
+    <ThemeToggle className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-line text-fg-muted active:bg-surface-2" />
   </div>
 )
 
 export const Pill = ({ children, tone = 'idle' }: { children: ReactNode; tone?: 'live' | 'idle' | 'done' }) => {
-  const c = tone === 'live' ? 'bg-lime/15 text-lime border-lime/30'
-    : tone === 'done' ? 'bg-gray-700/40 text-gray-400 border-gray-600/40'
-    : 'bg-cyan/10 text-cyan border-cyan/25'
+  const c = tone === 'live' ? 'bg-brand/15 text-brand border-brand/30'
+    : tone === 'done' ? 'bg-surface-2 text-fg-subtle border-line-strong'
+    : 'bg-accent/10 text-accent border-accent/25'
   return <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest ${c}`}>{children}</span>
 }
 
 export const Spinner = () => (
-  <div className="flex h-64 items-center justify-center text-gray-500">Loading…</div>
+  <div className="flex h-64 items-center justify-center text-fg-subtle">Loading…</div>
 )
 
 
@@ -56,6 +58,29 @@ export const FullscreenButton = ({ className = '' }: { className?: string }) => 
             <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
             <path d="M3 16v3a2 2 0 0 0 2 2h3" />
             <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+          </>
+        )}
+      </svg>
+    </button>
+  )
+}
+
+/** Light/dark toggle. Defaults to light; persists the user's choice. */
+export const ThemeToggle = ({ className = '' }: { className?: string }) => {
+  const { theme, toggle } = useTheme()
+  const isDark = theme === 'dark'
+  return (
+    <button onClick={toggle} title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      className={className}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+        {isDark ? (
+          <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" />
+        ) : (
+          <>
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
           </>
         )}
       </svg>

@@ -106,11 +106,11 @@ export default function NewCompetition() {
   if (result) return <Created res={result} onOpen={() => nav(`/c/${result.code}`)} />
 
   return (
-    <div className="flex h-full min-h-screen bg-ink">
+    <div className="flex h-full min-h-screen bg-canvas">
       {/* summary rail */}
-      <aside className="hidden w-72 shrink-0 flex-col border-r border-edge bg-panel p-5 md:flex">
-        <Link to="/" className="mb-6 text-xs text-gray-600">← back</Link>
-        <div className="font-display text-3xl font-bold leading-none tracking-tight text-lime">
+      <aside className="hidden w-72 shrink-0 flex-col border-r border-line bg-surface p-5 md:flex">
+        <Link to="/" className="mb-6 text-xs text-fg-subtle">← back</Link>
+        <div className="font-display text-3xl font-bold leading-none tracking-tight text-brand">
           NEW<br />COMPETITION
         </div>
 
@@ -140,11 +140,11 @@ export default function NewCompetition() {
           {ruleError && <Warn>{ruleError}</Warn>}
           {format === 'duel' && duelError && <Warn>{duelError}</Warn>}
           {format === 'round_robin' && teams.length < 2 && (
-            <div className="mb-2 text-xs text-gray-600">Add at least two teams.</div>
+            <div className="mb-2 text-xs text-fg-subtle">Add at least two teams.</div>
           )}
           {err && <Warn>{err}</Warn>}
           <button onClick={create} disabled={!canCreate}
-            className="mt-2 w-full rounded-xl bg-lime py-3.5 font-display text-lg font-bold tracking-wide text-ink disabled:opacity-30">
+            className="mt-2 w-full rounded-xl bg-brand py-3.5 font-display text-lg font-bold tracking-wide text-brand-fg disabled:opacity-30">
             {busy ? 'CREATING…' : 'CREATE COMPETITION'}
           </button>
         </div>
@@ -162,7 +162,7 @@ export default function NewCompetition() {
                 ]} />
             </Field>
             {format === 'duel' && (
-              <p className="mt-2 text-xs text-gray-600">
+              <p className="mt-2 text-xs text-fg-subtle">
                 Two sides face off — every team from one side plays every team from
                 the other once. Each game's winner scores a point for their side; most
                 games won overall wins the whole thing.
@@ -206,7 +206,7 @@ export default function NewCompetition() {
             </Field>
           </div>
           {ruleError && <Warn>{ruleError}</Warn>}
-          <p className="mt-3 text-xs text-gray-600">
+          <p className="mt-3 text-xs text-fg-subtle">
             First to {target}, must lead by {winBy}. If it drags on, first to {cap} wins outright.
             {switchAt > 0
               ? ` Players change ends when either side reaches ${switchAt} — the court flips on
@@ -252,10 +252,10 @@ export default function NewCompetition() {
                               { label: '3 pools', value: 3 }, { label: '4 pools', value: 4 }]} />
                 </Field>
                 {teams.length >= 2 && (
-                  <div className="rounded-lg border border-edge bg-panel p-3 text-xs">
-                    <div className="mb-1.5 font-bold uppercase tracking-wider text-gray-500">Draw preview</div>
-                    <div className="text-gray-300">{draw.length} matches, {new Set(draw.map(d => d.round)).size} rounds</div>
-                    <div className="mt-1 text-gray-600">
+                  <div className="rounded-lg border border-line bg-surface p-3 text-xs">
+                    <div className="mb-1.5 font-bold uppercase tracking-wider text-fg-muted">Draw preview</div>
+                    <div className="text-fg-muted">{draw.length} matches, {new Set(draw.map(d => d.round)).size} rounds</div>
+                    <div className="mt-1 text-fg-subtle">
                       Round robin inside each pool, spread across {courtCount} court{courtCount > 1 ? 's' : ''}.
                       No team is booked on two courts at once.
                     </div>
@@ -288,13 +288,13 @@ export default function NewCompetition() {
             </div>
             {duelError && <Warn>{duelError}</Warn>}
             {!duelError && draw.length > 0 && (
-              <div className="mt-3 rounded-lg border border-edge bg-panel p-3 text-xs">
-                <div className="mb-1.5 font-bold uppercase tracking-wider text-gray-500">Draw preview</div>
-                <div className="text-gray-300">
+              <div className="mt-3 rounded-lg border border-line bg-surface p-3 text-xs">
+                <div className="mb-1.5 font-bold uppercase tracking-wider text-fg-muted">Draw preview</div>
+                <div className="text-fg-muted">
                   {draw.length / 4} pod{draw.length / 4 > 1 ? 's' : ''} × 4 games = {draw.length} total games,
                   spread across {courtCount} court{courtCount > 1 ? 's' : ''}.
                 </div>
-                <div className="mt-1 text-gray-600">
+                <div className="mt-1 text-fg-subtle">
                   Each pod is 2 {sideAName || 'Side A'} teams vs 2 {sideBName || 'Side B'} teams — every
                   team meets every opposing team in the pod exactly once. Final result is total games won,
                   summed across every pod.
@@ -309,7 +309,7 @@ export default function NewCompetition() {
           {ruleError && <Warn>{ruleError}</Warn>}
           {err && <Warn>{err}</Warn>}
           <button onClick={create} disabled={!canCreate}
-            className="w-full rounded-xl bg-lime py-4 font-display text-lg font-bold text-ink disabled:opacity-30">
+            className="w-full rounded-xl bg-brand py-4 font-display text-lg font-bold text-brand-fg disabled:opacity-30">
             {busy ? 'CREATING…' : 'CREATE COMPETITION'}
           </button>
         </div>
@@ -319,46 +319,46 @@ export default function NewCompetition() {
 }
 
 const Sum = ({ k, v }: { k: string; v: string }) => (
-  <div className="flex justify-between gap-3 border-b border-edge/60 pb-1.5">
-    <dt className="shrink-0 text-[11px] uppercase tracking-wider text-gray-600">{k}</dt>
-    <dd className="truncate text-right text-gray-200">{v}</dd>
+  <div className="flex justify-between gap-3 border-b border-line/60 pb-1.5">
+    <dt className="shrink-0 text-[11px] uppercase tracking-wider text-fg-subtle">{k}</dt>
+    <dd className="truncate text-right text-fg">{v}</dd>
   </div>
 )
 
 function Created({ res, onOpen }: { res: api.CreateResult; onOpen: () => void }) {
   return (
-    <div className="flex min-h-screen items-center justify-center gap-12 bg-ink px-10">
+    <div className="flex min-h-screen items-center justify-center gap-12 bg-canvas px-10">
       <div className="text-center">
-        <div className="text-xs font-bold uppercase tracking-[0.3em] text-gray-600">Join code</div>
-        <div className="my-2 font-display text-8xl font-bold tracking-[0.15em] text-lime">
+        <div className="text-xs font-bold uppercase tracking-[0.3em] text-fg-subtle">Join code</div>
+        <div className="my-2 font-display text-8xl font-bold tracking-[0.15em] text-brand">
           {res.code}
         </div>
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-fg-muted">
           Anyone with this code can watch. Scoring needs a court PIN.
         </div>
         <button onClick={onOpen}
-          className="mt-7 rounded-xl bg-lime px-10 py-3.5 font-display text-lg font-bold text-ink">
+          className="mt-7 rounded-xl bg-brand px-10 py-3.5 font-display text-lg font-bold text-brand-fg">
           OPEN LIVE BOARD
         </button>
       </div>
 
-      <div className="w-72 rounded-2xl border border-edge bg-panel p-5">
+      <div className="w-72 rounded-2xl border border-line bg-surface p-5">
         <div className="mb-3 flex justify-between text-sm">
-          <span className="text-gray-500">Admin PIN</span>
-          <span className="tabular font-display text-xl font-bold text-cyan">{res.admin_pin}</span>
+          <span className="text-fg-muted">Admin PIN</span>
+          <span className="tabular font-display text-xl font-bold text-accent">{res.admin_pin}</span>
         </div>
-        <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-600">
+        <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
           Court PINs
         </div>
         <div className="grid grid-cols-2 gap-1.5 text-sm">
           {res.courts.map(c => (
-            <div key={c.number} className="flex justify-between rounded-lg bg-ink px-2.5 py-1.5">
-              <span className="text-gray-500">Court {c.number}</span>
+            <div key={c.number} className="flex justify-between rounded-lg bg-canvas px-2.5 py-1.5">
+              <span className="text-fg-muted">Court {c.number}</span>
               <span className="tabular font-bold">{c.scorer_pin}</span>
             </div>
           ))}
         </div>
-        <p className="mt-3 text-[11px] leading-relaxed text-gray-600">
+        <p className="mt-3 text-[11px] leading-relaxed text-fg-subtle">
           Write these on the scoreboard at each court. Change them any time from
           Admin on the live board.
         </p>

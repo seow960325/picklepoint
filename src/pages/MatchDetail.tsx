@@ -58,15 +58,15 @@ export default function MatchDetail() {
         back={`/c/${code}`}
       />
 
-      <div className="flex items-center justify-center gap-6 border-b border-edge py-6">
+      <div className="flex items-center justify-center gap-6 border-b border-line py-6">
         <div className="tabular font-display text-6xl font-bold">{m.score_a}</div>
-        <div className="text-2xl text-gray-700">–</div>
+        <div className="text-2xl text-fg-subtle">–</div>
         <div className="tabular font-display text-6xl font-bold">{m.score_b}</div>
       </div>
 
       {canReset && (
-        <div className="border-b border-edge px-4 py-4">
-          <div className="mb-2 text-xs font-bold uppercase tracking-widest text-gray-600">
+        <div className="border-b border-line px-4 py-4">
+          <div className="mb-2 text-xs font-bold uppercase tracking-widest text-fg-subtle">
             Referee controls
           </div>
           <button
@@ -75,12 +75,12 @@ export default function MatchDetail() {
             className={`w-full rounded-xl border px-4 py-3 font-display text-sm font-bold tracking-wide transition-colors ${
               confirmingReset
                 ? 'border-red-500 bg-red-500/20 text-red-300'
-                : 'border-edge bg-panel text-gray-400 active:bg-edge'
+                : 'border-line bg-surface text-fg-muted active:bg-surface-2'
             }`}>
             {busy ? 'Resetting…' : confirmingReset ? 'TAP AGAIN TO RESET TO 0–0' : 'RESET MATCH'}
           </button>
           {confirmingReset && (
-            <p className="mt-1.5 text-center text-[11px] text-gray-600">
+            <p className="mt-1.5 text-center text-[11px] text-fg-subtle">
               Tap again to confirm · cancels in 3 s
             </p>
           )}
@@ -88,15 +88,15 @@ export default function MatchDetail() {
       )}
 
       <div className="p-4">
-        <div className="mb-2 text-xs font-bold uppercase tracking-widest text-gray-600">
+        <div className="mb-2 text-xs font-bold uppercase tracking-widest text-fg-subtle">
           Point by point
         </div>
-        {events.length === 0 && <div className="py-8 text-center text-sm text-gray-600">No points yet.</div>}
+        {events.length === 0 && <div className="py-8 text-center text-sm text-fg-subtle">No points yet.</div>}
         <div className="space-y-1">
           {events.map((e, i) => (
             <div key={e.id} className="flex items-center gap-3 text-sm">
-              <span className="w-8 shrink-0 text-right text-gray-700">{i + 1}</span>
-              <span className="min-w-0 flex-1 truncate text-gray-300">{teamName(bundle, e.team_id)}</span>
+              <span className="w-8 shrink-0 text-right text-fg-subtle">{i + 1}</span>
+              <span className="min-w-0 flex-1 truncate text-fg-muted">{teamName(bundle, e.team_id)}</span>
               <span className="tabular shrink-0 font-semibold">
                 {e.score_a_after} – {e.score_b_after}
               </span>

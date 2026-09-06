@@ -6,7 +6,7 @@ import {
   buildDraw, buildDuelDraw, defaultSwitchAt, validateRules, validateDuelSquads,
   type DraftTeam, type DuelTeam,
 } from '../lib/draw'
-import { Screen, Spinner } from '../components/ui'
+import { Screen, Spinner, ThemeToggle } from '../components/ui'
 import { Flag } from '../components/ui'
 import { Field, Stepper, Choice, Warn, input, inputFull } from '../components/form'
 
@@ -43,15 +43,15 @@ function AdminGate({ code, onIn }: { code: string; onIn: (t: string) => void }) 
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center gap-10 bg-ink px-8">
-      <Link to={`/c/${code}`} className="absolute left-4 top-3 text-sm text-gray-600">← board</Link>
+    <div className="fixed inset-0 flex items-center justify-center gap-10 bg-canvas px-8">
+      <Link to={`/c/${code}`} className="absolute left-4 top-3 text-sm text-fg-subtle">← board</Link>
       <div className="text-right">
-        <div className="font-display text-4xl font-bold tracking-widest text-gray-500">SETTINGS</div>
-        <div className="mt-1 text-sm text-gray-600">Admin PIN for {code}</div>
+        <div className="font-display text-4xl font-bold tracking-widest text-fg-muted">SETTINGS</div>
+        <div className="mt-1 text-sm text-fg-subtle">Admin PIN for {code}</div>
         <div className="mt-5 flex justify-end gap-3">
           {[0, 1, 2, 3].map(i => (
             <div key={i} className={`h-3.5 w-3.5 rounded-full border-2 ${
-              err ? 'border-red-500' : pin.length > i ? 'border-cyan bg-cyan' : 'border-edge'}`} />
+              err ? 'border-red-500' : pin.length > i ? 'border-accent bg-accent' : 'border-line'}`} />
           ))}
         </div>
       </div>
@@ -60,7 +60,7 @@ function AdminGate({ code, onIn }: { code: string; onIn: (t: string) => void }) 
           <button key={i} disabled={!k}
             onClick={() => k === '⌫' ? setPin(p => p.slice(0, -1)) : k && press(k)}
             className={`h-14 rounded-xl font-display text-2xl font-bold ${
-              k ? 'border border-edge bg-panel active:bg-edge' : 'invisible'}`}>{k}</button>
+              k ? 'border border-line bg-surface active:bg-surface-2' : 'invisible'}`}>{k}</button>
         ))}
       </div>
     </div>
@@ -86,25 +86,28 @@ function Panel({ bundle, token, code, reload, onLogout }: {
   const ev = bundle.events[0]
 
   return (
-    <div className="flex min-h-screen bg-ink">
-      <aside className="hidden w-56 shrink-0 flex-col border-r border-edge bg-panel p-4 md:flex">
-        <Link to={`/c/${code}`} className="mb-5 text-xs text-gray-600">← live board</Link>
+    <div className="flex min-h-screen bg-canvas">
+      <aside className="hidden w-56 shrink-0 flex-col border-r border-line bg-surface p-4 md:flex">
+        <Link to={`/c/${code}`} className="mb-5 text-xs text-fg-subtle">← live board</Link>
         <div className="mb-1 font-display text-2xl font-bold tracking-wide">SETTINGS</div>
-        <div className="mb-5 text-xs text-gray-600">
-          code <span className="font-bold text-lime">{code}</span>
+        <div className="mb-5 text-xs text-fg-subtle">
+          code <span className="font-bold text-brand">{code}</span>
         </div>
         <nav className="space-y-1">
           {(['competition','scoring','teams','courts','schedule'] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold capitalize ${
-                tab === t ? 'bg-lime text-ink' : 'text-gray-400 hover:text-white'}`}>
+                tab === t ? 'bg-brand text-brand-fg' : 'text-fg-muted hover:text-fg'}`}>
               {t}
             </button>
           ))}
         </nav>
-        <button onClick={onLogout} className="mt-auto text-xs text-gray-600 underline underline-offset-4">
-          lock settings
-        </button>
+        <div className="mt-auto flex items-center justify-between">
+          <button onClick={onLogout} className="text-xs text-fg-subtle underline underline-offset-4">
+            lock settings
+          </button>
+          <ThemeToggle className="grid h-8 w-8 place-items-center rounded-lg border border-line text-fg-muted active:bg-surface-2" />
+        </div>
       </aside>
 
       <div className="min-w-0 flex-1 overflow-y-auto p-6">
@@ -112,11 +115,11 @@ function Panel({ bundle, token, code, reload, onLogout }: {
           {(['competition','scoring','teams','courts','schedule'] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold uppercase ${
-                tab === t ? 'bg-lime text-ink' : 'text-gray-500'}`}>{t}</button>
+                tab === t ? 'bg-brand text-brand-fg' : 'text-fg-muted'}`}>{t}</button>
           ))}
         </div>
 
-        {msg && <div className="mb-4 rounded-lg border border-lime/40 bg-lime/10 px-3 py-2 text-sm text-lime">{msg}</div>}
+        {msg && <div className="mb-4 rounded-lg border border-brand/40 bg-brand/10 px-3 py-2 text-sm text-brand">{msg}</div>}
         {err && <Warn>{err}</Warn>}
 
         {tab === 'competition' && <CompetitionTab bundle={bundle} token={token} run={run} secrets={secrets} />}
@@ -146,10 +149,10 @@ function CompetitionTab({ bundle, token, run, secrets }: any) {
       </Field>
       <Save onClick={() => run(() => api.adminUpdateCompetition(token, name, venue), 'Competition updated')} />
 
-      <div className="mt-8 rounded-xl border border-edge bg-panel p-4">
-        <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-600">Access</div>
-        <Row k="Join code (share freely)" v={c.code} accent="lime" />
-        {secrets && <Row k="Admin PIN (keep private)" v={secrets.competition.admin_pin} accent="cyan" />}
+      <div className="mt-8 rounded-xl border border-line bg-surface p-4">
+        <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">Access</div>
+        <Row k="Join code (share freely)" v={c.code} accent="brand" />
+        {secrets && <Row k="Admin PIN (keep private)" v={secrets.competition.admin_pin} accent="accent" />}
       </div>
     </div>
   )
@@ -197,7 +200,7 @@ function ScoringTab({ ev, token, run }: any) {
         </Field>
       </div>
       {bad && <Warn>{bad}</Warn>}
-      <p className="text-xs text-gray-600">
+      <p className="text-xs text-fg-subtle">
         Changes apply to every match, including ones already in progress.
       </p>
       <Save disabled={!!bad}
@@ -231,28 +234,28 @@ function TeamsTab({ bundle, ev, token, run }: any) {
       {isDuel ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-lime">
+            <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-brand">
               {ev.side_a_name || 'Side A'} — {sideA.length}
             </div>
-            <div className="divide-y divide-edge rounded-xl border border-edge">
+            <div className="divide-y divide-line rounded-xl border border-line">
               {sideA.map((t: any) => <TeamRow key={t.id} t={t} ev={ev} token={token} run={run} isDuel />)}
-              {!sideA.length && <div className="p-3 text-xs text-gray-600">No teams yet.</div>}
+              {!sideA.length && <div className="p-3 text-xs text-fg-subtle">No teams yet.</div>}
             </div>
           </div>
           <div>
-            <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-cyan">
+            <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-accent">
               {ev.side_b_name || 'Side B'} — {sideB.length}
             </div>
-            <div className="divide-y divide-edge rounded-xl border border-edge">
+            <div className="divide-y divide-line rounded-xl border border-line">
               {sideB.map((t: any) => <TeamRow key={t.id} t={t} ev={ev} token={token} run={run} isDuel />)}
-              {!sideB.length && <div className="p-3 text-xs text-gray-600">No teams yet.</div>}
+              {!sideB.length && <div className="p-3 text-xs text-fg-subtle">No teams yet.</div>}
             </div>
           </div>
         </div>
       ) : (
-        <div className="divide-y divide-edge rounded-xl border border-edge">
+        <div className="divide-y divide-line rounded-xl border border-line">
           {teams.map((t: any) => <TeamRow key={t.id} t={t} ev={ev} token={token} run={run} />)}
-          {!teams.length && <div className="p-4 text-sm text-gray-600">No teams yet.</div>}
+          {!teams.length && <div className="p-4 text-sm text-fg-subtle">No teams yet.</div>}
         </div>
       )}
 
@@ -265,11 +268,11 @@ function TeamsTab({ bundle, ev, token, run }: any) {
             options={[{ label: ev.side_a_name || 'A', value: 'A' }, { label: ev.side_b_name || 'B', value: 'B' }]} />
         )}
         <button disabled={!adding.trim()} onClick={addTeam}
-          className="shrink-0 rounded-lg bg-lime px-5 font-display font-bold text-ink disabled:opacity-30">
+          className="shrink-0 rounded-lg bg-brand px-5 font-display font-bold text-brand-fg disabled:opacity-30">
           ADD
         </button>
       </div>
-      <p className="text-xs text-gray-600">
+      <p className="text-xs text-fg-subtle">
         Renaming is safe at any time — the schedule follows the team, not the name.
         A team that has already finished a match cannot be deleted.
         {isDuel && ' Both sides need equal, even squad sizes before you can regenerate the schedule.'}
@@ -289,7 +292,7 @@ function TeamRow({ t, ev, token, run, isDuel }: any) {
       {isDuel ? (
         <button onClick={() => setSide(side === 'A' ? 'B' : 'A')}
           className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-center text-xs font-bold ${
-            side === 'A' ? 'border-lime/40 text-lime' : 'border-cyan/40 text-cyan'}`}>
+            side === 'A' ? 'border-brand/40 text-brand' : 'border-accent/40 text-accent'}`}>
           <Flag name={side === 'A' ? ev.side_a_name : ev.side_b_name} className="h-3.5 w-auto rounded-[1px]" />
           {side === 'A' ? (ev.side_a_name || 'A') : (ev.side_b_name || 'B')}
         </button>
@@ -299,11 +302,11 @@ function TeamRow({ t, ev, token, run, isDuel }: any) {
       )}
       <button disabled={!dirty}
         onClick={() => run(() => api.adminUpsertTeam(token, ev.id, t.id, name, pool, isDuel ? side : undefined), 'Team saved')}
-        className="shrink-0 rounded-lg bg-lime px-3 py-2 text-xs font-bold text-ink disabled:opacity-20">
+        className="shrink-0 rounded-lg bg-brand px-3 py-2 text-xs font-bold text-brand-fg disabled:opacity-20">
         SAVE
       </button>
       <button onClick={() => run(() => api.adminDeleteTeam(token, t.id), 'Team removed')}
-        className="shrink-0 rounded-lg border border-edge px-3 py-2 text-xs text-gray-500 hover:text-red-400">
+        className="shrink-0 rounded-lg border border-line px-3 py-2 text-xs text-fg-muted hover:text-red-400">
         ✕
       </button>
     </div>
@@ -321,7 +324,7 @@ function CourtsTab({ bundle, token, run, secrets, refreshSecrets }: any) {
             after={refreshSecrets} />
         ))}
       </div>
-      <p className="text-xs text-gray-600">
+      <p className="text-xs text-fg-subtle">
         Changing a PIN signs out any device currently scoring that court, so they
         have to re-enter it. Use that if a phone walks off.
       </p>
@@ -333,13 +336,13 @@ function CourtRow({ c, token, run, pin, after }: any) {
   const [v, setV] = useState(pin)
   useEffect(() => setV(pin), [pin])
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-edge bg-panel p-3">
-      <div className="w-24 font-display text-lg font-bold text-gray-400">COURT {c.number}</div>
+    <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3">
+      <div className="w-24 font-display text-lg font-bold text-fg-muted">COURT {c.number}</div>
       <input className={`${input} tabular w-24 text-center`} value={v} maxLength={4} inputMode="numeric"
         onChange={e => setV(e.target.value.replace(/\D/g, '').slice(0, 4))} />
       <button disabled={v === pin || v.length !== 4}
         onClick={() => run(async () => { await api.adminSetCourtPin(token, c.id, v); await after?.() }, `Court ${c.number} PIN changed`)}
-        className="rounded-lg bg-lime px-4 py-2 text-xs font-bold text-ink disabled:opacity-20">
+        className="rounded-lg bg-brand px-4 py-2 text-xs font-bold text-brand-fg disabled:opacity-20">
         SAVE
       </button>
     </div>
@@ -367,12 +370,12 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
   return (
     <div className="max-w-2xl space-y-4">
       <H>Schedule</H>
-      <div className="rounded-xl border border-edge bg-panel p-4 text-sm">
-        <div className="text-gray-300">
+      <div className="rounded-xl border border-line bg-surface p-4 text-sm">
+        <div className="text-fg-muted">
           {bundle.matches.length} fixtures ·{' '}
           {bundle.matches.filter((m: any) => m.status === 'finished').length} played
         </div>
-        <div className="mt-1 text-xs text-gray-600">
+        <div className="mt-1 text-xs text-fg-subtle">
           {isDuel
             ? `Regenerating rebuilds the pods from the current side rosters and spreads them over ${bundle.courts.length} court${bundle.courts.length > 1 ? 's' : ''} — ${preview.length} games.`
             : `Regenerating builds a fresh round robin from the current team list and spreads it over ${bundle.courts.length} court${bundle.courts.length > 1 ? 's' : ''} — ${preview.length} matches.`}
@@ -390,13 +393,13 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
             token, ev.id, preview,
             teams.map((t: any) => t.id), bundle.courts.map((c: any) => c.id)), 'Schedule regenerated')}
           disabled={preview.length === 0}
-          className="rounded-xl bg-lime px-6 py-3 font-display font-bold text-ink disabled:opacity-30">
+          className="rounded-xl bg-brand px-6 py-3 font-display font-bold text-brand-fg disabled:opacity-30">
           REGENERATE SCHEDULE
         </button>
       )}
 
-      <div className="text-xs text-gray-600">Reorder upcoming matches on a court with the arrows.</div>
-      <div className="divide-y divide-edge rounded-xl border border-edge text-sm">
+      <div className="text-xs text-fg-subtle">Reorder upcoming matches on a court with the arrows.</div>
+      <div className="divide-y divide-line rounded-xl border border-line text-sm">
         {bundle.matches.slice().sort((a: any, b: any) => a.sequence - b.sequence).slice(0, 60)
           .map((m: any) => {
             const sibs = bundle.matches
@@ -408,22 +411,22 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
             const fl = "mr-1 inline-block h-3 w-auto shrink-0 rounded-[1px] align-[-2px]"
             return (
               <div key={m.id} className="flex items-center gap-2 px-3 py-2">
-                <span className="w-6 text-center text-xs text-gray-600">
+                <span className="w-6 text-center text-xs text-fg-subtle">
                   {bundle.courts.find((c: any) => c.id === m.court_id)?.number ?? '–'}
                 </span>
                 <span className="min-w-0 flex-1 truncate">
-                  <Flag name={teamSideName(bundle, m.team_a_id)} className={fl} />{teamName(bundle, m.team_a_id)} <span className="text-gray-600">vs</span> <Flag name={teamSideName(bundle, m.team_b_id)} className={fl} />{teamName(bundle, m.team_b_id)}
+                  <Flag name={teamSideName(bundle, m.team_a_id)} className={fl} />{teamName(bundle, m.team_a_id)} <span className="text-fg-subtle">vs</span> <Flag name={teamSideName(bundle, m.team_b_id)} className={fl} />{teamName(bundle, m.team_b_id)}
                 </span>
-                <span className="tabular shrink-0 text-xs text-gray-500">
+                <span className="tabular shrink-0 text-xs text-fg-muted">
                   {m.status === 'scheduled' ? (m.round ?? '').replace(/pod/i, 'Court') : `${m.score_a}–${m.score_b}`}
                 </span>
                 <span className="flex shrink-0 items-center gap-1">
                   <button disabled={!canUp}
                     onClick={() => run(() => api.adminMoveMatch(token, m.id, 'up'), 'Match moved up')}
-                    className="grid h-7 w-7 place-items-center rounded-lg border border-edge text-gray-300 active:bg-edge disabled:opacity-20">▲</button>
+                    className="grid h-7 w-7 place-items-center rounded-lg border border-line text-fg-muted active:bg-surface-2 disabled:opacity-20">▲</button>
                   <button disabled={!canDown}
                     onClick={() => run(() => api.adminMoveMatch(token, m.id, 'down'), 'Match moved down')}
-                    className="grid h-7 w-7 place-items-center rounded-lg border border-edge text-gray-300 active:bg-edge disabled:opacity-20">▼</button>
+                    className="grid h-7 w-7 place-items-center rounded-lg border border-line text-fg-muted active:bg-surface-2 disabled:opacity-20">▼</button>
                 </span>
               </div>
             )
@@ -439,15 +442,15 @@ const H = ({ children }: any) =>
 
 const Save = ({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) => (
   <button onClick={onClick} disabled={disabled}
-    className="rounded-xl bg-lime px-6 py-2.5 font-display font-bold text-ink disabled:opacity-30">
+    className="rounded-xl bg-brand px-6 py-2.5 font-display font-bold text-brand-fg disabled:opacity-30">
     SAVE
   </button>
 )
 
-const Row = ({ k, v, accent }: { k: string; v: string; accent: 'lime' | 'cyan' }) => (
-  <div className="flex items-center justify-between border-t border-edge/60 py-2 text-sm first:border-0">
-    <span className="text-gray-500">{k}</span>
-    <span className={`tabular font-display text-xl font-bold ${accent === 'lime' ? 'text-lime' : 'text-cyan'}`}>
+const Row = ({ k, v, accent }: { k: string; v: string; accent: 'brand' | 'accent' }) => (
+  <div className="flex items-center justify-between border-t border-line/60 py-2 text-sm first:border-0">
+    <span className="text-fg-muted">{k}</span>
+    <span className={`tabular font-display text-xl font-bold ${accent === 'brand' ? 'text-brand' : 'text-accent'}`}>
       {v}
     </span>
   </div>

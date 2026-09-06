@@ -19,10 +19,10 @@ export default function Join() {
   return (
     <Screen className="flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <div className="mb-1 text-center font-display text-5xl font-bold tracking-tight text-lime">
+        <div className="mb-1 text-center font-display text-5xl font-bold tracking-tight text-brand">
           PICKLEPOINT
         </div>
-        <div className="mb-10 text-center text-sm text-gray-500">
+        <div className="mb-10 text-center text-sm text-fg-muted">
           Enter your competition code
         </div>
 
@@ -35,25 +35,25 @@ export default function Join() {
             autoCorrect="off"
             spellCheck={false}
             maxLength={8}
-            className="w-full rounded-2xl border-2 border-edge bg-panel py-6 text-center font-display text-5xl font-bold tracking-[0.3em] text-white outline-none focus:border-lime"
+            className="w-full rounded-2xl border-2 border-line bg-surface py-6 text-center font-display text-5xl font-bold tracking-[0.3em] text-fg outline-none focus:border-brand"
           />
           <button
             type="submit"
-            className="mt-4 w-full rounded-2xl bg-lime py-5 font-display text-2xl font-bold tracking-wide text-ink active:scale-[0.99]"
+            className="mt-4 w-full rounded-2xl bg-brand py-5 font-display text-2xl font-bold tracking-wide text-brand-fg active:scale-[0.99]"
           >
             ENTER
           </button>
         </form>
 
         <Link to="/new"
-          className="mt-5 block rounded-2xl border border-edge bg-panel py-4 text-center font-display text-lg font-bold tracking-wide text-gray-300 active:bg-edge">
+          className="mt-5 block rounded-2xl border border-line bg-surface py-4 text-center font-display text-lg font-bold tracking-wide text-fg-muted active:bg-surface-2">
           + NEW COMPETITION
         </Link>
 
         {IS_DEMO && (
           <button
             onClick={() => { rememberCode('PICKLE'); nav('/c/PICKLE') }}
-            className="mt-6 w-full text-center text-xs text-gray-500 underline underline-offset-4"
+            className="mt-6 w-full text-center text-xs text-fg-muted underline underline-offset-4"
           >
             No Supabase configured — open the demo competition (code PICKLE)
           </button>

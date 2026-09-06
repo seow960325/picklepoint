@@ -2,14 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+  --canvas: 248 250 252;
+  --surface: 255 255 255;
+  --surface-2: 241 245 249;
+  --line: 226 232 240;
+  --line-strong: 203 213 225;
+  --fg: 15 23 42;
+  --fg-muted: 71 85 105;
+  --fg-subtle: 100 116 139;
+  --brand: 198 255 61;
+  --brand-hover: 168 224 31;
+  --brand-fg: 10 14 23;
+  --accent: 11 101 119;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --canvas: 10 14 23;
+  --surface: 18 24 38;
+  --surface-2: 31 41 55;
+  --line: 31 41 55;
+  --line-strong: 51 65 85;
+  --fg: 241 245 249;
+  --fg-muted: 148 163 184;
+  --fg-subtle: 127 143 163;
+  --brand: 198 255 61;
+  --brand-hover: 168 224 31;
+  --brand-fg: 10 14 23;
+  --accent: 34 211 238;
+}
+
 html, body, #root { height: 100%; }
 body {
   margin: 0;
-  background: #0a0e17;
-  color: #e5e7eb;
+  background: rgb(var(--canvas));
+  color: rgb(var(--fg));
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
+  transition: background-color .15s ease, color .15s ease;
 }
 .tabular { font-variant-numeric: tabular-nums; }
 .no-select { user-select: none; -webkit-user-select: none; }

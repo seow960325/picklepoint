@@ -76,9 +76,9 @@ export default function Court({
 
       {/* ---- tap zones (full height, whole half) ---- */}
       <button {...half('left')} aria-label={`point ${leftName}`}
-        className={`absolute inset-y-0 left-0 w-1/2 transition-colors ${down === 'left' ? 'bg-lime/15' : ''}`} />
+        className={`absolute inset-y-0 left-0 w-1/2 transition-colors ${down === 'left' ? 'bg-brand/15' : ''}`} />
       <button {...half('right')} aria-label={`point ${rightName}`}
-        className={`absolute inset-y-0 right-0 w-1/2 transition-colors ${down === 'right' ? 'bg-cyan/15' : ''}`} />
+        className={`absolute inset-y-0 right-0 w-1/2 transition-colors ${down === 'right' ? 'bg-accent/15' : ''}`} />
 
       {/* ---- score circles + flags + names: aspect-correct overlay ---- */}
       <svg viewBox="0 0 480 240" preserveAspectRatio="xMidYMid meet"
