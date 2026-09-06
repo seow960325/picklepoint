@@ -16,7 +16,10 @@ const sb: SupabaseClient | null = IS_DEMO ? null : createClient(url!, key!)
 
 const rpc = async <T,>(fn: string, args: Record<string, unknown>): Promise<T> => {
   const { data, error } = await sb!.rpc(fn, args)
-  if (error) throw new Error(error.message)
+  if (error) {
+    console.error(`[PicklePoint] rpc ${fn} failed:`, error.message, args)
+    throw new Error(error.message)
+  }
   return data as T
 }
 

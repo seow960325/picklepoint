@@ -4,7 +4,7 @@ import { useCompetition, teamName, liveOnCourt, eventOf } from '../lib/store'
 import { applyPoint, applyUndo, displayScores, isGameOver, rulesOf } from '../lib/scoring'
 import type { Match } from '../lib/types'
 import * as api from '../lib/api'
-import { enqueue, flush, pending, stalledCount, retryStalled } from '../lib/queue'
+import { enqueue, flush, pending, stalledCount, retryStalled, lastQueueError } from '../lib/queue'
 import { useWakeLockEffect } from '../lib/wakelock'
 import { useLandscape } from '../lib/orientation'
 import { tapPoint, tapUndo, hornEnd, chimeSwitch } from '../lib/feedback'
@@ -70,7 +70,8 @@ export default function CourtScore() {
 
   return (
     <Scorer key={match.id} bundle={bundle} match={match} token={token}
-      courtNo={court.number} code={code!} reload={reload} />
+      courtNo={court.number} code={code!} reload={reload}
+      onRelogin={() => { localStorage.removeItem(tokenKey(court.id)); setToken(null) }} />
   )
 }
 
@@ -133,14 +134,17 @@ function PinGate({ courtId, courtNo, code, onUnlock }: {
 }
 
 // ----------------------------------------------------------------- scorer
-function Scorer({ bundle, match, token, courtNo, code, reload }: {
+function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
   bundle: any; match: Match; token: string; courtNo: number; code: string; reload: () => void
+  onRelogin: () => void
 }) {
   const rules = useMemo(() => rulesOf(eventOf(bundle, match)), [bundle, match.event_id])
   const [m, setM] = useState<Match>(match)
   const [showSwitch, setShowSwitch] = useState(false)
   const [offline, setOffline] = useState(pending() > 0)
   const [stuck, setStuck] = useState(stalledCount() > 0)
+  const [errMsg, setErrMsg] = useState(lastQueueError())
+  const looksLikeAuth = !!errMsg && /token|pin|unauthoriz|expired|permission/i.test(errMsg)
   const [ignoreRotate, setIgnoreRotate] = useState(false)
   const landscape = useLandscape()
   const history = useRef<[number, number][]>([])
@@ -155,10 +159,11 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
     })
     setOffline(pending() > 0)
     setStuck(stalledCount() > 0)
+    setErrMsg(lastQueueError())
     reload()
   }
 
-  const retrySync = () => { retryStalled(); setStuck(false); sync() }
+  const retrySync = () => { retryStalled(); setStuck(false); setErrMsg(undefined); sync() }
 
   useEffect(() => {
     window.addEventListener('online', sync)
@@ -180,10 +185,11 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
     try {
       setM(await api.scorePoint(m.id, side, token, evId))
       setOffline(pending() > 0)
-    } catch {
+    } catch (e: any) {
       enqueue({ id: evId, kind: 'score', matchId: m.id, side, at: Date.now() })
       setOffline(true)
       setStuck(stalledCount() > 0)
+      if (e?.message) setErrMsg(String(e.message))
     }
   }
 
@@ -281,16 +287,30 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
                 PREV
               </Link>
             )}
-            <button type="button" onClick={stuck ? retrySync : undefined} disabled={!stuck}
-              title={stuck
-                ? 'Some points keep failing to reach the server — tap to retry now'
-                : offline ? 'Points saved on this device, waiting to reach the server' : 'All points saved to the server'}
-              className={stuck ? 'animate-pulse font-bold text-red-400 underline underline-offset-2'
-                : offline ? 'text-amber-400' : 'text-fg-subtle'}>
-              {stuck ? `⚠ ${pending()} STUCK — TAP TO RETRY` : offline ? `⚠ ${pending()} to sync` : '● synced'}
-            </button>
+            {looksLikeAuth ? (
+              <button type="button" onClick={onRelogin}
+                title={`Saving keeps failing: "${errMsg}" — this looks like the scorer login expired. Tap to re-enter the PIN.`}
+                className="animate-pulse font-bold text-red-400 underline underline-offset-2">
+                ⚠ {pending()} STUCK — RE-ENTER PIN
+              </button>
+            ) : (
+              <button type="button" onClick={stuck ? retrySync : undefined} disabled={!stuck}
+                title={stuck
+                  ? `Some points keep failing to reach the server${errMsg ? `: "${errMsg}"` : ''} — tap to retry now`
+                  : offline ? 'Points saved on this device, waiting to reach the server' : 'All points saved to the server'}
+                className={stuck ? 'animate-pulse font-bold text-red-400 underline underline-offset-2'
+                  : offline ? 'text-amber-400' : 'text-fg-subtle'}>
+                {stuck ? `⚠ ${pending()} STUCK — TAP TO RETRY` : offline ? `⚠ ${pending()} to sync` : '● synced'}
+              </button>
+            )}
           </div>
         </div>
+
+        {(stuck || looksLikeAuth) && errMsg && (
+          <div className="shrink-0 truncate border-b border-red-500/30 bg-red-500/10 px-3 py-1 text-[11px] text-red-400">
+            Save failed: {errMsg}
+          </div>
+        )}
 
         <div className="relative min-h-0 flex-1 px-2 pb-2">
           <Court

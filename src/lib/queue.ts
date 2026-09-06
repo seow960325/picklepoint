@@ -12,6 +12,10 @@ export interface QueuedOp {
   side?: 'left' | 'right'
   at: number
   tries?: number
+  /** Message from the most recent failed send, so the UI (and whoever's
+   *  debugging this later) can see WHY it's stuck instead of just THAT
+   *  it's stuck. */
+  lastError?: string
 }
 
 export const deviceId = (() => {
@@ -37,17 +41,22 @@ export const pending = () => read().length
 // the UI can raise an alarm instead of quietly retrying forever, but it
 // stays queued until a human retries it (retryStalled) or it succeeds.
 const STALL_THRESHOLD = 3
-const bump = (id: string) => {
+const bump = (id: string, message?: string) => {
   const q = read()
   const op = q.find(o => o.id === id)
   if (!op) return
   op.tries = (op.tries ?? 0) + 1
+  if (message) op.lastError = message
   write(q)
 }
 
 /** Ops that have failed repeatedly while online — the scorer should notice
  *  and retry manually rather than trust a silently-stuck queue. */
 export const stalledCount = () => read().filter(o => (o.tries ?? 0) >= STALL_THRESHOLD).length
+
+/** The most recent failure message across all queued ops, for display. */
+export const lastQueueError = (): string | undefined =>
+  read().filter(o => o.lastError).sort((a, b) => (b.tries ?? 0) - (a.tries ?? 0))[0]?.lastError
 
 /** Clear every op's failure count so the next flush() retries them fresh. */
 export const retryStalled = () => {
@@ -60,8 +69,10 @@ export const retryStalled = () => {
 export async function flush(send: (op: QueuedOp) => Promise<void>) {
   for (const op of read()) {
     try { await send(op); drop(op.id) }
-    catch {
-      if (typeof navigator !== 'undefined' && navigator.onLine) bump(op.id)
+    catch (e: any) {
+      const message = e?.message ? String(e.message) : String(e)
+      console.error('[PicklePoint] queued op failed to sync:', op, message)
+      if (typeof navigator !== 'undefined' && navigator.onLine) bump(op.id, message)
       return
     }
   }
