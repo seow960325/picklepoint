@@ -267,7 +267,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload }: {
           </Link>
           <div className="flex min-w-0 items-baseline gap-2 truncate font-display font-bold tracking-widest text-fg-muted">
             <span className="text-base sm:text-lg">COURT {courtNo} · MATCH {matchNo}</span>
-            {matchPoint && <span className="shrink-0 animate-pulse text-sm text-brand">MATCH POINT</span>}
+            {matchPoint && <span className="shrink-0 animate-pulse text-sm text-brand-ink">MATCH POINT</span>}
           </div>
           <div className="flex shrink-0 items-center gap-2.5 text-[11px]">
             <FullscreenButton className="h-5 w-5 shrink-0 text-fg-muted active:text-fg-muted" />
@@ -381,7 +381,7 @@ function ResultRow({ name, flag, score, win }: {
 }) {
   return (
     <div className={`flex items-center justify-between rounded-xl border px-4 py-3 ${
-      win ? 'border-brand bg-brand/10' : 'border-line'}`}>
+      win ? 'border-brand-ink bg-brand/10' : 'border-line'}`}>
       <span className="flex min-w-0 items-center gap-2">
         <Flag name={flag} className="h-5 w-auto shrink-0 rounded-[2px]" />
         <span className="truncate font-display text-xl font-bold">{name}</span>
@@ -394,7 +394,7 @@ function ResultRow({ name, flag, score, win }: {
 function RotatePrompt({ onIgnore }: { onIgnore: () => void }) {
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center gap-6 bg-canvas px-10">
-      <svg viewBox="0 0 120 80" className="w-40 text-brand">
+      <svg viewBox="0 0 120 80" className="w-40 text-brand-ink">
         <rect x="34" y="4" width="52" height="72" rx="7" fill="none" stroke="currentColor" strokeWidth="3" opacity="0.35" />
         <rect x="8" y="20" width="104" height="40" rx="7" fill="none" stroke="currentColor" strokeWidth="3" />
         <path d="M92 12 a30 30 0 0 1 14 18" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />

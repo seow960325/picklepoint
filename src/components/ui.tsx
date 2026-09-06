@@ -23,7 +23,7 @@ export const TopBar = ({ title, sub, back }: { title: string; sub?: string; back
 )
 
 export const Pill = ({ children, tone = 'idle' }: { children: ReactNode; tone?: 'live' | 'idle' | 'done' }) => {
-  const c = tone === 'live' ? 'bg-brand/15 text-brand border-brand/30'
+  const c = tone === 'live' ? 'bg-brand/15 text-brand-ink border-brand-ink/30'
     : tone === 'done' ? 'bg-surface-2 text-fg-subtle border-line-strong'
     : 'bg-accent/10 text-accent border-accent/25'
   return <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest ${c}`}>{children}</span>

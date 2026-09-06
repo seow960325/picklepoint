@@ -91,7 +91,7 @@ function Panel({ bundle, token, code, reload, onLogout }: {
         <Link to={`/c/${code}`} className="mb-5 text-xs text-fg-subtle">← live board</Link>
         <div className="mb-1 font-display text-2xl font-bold tracking-wide">SETTINGS</div>
         <div className="mb-5 text-xs text-fg-subtle">
-          code <span className="font-bold text-brand">{code}</span>
+          code <span className="font-bold text-brand-ink">{code}</span>
         </div>
         <nav className="space-y-1">
           {(['competition','scoring','teams','courts','schedule'] as Tab[]).map(t => (
@@ -119,7 +119,7 @@ function Panel({ bundle, token, code, reload, onLogout }: {
           ))}
         </div>
 
-        {msg && <div className="mb-4 rounded-lg border border-brand/40 bg-brand/10 px-3 py-2 text-sm text-brand">{msg}</div>}
+        {msg && <div className="mb-4 rounded-lg border border-brand-ink/40 bg-brand/10 px-3 py-2 text-sm text-brand-ink">{msg}</div>}
         {err && <Warn>{err}</Warn>}
 
         {tab === 'competition' && <CompetitionTab bundle={bundle} token={token} run={run} secrets={secrets} />}
@@ -234,7 +234,7 @@ function TeamsTab({ bundle, ev, token, run }: any) {
       {isDuel ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-brand">
+            <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-ink">
               {ev.side_a_name || 'Side A'} — {sideA.length}
             </div>
             <div className="divide-y divide-line rounded-xl border border-line">
@@ -292,7 +292,7 @@ function TeamRow({ t, ev, token, run, isDuel }: any) {
       {isDuel ? (
         <button onClick={() => setSide(side === 'A' ? 'B' : 'A')}
           className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-center text-xs font-bold ${
-            side === 'A' ? 'border-brand/40 text-brand' : 'border-accent/40 text-accent'}`}>
+            side === 'A' ? 'border-brand-ink/40 text-brand-ink' : 'border-accent/40 text-accent'}`}>
           <Flag name={side === 'A' ? ev.side_a_name : ev.side_b_name} className="h-3.5 w-auto rounded-[1px]" />
           {side === 'A' ? (ev.side_a_name || 'A') : (ev.side_b_name || 'B')}
         </button>
@@ -450,7 +450,7 @@ const Save = ({ onClick, disabled }: { onClick: () => void; disabled?: boolean }
 const Row = ({ k, v, accent }: { k: string; v: string; accent: 'brand' | 'accent' }) => (
   <div className="flex items-center justify-between border-t border-line/60 py-2 text-sm first:border-0">
     <span className="text-fg-muted">{k}</span>
-    <span className={`tabular font-display text-xl font-bold ${accent === 'brand' ? 'text-brand' : 'text-accent'}`}>
+    <span className={`tabular font-display text-xl font-bold ${accent === 'brand' ? 'text-brand-ink' : 'text-accent'}`}>
       {v}
     </span>
   </div>

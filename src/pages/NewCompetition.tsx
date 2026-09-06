@@ -110,7 +110,7 @@ export default function NewCompetition() {
       {/* summary rail */}
       <aside className="hidden w-72 shrink-0 flex-col border-r border-line bg-surface p-5 md:flex">
         <Link to="/" className="mb-6 text-xs text-fg-subtle">← back</Link>
-        <div className="font-display text-3xl font-bold leading-none tracking-tight text-brand">
+        <div className="font-display text-3xl font-bold leading-none tracking-tight text-brand-ink">
           NEW<br />COMPETITION
         </div>
 
@@ -330,7 +330,7 @@ function Created({ res, onOpen }: { res: api.CreateResult; onOpen: () => void })
     <div className="flex min-h-screen items-center justify-center gap-12 bg-canvas px-10">
       <div className="text-center">
         <div className="text-xs font-bold uppercase tracking-[0.3em] text-fg-subtle">Join code</div>
-        <div className="my-2 font-display text-8xl font-bold tracking-[0.15em] text-brand">
+        <div className="my-2 font-display text-8xl font-bold tracking-[0.15em] text-brand-ink">
           {res.code}
         </div>
         <div className="text-sm text-fg-muted">

@@ -23,6 +23,7 @@ export default {
         brand: withOpacity('--brand'),
         'brand-hover': withOpacity('--brand-hover'),
         'brand-fg': withOpacity('--brand-fg'),
+        'brand-ink': withOpacity('--brand-ink'),
         accent: withOpacity('--accent'),
       },
       fontFamily: {

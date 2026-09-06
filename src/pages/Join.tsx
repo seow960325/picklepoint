@@ -19,7 +19,7 @@ export default function Join() {
   return (
     <Screen className="flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <div className="mb-1 text-center font-display text-5xl font-bold tracking-tight text-brand">
+        <div className="mb-1 text-center font-display text-5xl font-bold tracking-tight text-brand-ink">
           PICKLEPOINT
         </div>
         <div className="mb-10 text-center text-sm text-fg-muted">
@@ -35,7 +35,7 @@ export default function Join() {
             autoCorrect="off"
             spellCheck={false}
             maxLength={8}
-            className="w-full rounded-2xl border-2 border-line bg-surface py-6 text-center font-display text-5xl font-bold tracking-[0.3em] text-fg outline-none focus:border-brand"
+            className="w-full rounded-2xl border-2 border-line bg-surface py-6 text-center font-display text-5xl font-bold tracking-[0.3em] text-fg outline-none focus:border-brand-ink"
           />
           <button
             type="submit"

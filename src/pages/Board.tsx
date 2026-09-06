@@ -82,7 +82,7 @@ export default function Board() {
           <div className="min-w-0">
             <div className="truncate font-display text-2xl font-bold tracking-wide lg:text-3xl">{c.name}</div>
             <div className="truncate text-xs text-fg-muted lg:text-sm">
-              {c.venue} · code <span className="font-bold text-brand">{c.code}</span>
+              {c.venue} · code <span className="font-bold text-brand-ink">{c.code}</span>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 lg:gap-2">
@@ -270,7 +270,7 @@ function DuelScoreboard({ b, ev, big }: { b: Bundle; ev: EventCfg; big: boolean 
         {t.gamesPlayed} of {t.gamesTotal} games played
         {t.gamesPlayed > 0 && ` · points ${t.sideAPoints}–${t.sideBPoints}`}
         {t.gamesPlayed === t.gamesTotal && t.gamesTotal > 0 && (
-          <span className="ml-2 font-bold text-brand">
+          <span className="ml-2 font-bold text-brand-ink">
             {t.leader === 'tie' ? '— tied' : `— ${t.leader === 'A' ? aName : bName} win${t.gamesPlayed !== 1 ? '' : 's'}!`}
           </span>
         )}
@@ -283,7 +283,7 @@ function DuelScoreboard({ b, ev, big }: { b: Bundle; ev: EventCfg; big: boolean 
           <span className={`truncate font-display font-bold tracking-wide ${nameSz} ${t.leader === 'A' ? 'text-fg' : 'text-fg-muted'}`}>
             {aName}
           </span>
-          <span className={`tabular shrink-0 font-display font-bold leading-none text-brand ${scoreSz}`}>
+          <span className={`tabular shrink-0 font-display font-bold leading-none text-brand-ink ${scoreSz}`}>
             {t.sideAWins}
           </span>
         </div>
@@ -324,7 +324,7 @@ function DuelBreakdown({ b, ev }: { b: Bundle; ev: EventCfg }) {
                 : null
               return (
                 <div key={g.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-                  <span className={`w-20 shrink-0 truncate ${winnerSide === 'A' ? 'font-bold text-brand' : 'text-fg-muted'}`}>
+                  <span className={`w-20 shrink-0 truncate ${winnerSide === 'A' ? 'font-bold text-brand-ink' : 'text-fg-muted'}`}>
                     <Flag name={teamSideName(b, g.team_a_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, g.team_a_id)}
                   </span>
                   <span className="tabular w-10 shrink-0 text-center text-xs text-fg-subtle">
@@ -387,7 +387,7 @@ function Standings({ b }: { b: Bundle }) {
                         <td className="tabular px-2 py-2 text-right text-fg-muted">{r.played}</td>
                         <td className="tabular px-2 py-2 text-right font-bold">{r.won}</td>
                         <td className="tabular px-2 py-2 text-right text-fg-muted">{r.lost}</td>
-                        <td className={`tabular px-3 py-2 text-right ${r.diff > 0 ? 'text-brand' : r.diff < 0 ? 'text-fg-muted' : ''}`}>
+                        <td className={`tabular px-3 py-2 text-right ${r.diff > 0 ? 'text-brand-ink' : r.diff < 0 ? 'text-fg-muted' : ''}`}>
                           {r.diff > 0 ? '+' : ''}{r.diff}
                         </td>
                       </tr>
@@ -427,8 +427,8 @@ function Results({ b, code }: { b: Bundle; code: string }) {
               <div className="text-[11px] text-fg-subtle">Match #{m.sequence}{m.round ? ` · ${m.round}` : ''}</div>
             </div>
             <div className="tabular text-right font-display text-2xl font-bold leading-tight">
-              <div className={aWon ? 'text-brand' : 'text-fg-muted'}>{m.score_a}</div>
-              <div className={!aWon ? 'text-brand' : 'text-fg-muted'}>{m.score_b}</div>
+              <div className={aWon ? 'text-brand-ink' : 'text-fg-muted'}>{m.score_a}</div>
+              <div className={!aWon ? 'text-brand-ink' : 'text-fg-muted'}>{m.score_b}</div>
             </div>
           </Link>
         )

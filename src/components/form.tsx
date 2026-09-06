@@ -26,7 +26,7 @@ export const Field = ({ label, children, className = '' }: {
 
 export const input =
   'rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-fg outline-none ' +
-  'placeholder:text-fg-subtle focus:border-brand'
+  'placeholder:text-fg-subtle focus:border-brand-ink'
 
 /** Most inputs want the full width of their cell; the narrow ones opt out. */
 export const inputFull = input + ' w-full'
