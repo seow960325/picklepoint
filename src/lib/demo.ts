@@ -4,7 +4,7 @@
  *  behave exactly like separate phones. */
 import type { Bundle, Match, PointEvent, Team } from './types'
 import { applyPoint, applyUndo, rulesOf } from './scoring'
-import type { DraftMatch, DraftTeam } from './draw'
+import type { DraftKoMatch, DraftMatch, DraftTeam } from './draw'
 
 const KEY = 'pp.demo.v2'
 const chan = 'BroadcastChannel' in globalThis ? new BroadcastChannel('pp.demo') : null
@@ -22,10 +22,13 @@ export interface CreatePayload {
   event: {
     name: string; target_score: number; win_by: number; cap: number; switch_at: number
     format?: string; side_a_name?: string; side_b_name?: string
+    group_size?: number; advance_per_group?: number; third_place?: boolean
   }
   courts: Array<{ number: number; label: string; scorer_pin: string }>
   teams: Array<{ name: string; pool?: string; side?: 'A' | 'B' }>
   matches: DraftMatch[]
+  /** groups_ko only — the empty knockout slots, wired to each other by key */
+  bracket?: DraftKoMatch[]
 }
 
 interface DemoState {
@@ -33,6 +36,45 @@ interface DemoState {
   events: PointEvent[]
   adminPin: string
   courtPins: Record<string, string>
+}
+
+/** Demo twin of the ko_match_flow trigger in migration 0010. Kept in this
+ *  file so the demo backend and the SQL stay in parity: a knockout result
+ *  feeds the winner (and, for semi-finals, the loser) onward, and a knockout
+ *  match gets a court only once both its teams are known. */
+function koFlow(b: Bundle, m: Match): void {
+  if (m.bracket_key == null) return
+
+  const put = (targetId: string | null | undefined, slot: 'a' | 'b' | null | undefined,
+               teamId: string | null) => {
+    if (!targetId || !slot || !teamId) return
+    const t = b.matches.find(x => x.id === targetId)
+    if (!t) return
+    if (slot === 'a') t.team_a_id = teamId; else t.team_b_id = teamId
+    koFlow(b, t)
+  }
+
+  if (m.status === 'finished' && m.winner_id) {
+    put(m.next_match_id, m.next_slot, m.winner_id)
+    const loser = m.winner_id === m.team_a_id ? m.team_b_id : m.team_a_id
+    put(m.loser_match_id, m.loser_slot, loser)
+  }
+
+  if (m.status === 'scheduled' && m.court_id == null
+      && m.team_a_id != null && m.team_b_id != null) {
+    const pending = (courtId: string) => b.matches.filter(
+      x => x.court_id === courtId && (x.status === 'scheduled' || x.status === 'live'
+        || x.status === 'on_deck')).length
+    const court = [...b.courts].sort(
+      (x, y) => pending(x.id) - pending(y.id) || x.number - y.number)[0]
+    if (court) {
+      m.court_id = court.id
+      const busy = b.matches.some(
+        x => x.court_id === court.id
+          && (x.status === 'live' || x.status === 'awaiting_confirm'))
+      m.status = busy ? 'scheduled' : 'live'
+    }
+  }
 }
 
 // ------------------------------------------------------------- seed
@@ -139,6 +181,26 @@ export const demo = {
       next_match_id: null, next_slot: null,
       started_at: null, finished_at: null, duration_seconds: null,
     }))
+    // groups_ko: empty knockout slots, parked OFF-COURT so the court queue can
+    // never open a court on a match with no teams in it. Mirrors migration 0010.
+    const koIds = new Map<string, string>()
+    for (const k of p.bracket ?? []) koIds.set(k.key, uid())
+    for (const k of p.bracket ?? []) {
+      matches.push({
+        id: koIds.get(k.key)!, event_id: ev.id, court_id: null,
+        round: k.round, sequence: k.sequence,
+        team_a_id: null, team_b_id: null, score_a: 0, score_b: 0,
+        a_on_left: true, sides_switched: false, status: 'scheduled' as const,
+        winner_id: null,
+        next_match_id: k.nextKey ? koIds.get(k.nextKey) ?? null : null,
+        next_slot: k.nextSlot,
+        bracket_key: k.key,
+        loser_match_id: k.loserNextKey ? koIds.get(k.loserNextKey) ?? null : null,
+        loser_slot: k.loserNextSlot,
+        started_at: null, finished_at: null, duration_seconds: null,
+      })
+    }
+
     // first fixture on each court goes live so the courts are usable at once
     for (const c of courts) {
       const first = matches.filter(m => m.court_id === c.id).sort((a, b) => a.sequence - b.sequence)[0]
@@ -299,12 +361,63 @@ export const demo = {
       finished_at: new Date().toISOString(),
     }
     s.bundle.matches[i] = next
+    koFlow(s.bundle, next)
     const up = s.bundle.matches
       .filter(x => x.court_id === m.court_id && x.status === 'scheduled')
       .sort((a, b) => a.sequence - b.sequence)[0]
     if (up) up.status = 'live'
     save(s)
     return next
+  },
+
+  // ------------------------------------------------- groups_ko bracket
+  seedBracket(
+    eventId: string, pairs: Array<{ key: string; a: string | null; b: string | null }>,
+  ) {
+    const s = load()
+    const group = s.bundle.matches.filter(
+      m => m.event_id === eventId && m.bracket_key == null)
+    if (group.some(m => m.status !== 'finished')) throw new Error('GROUP_STAGE_UNFINISHED')
+
+    let filled = 0, byes = 0
+    for (const pr of pairs) {
+      if (!pr.a && !pr.b) continue
+      const slot = s.bundle.matches.find(
+        m => m.event_id === eventId && m.bracket_key === pr.key)
+      if (!slot) throw new Error('NO_BRACKET_SLOT')
+      if (slot.status === 'finished') throw new Error('SLOT_ALREADY_PLAYED')
+
+      if (!pr.a || !pr.b) {
+        // bye — nobody plays, the present team walks into the next round
+        slot.team_a_id = pr.a ?? pr.b
+        slot.team_b_id = null
+        slot.status = 'finished'
+        slot.winner_id = slot.team_a_id
+        slot.finished_at = new Date().toISOString()
+        koFlow(s.bundle, slot)
+        byes++
+      } else {
+        slot.team_a_id = pr.a
+        slot.team_b_id = pr.b
+        koFlow(s.bundle, slot)
+        filled++
+      }
+    }
+    save(s)
+    return { matches: filled, byes }
+  },
+
+  unseedBracket(eventId: string) {
+    const s = load()
+    const ko = s.bundle.matches.filter(
+      m => m.event_id === eventId && m.bracket_key != null)
+    if (ko.some(m => m.score_a > 0 || m.score_b > 0)) throw new Error('BRACKET_IN_PLAY')
+    for (const m of ko) {
+      m.team_a_id = null; m.team_b_id = null; m.court_id = null; m.winner_id = null
+      m.score_a = 0; m.score_b = 0; m.status = 'scheduled'
+      m.started_at = null; m.finished_at = null; m.duration_seconds = null
+    }
+    save(s)
   },
 
   moveMatch(matchId: string, dir: 'up' | 'down') {

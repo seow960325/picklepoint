@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   useCompetition, teamName, teamSideName, liveOnCourt, nextOnCourt, results, standings,
-  eventOf, duelTally, duelPods,
+  eventOf, duelTally, duelPods, groupStandings, bracketRounds, bracketSeeded, isKoMatch,
 } from '../lib/store'
 import { displayScores } from '../lib/scoring'
 import type { Bundle, EventCfg, Match } from '../lib/types'
@@ -10,7 +10,7 @@ import { Screen, Pill, Spinner, FullscreenButton, Flag, ThemeToggle } from '../c
 import Court from '../components/Court'
 import { IS_DEMO, demo } from '../lib/api'
 
-type Tab = 'live' | 'schedule' | 'standings' | 'results'
+type Tab = 'live' | 'schedule' | 'standings' | 'results' | 'bracket'
 
 export default function Board() {
   const { code } = useParams()
@@ -100,7 +100,9 @@ export default function Board() {
         </div>
 
         <div className="mt-3 flex gap-1 overflow-x-auto lg:mt-4 lg:gap-2">
-          {(['live', 'schedule', 'standings', 'results'] as Tab[]).map(t => (
+          {((bundle.events.some(e => e.format === 'groups_ko')
+              ? ['live', 'schedule', 'standings', 'bracket', 'results']
+              : ['live', 'schedule', 'standings', 'results']) as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider lg:px-4 lg:py-2 lg:text-sm ${
                 tab === t ? 'bg-brand text-brand-fg' : 'text-fg-muted'}`}>
@@ -113,6 +115,7 @@ export default function Board() {
       {tab === 'live' && <LiveGrid b={bundle} code={code!} tv={false} />}
       {tab === 'schedule' && <Schedule b={bundle} />}
       {tab === 'standings' && <Standings b={bundle} />}
+      {tab === 'bracket' && <BracketView b={bundle} />}
       {tab === 'results' && <Results b={bundle} code={code!} />}
 
       {IS_DEMO && (
@@ -348,6 +351,82 @@ function DuelBreakdown({ b, ev }: { b: Bundle; ev: EventCfg }) {
   )
 }
 
+// --------------------------------------------------------------- bracket
+function BracketView({ b }: { b: Bundle }) {
+  const ev = b.events.find(e => e.format === 'groups_ko')
+  if (!ev) return null
+  const rounds = bracketRounds(b, ev.id)
+  const seeded = bracketSeeded(b, ev.id)
+
+  if (!seeded) {
+    const left = b.matches.filter(
+      m => m.event_id === ev.id && !isKoMatch(m) && m.status !== 'finished').length
+    return (
+      <div className="p-6 text-center text-sm text-fg-muted">
+        <div className="font-display text-lg font-bold tracking-wide text-fg">
+          Bracket not drawn yet
+        </div>
+        <p className="mx-auto mt-2 max-w-md">
+          {left > 0
+            ? `${left} group match${left > 1 ? 'es' : ''} still to play. Once the group
+               stage finishes, the organizer locks the tables and the knockout draw
+               appears here.`
+            : 'The group stage is complete — waiting for the organizer to lock the tables.'}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex gap-3 overflow-x-auto p-3">
+      {rounds.map(r => (
+        <div key={r.round} className="min-w-[15rem] flex-1 shrink-0">
+          <div className="mb-2 text-center text-[10px] font-bold uppercase tracking-widest text-fg-subtle">
+            {r.round}
+          </div>
+          <div className="flex h-full flex-col justify-around gap-2">
+            {r.matches.map(m => {
+              const bye = m.team_b_id == null && m.team_a_id != null
+              return (
+                <div key={m.id}
+                  className={`overflow-hidden rounded-xl border text-sm ${
+                    m.status === 'live' ? 'border-brand' : 'border-line'}`}>
+                  <BracketSide b={b} teamId={m.team_a_id} score={m.score_a}
+                    won={m.winner_id != null && m.winner_id === m.team_a_id}
+                    played={m.status === 'finished' && !bye} />
+                  <div className="h-px bg-line" />
+                  {bye
+                    ? <div className="px-2.5 py-1.5 text-xs italic text-fg-subtle">bye</div>
+                    : <BracketSide b={b} teamId={m.team_b_id} score={m.score_b}
+                        won={m.winner_id != null && m.winner_id === m.team_b_id}
+                        played={m.status === 'finished'} />}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function BracketSide(
+  { b, teamId, score, won, played }:
+  { b: Bundle; teamId: string | null; score: number; won: boolean; played: boolean },
+) {
+  return (
+    <div className={`flex items-center justify-between gap-2 px-2.5 py-1.5 ${
+      won ? 'bg-surface font-bold text-fg' : 'text-fg-muted'}`}>
+      <span className="flex min-w-0 items-center">
+        {teamId && <Flag name={teamSideName(b, teamId)}
+          className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />}
+        <span className="truncate">{teamId ? teamName(b, teamId) : '—'}</span>
+      </span>
+      {played && <span className="tabular shrink-0">{score}</span>}
+    </div>
+  )
+}
+
 // ------------------------------------------------------------- standings
 function Standings({ b }: { b: Bundle }) {
   return (
@@ -361,7 +440,10 @@ function Standings({ b }: { b: Bundle }) {
             </div>
           )
         }
-        const pools = standings(b, ev.id)
+        // a quarter-final win must not leak into the group table that produced
+        // the quarter-finalists, so groups_ko reads group matches only
+        const pools = ev.format === 'groups_ko'
+          ? groupStandings(b, ev.id) : standings(b, ev.id)
         return (
           <div key={ev.id}>
             <div className="mb-2 font-display text-lg font-bold tracking-wide">{ev.name}</div>

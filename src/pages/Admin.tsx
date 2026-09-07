@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useCompetition, teamName, teamSideName } from '../lib/store'
+import {
+  useCompetition, teamName, teamSideName,
+  groupStandings, groupStageComplete, bracketSeeded, qualifiers, bracketRounds,
+} from '../lib/store'
 import * as api from '../lib/api'
 import {
   buildDraw, buildDuelDraw, defaultSwitchAt, validateRules, validateDuelSquads,
+  seedBracket, nextPowerOfTwo,
   type DraftTeam, type DuelTeam,
 } from '../lib/draw'
 import { Screen, Spinner, ThemeToggle } from '../components/ui'
@@ -11,7 +15,7 @@ import { Flag } from '../components/ui'
 import { Field, Stepper, Choice, Warn, input, inputFull } from '../components/form'
 
 const tokKey = (code: string) => `pp.admin.${code}`
-type Tab = 'competition' | 'scoring' | 'teams' | 'courts' | 'schedule'
+type Tab = 'competition' | 'scoring' | 'teams' | 'courts' | 'schedule' | 'bracket'
 
 export default function Admin() {
   const { code } = useParams()
@@ -84,6 +88,8 @@ function Panel({ bundle, token, code, reload, onLogout }: {
   }
 
   const ev = bundle.events[0]
+  const tabs: Tab[] = ['competition', 'scoring', 'teams', 'courts', 'schedule',
+    ...(ev?.format === 'groups_ko' ? ['bracket' as Tab] : [])]
 
   return (
     <div className="flex min-h-screen bg-canvas">
@@ -94,7 +100,7 @@ function Panel({ bundle, token, code, reload, onLogout }: {
           code <span className="font-bold text-brand-ink">{code}</span>
         </div>
         <nav className="space-y-1">
-          {(['competition','scoring','teams','courts','schedule'] as Tab[]).map(t => (
+          {tabs.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold capitalize ${
                 tab === t ? 'bg-brand text-brand-fg' : 'text-fg-muted hover:text-fg'}`}>
@@ -112,7 +118,7 @@ function Panel({ bundle, token, code, reload, onLogout }: {
 
       <div className="min-w-0 flex-1 overflow-y-auto p-6">
         <div className="mb-4 flex gap-1 overflow-x-auto md:hidden">
-          {(['competition','scoring','teams','courts','schedule'] as Tab[]).map(t => (
+          {tabs.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold uppercase ${
                 tab === t ? 'bg-brand text-brand-fg' : 'text-fg-muted'}`}>{t}</button>
@@ -128,6 +134,7 @@ function Panel({ bundle, token, code, reload, onLogout }: {
         {tab === 'courts' && <CourtsTab bundle={bundle} token={token} run={run} secrets={secrets}
           refreshSecrets={() => api.adminBundle(token).then(setSecrets)} />}
         {tab === 'schedule' && <ScheduleTab bundle={bundle} ev={ev} token={token} run={run} />}
+        {tab === 'bracket' && <BracketTab bundle={bundle} ev={ev} token={token} run={run} />}
       </div>
     </div>
   )
@@ -349,6 +356,141 @@ function CourtRow({ c, token, run, pin, after }: any) {
   )
 }
 
+// --------------------------------------------------------------- bracket
+/** groups_ko only. Shows the group tables, who qualifies, and the one action
+ *  that closes the group stage: locking the tables and seeding the bracket.
+ *  Deliberately manual — an auto-seed on the last group result would bake in
+ *  a mis-scored match before anyone noticed. */
+function BracketTab({ bundle, ev, token, run }: any) {
+  const advance = ev.advance_per_group ?? 2
+  const complete = groupStageComplete(bundle, ev.id)
+  const seeded = bracketSeeded(bundle, ev.id)
+  const tables = groupStandings(bundle, ev.id)
+  const rounds = bracketRounds(bundle, ev.id)
+
+  const groupIds = qualifiers(bundle, ev.id, advance)
+  const flat = groupIds.flat()
+  const size = nextPowerOfTwo(flat.length)
+  const pairs = seedBracket(groupIds, size)
+  const firstRound = rounds[0]
+
+  const lock = () => run(async () => {
+    await api.adminSeedBracket(token, ev.id, pairs.map((pr, i) => ({
+      key: firstRound.matches[i]?.bracket_key ?? '',
+      a: pr[0], b: pr[1],
+    })))
+  }, 'Bracket seeded — knockout matches are on court')
+
+  const unlock = () => run(
+    () => api.adminUnseedBracket(token, ev.id),
+    'Bracket cleared — fix the group results and seed again')
+
+  const nm = (id: string | null) => id ? teamName(bundle, id) : null
+
+  return (
+    <div className="max-w-3xl space-y-5">
+      <H>Bracket</H>
+
+      {!complete && (
+        <div className="rounded-xl border border-line bg-surface p-4 text-sm text-fg-muted">
+          The group stage is still running. The bracket unlocks once every group
+          match is finished — until then the knockout slots stay empty and off-court.
+        </div>
+      )}
+
+      {/* group tables */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        {Object.keys(tables).sort().map(g => (
+          <div key={g} className="rounded-xl border border-line bg-surface p-3">
+            <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
+              Group {g}
+            </div>
+            <table className="w-full text-sm">
+              <tbody>
+                {tables[g].map((r: any, i: number) => (
+                  <tr key={r.team.id}
+                    className={i < advance ? 'font-semibold text-fg' : 'text-fg-subtle'}>
+                    <td className="py-0.5 pr-2 tabular">{i + 1}</td>
+                    <td className="w-full truncate py-0.5">{r.team.name}</td>
+                    <td className="py-0.5 pl-2 text-right tabular">{r.won}W</td>
+                    <td className="py-0.5 pl-2 text-right tabular">
+                      {r.diff > 0 ? '+' : ''}{r.diff}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+
+      {/* the draw that will be written */}
+      {complete && !seeded && firstRound && (
+        <div className="rounded-xl border border-line bg-surface p-4">
+          <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
+            {firstRound.round} — this is what will be written
+          </div>
+          <ul className="space-y-1 text-sm">
+            {pairs.map((pr, i) => (
+              <li key={i} className="flex justify-between gap-3 border-b border-line/60 pb-1">
+                <span>{nm(pr[0]) ?? '—'}</span>
+                <span className="shrink-0 text-fg-subtle">
+                  {pr[1] ? 'vs' : 'bye'}
+                </span>
+                <span className="text-right">{nm(pr[1]) ?? '—'}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-xs text-fg-subtle">
+            Top {advance} from each group, seeded so the group winners are kept apart
+            and cannot meet a team from their own group in round one. Byes go to the
+            highest seeds. Nothing is written until you press the button.
+          </p>
+          <Save label="LOCK GROUPS & DRAW BRACKET" onClick={lock} />
+        </div>
+      )}
+
+      {/* the live bracket */}
+      {seeded && (
+        <div className="space-y-3">
+          {rounds.map(r => (
+            <div key={r.round} className="rounded-xl border border-line bg-surface p-3">
+              <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
+                {r.round}
+              </div>
+              <ul className="space-y-1 text-sm">
+                {r.matches.map((m: any) => (
+                  <li key={m.id} className="flex justify-between gap-3">
+                    <span className={m.winner_id === m.team_a_id ? 'font-semibold' : ''}>
+                      {nm(m.team_a_id) ?? '—'}
+                    </span>
+                    <span className="shrink-0 tabular text-fg-subtle">
+                      {m.status === 'finished' ? `${m.score_a}–${m.score_b}`
+                        : m.team_b_id == null && m.team_a_id != null ? 'bye' : 'vs'}
+                    </span>
+                    <span className={`text-right ${m.winner_id === m.team_b_id ? 'font-semibold' : ''}`}>
+                      {nm(m.team_b_id) ?? '—'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          <button onClick={unlock}
+            className="text-xs text-fg-subtle underline underline-offset-4">
+            clear the bracket and re-draw
+          </button>
+          <p className="text-xs text-fg-subtle">
+            Only possible while no knockout match has been scored. Use it if a group
+            result was wrong and the qualifiers changed.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
 function ScheduleTab({ bundle, ev, token, run }: any) {
   const isDuel = ev.format === 'duel'
   const teams = bundle.teams.filter((t: any) => t.event_id === ev.id)
@@ -440,10 +582,13 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
 const H = ({ children }: any) =>
   <h1 className="font-display text-2xl font-bold tracking-wide">{children}</h1>
 
-const Save = ({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) => (
+const Save = (
+  { onClick, disabled, label }:
+  { onClick: () => void; disabled?: boolean; label?: string },
+) => (
   <button onClick={onClick} disabled={disabled}
     className="rounded-xl bg-brand px-6 py-2.5 font-display font-bold text-brand-fg disabled:opacity-30">
-    SAVE
+    {label ?? 'SAVE'}
   </button>
 )
 
