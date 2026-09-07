@@ -7,10 +7,14 @@ import {
   type DraftTeam, type DuelTeam,
 } from '../lib/draw'
 import { rememberCode } from '../lib/store'
-import { Section, Field, Stepper, Choice, Warn, input, inputFull } from '../components/form'
+import { Section, Field, Stepper, Choice, Select, Warn, input, inputFull } from '../components/form'
 
 const today = () => new Date().toISOString().slice(0, 10)
 const pin4 = () => String(Math.floor(Math.random() * 10000)).padStart(4, '0')
+const CATEGORY_PRESETS = [
+  'Mixed Doubles', "Men's Doubles", "Women's Doubles",
+  "Men's Singles", "Women's Singles", 'Open / Team Event',
+]
 type Format = 'round_robin' | 'duel' | 'groups_ko'
 
 export default function NewCompetition() {
@@ -37,10 +41,27 @@ export default function NewCompetition() {
   const [teamText, setTeamText] = useState('')
   const [poolCount, setPoolCount] = useState(1)
 
-  // groups_ko mode
+  // groups_ko mode — count picked first, then one labelled slot per team,
+  // so it's obvious at a glance how many are in vs still needed (unlike a
+  // single free-text box, where the count is easy to lose track of)
   const [groupSize, setGroupSize] = useState(4)
   const [advancePerGroup, setAdvancePerGroup] = useState(2)
   const [thirdPlace, setThirdPlace] = useState(true)
+  const [koTeamCount, setKoTeamCount] = useState(16)
+  const [koTeamNames, setKoTeamNames] = useState<string[]>(
+    () => Array.from({ length: 16 }, () => ''))
+
+  const setKoCount = (n: number) => {
+    setKoTeamCount(n)
+    setKoTeamNames(prev => {
+      const next = prev.slice(0, n)
+      while (next.length < n) next.push('')
+      return next
+    })
+  }
+  const setKoTeamName = (i: number, v: string) => setKoTeamNames(prev => {
+    const next = [...prev]; next[i] = v; return next
+  })
 
   // duel mode
   const [sideAName, setSideAName] = useState('Cambodia')
@@ -77,7 +98,7 @@ export default function NewCompetition() {
     ? validateDuelSquads(sideANames.length, sideBNames.length) : null
 
   const koNames = useMemo(
-    () => teamText.split('\n').map(s => s.trim()).filter(Boolean), [teamText])
+    () => koTeamNames.map(s => s.trim()).filter(Boolean), [koTeamNames])
   const koError = format === 'groups_ko'
     ? validateGroupKo(koNames.length, groupSize, advancePerGroup) : null
   const ko = useMemo(
@@ -214,7 +235,7 @@ export default function NewCompetition() {
               </p>
             )}
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field label="Competition name" className="sm:col-span-2">
               <input className={inputFull} value={name} onChange={e => setName(e.target.value)}
                 placeholder="Puchong Open 2026" />
@@ -227,8 +248,17 @@ export default function NewCompetition() {
                 placeholder="IOI Mall Courts" />
             </Field>
             <Field label="Event / category">
-              <input className={inputFull} value={eventName} onChange={e => setEventName(e.target.value)}
-                placeholder="Mixed Doubles" />
+              <Select
+                value={CATEGORY_PRESETS.includes(eventName) ? eventName : '__custom__'}
+                onChange={v => setEventName(v === '__custom__' ? '' : v)}
+                options={[
+                  ...CATEGORY_PRESETS.map(c => ({ label: c, value: c })),
+                  { label: 'Custom…', value: '__custom__' },
+                ]} />
+              {!CATEGORY_PRESETS.includes(eventName) && (
+                <input className={`${inputFull} mt-2`} value={eventName}
+                  onChange={e => setEventName(e.target.value)} placeholder="Type a category name" />
+              )}
             </Field>
           </div>
         </Section>
@@ -240,7 +270,7 @@ export default function NewCompetition() {
                 options={[{ label: 'to 11', value: 11 }, { label: 'to 15', value: 15 }, { label: 'to 21', value: 21 }]} />
             </Field>
           </div>
-          <div className="grid gap-4 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Field label="Winning score"><Stepper value={target} min={1} max={99}
               onChange={v => { setTarget(v); setSwitchAt(defaultSwitchAt(v)) }} /></Field>
             <Field label="Win by"><Stepper value={winBy} min={1} max={5} onChange={setWinBy} /></Field>
@@ -284,7 +314,7 @@ export default function NewCompetition() {
 
         {format === 'round_robin' ? (
           <Section n={4} title="Teams" hint="one per line">
-            <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto]">
               <Field label={`Team names — ${teams.length} entered`}>
                 <textarea className={`${inputFull} h-44 resize-y font-mono text-[13px] leading-relaxed`}
                   value={teamText} onChange={e => setTeamText(e.target.value)}
@@ -311,7 +341,7 @@ export default function NewCompetition() {
           </Section>
         ) : format === 'duel' ? (
           <Section n={4} title="Sides" hint="one team per line, both sides equal & even">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Side A name">
                 <input className={inputFull} value={sideAName} onChange={e => setSideAName(e.target.value)}
                   placeholder="Cambodia" />
@@ -348,27 +378,33 @@ export default function NewCompetition() {
             )}
           </Section>
         ) : (
-          <Section n={4} title="Teams & groups" hint="one team per line — the draw is random">
-            <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
-              <Field label={`Team names — ${koNames.length} entered`}>
-                <textarea className={`${inputFull} h-44 resize-y font-mono text-[13px] leading-relaxed`}
-                  value={teamText} onChange={e => setTeamText(e.target.value)}
-                  placeholder={'Smash Bros\nDink Dynasty\nNet Ninjas\nKitchen Kings'} />
+          <Section n={4} title="Teams & groups" hint="groups are drawn at random">
+            <div className="mb-5 flex flex-wrap items-end gap-6">
+              <Field label="How many teams">
+                <Stepper value={koTeamCount} min={6} max={64} onChange={setKoCount} />
               </Field>
-              <div className="space-y-4">
-                <Field label="Teams per group">
-                  <Stepper value={groupSize} min={3} max={8} onChange={setGroupSize} />
-                </Field>
-                <Field label="Advance per group">
-                  <Stepper value={advancePerGroup} min={1} max={Math.max(1, groupSize - 1)}
-                    onChange={setAdvancePerGroup} />
-                </Field>
-                <Field label="Third-place playoff">
-                  <Choice value={thirdPlace ? 1 : 0} onChange={v => setThirdPlace(v === 1)}
-                    options={[{ label: 'Yes', value: 1 }, { label: 'No', value: 0 }]} />
-                </Field>
-              </div>
+              <Field label="Teams per group">
+                <Stepper value={groupSize} min={3} max={8} onChange={setGroupSize} />
+              </Field>
+              <Field label="Advance per group">
+                <Stepper value={advancePerGroup} min={1} max={Math.max(1, groupSize - 1)}
+                  onChange={setAdvancePerGroup} />
+              </Field>
+              <Field label="Third-place playoff">
+                <Choice value={thirdPlace ? 1 : 0} onChange={v => setThirdPlace(v === 1)}
+                  options={[{ label: 'Yes', value: 1 }, { label: 'No', value: 0 }]} />
+              </Field>
             </div>
+
+            <Field label={`Team names — ${koNames.length} of ${koTeamCount} entered`}>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                {Array.from({ length: koTeamCount }, (_, i) => (
+                  <input key={i} className={inputFull} value={koTeamNames[i] ?? ''}
+                    onChange={e => setKoTeamName(i, e.target.value)}
+                    placeholder={`Team ${i + 1}`} />
+                ))}
+              </div>
+            </Field>
 
             {koError && <Warn>{koError}</Warn>}
             {ko && (

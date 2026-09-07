@@ -183,7 +183,7 @@ function ScoringTab({ ev, token, run }: any) {
         <input className={`${inputFull} max-w-sm`} value={name} onChange={e => setName(e.target.value)} />
       </Field>
       {isDuel && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Side A name">
             <input className={inputFull} value={aName} onChange={e => setAName(e.target.value)} />
           </Field>
@@ -196,7 +196,7 @@ function ScoringTab({ ev, token, run }: any) {
         <Choice value={t} onChange={(v: number) => { setT(v); setSw(defaultSwitchAt(v)); setCap(v + 2) }}
           options={[{ label: 'to 11', value: 11 }, { label: 'to 15', value: 15 }, { label: 'to 21', value: 21 }]} />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Field label="Winning score">
           <Stepper value={t} min={1} max={99} onChange={v => { setT(v); setSw(defaultSwitchAt(v)) }} />
         </Field>
@@ -239,7 +239,7 @@ function TeamsTab({ bundle, ev, token, run }: any) {
       <H>Teams</H>
 
       {isDuel ? (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-ink">
               {ev.side_a_name || 'Side A'} — {sideA.length}
@@ -399,7 +399,7 @@ function BracketTab({ bundle, ev, token, run }: any) {
       )}
 
       {/* group tables */}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {Object.keys(tables).sort().map(g => (
           <div key={g} className="rounded-xl border border-line bg-surface p-3">
             <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">

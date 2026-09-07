@@ -67,6 +67,28 @@ export const Choice = ({ options, value, onChange }: {
   </div>
 )
 
+/** A real native <select> — distinct from Choice's chip row. Better for a
+ *  longer options list (event categories, and similar) on a small phone
+ *  screen where a row of chips would wrap awkwardly or run off-screen. */
+export const Select = ({ options, value, onChange, className = '' }: {
+  options: Array<{ label: string; value: string }>
+  value: string
+  onChange: (v: string) => void
+  className?: string
+}) => (
+  <div className="relative">
+    <select
+      className={`${inputFull} ${className} appearance-none pr-8`}
+      value={value} onChange={e => onChange(e.target.value)}>
+      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+    <svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+      fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  </div>
+)
+
 export const Warn = ({ children }: { children: ReactNode }) =>
   <div className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
     {children}
