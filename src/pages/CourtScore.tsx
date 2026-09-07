@@ -204,6 +204,11 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
   const [errMsg, setErrMsg] = useState(lastQueueError())
   const looksLikeAuth = !!errMsg && /token|pin|unauthoriz|expired|permission|session/i.test(errMsg)
   const [ignoreRotate, setIgnoreRotate] = useState(false)
+
+  // session expired → auto-pop the PIN modal silently (no error shown)
+  useEffect(() => {
+    if (looksLikeAuth) onRelogin()
+  }, [looksLikeAuth])
   const landscape = useLandscape()
   const history = useRef<[number, number][]>([])
   const prevToken = useRef(token)
@@ -351,26 +356,18 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 PREV
               </Link>
             )}
-            {looksLikeAuth ? (
-              <button type="button" onClick={onRelogin}
-                title={`Saving keeps failing: "${errMsg}" — this looks like the scorer login expired. Tap to re-enter the PIN.`}
-                className="animate-pulse font-bold text-red-400 underline underline-offset-2">
-                ⚠ {pending()} STUCK — RE-ENTER PIN
-              </button>
-            ) : (
-              <button type="button" onClick={stuck ? retrySync : undefined} disabled={!stuck}
+            <button type="button" onClick={stuck && !looksLikeAuth ? retrySync : undefined} disabled={!stuck || looksLikeAuth}
                 title={stuck
                   ? `Some points keep failing to reach the server${errMsg ? `: "${errMsg}"` : ''} — tap to retry now`
                   : offline ? 'Points saved on this device, waiting to reach the server' : 'All points saved to the server'}
-                className={stuck ? 'animate-pulse font-bold text-red-400 underline underline-offset-2'
+                className={stuck && !looksLikeAuth ? 'animate-pulse font-bold text-red-400 underline underline-offset-2'
                   : offline ? 'text-amber-400' : 'text-fg-subtle'}>
-                {stuck ? `⚠ ${pending()} STUCK — TAP TO RETRY` : offline ? `⚠ ${pending()} to sync` : '● synced'}
+                {stuck && !looksLikeAuth ? `⚠ ${pending()} STUCK — TAP TO RETRY` : offline ? `⚠ ${pending()} to sync` : '● synced'}
               </button>
-            )}
           </div>
         </div>
 
-        {(stuck || looksLikeAuth) && errMsg && (
+        {stuck && !looksLikeAuth && errMsg && (
           <div className="shrink-0 truncate border-b border-red-500/30 bg-red-500/10 px-3 py-1 text-[11px] text-red-400">
             Save failed: {errMsg}
           </div>
