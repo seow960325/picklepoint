@@ -131,7 +131,7 @@ export default function Board() {
 function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
   return (
     <div className={tv ? '' : 'p-3 lg:p-5'}>
-      <div className={`grid gap-3 lg:gap-5 ${tv ? 'grid-cols-3' : 'grid-cols-2 lg:grid-cols-3'}`}>
+      <div className={`grid gap-3 lg:gap-5 ${tv ? 'grid-cols-3' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
         {b.courts.map(ct => {
           const m = liveOnCourt(b, ct.id)
           const up = nextOnCourt(b, ct.id)
@@ -151,7 +151,7 @@ function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
 
               {up && (
                 <div className="mt-3 border-t border-line pt-2 text-[11px] text-fg-muted lg:mt-4 lg:pt-3 lg:text-sm">
-                  Next: {teamName(b, up.team_a_id)} vs {teamName(b, up.team_b_id)}
+                  Next: <span className="truncate">{teamName(b, up.team_a_id)}</span> vs <span className="truncate">{teamName(b, up.team_b_id)}</span>
                 </div>
               )}
             </Link>
@@ -164,7 +164,7 @@ function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
           <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-accent">
             On deck
           </div>
-          <div className={`grid gap-3 ${tv ? 'grid-cols-3' : 'grid-cols-2 lg:grid-cols-3'}`}>
+          <div className={`grid gap-3 ${tv ? 'grid-cols-3' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
             {b.courts.map(ct => {
               const ups = b.matches
                 .filter(mm => mm.court_id === ct.id && (mm.status === 'scheduled' || mm.status === 'on_deck'))
@@ -182,13 +182,13 @@ function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
                         <div key={mm.id} className="grid grid-cols-[1.1rem_1fr_1.75rem_1fr] items-center gap-1.5 py-1.5 text-sm">
                           <span className="text-center font-display text-xs font-bold text-fg-subtle">{i + 1}</span>
                           <span className="flex items-center justify-end gap-1.5 text-fg-muted">
-                            <span className="w-16 truncate text-right">{teamName(b, mm.team_a_id)}</span>
+                            <span className="max-w-[4.5rem] truncate text-right sm:max-w-[5rem]">{teamName(b, mm.team_a_id)}</span>
                             <Flag name={teamSideName(b, mm.team_a_id)} className="h-3.5 w-auto shrink-0 rounded-[1px]" />
                           </span>
                           <span className="text-center text-xs text-fg-subtle">vs</span>
                           <span className="flex items-center justify-start gap-1.5 text-fg-muted">
                             <Flag name={teamSideName(b, mm.team_b_id)} className="h-3.5 w-auto shrink-0 rounded-[1px]" />
-                            <span className="w-16 truncate text-left">{teamName(b, mm.team_b_id)}</span>
+                            <span className="max-w-[4.5rem] truncate text-left sm:max-w-[5rem]">{teamName(b, mm.team_b_id)}</span>
                           </span>
                         </div>
                       ))}
