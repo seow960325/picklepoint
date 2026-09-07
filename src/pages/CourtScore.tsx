@@ -330,27 +330,31 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
 
   if (!landscape && !ignoreRotate) return <RotatePrompt onIgnore={() => setIgnoreRotate(true)} />
 
+  const isPortrait = !landscape
+
   return (
-    <div className="fixed inset-0 flex bg-canvas no-select"
+    <div className={`fixed inset-0 flex ${isPortrait ? 'flex-col' : ''} bg-canvas no-select`}
       style={{
         paddingTop: 'env(safe-area-inset-top)',
         paddingBottom: 'env(safe-area-inset-bottom)',
         paddingLeft: 'env(safe-area-inset-left)',
         paddingRight: 'env(safe-area-inset-right)',
       }}>
-      {/* court fills everything left of the control rail */}
+      {/* header + court area */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex shrink-0 items-center justify-between gap-2 px-3 py-2">
+        <div className={`flex shrink-0 items-center justify-between gap-2 px-3 ${isPortrait ? 'py-1.5' : 'py-2'}`}>
           <Link to={`/c/${code}`}
-            className="flex shrink-0 items-center gap-1 rounded-xl border border-line bg-surface/80 px-4 py-2 font-display text-sm font-bold tracking-wide text-fg active:bg-surface-2">
+            className={`flex shrink-0 items-center gap-1 rounded-xl border border-line bg-surface/80 font-display font-bold tracking-wide text-fg active:bg-surface-2 ${
+              isPortrait ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm'}`}>
             ← BOARD
           </Link>
-          <div className="flex min-w-0 items-baseline gap-2 truncate font-display font-bold tracking-widest text-fg-muted">
-            <span className="text-base sm:text-lg">COURT {courtNo} · MATCH {matchNo}</span>
-            {matchPoint && <span className="shrink-0 animate-pulse text-sm text-brand-ink">MATCH POINT</span>}
+          <div className={`flex min-w-0 items-baseline gap-2 truncate font-display font-bold tracking-widest text-fg-muted ${
+            isPortrait ? 'text-sm' : ''}`}>
+            <span className={isPortrait ? 'text-sm' : 'text-base sm:text-lg'}>CT{courtNo} · M{matchNo}</span>
+            {matchPoint && <span className="shrink-0 animate-pulse text-sm text-brand-ink">MATCH PT</span>}
           </div>
           <div className="flex shrink-0 items-center gap-2.5 text-[11px]">
-            <FullscreenButton className="h-5 w-5 shrink-0 text-fg-muted active:text-fg-muted" />
+            {!isPortrait && <FullscreenButton className="h-5 w-5 shrink-0 text-fg-muted active:text-fg-muted" />}
             {recentDone && (
               <Link to={`/c/${code}/match/${recentDone.id}`} className="text-fg-muted underline underline-offset-2">
                 PREV
@@ -362,7 +366,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                   : offline ? 'Points saved on this device, waiting to reach the server' : 'All points saved to the server'}
                 className={stuck && !looksLikeAuth ? 'animate-pulse font-bold text-red-400 underline underline-offset-2'
                   : offline ? 'text-amber-400' : 'text-fg-subtle'}>
-                {stuck && !looksLikeAuth ? `⚠ ${pending()} STUCK — TAP TO RETRY` : offline ? `⚠ ${pending()} to sync` : '● synced'}
+                {stuck && !looksLikeAuth ? `⚠ ${pending()} STUCK` : offline ? `⚠ ${pending()} to sync` : '● synced'}
               </button>
           </div>
         </div>
@@ -373,27 +377,49 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
           </div>
         )}
 
-        <div className="relative min-h-0 flex-1 px-2 pb-2">
-          <Court
-            leftName={leftName} rightName={rightName}
-            leftScore={s.left} rightScore={s.right}
-            leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
-            onTap={score} disabled={done}
-          />
-
-          {/* SWAP left/right — top centre of the court, persists to the board */}
-          <button onClick={swap}
-            className="absolute left-1/2 top-0.5 -translate-x-1/2 rounded-lg border border-line bg-surface/90 px-3 py-1 font-display text-xs font-bold tracking-wide text-fg-muted active:scale-95">
-            ⇄ SWAP
-          </button>
-
+        {/* court area — portrait: constrained 2:1 centred; landscape: fills available space */}
+        <div className={isPortrait
+          ? 'relative flex min-h-0 flex-1 items-center justify-center px-3'
+          : 'relative min-h-0 flex-1 px-2 pb-2'}>
+          {isPortrait ? (
+            <div className="relative w-full" style={{ maxHeight: '100%', aspectRatio: '2' }}>
+              <Court
+                leftName={leftName} rightName={rightName}
+                leftScore={s.left} rightScore={s.right}
+                leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
+                onTap={score} disabled={done}
+              />
+              <button onClick={swap}
+                className="absolute left-1/2 -bottom-7 -translate-x-1/2 rounded-lg border border-line bg-surface/90 px-3 py-1 font-display text-xs font-bold tracking-wide text-fg-muted active:scale-95">
+                ⇄ SWAP
+              </button>
+            </div>
+          ) : (
+            <>
+              <Court
+                leftName={leftName} rightName={rightName}
+                leftScore={s.left} rightScore={s.right}
+                leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
+                onTap={score} disabled={done}
+              />
+              <button onClick={swap}
+                className="absolute left-1/2 top-0.5 -translate-x-1/2 rounded-lg border border-line bg-surface/90 px-3 py-1 font-display text-xs font-bold tracking-wide text-fg-muted active:scale-95">
+                ⇄ SWAP
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* control rail */}
-      <div className="flex w-[74px] shrink-0 flex-col items-center justify-center gap-2.5 border-l border-line px-2 py-2">
+      {/* control rail (landscape: right column) / control bar (portrait: bottom row) */}
+      <div className={isPortrait
+        ? 'flex shrink-0 items-center justify-center gap-3 border-t border-line px-4 py-2.5'
+        : 'flex w-[74px] shrink-0 flex-col items-center justify-center gap-2.5 border-l border-line px-2 py-2'}>
         <button onClick={undo} aria-label="Undo"
-          className="flex h-20 w-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-line bg-surface text-fg-muted active:bg-surface-2">
+          className={`rounded-2xl border border-line bg-surface text-fg-muted active:bg-surface-2 ${
+            isPortrait
+              ? 'flex h-12 flex-1 items-center justify-center gap-2'
+              : 'flex h-20 w-full flex-col items-center justify-center gap-1.5'}`}>
           <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor"
             strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 14 4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-2" />
@@ -401,10 +427,13 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
           <span className="font-display text-xs font-bold tracking-wide">UNDO</span>
         </button>
         <button onClick={reset} aria-label="Reset"
-          className={`flex h-20 w-full flex-col items-center justify-center gap-1.5 rounded-2xl border active:bg-surface-2 ${
+          className={`rounded-2xl border active:bg-surface-2 ${
             confirmingReset
               ? 'border-red-500 bg-red-500/20 text-red-300'
-              : 'border-line bg-surface text-fg-muted'}`}>
+              : 'border-line bg-surface text-fg-muted'} ${
+            isPortrait
+              ? 'flex h-12 flex-1 items-center justify-center gap-2'
+              : 'flex h-20 w-full flex-col items-center justify-center gap-1.5'}`}>
           <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor"
             strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 12a9 9 0 1 0 2.6-6.4L3 8" /><path d="M3 3v5h5" />
@@ -414,7 +443,10 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
           </span>
         </button>
         <Link to={`/c/${code}/match/${m.id}`} aria-label="Point log"
-          className="flex h-20 w-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-line bg-surface text-fg-muted active:bg-surface-2">
+          className={`rounded-2xl border border-line bg-surface text-fg-muted active:bg-surface-2 ${
+            isPortrait
+              ? 'flex h-12 flex-1 items-center justify-center gap-2'
+              : 'flex h-20 w-full flex-col items-center justify-center gap-1.5'}`}>
           <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor"
             strokeWidth="2" strokeLinecap="round">
             <path d="M9 6h11M9 12h11M9 18h11" />
@@ -429,25 +461,28 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
       {showSwitch && (
         <button onClick={() => setShowSwitch(false)}
           className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-brand px-8 text-brand-fg">
-          <div className="font-display text-6xl font-bold leading-none tracking-tight">SWITCH ENDS</div>
-          <div className="text-center text-base font-semibold">
+          <div className={`font-display font-bold leading-none tracking-tight ${
+            isPortrait ? 'text-4xl' : 'text-6xl'}`}>SWITCH ENDS</div>
+          <div className={`text-center font-semibold ${isPortrait ? 'text-sm' : 'text-base'}`}>
             Score reached {rules.switch_at}. Players change sides —
             the court has flipped to match.
           </div>
-          <div className="rounded-2xl bg-canvas/15 px-8 py-3 font-display text-xl font-bold">
+          <div className={`rounded-2xl bg-canvas/15 font-display font-bold ${
+            isPortrait ? 'px-6 py-2.5 text-lg' : 'px-8 py-3 text-xl'}`}>
             TAP TO CONTINUE
           </div>
         </button>
       )}
 
       {done && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center gap-10 bg-canvas px-10">
-          <div className="w-full max-w-sm space-y-2">
+        <div className={`absolute inset-0 z-30 flex items-center justify-center bg-canvas ${
+          isPortrait ? 'flex-col gap-6 px-8' : 'gap-10 px-10'}`}>
+          <div className={`space-y-2 ${isPortrait ? 'w-full max-w-xs' : 'w-full max-w-sm'}`}>
             <div className="mb-3 font-display text-xl font-bold tracking-widest text-fg-muted">GAME</div>
             <ResultRow name={leftName} flag={sideName(leftTeamId)} score={s.left} win={s.left > s.right} />
             <ResultRow name={rightName} flag={sideName(rightTeamId)} score={s.right} win={s.right > s.left} />
           </div>
-          <div className="w-56 space-y-3">
+          <div className={`space-y-3 ${isPortrait ? 'w-full max-w-xs' : 'w-56'}`}>
             <div className="text-sm text-fg-muted">
               Both captains check the score before confirming.
             </div>
