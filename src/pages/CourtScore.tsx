@@ -11,17 +11,14 @@ import { tapPoint, tapUndo, hornEnd, chimeSwitch } from '../lib/feedback'
 import { Screen, Spinner, FullscreenButton, Flag } from '../components/ui'
 import Court from '../components/Court'
 
-const tokenKey = (courtId: string) => `pp.token.${courtId}`
-
 export default function CourtScore() {
   const { code, number } = useParams()
   const { bundle, reload } = useCompetition(code)
   const court = bundle?.courts.find(c => c.number === Number(number))
-  const [token, setToken] = useState<string | null>(
-    court ? localStorage.getItem(tokenKey(court.id)) : null)
+  const [token, setToken] = useState<string | null>(null)
   const [showRelogin, setShowRelogin] = useState(false)
 
-  useEffect(() => { if (court) setToken(localStorage.getItem(tokenKey(court.id))) }, [court?.id])
+  // no cached token — scorer must enter PIN every time they open the court
   useEffect(useWakeLockEffect, [])
 
   if (!bundle) return <Screen><Spinner /></Screen>
@@ -33,7 +30,7 @@ export default function CourtScore() {
 
   if (!token) return (
     <PinGate courtId={court.id} courtNo={court.number} code={code!}
-      onUnlock={t => { localStorage.setItem(tokenKey(court.id), t); setToken(t) }} />
+      onUnlock={t => setToken(t)} />
   )
 
   const match = liveOnCourt(bundle, court.id)
@@ -76,7 +73,7 @@ export default function CourtScore() {
         onRelogin={() => setShowRelogin(true)} />
       {showRelogin && (
         <PinModal courtId={court.id} courtNo={court.number}
-          onUnlock={t => { localStorage.setItem(tokenKey(court.id), t); setToken(t); setShowRelogin(false) }}
+          onUnlock={t => { setToken(t); setShowRelogin(false) }}
           onCancel={() => setShowRelogin(false)} />
       )}
     </>
@@ -229,7 +226,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
 
   // token changed (re-entered PIN in the modal) — resume syncing right away
   useEffect(() => {
-    if (prevToken.current !== token) { prevToken.current = token; sync() }
+    if (prevToken.current !== token) { prevToken.current = token; retryStalled(); setStuck(false); setErrMsg(undefined); sync() }
   }, [token])
 
   useEffect(() => {
