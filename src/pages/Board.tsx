@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   useCompetition, teamName, teamSideName, liveOnCourt, nextOnCourt, results, standings,
@@ -9,6 +9,7 @@ import type { Bundle, EventCfg, Match } from '../lib/types'
 import { Screen, Pill, Spinner, FullscreenButton, Flag, ThemeToggle } from '../components/ui'
 import Court from '../components/Court'
 import { IS_DEMO, demo } from '../lib/api'
+import { fullscreenSupported } from '../lib/fullscreen'
 
 type Tab = 'live' | 'schedule' | 'standings' | 'results'
 
@@ -48,23 +49,24 @@ export default function Board() {
             exit TV
           </button>
           <FullscreenButton className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-surface/70 p-1.5 text-fg-muted" />
+          <IphoneHomeTip />
         </div>
 
         {/* title */}
-        <div className="shrink-0 px-8 text-center">
-          <div className="font-display text-3xl font-bold tracking-wide sm:text-4xl">{c.name}</div>
-          {c.venue && <div className="mt-0.5 text-sm text-fg-muted">{c.venue}</div>}
+        <div className="shrink-0 px-4 text-center sm:px-8">
+          <div className="font-display text-2xl font-bold tracking-wide sm:text-3xl md:text-4xl">{c.name}</div>
+          {c.venue && <div className="mt-0.5 text-xs text-fg-muted sm:text-sm">{c.venue}</div>}
         </div>
 
         {/* big scoreboard */}
         {duelEvent && (
-          <div className="shrink-0 px-8">
+          <div className="shrink-0 px-4 sm:px-8">
             <DuelScoreboard b={bundle} ev={duelEvent} big />
           </div>
         )}
 
         {/* courts */}
-        <div className="shrink-0 px-8">
+        <div className="shrink-0 px-4 sm:px-8">
           <div className="mx-auto w-full max-w-[1600px]">
             <LiveGrid b={bundle} code={code!} tv />
           </div>
@@ -131,7 +133,7 @@ export default function Board() {
 function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
   return (
     <div className={tv ? '' : 'p-3 lg:p-5'}>
-      <div className={`grid gap-3 lg:gap-5 ${tv ? 'grid-cols-3' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+      <div className={`grid gap-3 lg:gap-5 ${tv ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
         {b.courts.map(ct => {
           const m = liveOnCourt(b, ct.id)
           const up = nextOnCourt(b, ct.id)
@@ -260,10 +262,10 @@ function Schedule({ b }: { b: Bundle }) {
 function DuelScoreboard({ b, ev, big }: { b: Bundle; ev: EventCfg; big: boolean }) {
   const t = duelTally(b, ev.id)
   const aName = ev.side_a_name || 'Side A', bName = ev.side_b_name || 'Side B'
-  const nameSz = big ? 'text-2xl sm:text-4xl' : 'text-base lg:text-2xl'
-  const scoreSz = big ? 'text-6xl sm:text-8xl' : 'text-3xl lg:text-5xl'
-  const flagSz = big ? 'h-9 sm:h-12' : 'h-5 lg:h-8'
-  const dashSz = big ? 'text-4xl sm:text-6xl' : 'text-xl lg:text-3xl'
+  const nameSz = big ? 'text-base sm:text-2xl md:text-4xl' : 'text-base lg:text-2xl'
+  const scoreSz = big ? 'text-4xl sm:text-6xl md:text-8xl' : 'text-3xl lg:text-5xl'
+  const flagSz = big ? 'h-6 sm:h-9 md:h-12' : 'h-5 lg:h-8'
+  const dashSz = big ? 'text-2xl sm:text-4xl md:text-6xl' : 'text-xl lg:text-3xl'
   return (
     <div className={`px-4 ${big ? '' : 'border-b border-line py-3 lg:py-6'}`}>
       <div className={`mb-2 text-center text-fg-subtle ${big ? 'text-sm' : 'text-xs lg:mb-3 lg:text-sm'}`}>
@@ -276,7 +278,7 @@ function DuelScoreboard({ b, ev, big }: { b: Bundle; ev: EventCfg; big: boolean 
         )}
       </div>
 
-      <div className="mx-auto flex max-w-5xl items-center justify-center gap-4 sm:gap-8 lg:gap-12">
+      <div className="mx-auto flex max-w-5xl items-center justify-center gap-2 sm:gap-4 md:gap-8 lg:gap-12">
         {/* side A */}
         <div className="flex min-w-0 flex-1 items-center justify-end gap-3 sm:gap-4">
           <Flag name={aName} className={`${flagSz} w-auto shrink-0 rounded-[2px]`} />
@@ -404,6 +406,31 @@ function Standings({ b }: { b: Bundle }) {
 }
 
 // --------------------------------------------------------------- results
+/** On iPhone Safari, the Fullscreen API is unavailable. Show a one-time
+ *  hint suggesting "Add to Home Screen" for a true fullscreen experience.
+ *  Hidden on devices that support fullscreen, inside a PWA, or after dismissed. */
+function IphoneHomeTip() {
+  const [show, setShow] = useState(false)
+  useEffect(() => {
+    const isIos = /iPhone|iPod/.test(navigator.userAgent) && !(navigator as any).standalone
+    if (isIos && !fullscreenSupported()) setShow(true)
+  }, [])
+  if (!show) return null
+  return (
+    <button onClick={() => setShow(false)}
+      className="max-w-[11rem] rounded-lg border border-line bg-surface/90 px-2.5 py-1.5 text-left text-[10px] leading-snug text-fg-muted">
+      For fullscreen: tap{' '}
+      <svg viewBox="0 0 24 24" className="inline-block h-3 w-3 align-[-2px]" fill="none" stroke="currentColor"
+        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+        <polyline points="16 6 12 2 8 6" />
+        <line x1="12" y1="2" x2="12" y2="15" />
+      </svg>{' '}
+      then <span className="font-semibold">Add to Home Screen</span>
+    </button>
+  )
+}
+
 function Results({ b, code }: { b: Bundle; code: string }) {
   const done = results(b)
   if (!done.length) return <div className="p-10 text-center text-sm text-fg-subtle">No completed matches yet.</div>
