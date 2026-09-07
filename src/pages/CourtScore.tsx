@@ -19,6 +19,7 @@ export default function CourtScore() {
   const court = bundle?.courts.find(c => c.number === Number(number))
   const [token, setToken] = useState<string | null>(
     court ? localStorage.getItem(tokenKey(court.id)) : null)
+  const [showRelogin, setShowRelogin] = useState(false)
 
   useEffect(() => { if (court) setToken(localStorage.getItem(tokenKey(court.id))) }, [court?.id])
   useEffect(useWakeLockEffect, [])
@@ -69,9 +70,16 @@ export default function CourtScore() {
   }
 
   return (
-    <Scorer key={match.id} bundle={bundle} match={match} token={token}
-      courtNo={court.number} code={code!} reload={reload}
-      onRelogin={() => { localStorage.removeItem(tokenKey(court.id)); setToken(null) }} />
+    <>
+      <Scorer key={match.id} bundle={bundle} match={match} token={token}
+        courtNo={court.number} code={code!} reload={reload}
+        onRelogin={() => setShowRelogin(true)} />
+      {showRelogin && (
+        <PinModal courtId={court.id} courtNo={court.number}
+          onUnlock={t => { localStorage.setItem(tokenKey(court.id), t); setToken(t); setShowRelogin(false) }}
+          onCancel={() => setShowRelogin(false)} />
+      )}
+    </>
   )
 }
 
@@ -133,6 +141,59 @@ function PinGate({ courtId, courtNo, code, onUnlock }: {
   )
 }
 
+// ------------------------------------------------ re-login modal (in place)
+function PinModal({ courtId, courtNo, onUnlock, onCancel }: {
+  courtId: string; courtNo: number; onUnlock: (t: string) => void; onCancel: () => void
+}) {
+  const [pin, setPin] = useState('')
+  const [err, setErr] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  const submit = async (value: string) => {
+    setBusy(true)
+    try { onUnlock(await api.unlockCourt(courtId, value)) }
+    catch { setErr(true); setPin(''); navigator.vibrate?.([60, 40, 60]) }
+    finally { setBusy(false) }
+  }
+  const press = (d: string) => {
+    setErr(false)
+    const next = (pin + d).slice(0, 4)
+    setPin(next)
+    if (next.length === 4) submit(next)
+  }
+
+  return (
+    <div className="absolute inset-0 z-40 flex items-center justify-center gap-8 bg-canvas/95 px-8">
+      <div className="text-right">
+        <div className="font-display text-3xl font-bold tracking-widest text-fg-muted">
+          COURT {courtNo}
+        </div>
+        <div className="mt-1 text-sm text-red-400">Session expired — re-enter PIN to resume</div>
+        <div className="mt-5 flex justify-end gap-3">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className={`h-3.5 w-3.5 rounded-full border-2 ${
+              err ? 'border-red-500' : pin.length > i ? 'border-brand bg-brand' : 'border-line'}`} />
+          ))}
+        </div>
+        <button type="button" onClick={onCancel} className="mt-5 text-sm text-fg-subtle underline">
+          cancel
+        </button>
+      </div>
+
+      <div className="grid w-64 grid-cols-3 gap-2.5">
+        {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((k, i) => (
+          <button key={i} disabled={!k || busy}
+            onClick={() => k === '⌫' ? setPin(p => p.slice(0, -1)) : k && press(k)}
+            className={`h-14 rounded-xl font-display text-2xl font-bold ${
+              k ? 'border border-line bg-surface active:bg-surface-2' : 'invisible'}`}>
+            {k}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ----------------------------------------------------------------- scorer
 function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
   bundle: any; match: Match; token: string; courtNo: number; code: string; reload: () => void
@@ -148,6 +209,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
   const [ignoreRotate, setIgnoreRotate] = useState(false)
   const landscape = useLandscape()
   const history = useRef<[number, number][]>([])
+  const prevToken = useRef(token)
 
   useEffect(() => { setM(match) }, [match.id, match.score_a, match.score_b, match.status, match.a_on_left])
 
@@ -164,6 +226,11 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
   }
 
   const retrySync = () => { retryStalled(); setStuck(false); setErrMsg(undefined); sync() }
+
+  // token changed (re-entered PIN in the modal) — resume syncing right away
+  useEffect(() => {
+    if (prevToken.current !== token) { prevToken.current = token; sync() }
+  }, [token])
 
   useEffect(() => {
     window.addEventListener('online', sync)

@@ -74,15 +74,9 @@ export default function Court({
           vectorEffect="non-scaling-stroke" />
       </svg>
 
-      {/* ---- tap zones (full height, whole half) ---- */}
-      <button {...half('left')} aria-label={`point ${leftName}`}
-        className={`absolute inset-y-0 left-0 w-1/2 transition-colors ${down === 'left' ? 'bg-brand/15' : ''}`} />
-      <button {...half('right')} aria-label={`point ${rightName}`}
-        className={`absolute inset-y-0 right-0 w-1/2 transition-colors ${down === 'right' ? 'bg-accent/15' : ''}`} />
-
       {/* ---- score circles + flags + names: aspect-correct overlay ---- */}
       <svg viewBox="0 0 480 240" preserveAspectRatio="xMidYMid meet"
-        className="pointer-events-none absolute inset-0 h-full w-full">
+        className="pointer-events-none absolute inset-0 h-full w-full" style={{ touchAction: 'manipulation' }}>
         <defs>
           <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="6" />
@@ -114,6 +108,10 @@ export default function Court({
         )}
         {serving === 'left' && <circle cx={CXL} cy={MIDY + R + 14} r="5" fill="#c6ff3d" />}
 
+        {/* tap zone — only the number circle (plus a bit of padding) counts */}
+        <circle {...half('left')} cx={CXL} cy={MIDY} r={R + 24} fill="transparent"
+          pointerEvents="all" aria-label={`point ${leftName}`} role="button" />
+
         {/* right */}
         <circle cx={CXR} cy={MIDY} r={R + 6} fill="#0a0e17" opacity="0.30" filter="url(#soft)" />
         <circle cx={CXR} cy={MIDY} r={R} fill="#0f2444" />
@@ -138,6 +136,10 @@ export default function Court({
           </>
         )}
         {serving === 'right' && <circle cx={CXR} cy={MIDY + R + 14} r="5" fill="#22d3ee" />}
+
+        {/* tap zone — only the number circle (plus a bit of padding) counts */}
+        <circle {...half('right')} cx={CXR} cy={MIDY} r={R + 24} fill="transparent"
+          pointerEvents="all" aria-label={`point ${rightName}`} role="button" />
 
         {/* team names on the baselines */}
         <text x="10" y="20" fill="#c6ff3d" fontSize="17" fontWeight="700"
