@@ -11,7 +11,7 @@ import Court from '../components/Court'
 import { IS_DEMO, demo } from '../lib/api'
 import { fullscreenSupported } from '../lib/fullscreen'
 
-type Tab = 'live' | 'schedule' | 'standings' | 'results' | 'bracket'
+type Tab = 'live' | 'schedule' | 'standings' | 'results' | 'bracket' | 'poster'
 
 export default function Board() {
   const { code } = useParams()
@@ -81,17 +81,19 @@ export default function Board() {
 
       <div className="border-b border-line px-4 py-3 lg:px-6 lg:py-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="truncate font-display text-2xl font-bold tracking-wide lg:text-3xl">{c.name}</div>
-            <div className="truncate text-xs text-fg-muted lg:text-sm">
-              {c.venue} · code <span className="font-bold text-brand-ink">{c.code}</span>
+          <div className="flex min-w-0 items-center gap-2 lg:gap-3">
+            <Link to="/" aria-label="Back to lobby"
+              className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-line px-2.5 text-sm text-fg-muted active:bg-surface-2 lg:h-10 lg:px-3">
+              ←<span className="hidden font-semibold sm:inline"> Lobby</span>
+            </Link>
+            <div className="min-w-0">
+              <div className="truncate font-display text-2xl font-bold tracking-wide lg:text-3xl">{c.name}</div>
+              <div className="truncate text-xs text-fg-muted lg:text-sm">
+                {c.venue} · code <span className="font-bold text-brand-ink">{c.code}</span>
+              </div>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 lg:gap-2">
-            <Link to="/"
-              className="flex h-8 items-center rounded-lg border border-line px-3 text-xs text-fg-muted active:bg-surface-2 lg:h-10 lg:px-4 lg:text-sm">
-              Lobby
-            </Link>
             <Link to={`/c/${code}/admin`}
               className="flex h-8 items-center rounded-lg border border-line px-3 text-xs text-fg-muted active:bg-surface-2 lg:h-10 lg:px-4 lg:text-sm">
               Settings
@@ -107,7 +109,7 @@ export default function Board() {
 
         <div className="mt-3 flex gap-1 overflow-x-auto lg:mt-4 lg:gap-2">
           {((bundle.events.some(e => e.format === 'groups_ko')
-              ? ['live', 'schedule', 'standings', 'bracket', 'results']
+              ? ['live', 'schedule', 'standings', 'bracket', 'poster', 'results']
               : ['live', 'schedule', 'standings', 'results']) as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider lg:px-4 lg:py-2 lg:text-sm ${
@@ -122,6 +124,7 @@ export default function Board() {
       {tab === 'schedule' && <Schedule b={bundle} />}
       {tab === 'standings' && <Standings b={bundle} />}
       {tab === 'bracket' && <BracketView b={bundle} />}
+      {tab === 'poster' && <PosterBracket b={bundle} />}
       {tab === 'results' && <Results b={bundle} code={code!} />}
 
       {IS_DEMO && (
@@ -166,22 +169,22 @@ function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
   const shownCourts = tv ? b.courts.filter(ct => liveOnCourt(b, ct.id)) : b.courts
   if (tv && shownCourts.length === 0) return <TvIdle b={b} />
   const cols = !tv
-    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
     : shownCourts.length <= 1 ? 'grid-cols-1'
     : shownCourts.length === 2 ? 'grid-cols-1 sm:grid-cols-2'
     : 'grid-cols-1 sm:grid-cols-3'
   const wrap = tv && shownCourts.length === 1 ? 'mx-auto w-full max-w-[1100px] ' : ''
   return (
     <div className={tv ? '' : 'p-3 lg:p-5'}>
-      <div className={`${wrap}grid gap-3 lg:gap-5 ${cols}`}>
+      <div className={`${wrap}grid gap-2 lg:gap-3 ${cols}`}>
         {shownCourts.map(ct => {
           const m = liveOnCourt(b, ct.id)
           const up = nextOnCourt(b, ct.id)
           return (
             <Link key={ct.id} to={`/c/${code}/court/${ct.number}`}
-              className="block rounded-2xl border border-line bg-surface p-3 active:scale-[0.99] lg:p-4">
-              <div className="mb-2 flex items-center justify-between lg:mb-3">
-                <span className="font-display text-lg font-bold tracking-widest text-fg-muted lg:text-xl">
+              className="block rounded-2xl border border-line bg-surface p-2 active:scale-[0.99] lg:p-3">
+              <div className="mb-1.5 flex items-center justify-between lg:mb-2">
+                <span className="font-display text-sm font-bold tracking-widest text-fg-muted lg:text-base">
                   COURT {ct.number}
                 </span>
                 {m ? <Pill tone="live">● live</Pill> : <Pill>open</Pill>}
@@ -300,6 +303,88 @@ function Schedule({ b }: { b: Bundle }) {
 }
 
 // -------------------------------------------------------------- duel mode
+function PosterBracket({ b }: { b: Bundle }) {
+  const ev = b.events.find(e => e.format === 'groups_ko')
+  if (!ev) return null
+  if (!bracketSeeded(b, ev.id)) {
+    return <div className="p-6 text-center text-sm text-fg-muted">The bracket hasn’t been drawn yet.</div>
+  }
+  const rounds = bracketRounds(b, ev.id)
+  const finalR = rounds.find(r => r.round === 'Final')
+  const thirdR = rounds.find(r => r.round === 'Third place')
+  const play = rounds.filter(r => r !== finalR && r !== thirdR)
+  const half = (n: number) => Math.ceil(n / 2)
+  const leftCols = play.map(r => ({ round: r.round, matches: r.matches.slice(0, half(r.matches.length)) }))
+  const rightCols = [...play].reverse().map(r => ({ round: r.round, matches: r.matches.slice(half(r.matches.length)) }))
+  return (
+    <div className="overflow-x-auto p-4">
+      <div className="mx-auto flex min-w-max items-stretch justify-center gap-3 lg:gap-5">
+        {leftCols.map((col, i) => <BracketColumn key={'L' + i} b={b} col={col} side="left" />)}
+        <div className="flex flex-col items-center justify-center gap-2 px-1">
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-ink">Final</div>
+          <div className="w-44"><PMatch b={b} m={finalR?.matches[0]} /></div>
+          <Trophy />
+          <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-fg-subtle">Third place</div>
+          <div className="w-44"><PMatch b={b} m={thirdR?.matches[0]} /></div>
+        </div>
+        {rightCols.map((col, i) => <BracketColumn key={'R' + i} b={b} col={col} side="right" />)}
+      </div>
+    </div>
+  )
+}
+
+function BracketColumn({ b, col, side }: { b: Bundle; col: { round: string; matches: Match[] }; side: 'left' | 'right' }) {
+  return (
+    <div className="flex min-w-[9.5rem] flex-col justify-around gap-2">
+      <div className={`mb-1 text-[10px] font-bold uppercase tracking-widest text-fg-subtle ${side === 'right' ? 'text-right' : ''}`}>
+        {col.round}
+      </div>
+      {col.matches.map(m => <PMatch key={m.id} b={b} m={m} />)}
+    </div>
+  )
+}
+
+function PMatch({ b, m }: { b: Bundle; m?: Match }) {
+  if (!m) return <div className="rounded-lg border border-dashed border-line/70 bg-surface/40 px-2 py-3 text-center text-[10px] text-fg-subtle">TBD</div>
+  const bye = m.team_b_id == null && m.team_a_id != null
+  return (
+    <div className={`overflow-hidden rounded-lg border ${m.status === 'live' ? 'border-brand' : 'border-line'} bg-surface`}>
+      <PTeam b={b} teamId={m.team_a_id} score={m.score_a} win={m.winner_id != null && m.winner_id === m.team_a_id} finished={m.status === 'finished'} />
+      <div className="h-px bg-line" />
+      {bye
+        ? <div className="px-2 py-1 text-[11px] italic text-fg-subtle">bye</div>
+        : <PTeam b={b} teamId={m.team_b_id} score={m.score_b} win={m.winner_id != null && m.winner_id === m.team_b_id} finished={m.status === 'finished'} />}
+    </div>
+  )
+}
+
+function PTeam({ b, teamId, score, win, finished }: { b: Bundle; teamId: string | null; score: number; win: boolean; finished: boolean }) {
+  return (
+    <div className={`flex items-center gap-1.5 px-2 py-1 ${win ? 'bg-brand/10' : ''}`}>
+      <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className="h-3.5 w-5 shrink-0 rounded-[1px] object-contain" />
+      <span className={`min-w-0 flex-1 truncate text-xs ${win ? 'font-bold text-fg' : 'text-fg-muted'}`}>{teamName(b, teamId)}</span>
+      {finished && <span className="tabular shrink-0 text-xs text-fg-subtle">{score}</span>}
+    </div>
+  )
+}
+
+function Trophy() {
+  return (
+    <svg viewBox="0 0 48 60" className="h-14 w-14" aria-hidden="true">
+      <defs>
+        <linearGradient id="ppTrophy" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#f7d774" /><stop offset="100%" stopColor="#c2922c" />
+        </linearGradient>
+      </defs>
+      <path d="M14 6h20v11a10 10 0 0 1-20 0V6z" fill="url(#ppTrophy)" />
+      <path d="M14 9H7v4a7 7 0 0 0 7 7M34 9h7v4a7 7 0 0 1-7 7" fill="none" stroke="url(#ppTrophy)" strokeWidth="2.5" />
+      <rect x="21" y="27" width="6" height="9" fill="url(#ppTrophy)" />
+      <rect x="15" y="36" width="18" height="4" rx="1" fill="url(#ppTrophy)" />
+      <rect x="12" y="40" width="24" height="6" rx="2" fill="url(#ppTrophy)" />
+    </svg>
+  )
+}
+
 function DuelScoreboard({ b, ev, big }: { b: Bundle; ev: EventCfg; big: boolean }) {
   const t = duelTally(b, ev.id)
   const aName = ev.side_a_name || 'Side A', bName = ev.side_b_name || 'Side B'
