@@ -11,7 +11,7 @@ import Court from '../components/Court'
 import { IS_DEMO, demo } from '../lib/api'
 import { fullscreenSupported } from '../lib/fullscreen'
 
-type Tab = 'live' | 'schedule' | 'standings' | 'results' | 'bracket' | 'poster'
+type Tab = 'live' | 'standings' | 'bracket' | 'matches'
 
 export default function Board() {
   const { code } = useParams()
@@ -36,7 +36,7 @@ export default function Board() {
   // ---- TV mode: dedicated, centred fullscreen presentation ----
   if (tv) {
     return (
-      <div className="fixed inset-0 flex flex-col justify-center gap-5 overflow-auto bg-canvas py-6 text-fg"
+      <div data-theme="dark" className="fixed inset-0 flex flex-col justify-center gap-5 overflow-auto bg-canvas py-6 text-fg"
         style={{
           paddingTop: 'max(env(safe-area-inset-top), 1.5rem)',
           paddingBottom: 'max(env(safe-area-inset-bottom), 1.5rem)',
@@ -114,10 +114,8 @@ export default function Board() {
 
         <div className="mt-3 flex gap-1 overflow-x-auto lg:mt-4 lg:gap-2">
           {((bundle.events.some(e => e.format === 'groups_ko')
-              ? ['live', 'schedule', 'standings', 'bracket', 'poster', 'results']
-              : bundle.events.some(e => e.format === 'duel')
-                ? ['live', 'standings', 'results']
-                : ['live', 'schedule', 'standings', 'results']) as Tab[]).map(t => (
+              ? ['live', 'standings', 'bracket', 'matches']
+              : ['live', 'standings', 'matches']) as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider lg:px-4 lg:py-2 lg:text-sm ${
                 tab === t ? 'bg-brand text-brand-fg' : 'text-fg-muted'}`}>
@@ -128,11 +126,9 @@ export default function Board() {
       </div>
 
       {tab === 'live' && <LiveGrid b={bundle} code={code!} tv={false} />}
-      {tab === 'schedule' && <Schedule b={bundle} />}
       {tab === 'standings' && <Standings b={bundle} />}
-      {tab === 'bracket' && <BracketView b={bundle} />}
-      {tab === 'poster' && <PosterBracket b={bundle} />}
-      {tab === 'results' && <Results b={bundle} code={code!} />}
+      {tab === 'bracket' && <PosterBracket b={bundle} />}
+      {tab === 'matches' && <Matches b={bundle} code={code!} />}
 
       {IS_DEMO && (
         <div className="px-4 py-8 text-center">
@@ -329,7 +325,7 @@ function PosterBracket({ b }: { b: Bundle }) {
   const champId = finalM?.winner_id ?? null
 
   return (
-    <div className="overflow-x-auto bg-[radial-gradient(ellipse_at_top,rgba(198,255,61,0.06),transparent_60%)] p-4">
+    <div data-theme="dark" className="overflow-x-auto p-4 text-fg" style={{ background: 'radial-gradient(ellipse at top, rgba(244,205,106,0.10), transparent 60%), rgb(var(--canvas))' }}>
       <div className="mx-auto flex min-w-max items-stretch justify-center">
         {leftCols.map((col, i) => (
           <div key={'L' + i} className="flex items-stretch">
@@ -398,7 +394,7 @@ function PMatch({ b, m }: { b: Bundle; m?: Match }) {
   const bye = m.team_b_id == null && m.team_a_id != null
   const decided = m.status === 'finished'
   return (
-    <div className={`overflow-hidden rounded-md border ${m.status === 'live' ? 'border-brand shadow-[0_0_0_1px_rgba(198,255,61,0.4)]' : 'border-line'} bg-surface`}>
+    <div className={`overflow-hidden rounded-md border ${m.status === 'live' ? 'border-gold shadow-[0_0_0_1px_rgba(244,205,106,0.45)]' : 'border-line'} bg-surface`}>
       <PTeam b={b} teamId={m.team_a_id} score={m.score_a} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} />
       <div className="h-px bg-line" />
       {bye
@@ -410,10 +406,10 @@ function PMatch({ b, m }: { b: Bundle; m?: Match }) {
 
 function PTeam({ b, teamId, score, win, lose, finished }: { b: Bundle; teamId: string | null; score: number; win: boolean; lose: boolean; finished: boolean }) {
   return (
-    <div className={`flex items-center gap-1.5 border-l-2 px-2 py-1 ${win ? 'border-brand bg-brand/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
+    <div className={`flex items-center gap-1.5 border-l-2 px-2 py-1 ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
       <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className="h-3.5 w-5 shrink-0 rounded-[1px] object-contain" />
       <span className={`min-w-0 flex-1 truncate text-xs ${win ? 'font-bold text-fg' : 'text-fg-muted'}`}>{teamName(b, teamId)}</span>
-      {finished && <span className={`tabular shrink-0 text-xs ${win ? 'font-bold text-brand-ink' : 'text-fg-subtle'}`}>{score}</span>}
+      {finished && <span className={`tabular shrink-0 text-xs ${win ? 'font-bold text-gold' : 'text-fg-subtle'}`}>{score}</span>}
     </div>
   )
 }
@@ -421,7 +417,7 @@ function PTeam({ b, teamId, score, win, lose, finished }: { b: Bundle; teamId: s
 function PCentre({ b, finalM, thirdM, champId }: { b: Bundle; finalM?: Match; thirdM?: Match; champId: string | null }) {
   return (
     <div className="flex flex-col px-2 lg:px-5">
-      <div className="mb-1 h-4 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-brand-ink">Final</div>
+      <div className="mb-1 h-4 text-center font-cer text-[11px] font-bold uppercase tracking-[0.28em] text-gold">Final</div>
       <div className="flex flex-1 flex-col items-center justify-center gap-2">
         <div className="w-44"><PMatch b={b} m={finalM} /></div>
         <div className="my-1 flex flex-col items-center">
@@ -429,7 +425,7 @@ function PCentre({ b, finalM, thirdM, champId }: { b: Bundle; finalM?: Match; th
           {champId
             ? <div className="mt-1 flex items-center gap-1.5 rounded-full border border-[#c2922c]/60 bg-[#f7d774]/10 px-3 py-1">
                 <Emblem logo={teamLogo(b, champId)} flagName={teamSideName(b, champId)} className="h-4 w-6 shrink-0 rounded-[1px] object-contain" />
-                <span className="text-sm font-bold text-[#f7d774]">{teamName(b, champId)}</span>
+                <span className="font-cer text-sm font-bold text-[#f7d774]">{teamName(b, champId)}</span>
               </div>
             : <div className="mt-1 text-[10px] uppercase tracking-widest text-fg-subtle">champion</div>}
         </div>
@@ -473,20 +469,15 @@ function Podium({ b, champion, runnerUp, third, title }: {
   b: Bundle; champion: string; runnerUp: string | null; third: string | null; title: string
 }) {
   return (
-    <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-4">
-      <div className="pointer-events-none absolute inset-0"
-        style={{ background: 'radial-gradient(ellipse at 50% 28%, rgba(247,215,116,0.14), transparent 62%)' }} />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-2/3 opacity-25"
-        style={{
-          background: 'repeating-linear-gradient(90deg, rgba(247,215,116,0.55) 0 1px, transparent 1px 11px)',
-          WebkitMaskImage: 'linear-gradient(to bottom, black, transparent)',
-          maskImage: 'linear-gradient(to bottom, black, transparent)',
-        }} />
-      <div className="relative mb-6 text-center sm:mb-10">
-        <div className="font-display text-3xl font-black tracking-[0.28em] text-[#f7d774] sm:text-5xl">CHAMPIONS</div>
-        <div className="mt-1 text-[10px] uppercase tracking-[0.35em] text-fg-subtle sm:text-xs">{title}</div>
+    <div data-theme="dark" className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-4 text-fg">
+      <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(46% 55% at 50% 12%, rgba(244,205,106,0.16), transparent 60%)' }} />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-2/3 opacity-25" style={{ background: 'repeating-linear-gradient(90deg, rgba(244,205,106,0.55) 0 1px, transparent 1px 13px)', WebkitMaskImage: 'linear-gradient(to bottom, black, transparent)', maskImage: 'linear-gradient(to bottom, black, transparent)' }} />
+      <div className="relative z-[1] mb-6 text-center sm:mb-10">
+        <div className="font-display text-xs font-semibold uppercase tracking-[0.35em] text-fg-subtle">{title} · Final Standings</div>
+        <div className="mt-1 font-cer text-3xl font-black uppercase tracking-[0.16em] sm:text-5xl"
+          style={{ backgroundImage: 'linear-gradient(180deg,#fff,#efdca6 55%,#f4cd6a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>Champions</div>
       </div>
-      <div className="relative flex items-end justify-center gap-3 sm:gap-6">
+      <div className="relative z-[1] flex items-end justify-center gap-3 sm:gap-6">
         <PodiumSpot b={b} teamId={runnerUp} place={2} />
         <PodiumSpot b={b} teamId={champion} place={1} />
         <PodiumSpot b={b} teamId={third} place={3} />
@@ -497,24 +488,27 @@ function Podium({ b, champion, runnerUp, third, title }: {
 
 function PodiumSpot({ b, teamId, place }: { b: Bundle; teamId: string | null; place: 1 | 2 | 3 }) {
   const t = place === 1
-    ? { c1: '#f7d774', c2: '#c2922c', h: 'h-40 sm:h-56', label: 'CHAMPION', num: '1', frame: 'h-24 w-24 sm:h-32 sm:w-32', w: 'w-32 sm:w-44' }
+    ? { c1: '#f7d774', c2: '#b8862f', h: 'h-40 sm:h-56', label: 'Champion', num: '1', frame: 'h-24 w-24 sm:h-32 sm:w-32', w: 'w-32 sm:w-44', bd: '.32s', wd: '.7s' }
     : place === 2
-      ? { c1: '#e5e7eb', c2: '#9aa2af', h: 'h-28 sm:h-40', label: '1ST RUNNER-UP', num: '2', frame: 'h-20 w-20 sm:h-24 sm:w-24', w: 'w-28 sm:w-36' }
-      : { c1: '#d8a15a', c2: '#9c6522', h: 'h-24 sm:h-32', label: '3RD PLACE', num: '3', frame: 'h-20 w-20 sm:h-24 sm:w-24', w: 'w-28 sm:w-36' }
+      ? { c1: '#dbe0e8', c2: '#9aa2af', h: 'h-28 sm:h-40', label: '1st runner-up', num: '2', frame: 'h-20 w-20 sm:h-24 sm:w-24', w: 'w-28 sm:w-36', bd: '.05s', wd: '.35s' }
+      : { c1: '#e0a75f', c2: '#9c6522', h: 'h-24 sm:h-32', label: 'Third place', num: '3', frame: 'h-20 w-20 sm:h-24 sm:w-24', w: 'w-28 sm:w-36', bd: '.18s', wd: '.48s' }
+  const first = place === 1
   return (
     <div className={`flex ${t.w} flex-col items-center`}>
-      {place === 1 && <div className="mb-1"><Trophy lit /></div>}
-      <div className="mb-3 rounded-full p-[3px]" style={{ background: `linear-gradient(155deg, ${t.c1}, ${t.c2})` }}>
-        <div className={`grid ${t.frame} place-items-center overflow-hidden rounded-full bg-[#0c0e13]`}>
-          <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className="h-3/5 w-3/5 object-contain" />
+      <div className="pp-rise flex flex-col items-center" style={{ animationDelay: t.wd }}>
+        {first && <div className="pp-pop mb-1" style={{ animationDelay: '1.05s' }}><Trophy lit /></div>}
+        <div className={`mb-3 rounded-full p-[3px] ${first ? 'pp-champ-ring' : ''}`} style={{ background: `linear-gradient(150deg, ${t.c1}, ${t.c2})` }}>
+          <div className={`grid ${t.frame} place-items-center overflow-hidden rounded-full bg-[#0b0e14]`}>
+            <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className="h-3/5 w-3/5 object-contain" />
+          </div>
         </div>
+        <div className={`mb-1 max-w-full truncate text-center font-bold ${first ? 'font-cer text-lg sm:text-2xl' : 'font-display text-base text-fg sm:text-xl'}`}
+          style={first ? { color: '#f4cd6a' } : undefined}>{teamName(b, teamId)}</div>
+        <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: t.c1 }}>{t.label}</div>
       </div>
-      <div className="mb-1 max-w-full truncate text-center font-display text-base font-bold text-fg sm:text-xl">{teamName(b, teamId)}</div>
-      <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: t.c1 }}>{t.label}</div>
-      <div className={`relative w-full ${t.h} rounded-t-xl border-t-4`}
-        style={{ borderColor: t.c1, background: 'linear-gradient(180deg, #171a22, #0a0c10)', boxShadow: `0 0 24px -6px ${t.c1}66` }}>
-        <div className="absolute inset-x-0 top-2 text-center font-display text-6xl font-black opacity-90 sm:text-8xl"
-          style={{ color: t.c1 }}>{t.num}</div>
+      <div className={`pp-grow relative w-full ${t.h} rounded-t-xl border-t-4`}
+        style={{ borderColor: t.c1, background: 'linear-gradient(180deg,#1a1e28,#0a0c11)', boxShadow: `0 0 40px -12px ${t.c1}88`, animationDelay: t.bd }}>
+        <div className="absolute inset-x-0 top-2 text-center font-cer text-6xl font-black opacity-90 sm:text-8xl" style={{ color: t.c1 }}>{t.num}</div>
       </div>
     </div>
   )
@@ -764,6 +758,51 @@ function IphoneHomeTip() {
       </svg>{' '}
       then <span className="font-semibold">Add to Home Screen</span>
     </button>
+  )
+}
+
+function Matches({ b, code }: { b: Bundle; code: string }) {
+  const upcoming = b.matches
+    .filter(m => m.status !== 'finished' && (m.team_a_id != null || m.team_b_id != null))
+    .sort((x, y) => x.sequence - y.sequence)
+  const done = results(b)
+  const line = (m: Match, showScore: boolean) => (
+    <Link key={m.id} to={`/c/${code}/match/${m.id}`} className="flex items-center gap-3 px-4 py-3 active:bg-surface-2">
+      <div className="w-9 shrink-0 text-center font-display text-base font-bold text-fg-subtle">
+        {b.courts.find(c => c.id === m.court_id)?.number ?? '–'}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className={`truncate text-sm ${showScore && m.winner_id === m.team_a_id ? 'font-bold text-fg' : 'text-fg-muted'}`}>
+          <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="mr-1.5 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_a_id)}
+        </div>
+        <div className={`truncate text-sm ${showScore && m.winner_id === m.team_b_id ? 'font-bold text-fg' : 'text-fg-muted'}`}>
+          <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="mr-1.5 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_b_id)}
+        </div>
+        <div className="mt-0.5 text-[11px] tracking-wide text-fg-subtle">{(m.round ?? '').replace(/pod/i, 'Court')} · #{m.sequence}</div>
+      </div>
+      {showScore
+        ? <div className="tabular shrink-0 text-right font-display text-2xl font-bold leading-tight">
+            <div className={m.winner_id === m.team_a_id ? 'text-gold' : 'text-fg-muted'}>{m.score_a}</div>
+            <div className={m.winner_id === m.team_b_id ? 'text-gold' : 'text-fg-muted'}>{m.score_b}</div>
+          </div>
+        : m.status === 'live' ? <Pill tone="live">live</Pill> : <Pill>{m.status.replace('_', ' ')}</Pill>}
+    </Link>
+  )
+  return (
+    <div className="space-y-6 p-3">
+      <section>
+        <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">Up next</div>
+        <div className="divide-y divide-line overflow-hidden rounded-xl border border-line">
+          {upcoming.length ? upcoming.map(m => line(m, false)) : <div className="p-4 text-sm text-fg-subtle">Nothing scheduled right now.</div>}
+        </div>
+      </section>
+      <section>
+        <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">Results</div>
+        <div className="divide-y divide-line overflow-hidden rounded-xl border border-line">
+          {done.length ? done.map(m => line(m, true)) : <div className="p-4 text-sm text-fg-subtle">No completed matches yet.</div>}
+        </div>
+      </section>
+    </div>
   )
 }
 

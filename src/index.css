@@ -17,6 +17,8 @@
   --brand-fg: 10 14 23;
   --brand-ink: 77 102 0;
   --accent: 11 101 119;
+  --gold: 176 128 44;
+  --gold-deep: 132 94 24;
 }
 
 [data-theme='dark'] {
@@ -34,6 +36,8 @@
   --brand-fg: 10 14 23;
   --brand-ink: 198 255 61;
   --accent: 34 211 238;
+  --gold: 244 205 106;
+  --gold-deep: 184 134 47;
 }
 
 html, body, #root { height: 100%; }
@@ -48,3 +52,14 @@ body {
 }
 .tabular { font-variant-numeric: tabular-nums; }
 .no-select { user-select: none; -webkit-user-select: none; }
+
+/* premium podium animations */
+@keyframes pp-grow{from{transform:scaleY(0);opacity:0}to{transform:scaleY(1);opacity:1}}
+@keyframes pp-rise{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes pp-pop{0%{transform:scale(.5);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+@keyframes pp-glow{0%,100%{box-shadow:0 0 30px -8px rgba(244,205,106,.55)}50%{box-shadow:0 0 54px -2px rgba(244,205,106,.95)}}
+.pp-grow{transform-origin:bottom;animation:pp-grow .85s cubic-bezier(.2,.7,.2,1) both}
+.pp-rise{animation:pp-rise .7s ease both}
+.pp-pop{animation:pp-pop .7s cubic-bezier(.2,1.4,.35,1) both}
+.pp-champ-ring{animation:pp-pop .7s cubic-bezier(.2,1.4,.35,1) .85s both, pp-glow 2.6s ease-in-out 1.7s infinite}
+@media (prefers-reduced-motion:reduce){.pp-grow,.pp-rise,.pp-pop,.pp-champ-ring{animation:none !important}}

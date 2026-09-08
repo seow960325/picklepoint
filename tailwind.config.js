@@ -25,9 +25,12 @@ export default {
         'brand-fg': withOpacity('--brand-fg'),
         'brand-ink': withOpacity('--brand-ink'),
         accent: withOpacity('--accent'),
+        gold: withOpacity('--gold'),
+        'gold-deep': withOpacity('--gold-deep'),
       },
       fontFamily: {
         display: ['"Barlow Condensed"', 'Impact', 'system-ui', 'sans-serif'],
+        cer: ['Cinzel', 'Georgia', 'serif'],
       },
     },
   },
