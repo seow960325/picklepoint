@@ -19,6 +19,8 @@ export interface CreatePayload {
   venue: string
   event_date: string
   admin_pin: string
+  /** optional custom join code — falls back to a random one when omitted */
+  code?: string
   event: {
     name: string; target_score: number; win_by: number; cap: number; switch_at: number
     format?: string; side_a_name?: string; side_b_name?: string
@@ -158,8 +160,10 @@ export const demo = {
 
   // ------------------------------------------------------- creation
   create(p: CreatePayload) {
+    const customCode = p.code?.trim().toUpperCase()
+    if (customCode && !/^[A-Z0-9]{3,12}$/.test(customCode)) throw new Error('BAD_CODE')
     const comp = {
-      id: uid(), code: genCode(), name: p.name || 'Untitled competition',
+      id: uid(), code: customCode || genCode(), name: p.name || 'Untitled competition',
       venue: p.venue, event_date: p.event_date, status: 'live',
     }
     const ev = {
@@ -243,6 +247,17 @@ export const demo = {
     s.bundle.competition.name = name || s.bundle.competition.name
     s.bundle.competition.venue = venue
     save(s)
+  },
+
+  /** Wipes the demo competition's saved state entirely. The next `load()`
+   *  reseeds a fresh default demo — matches admin_delete_competition, which
+   *  leaves nothing behind for that code to be found by. */
+  deleteCompetition() {
+    const s = load()
+    const code = s.bundle.competition.code
+    localStorage.removeItem(KEY)
+    chan?.postMessage({ t: Date.now() })
+    return { ok: true, code }
   },
 
   updateEvent(eventId: string, patch: Partial<Bundle['events'][number]>) {

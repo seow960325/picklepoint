@@ -25,6 +25,7 @@ export default function NewCompetition() {
   const [name, setName] = useState('')
   const [venue, setVenue] = useState('')
   const [date, setDate] = useState(today())
+  const [code, setCode] = useState('')
   const [eventName, setEventName] = useState('Mixed Doubles')
 
   const [target, setTarget] = useState(15)
@@ -117,17 +118,20 @@ export default function NewCompetition() {
   }, [format, duelTeams, duelError, rrTeams, courtCount, ko])
 
   const ruleError = validateRules({ target_score: target, win_by: winBy, cap, switch_at: switchAt })
+  const codeError = code.trim() && (code.trim().length < 3 || code.trim().length > 12)
+    ? 'Join code must be 3-12 letters/numbers.' : null
   const canCreate = format === 'duel'
-    ? (!duelError && !ruleError && !busy)
+    ? (!duelError && !ruleError && !codeError && !busy)
     : format === 'groups_ko'
-      ? (!koError && !ruleError && !busy)
-      : (rrTeams.length >= 2 && !ruleError && !busy)
+      ? (!koError && !ruleError && !codeError && !busy)
+      : (rrTeams.length >= 2 && !ruleError && !codeError && !busy)
 
   const create = async () => {
     setBusy(true); setErr(null)
     try {
       const res = await api.createCompetition({
         name, venue, event_date: date, admin_pin: adminPin,
+        ...(code.trim() ? { code: code.trim() } : {}),
         event: {
           name: eventName, target_score: target, win_by: winBy, cap, switch_at: switchAt,
           format,
@@ -144,7 +148,11 @@ export default function NewCompetition() {
       })
       rememberCode(res.code)
       setResult(res)
-    } catch (e: any) { setErr(e.message) }
+    } catch (e: any) {
+      setErr(e.message === 'CODE_TAKEN' ? 'That join code is already taken — try another.'
+        : e.message === 'BAD_CODE' ? 'Join code must be 3-12 letters/numbers.'
+        : e.message)
+    }
     finally { setBusy(false) }
   }
 
@@ -260,7 +268,14 @@ export default function NewCompetition() {
                   onChange={e => setEventName(e.target.value)} placeholder="Type a category name" />
               )}
             </Field>
+            <Field label="Join code (optional)">
+              <input className={`${inputFull} font-mono uppercase tracking-wider`}
+                value={code} maxLength={12}
+                onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                placeholder="Auto-generated" />
+            </Field>
           </div>
+          {codeError && <Warn>{codeError}</Warn>}
         </Section>
 
         <Section n={2} title="Scoring" hint="applies to every match">

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  useCompetition, teamName, teamSideName,
+  useCompetition, teamName, teamSideName, forgetCode,
   groupStandings, groupStageComplete, bracketSeeded, qualifiers, bracketRounds,
 } from '../lib/store'
 import * as api from '../lib/api'
@@ -145,6 +145,24 @@ function CompetitionTab({ bundle, token, run, secrets }: any) {
   const c = bundle.competition
   const [name, setName] = useState(c.name)
   const [venue, setVenue] = useState(c.venue ?? '')
+  const navigate = useNavigate()
+  const [confirmText, setConfirmText] = useState('')
+  const [delBusy, setDelBusy] = useState(false)
+  const [delErr, setDelErr] = useState<string | null>(null)
+
+  const deleteCompetition = async () => {
+    setDelBusy(true); setDelErr(null)
+    try {
+      await api.adminDeleteCompetition(token)
+      localStorage.removeItem(`pp.admin.${c.code}`)
+      forgetCode(c.code)
+      navigate('/')
+    } catch (e: any) {
+      setDelErr(readable(e.message))
+      setDelBusy(false)
+    }
+  }
+
   return (
     <div className="max-w-xl space-y-4">
       <H>Competition</H>
@@ -160,6 +178,23 @@ function CompetitionTab({ bundle, token, run, secrets }: any) {
         <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">Access</div>
         <Row k="Join code (share freely)" v={c.code} accent="brand" />
         {secrets && <Row k="Admin PIN (keep private)" v={secrets.competition.admin_pin} accent="accent" />}
+      </div>
+
+      <div className="mt-8 rounded-xl border border-red-500/40 bg-red-500/5 p-4">
+        <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-red-600">Danger zone</div>
+        <p className="mb-3 text-sm text-fg-muted">
+          Permanently deletes this competition and everything in it — teams, matches, scores.
+          This can't be undone. Type <span className="font-mono font-bold">{c.code}</span> to confirm.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <input className={`${input} font-mono uppercase`} value={confirmText}
+            onChange={e => setConfirmText(e.target.value.toUpperCase())} placeholder={c.code} />
+          <button onClick={deleteCompetition} disabled={confirmText !== c.code || delBusy}
+            className="rounded-xl bg-red-600 px-5 py-2.5 font-display font-bold text-white disabled:opacity-30">
+            {delBusy ? 'DELETING…' : 'DELETE COMPETITION'}
+          </button>
+        </div>
+        {delErr && <Warn>{delErr}</Warn>}
       </div>
     </div>
   )

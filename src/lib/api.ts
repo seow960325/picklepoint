@@ -127,6 +127,7 @@ export async function createCompetition(p: CreatePayload): Promise<CreateResult>
       a: m.aIdx, b: m.bIdx, court: m.courtIdx, sequence: m.sequence,
       round: m.label ?? `Round ${m.round}`,
     })),
+    ...(p.code?.trim() ? { code: p.code.trim() } : {}),
   }
   if (isGroupsKo) {
     payload.bracket = (p.bracket ?? []).map(m => ({
@@ -159,6 +160,14 @@ export async function adminSeedBracket(
 export async function adminUnseedBracket(token: string, eventId: string): Promise<void> {
   if (IS_DEMO) return demo.unseedBracket(eventId)
   await rpc('admin_unseed_bracket', { p_token: token, p_event_id: eventId })
+}
+
+/** Permanently deletes the competition and everything under it. Once this
+ *  resolves the admin token is dead too — the caller should drop it and
+ *  navigate away rather than reload the (now gone) bundle. */
+export async function adminDeleteCompetition(token: string): Promise<{ ok: boolean; code: string }> {
+  if (IS_DEMO) return demo.deleteCompetition()
+  return rpc('admin_delete_competition', { p_token: token })
 }
 
 // ------------------------------------------------------------- admin

@@ -6,6 +6,9 @@ import * as api from './api'
 const CODE_KEY = 'pp.code'
 export const rememberCode = (c: string) => localStorage.setItem(CODE_KEY, c.toUpperCase())
 export const lastCode = () => localStorage.getItem(CODE_KEY) || ''
+export const forgetCode = (c: string) => {
+  if (lastCode().toUpperCase() === c.toUpperCase()) localStorage.removeItem(CODE_KEY)
+}
 
 export function useCompetition(code: string | undefined) {
   const [bundle, setBundle] = useState<Bundle | null>(null)
