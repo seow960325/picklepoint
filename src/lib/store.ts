@@ -6,6 +6,9 @@ import * as api from './api'
 const CODE_KEY = 'pp.code'
 export const rememberCode = (c: string) => localStorage.setItem(CODE_KEY, c.toUpperCase())
 export const lastCode = () => localStorage.getItem(CODE_KEY) || ''
+export const forgetCode = (c: string) => {
+  if (lastCode().toUpperCase() === c.toUpperCase()) localStorage.removeItem(CODE_KEY)
+}
 
 export function useCompetition(code: string | undefined) {
   const [bundle, setBundle] = useState<Bundle | null>(null)
@@ -138,6 +141,60 @@ export function standings(b: Bundle, eventId: string): Record<string, Standing[]
       z.won - a.won || h2h(a.team.id, z.team.id) || z.diff - a.diff || z.pf - a.pf)
   }
   return byPool
+}
+
+// --------------------------------------------------------- groups_ko format
+/** A knockout slot is any match carrying a bracket_key. Group matches, and
+ *  every match in a round_robin or duel event, have none. */
+export const isKoMatch = (m: Match) => m.bracket_key != null
+
+/** Group tables for a groups_ko event. Identical to standings(), except
+ *  knockout results are excluded — a quarter-final win must not show up in
+ *  the group table that produced the quarter-finalists. */
+export function groupStandings(b: Bundle, eventId: string): Record<string, Standing[]> {
+  return standings(
+    { ...b, matches: b.matches.filter(m => !isKoMatch(m)) },
+    eventId,
+  )
+}
+
+export const groupStageComplete = (b: Bundle, eventId: string): boolean => {
+  const group = b.matches.filter(m => m.event_id === eventId && !isKoMatch(m))
+  return group.length > 0 && group.every(m => m.status === 'finished')
+}
+
+export const bracketSeeded = (b: Bundle, eventId: string): boolean =>
+  b.matches.some(m => m.event_id === eventId && isKoMatch(m) && m.team_a_id != null)
+
+/** The teams that qualify, as [group][place] — already in the order the group
+ *  table ranks them, so the caller can hand them straight to seedBracket(). */
+export function qualifiers(
+  b: Bundle, eventId: string, advancePerGroup: number,
+): string[][] {
+  const tables = groupStandings(b, eventId)
+  return Object.keys(tables).sort()
+    .map(pool => tables[pool].slice(0, advancePerGroup).map(r => r.team.id))
+}
+
+export interface BracketRound { round: string; matches: Match[] }
+
+/** Knockout matches grouped into rounds for display, biggest round first,
+ *  with the third-place playoff pushed to the end where a viewer expects it. */
+export function bracketRounds(b: Bundle, eventId: string): BracketRound[] {
+  const ko = b.matches
+    .filter(m => m.event_id === eventId && isKoMatch(m))
+    .sort((x, y) => x.sequence - y.sequence)
+  const order: string[] = []
+  const byRound = new Map<string, Match[]>()
+  for (const m of ko) {
+    const r = m.round ?? 'Knockout'
+    if (!byRound.has(r)) { byRound.set(r, []); order.push(r) }
+    byRound.get(r)!.push(m)
+  }
+  const rounds = order.map(round => ({ round, matches: byRound.get(round)! }))
+  const third = rounds.findIndex(r => r.round === 'Third place')
+  if (third >= 0) rounds.push(...rounds.splice(third, 1))
+  return rounds
 }
 
 // ------------------------------------------------------------- duel format

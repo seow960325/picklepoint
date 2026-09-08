@@ -113,18 +113,61 @@ export interface CreateResult {
 
 export async function createCompetition(p: CreatePayload): Promise<CreateResult> {
   if (IS_DEMO) return demo.create(p)
-  return rpc<CreateResult>('create_competition', {
-    p_payload: {
-      name: p.name, venue: p.venue, event_date: p.event_date, admin_pin: p.admin_pin,
-      event: p.event,
-      courts: p.courts,
-      teams: p.teams,
-      matches: p.matches.map(m => ({
-        a: m.aIdx, b: m.bIdx, court: m.courtIdx, sequence: m.sequence,
-        round: m.label ?? `Round ${m.round}`,
-      })),
-    },
+
+  // groups_ko also ships an empty bracket, which needs the second wiring pass
+  // that only create_competition_v3 does. Every other format keeps using the
+  // original function, untouched.
+  const isGroupsKo = p.event.format === 'groups_ko'
+  const payload: Record<string, unknown> = {
+    name: p.name, venue: p.venue, event_date: p.event_date, admin_pin: p.admin_pin,
+    event: p.event,
+    courts: p.courts,
+    teams: p.teams,
+    matches: p.matches.map(m => ({
+      a: m.aIdx, b: m.bIdx, court: m.courtIdx, sequence: m.sequence,
+      round: m.label ?? `Round ${m.round}`,
+    })),
+    ...(p.code?.trim() ? { code: p.code.trim() } : {}),
+  }
+  if (isGroupsKo) {
+    payload.bracket = (p.bracket ?? []).map(m => ({
+      key: m.key, round: m.round, sequence: m.sequence,
+      next_key: m.nextKey, next_slot: m.nextSlot,
+      loser_next_key: m.loserNextKey, loser_next_slot: m.loserNextSlot,
+    }))
+  }
+  return rpc<CreateResult>(
+    isGroupsKo ? 'create_competition_v3' : 'create_competition',
+    { p_payload: payload },
+  )
+}
+
+/** Lock the group tables and drop the qualifiers into round one of the
+ *  bracket. `pairs` comes from the client, which already ranks the group
+ *  tables with the wins -> head-to-head -> point-difference chain. */
+export async function adminSeedBracket(
+  token: string, eventId: string,
+  pairs: Array<{ key: string; a: string | null; b: string | null }>,
+): Promise<{ matches: number; byes: number }> {
+  if (IS_DEMO) return demo.seedBracket(eventId, pairs)
+  return rpc('admin_seed_bracket', {
+    p_token: token, p_event_id: eventId, p_pairs: pairs,
   })
+}
+
+/** Clear the bracket back to empty so a mis-scored group match can be fixed
+ *  and the draw redone. Refuses once a knockout match has been played. */
+export async function adminUnseedBracket(token: string, eventId: string): Promise<void> {
+  if (IS_DEMO) return demo.unseedBracket(eventId)
+  await rpc('admin_unseed_bracket', { p_token: token, p_event_id: eventId })
+}
+
+/** Permanently deletes the competition and everything under it. Once this
+ *  resolves the admin token is dead too — the caller should drop it and
+ *  navigate away rather than reload the (now gone) bundle. */
+export async function adminDeleteCompetition(token: string): Promise<{ ok: boolean; code: string }> {
+  if (IS_DEMO) return demo.deleteCompetition()
+  return rpc('admin_delete_competition', { p_token: token })
 }
 
 // ------------------------------------------------------------- admin

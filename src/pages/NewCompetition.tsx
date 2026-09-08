@@ -2,15 +2,20 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import * as api from '../lib/api'
 import {
-  buildDraw, buildDuelDraw, defaultSwitchAt, validateRules, validateDuelSquads,
+  buildDraw, buildDuelDraw, buildGroupKoDraw, defaultSwitchAt, validateRules,
+  validateDuelSquads, validateGroupKo,
   type DraftTeam, type DuelTeam,
 } from '../lib/draw'
 import { rememberCode } from '../lib/store'
-import { Section, Field, Stepper, Choice, Warn, input, inputFull } from '../components/form'
+import { Section, Field, Stepper, Choice, Select, Warn, input, inputFull } from '../components/form'
 
 const today = () => new Date().toISOString().slice(0, 10)
 const pin4 = () => String(Math.floor(Math.random() * 10000)).padStart(4, '0')
-type Format = 'round_robin' | 'duel'
+const CATEGORY_PRESETS = [
+  'Mixed Doubles', "Men's Doubles", "Women's Doubles",
+  "Men's Singles", "Women's Singles", 'Open / Team Event',
+]
+type Format = 'round_robin' | 'duel' | 'groups_ko'
 
 export default function NewCompetition() {
   const nav = useNavigate()
@@ -20,6 +25,7 @@ export default function NewCompetition() {
   const [name, setName] = useState('')
   const [venue, setVenue] = useState('')
   const [date, setDate] = useState(today())
+  const [code, setCode] = useState('')
   const [eventName, setEventName] = useState('Mixed Doubles')
 
   const [target, setTarget] = useState(15)
@@ -35,6 +41,28 @@ export default function NewCompetition() {
   // round-robin mode
   const [teamText, setTeamText] = useState('')
   const [poolCount, setPoolCount] = useState(1)
+
+  // groups_ko mode — count picked first, then one labelled slot per team,
+  // so it's obvious at a glance how many are in vs still needed (unlike a
+  // single free-text box, where the count is easy to lose track of)
+  const [groupSize, setGroupSize] = useState(4)
+  const [advancePerGroup, setAdvancePerGroup] = useState(2)
+  const [thirdPlace, setThirdPlace] = useState(true)
+  const [koTeamCount, setKoTeamCount] = useState(16)
+  const [koTeamNames, setKoTeamNames] = useState<string[]>(
+    () => Array.from({ length: 16 }, () => ''))
+
+  const setKoCount = (n: number) => {
+    setKoTeamCount(n)
+    setKoTeamNames(prev => {
+      const next = prev.slice(0, n)
+      while (next.length < n) next.push('')
+      return next
+    })
+  }
+  const setKoTeamName = (i: number, v: string) => setKoTeamNames(prev => {
+    const next = [...prev]; next[i] = v; return next
+  })
 
   // duel mode
   const [sideAName, setSideAName] = useState('Cambodia')
@@ -70,36 +98,61 @@ export default function NewCompetition() {
   const duelError = format === 'duel'
     ? validateDuelSquads(sideANames.length, sideBNames.length) : null
 
-  const teams = format === 'duel' ? duelTeams : rrTeams
+  const koNames = useMemo(
+    () => koTeamNames.map(s => s.trim()).filter(Boolean), [koTeamNames])
+  const koError = format === 'groups_ko'
+    ? validateGroupKo(koNames.length, groupSize, advancePerGroup) : null
+  const ko = useMemo(
+    () => format === 'groups_ko' && !koError
+      ? buildGroupKoDraw(koNames, courtCount,
+          { groupSize, advancePerGroup, thirdPlacePlayoff: thirdPlace })
+      : null,
+    [format, koError, koNames, courtCount, groupSize, advancePerGroup, thirdPlace])
+
+  const teams = format === 'duel' ? duelTeams : format === 'groups_ko' ? (ko?.teams ?? []) : rrTeams
   const draw = useMemo(() => {
     if (format === 'duel') return !duelError && duelTeams.length >= 4
       ? buildDuelDraw(duelTeams, courtCount) : []
+    if (format === 'groups_ko') return ko?.groupMatches ?? []
     return rrTeams.length >= 2 ? buildDraw(rrTeams, courtCount) : []
-  }, [format, duelTeams, duelError, rrTeams, courtCount])
+  }, [format, duelTeams, duelError, rrTeams, courtCount, ko])
 
   const ruleError = validateRules({ target_score: target, win_by: winBy, cap, switch_at: switchAt })
+  const codeError = code.trim() && (code.trim().length < 3 || code.trim().length > 12)
+    ? 'Join code must be 3-12 letters/numbers.' : null
   const canCreate = format === 'duel'
-    ? (!duelError && !ruleError && !busy)
-    : (rrTeams.length >= 2 && !ruleError && !busy)
+    ? (!duelError && !ruleError && !codeError && !busy)
+    : format === 'groups_ko'
+      ? (!koError && !ruleError && !codeError && !busy)
+      : (rrTeams.length >= 2 && !ruleError && !codeError && !busy)
 
   const create = async () => {
     setBusy(true); setErr(null)
     try {
       const res = await api.createCompetition({
         name, venue, event_date: date, admin_pin: adminPin,
+        ...(code.trim() ? { code: code.trim() } : {}),
         event: {
           name: eventName, target_score: target, win_by: winBy, cap, switch_at: switchAt,
           format,
           ...(format === 'duel' ? { side_a_name: sideAName, side_b_name: sideBName } : {}),
+          ...(format === 'groups_ko'
+            ? { group_size: groupSize, advance_per_group: advancePerGroup, third_place: thirdPlace }
+            : {}),
         },
         courts: Array.from({ length: courtCount }, (_, i) => ({
           number: i + 1, label: `Court ${i + 1}`, scorer_pin: pins[i],
         })),
         teams, matches: draw,
+        ...(format === 'groups_ko' ? { bracket: ko?.bracket ?? [] } : {}),
       })
       rememberCode(res.code)
       setResult(res)
-    } catch (e: any) { setErr(e.message) }
+    } catch (e: any) {
+      setErr(e.message === 'CODE_TAKEN' ? 'That join code is already taken — try another.'
+        : e.message === 'BAD_CODE' ? 'Join code must be 3-12 letters/numbers.'
+        : e.message)
+    }
     finally { setBusy(false) }
   }
 
@@ -115,7 +168,9 @@ export default function NewCompetition() {
         </div>
 
         <dl className="mt-7 space-y-2.5 text-sm">
-          <Sum k="Format" v={format === 'duel' ? 'Team Battle' : 'Round Robin'} />
+          <Sum k="Format" v={
+            format === 'duel' ? 'Team Battle'
+              : format === 'groups_ko' ? 'Groups + Knockout' : 'Round Robin'} />
           <Sum k="Name" v={name || '—'} />
           <Sum k="Event" v={eventName || '—'} />
           <Sum k="Scoring" v={`to ${target}, win by ${winBy}, cap ${cap}`} />
@@ -126,6 +181,15 @@ export default function NewCompetition() {
               <Sum k={sideAName || 'Side A'} v={`${sideANames.length} teams`} />
               <Sum k={sideBName || 'Side B'} v={`${sideBNames.length} teams`} />
               <Sum k="Pods" v={draw.length ? String(draw.length / 4) : '—'} />
+            </>
+          ) : format === 'groups_ko' ? (
+            <>
+              <Sum k="Teams" v={String(koNames.length)} />
+              <Sum k="Groups" v={ko ? `${ko.groupCount} of ~${groupSize}` : '—'} />
+              <Sum k="Qualifiers" v={ko ? String(ko.qualifiers) : '—'} />
+              <Sum k="Bracket" v={ko
+                ? `${ko.bracketSize}${ko.byes ? ` (${ko.byes} bye${ko.byes > 1 ? 's' : ''})` : ''}`
+                : '—'} />
             </>
           ) : (
             <>
@@ -139,6 +203,7 @@ export default function NewCompetition() {
         <div className="mt-auto pt-6">
           {ruleError && <Warn>{ruleError}</Warn>}
           {format === 'duel' && duelError && <Warn>{duelError}</Warn>}
+          {format === 'groups_ko' && koError && <Warn>{koError}</Warn>}
           {format === 'round_robin' && teams.length < 2 && (
             <div className="mb-2 text-xs text-fg-subtle">Add at least two teams.</div>
           )}
@@ -159,8 +224,17 @@ export default function NewCompetition() {
                 options={[
                   { label: 'Round Robin', value: 'round_robin' },
                   { label: 'Team Battle', value: 'duel' },
+                  { label: 'Groups + Knockout', value: 'groups_ko' },
                 ]} />
             </Field>
+            {format === 'groups_ko' && (
+              <p className="mt-2 text-xs text-fg-subtle">
+                World-Cup shaped. Teams are drawn at random into small groups and play a
+                round robin inside their group. When every group match is done you lock
+                the tables from Admin, and the top finishers are seeded into a knockout
+                bracket that ends with a third-place playoff and a final.
+              </p>
+            )}
             {format === 'duel' && (
               <p className="mt-2 text-xs text-fg-subtle">
                 Two sides face off — every team from one side plays every team from
@@ -169,7 +243,7 @@ export default function NewCompetition() {
               </p>
             )}
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field label="Competition name" className="sm:col-span-2">
               <input className={inputFull} value={name} onChange={e => setName(e.target.value)}
                 placeholder="Puchong Open 2026" />
@@ -182,10 +256,26 @@ export default function NewCompetition() {
                 placeholder="IOI Mall Courts" />
             </Field>
             <Field label="Event / category">
-              <input className={inputFull} value={eventName} onChange={e => setEventName(e.target.value)}
-                placeholder="Mixed Doubles" />
+              <Select
+                value={CATEGORY_PRESETS.includes(eventName) ? eventName : '__custom__'}
+                onChange={v => setEventName(v === '__custom__' ? '' : v)}
+                options={[
+                  ...CATEGORY_PRESETS.map(c => ({ label: c, value: c })),
+                  { label: 'Custom…', value: '__custom__' },
+                ]} />
+              {!CATEGORY_PRESETS.includes(eventName) && (
+                <input className={`${inputFull} mt-2`} value={eventName}
+                  onChange={e => setEventName(e.target.value)} placeholder="Type a category name" />
+              )}
+            </Field>
+            <Field label="Join code (optional)">
+              <input className={`${inputFull} font-mono uppercase tracking-wider`}
+                value={code} maxLength={12}
+                onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                placeholder="Auto-generated" />
             </Field>
           </div>
+          {codeError && <Warn>{codeError}</Warn>}
         </Section>
 
         <Section n={2} title="Scoring" hint="applies to every match">
@@ -195,7 +285,7 @@ export default function NewCompetition() {
                 options={[{ label: 'to 11', value: 11 }, { label: 'to 15', value: 15 }, { label: 'to 21', value: 21 }]} />
             </Field>
           </div>
-          <div className="grid gap-4 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Field label="Winning score"><Stepper value={target} min={1} max={99}
               onChange={v => { setTarget(v); setSwitchAt(defaultSwitchAt(v)) }} /></Field>
             <Field label="Win by"><Stepper value={winBy} min={1} max={5} onChange={setWinBy} /></Field>
@@ -239,7 +329,7 @@ export default function NewCompetition() {
 
         {format === 'round_robin' ? (
           <Section n={4} title="Teams" hint="one per line">
-            <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto]">
               <Field label={`Team names — ${teams.length} entered`}>
                 <textarea className={`${inputFull} h-44 resize-y font-mono text-[13px] leading-relaxed`}
                   value={teamText} onChange={e => setTeamText(e.target.value)}
@@ -264,9 +354,9 @@ export default function NewCompetition() {
               </div>
             </div>
           </Section>
-        ) : (
+        ) : format === 'duel' ? (
           <Section n={4} title="Sides" hint="one team per line, both sides equal & even">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Side A name">
                 <input className={inputFull} value={sideAName} onChange={e => setSideAName(e.target.value)}
                   placeholder="Cambodia" />
@@ -298,6 +388,60 @@ export default function NewCompetition() {
                   Each pod is 2 {sideAName || 'Side A'} teams vs 2 {sideBName || 'Side B'} teams — every
                   team meets every opposing team in the pod exactly once. Final result is total games won,
                   summed across every pod.
+                </div>
+              </div>
+            )}
+          </Section>
+        ) : (
+          <Section n={4} title="Teams & groups" hint="groups are drawn at random">
+            <div className="mb-5 flex flex-wrap items-end gap-6">
+              <Field label="How many teams">
+                <Stepper value={koTeamCount} min={6} max={64} onChange={setKoCount} />
+              </Field>
+              <Field label="Teams per group">
+                <Stepper value={groupSize} min={3} max={8} onChange={setGroupSize} />
+              </Field>
+              <Field label="Advance per group">
+                <Stepper value={advancePerGroup} min={1} max={Math.max(1, groupSize - 1)}
+                  onChange={setAdvancePerGroup} />
+              </Field>
+              <Field label="Third-place playoff">
+                <Choice value={thirdPlace ? 1 : 0} onChange={v => setThirdPlace(v === 1)}
+                  options={[{ label: 'Yes', value: 1 }, { label: 'No', value: 0 }]} />
+              </Field>
+            </div>
+
+            <Field label={`Team names — ${koNames.length} of ${koTeamCount} entered`}>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                {Array.from({ length: koTeamCount }, (_, i) => (
+                  <input key={i} className={inputFull} value={koTeamNames[i] ?? ''}
+                    onChange={e => setKoTeamName(i, e.target.value)}
+                    placeholder={`Team ${i + 1}`} />
+                ))}
+              </div>
+            </Field>
+
+            {koError && <Warn>{koError}</Warn>}
+            {ko && (
+              <div className="mt-3 rounded-lg border border-line bg-surface p-3 text-xs">
+                <div className="mb-1.5 font-bold uppercase tracking-wider text-fg-muted">Draw preview</div>
+                <div className="text-fg-muted">
+                  {ko.groupCount} group{ko.groupCount > 1 ? 's' : ''} ·{' '}
+                  {ko.groupMatches.length} group matches ·{' '}
+                  {ko.qualifiers} qualifiers into a bracket of {ko.bracketSize}
+                  {ko.byes > 0 && `, with ${ko.byes} bye${ko.byes > 1 ? 's' : ''} to the top seeds`}.
+                </div>
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {[...new Set(ko.teams.map(t => t.pool))].sort().map(g => (
+                    <span key={g} className="rounded bg-canvas px-1.5 py-0.5 text-fg-subtle">
+                      Group {g}: {ko.teams.filter(t => t.pool === g).length}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-1.5 text-fg-subtle">
+                  Groups are drawn fresh every time you change the team list. Knockout
+                  matches stay empty and off-court until you lock the group tables from
+                  Admin — so a court can never open on a match with no teams in it.
                 </div>
               </div>
             )}

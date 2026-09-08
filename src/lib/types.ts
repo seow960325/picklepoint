@@ -12,6 +12,11 @@ export interface EventCfg {
   // only set when format === 'duel' — two-side team battle (e.g. country vs country)
   side_a_name?: string | null
   side_b_name?: string | null
+  // only set when format === 'groups_ko' — group stage into a knockout bracket
+  group_size?: number | null
+  advance_per_group?: number | null
+  third_place?: boolean | null
+  bracket_seeded_at?: string | null
 }
 export interface Court { id: string; number: number; label: string | null }
 export interface Team {
@@ -28,6 +33,11 @@ export interface Match {
   a_on_left: boolean; sides_switched: boolean
   status: MatchStatus; winner_id: string | null
   next_match_id: string | null; next_slot: 'a' | 'b' | null
+  // only set on groups_ko knockout slots — null for every group, round-robin
+  // and duel match, which is what keeps the two formats from ever interacting
+  bracket_key?: string | null
+  loser_match_id?: string | null
+  loser_slot?: 'a' | 'b' | null
   started_at: string | null; finished_at: string | null
   duration_seconds: number | null
 }
