@@ -31,6 +31,7 @@ export default function Board() {
 
   const c = bundle.competition
   const duelEvent = bundle.events.find(e => e.format === 'duel')
+  const podium = koPodium(bundle)
 
   // ---- TV mode: dedicated, centred fullscreen presentation ----
   if (tv) {
@@ -65,12 +66,16 @@ export default function Board() {
           </div>
         )}
 
-        {/* courts */}
-        <div className="shrink-0 px-4 sm:px-8">
-          <div className="mx-auto w-full max-w-[1600px]">
-            <LiveGrid b={bundle} code={code!} tv />
-          </div>
-        </div>
+        {/* courts, or the podium ceremony once the champion is decided */}
+        {podium
+          ? <Podium b={bundle} champion={podium.champion} runnerUp={podium.runnerUp} third={podium.third} title={c.name} />
+          : (
+            <div className="shrink-0 px-4 sm:px-8">
+              <div className="mx-auto w-full max-w-[1600px]">
+                <LiveGrid b={bundle} code={code!} tv />
+              </div>
+            </div>
+          )}
       </div>
     )
   }
@@ -447,6 +452,69 @@ function Trophy({ lit }: { lit?: boolean }) {
       <rect x="15" y="36" width="18" height="4" rx="1" fill="url(#ppTrophy)" />
       <rect x="12" y="40" width="24" height="6" rx="2" fill="url(#ppTrophy)" />
     </svg>
+  )
+}
+
+function koPodium(b: Bundle): { champion: string; runnerUp: string | null; third: string | null } | null {
+  const ev = b.events.find(e => e.format === 'groups_ko')
+  if (!ev) return null
+  const finalM = b.matches.find(m => m.event_id === ev.id && m.bracket_key != null && m.round === 'Final')
+  if (!finalM || finalM.status !== 'finished' || !finalM.winner_id) return null
+  const champion = finalM.winner_id
+  const runnerUp = finalM.team_a_id === champion ? finalM.team_b_id : finalM.team_a_id
+  const thirdM = b.matches.find(m => m.event_id === ev.id && m.bracket_key != null && m.round === 'Third place')
+  const third = thirdM && thirdM.status === 'finished' ? thirdM.winner_id : null
+  return { champion, runnerUp, third }
+}
+
+function Podium({ b, champion, runnerUp, third, title }: {
+  b: Bundle; champion: string; runnerUp: string | null; third: string | null; title: string
+}) {
+  return (
+    <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-4">
+      <div className="pointer-events-none absolute inset-0"
+        style={{ background: 'radial-gradient(ellipse at 50% 28%, rgba(247,215,116,0.14), transparent 62%)' }} />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-2/3 opacity-25"
+        style={{
+          background: 'repeating-linear-gradient(90deg, rgba(247,215,116,0.55) 0 1px, transparent 1px 11px)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black, transparent)',
+          maskImage: 'linear-gradient(to bottom, black, transparent)',
+        }} />
+      <div className="relative mb-6 text-center sm:mb-10">
+        <div className="font-display text-3xl font-black tracking-[0.28em] text-[#f7d774] sm:text-5xl">CHAMPIONS</div>
+        <div className="mt-1 text-[10px] uppercase tracking-[0.35em] text-fg-subtle sm:text-xs">{title}</div>
+      </div>
+      <div className="relative flex items-end justify-center gap-3 sm:gap-6">
+        <PodiumSpot b={b} teamId={runnerUp} place={2} />
+        <PodiumSpot b={b} teamId={champion} place={1} />
+        <PodiumSpot b={b} teamId={third} place={3} />
+      </div>
+    </div>
+  )
+}
+
+function PodiumSpot({ b, teamId, place }: { b: Bundle; teamId: string | null; place: 1 | 2 | 3 }) {
+  const t = place === 1
+    ? { c1: '#f7d774', c2: '#c2922c', h: 'h-40 sm:h-56', label: 'CHAMPION', num: '1', frame: 'h-24 w-24 sm:h-32 sm:w-32', w: 'w-32 sm:w-44' }
+    : place === 2
+      ? { c1: '#e5e7eb', c2: '#9aa2af', h: 'h-28 sm:h-40', label: '1ST RUNNER-UP', num: '2', frame: 'h-20 w-20 sm:h-24 sm:w-24', w: 'w-28 sm:w-36' }
+      : { c1: '#d8a15a', c2: '#9c6522', h: 'h-24 sm:h-32', label: '3RD PLACE', num: '3', frame: 'h-20 w-20 sm:h-24 sm:w-24', w: 'w-28 sm:w-36' }
+  return (
+    <div className={`flex ${t.w} flex-col items-center`}>
+      {place === 1 && <div className="mb-1"><Trophy lit /></div>}
+      <div className="mb-3 rounded-full p-[3px]" style={{ background: `linear-gradient(155deg, ${t.c1}, ${t.c2})` }}>
+        <div className={`grid ${t.frame} place-items-center overflow-hidden rounded-full bg-[#0c0e13]`}>
+          <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className="h-3/5 w-3/5 object-contain" />
+        </div>
+      </div>
+      <div className="mb-1 max-w-full truncate text-center font-display text-base font-bold text-fg sm:text-xl">{teamName(b, teamId)}</div>
+      <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: t.c1 }}>{t.label}</div>
+      <div className={`relative w-full ${t.h} rounded-t-xl border-t-4`}
+        style={{ borderColor: t.c1, background: 'linear-gradient(180deg, #171a22, #0a0c10)', boxShadow: `0 0 24px -6px ${t.c1}66` }}>
+        <div className="absolute inset-x-0 top-2 text-center font-display text-6xl font-black opacity-90 sm:text-8xl"
+          style={{ color: t.c1 }}>{t.num}</div>
+      </div>
+    </div>
   )
 }
 
