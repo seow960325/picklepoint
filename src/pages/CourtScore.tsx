@@ -391,6 +391,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 leftScore={s.left} rightScore={s.right}
                 leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
                 leftLogo={teamLogoOf(leftTeamId)} rightLogo={teamLogoOf(rightTeamId)}
+                label={m.bracket_key ? (m.round ?? undefined) : undefined}
                 onTap={score} disabled={done}
               />
               <button onClick={swap}
@@ -405,6 +406,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 leftScore={s.left} rightScore={s.right}
                 leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
                 leftLogo={teamLogoOf(leftTeamId)} rightLogo={teamLogoOf(rightTeamId)}
+                label={m.bracket_key ? (m.round ?? undefined) : undefined}
                 onTap={score} disabled={done}
               />
               <button onClick={swap}

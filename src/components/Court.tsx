@@ -21,6 +21,7 @@ export interface CourtProps {
   rightFlag?: string | null
   leftLogo?: string | null
   rightLogo?: string | null
+  label?: string | null
 }
 
 const clip = (n: string, max = 17) =>
@@ -28,7 +29,7 @@ const clip = (n: string, max = 17) =>
 
 export default function Court({
   leftName, rightName, leftScore, rightScore, onTap, disabled, serving,
-  leftFlag, rightFlag, leftLogo, rightLogo,
+  leftFlag, rightFlag, leftLogo, rightLogo, label,
 }: CourtProps) {
   const [down, setDown] = useState<'left' | 'right' | null>(null)
 
@@ -148,6 +149,13 @@ export default function Court({
         {/* tap zone — only the number circle (plus a bit of padding) counts */}
         <circle {...half('right')} cx={CXR} cy={MIDY} r={R + 24} fill="transparent"
           pointerEvents="all" aria-label={`point ${rightName}`} role="button" />
+
+        {label && (
+          <text x="240" y="19" textAnchor="middle" fill="#f7d774" fontSize="16" fontWeight="700"
+            fontFamily="'Barlow Condensed', sans-serif" letterSpacing="2.5">
+            {label.toUpperCase()}
+          </text>
+        )}
 
         {/* team names on the baselines */}
         <text x="10" y="20" fill="#c6ff3d" fontSize="17" fontWeight="700"

@@ -267,6 +267,7 @@ function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
         leftScore={s.left} rightScore={s.right}
         leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
         leftLogo={teamLogo(b, leftTeamId)} rightLogo={teamLogo(b, rightTeamId)}
+        label={m.bracket_key ? (m.round ?? undefined) : undefined}
         onTap={() => {}} disabled
       />
     </div>
