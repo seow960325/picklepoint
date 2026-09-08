@@ -2,7 +2,16 @@
  *  Referees score without looking at the screen, so this matters. */
 let ctx: AudioContext | null = null
 
+const SOUND_KEY = 'pp.sound'
+let soundOn = ((): boolean => { try { return localStorage.getItem(SOUND_KEY) !== 'off' } catch { return true } })()
+export const isSoundOn = () => soundOn
+export const setSoundOn = (on: boolean) => {
+  soundOn = on
+  try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off') } catch { /* ignore */ }
+}
+
 function tone(freq: number, ms: number, gain = 0.06) {
+  if (!soundOn) return
   try {
     ctx = ctx || new (window.AudioContext || (window as any).webkitAudioContext)()
     const o = ctx.createOscillator(), g = ctx.createGain()

@@ -7,7 +7,7 @@ import * as api from '../lib/api'
 import { enqueue, flush, pending, stalledCount, retryStalled, lastQueueError } from '../lib/queue'
 import { useWakeLockEffect } from '../lib/wakelock'
 import { useLandscape } from '../lib/orientation'
-import { tapPoint, tapUndo, hornEnd, chimeSwitch } from '../lib/feedback'
+import { tapPoint, tapUndo, hornEnd, chimeSwitch, isSoundOn, setSoundOn } from '../lib/feedback'
 import { Screen, Spinner, FullscreenButton, Flag, Emblem } from '../components/ui'
 import Court from '../components/Court'
 
@@ -356,6 +356,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
             {matchPoint && <span className="shrink-0 animate-pulse text-sm text-brand-ink">MATCH PT</span>}
           </div>
           <div className="flex shrink-0 items-center gap-2.5 text-[11px]">
+            <SoundToggle portrait={isPortrait} />
             {!isPortrait && <FullscreenButton className="h-5 w-5 shrink-0 text-fg-muted active:text-fg-muted" />}
             {recentDone && (
               <Link to={`/c/${code}/match/${recentDone.id}`} className="text-fg-muted underline underline-offset-2">
@@ -517,6 +518,24 @@ function ResultRow({ name, flag, logo, score, win }: {
       </span>
       <span className="tabular font-display text-4xl font-bold">{score}</span>
     </div>
+  )
+}
+
+function SoundToggle({ portrait }: { portrait: boolean }) {
+  const [on, setOn] = useState(isSoundOn())
+  return (
+    <button type="button" title={on ? 'Sound on — tap to mute' : 'Sound off — tap to unmute'}
+      aria-label={on ? 'Mute sound' : 'Unmute sound'}
+      onClick={() => { const v = !on; setSoundOn(v); setOn(v) }}
+      className="shrink-0 text-fg-muted active:text-fg">
+      <svg viewBox="0 0 24 24" className={portrait ? 'h-5 w-5' : 'h-5 w-5'} fill="none"
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M11 5 6 9H2v6h4l5 4V5z" />
+        {on
+          ? <><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></>
+          : <><line x1="22" y1="9" x2="16" y2="15" /><line x1="16" y1="9" x2="22" y2="15" /></>}
+      </svg>
+    </button>
   )
 }
 
