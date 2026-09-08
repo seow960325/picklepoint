@@ -19,6 +19,8 @@ export interface CourtProps {
   serving?: 'left' | 'right' | null
   leftFlag?: string | null
   rightFlag?: string | null
+  leftLogo?: string | null
+  rightLogo?: string | null
 }
 
 const clip = (n: string, max = 17) =>
@@ -26,7 +28,7 @@ const clip = (n: string, max = 17) =>
 
 export default function Court({
   leftName, rightName, leftScore, rightScore, onTap, disabled, serving,
-  leftFlag, rightFlag,
+  leftFlag, rightFlag, leftLogo, rightLogo,
 }: CourtProps) {
   const [down, setDown] = useState<'left' | 'right' | null>(null)
 
@@ -94,14 +96,17 @@ export default function Court({
           style={{ fontVariantNumeric: 'tabular-nums' }}>
           {leftScore}
         </text>
-        {leftFlag && (
+        {(leftLogo || leftFlag) && (
           <>
             <rect x={CXL - 27} y="31" width="54" height="38" rx="5"
               fill="#0a0e17" opacity="0.45" filter="url(#soft)" />
-            <svg x={CXL - 27} y="30" width="54" height="38"
-              viewBox="0 0 28 20" preserveAspectRatio="xMidYMid slice">
-              <FlagGlyph name={leftFlag} />
-            </svg>
+            {leftLogo
+              ? <image href={leftLogo} x={CXL - 27} y="30" width="54" height="38"
+                  preserveAspectRatio="xMidYMid slice" />
+              : <svg x={CXL - 27} y="30" width="54" height="38"
+                  viewBox="0 0 28 20" preserveAspectRatio="xMidYMid slice">
+                  <FlagGlyph name={leftFlag} />
+                </svg>}
             <rect x={CXL - 27} y="30" width="54" height="38" rx="5"
               fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />
           </>
@@ -123,14 +128,17 @@ export default function Court({
           style={{ fontVariantNumeric: 'tabular-nums' }}>
           {rightScore}
         </text>
-        {rightFlag && (
+        {(rightLogo || rightFlag) && (
           <>
             <rect x={CXR - 27} y="31" width="54" height="38" rx="5"
               fill="#0a0e17" opacity="0.45" filter="url(#soft)" />
-            <svg x={CXR - 27} y="30" width="54" height="38"
-              viewBox="0 0 28 20" preserveAspectRatio="xMidYMid slice">
-              <FlagGlyph name={rightFlag} />
-            </svg>
+            {rightLogo
+              ? <image href={rightLogo} x={CXR - 27} y="30" width="54" height="38"
+                  preserveAspectRatio="xMidYMid slice" />
+              : <svg x={CXR - 27} y="30" width="54" height="38"
+                  viewBox="0 0 28 20" preserveAspectRatio="xMidYMid slice">
+                  <FlagGlyph name={rightFlag} />
+                </svg>}
             <rect x={CXR - 27} y="30" width="54" height="38" rx="5"
               fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />
           </>

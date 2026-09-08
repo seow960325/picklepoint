@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   useCompetition, teamName, teamSideName, forgetCode,
@@ -13,18 +13,32 @@ import {
 import { Screen, Spinner, ThemeToggle } from '../components/ui'
 import { Flag } from '../components/ui'
 import { Field, Stepper, Choice, Warn, input, inputFull } from '../components/form'
+import { resizeImage } from '../lib/image'
 
+const TOKEN_TTL_MS = 4 * 60 * 60 * 1000
 const tokKey = (code: string) => `pp.admin.${code}`
+function readToken(code: string): string | null {
+  try {
+    const raw = localStorage.getItem(tokKey(code))
+    if (!raw) return null
+    const { t, exp } = JSON.parse(raw)
+    if (!t || !exp || Date.now() > exp) { localStorage.removeItem(tokKey(code)); return null }
+    return t as string
+  } catch { localStorage.removeItem(tokKey(code)); return null }
+}
+function writeToken(code: string, t: string) {
+  localStorage.setItem(tokKey(code), JSON.stringify({ t, exp: Date.now() + TOKEN_TTL_MS }))
+}
 type Tab = 'competition' | 'scoring' | 'teams' | 'courts' | 'schedule' | 'bracket'
 
 export default function Admin() {
   const { code } = useParams()
   const { bundle, reload } = useCompetition(code)
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(tokKey(code!)))
+  const [token, setToken] = useState<string | null>(() => readToken(code!))
 
   if (!bundle) return <Screen><Spinner /></Screen>
   if (!token) return <AdminGate code={code!} onIn={t => {
-    localStorage.setItem(tokKey(code!), t); setToken(t)
+    writeToken(code!, t); setToken(t)
   }} />
 
   return <Panel bundle={bundle} token={token} code={code!} reload={reload}
@@ -147,6 +161,7 @@ function CompetitionTab({ bundle, token, run, secrets }: any) {
   const [venue, setVenue] = useState(c.venue ?? '')
   const navigate = useNavigate()
   const [confirmText, setConfirmText] = useState('')
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const [delBusy, setDelBusy] = useState(false)
   const [delErr, setDelErr] = useState<string | null>(null)
 
@@ -189,13 +204,38 @@ function CompetitionTab({ bundle, token, run, secrets }: any) {
         <div className="flex flex-wrap items-center gap-2">
           <input className={`${input} font-mono uppercase`} value={confirmText}
             onChange={e => setConfirmText(e.target.value.toUpperCase())} placeholder={c.code} />
-          <button onClick={deleteCompetition} disabled={confirmText !== c.code || delBusy}
+          <button onClick={() => setConfirmOpen(true)} disabled={confirmText !== c.code || delBusy}
             className="rounded-xl bg-red-600 px-5 py-2.5 font-display font-bold text-white disabled:opacity-30">
-            {delBusy ? 'DELETING…' : 'DELETE COMPETITION'}
+            DELETE COMPETITION
           </button>
         </div>
-        {delErr && <Warn>{delErr}</Warn>}
+        {delErr && !confirmOpen && <Warn>{delErr}</Warn>}
       </div>
+
+      {confirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6"
+          onClick={() => !delBusy && setConfirmOpen(false)}>
+          <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5"
+            onClick={e => e.stopPropagation()}>
+            <div className="font-display text-lg font-bold text-red-600">Delete {c.code}?</div>
+            <p className="mt-2 text-sm text-fg-muted">
+              This permanently removes the competition and everything in it — teams, matches
+              and scores. This cannot be undone.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setConfirmOpen(false)} disabled={delBusy}
+                className="rounded-xl border border-line px-4 py-2 text-sm font-semibold text-fg-muted disabled:opacity-40">
+                Cancel
+              </button>
+              <button onClick={deleteCompetition} disabled={delBusy}
+                className="rounded-xl bg-red-600 px-4 py-2 font-display text-sm font-bold text-white disabled:opacity-40">
+                {delBusy ? 'DELETING…' : 'Delete permanently'}
+              </button>
+            </div>
+            {delErr && <div className="mt-3"><Warn>{delErr}</Warn></div>}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -233,7 +273,7 @@ function ScoringTab({ ev, token, run }: any) {
       </Field>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Field label="Winning score">
-          <Stepper value={t} min={1} max={99} onChange={v => { setT(v); setSw(defaultSwitchAt(v)) }} />
+          <Stepper value={t} min={1} max={99} onChange={v => { setT(v); setSw((s: number) => s > 0 ? defaultSwitchAt(v) : 0) }} />
         </Field>
         <Field label="Win by"><Stepper value={w} min={1} max={5} onChange={setW} /></Field>
         <Field label="Hard cap"><Stepper value={cap} min={1} max={120} onChange={setCap} /></Field>
@@ -323,6 +363,32 @@ function TeamsTab({ bundle, ev, token, run }: any) {
   )
 }
 
+function LogoControl({ t, token, run }: any) {
+  const onFile = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    run(async () => {
+      const data = await resizeImage(file, 256)
+      await api.adminSetTeamLogo(token, t.id, data)
+    }, 'Logo updated')
+  }
+  return (
+    <div className="relative shrink-0">
+      <label className="block cursor-pointer">
+        <input type="file" accept="image/*" className="hidden" onChange={onFile} />
+        {t.logo
+          ? <img src={t.logo} alt="" className="h-9 w-9 rounded-lg border border-line bg-surface-2 object-contain" />
+          : <span className="grid h-9 w-9 place-items-center rounded-lg border border-dashed border-line text-lg text-fg-subtle">+</span>}
+      </label>
+      {t.logo && (
+        <button onClick={() => run(() => api.adminSetTeamLogo(token, t.id, null), 'Logo removed')}
+          className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-red-600 text-[10px] font-bold leading-none text-white">x</button>
+      )}
+    </div>
+  )
+}
+
 function TeamRow({ t, ev, token, run, isDuel }: any) {
   const [name, setName] = useState(t.name)
   const [pool, setPool] = useState(t.pool ?? 'A')
@@ -330,6 +396,7 @@ function TeamRow({ t, ev, token, run, isDuel }: any) {
   const dirty = isDuel ? (name !== t.name || side !== (t.side ?? 'A')) : (name !== t.name || pool !== (t.pool ?? 'A'))
   return (
     <div className="flex items-center gap-2 p-2.5">
+      <LogoControl t={t} token={token} run={run} />
       <input className={`${input} min-w-0 flex-1`} value={name} onChange={e => setName(e.target.value)} />
       {isDuel ? (
         <button onClick={() => setSide(side === 'A' ? 'B' : 'A')}
@@ -643,4 +710,8 @@ const readable = (m: string) => ({
   BAD_SWITCH_AT: 'Switch-ends score must be between 1 and the winning score.',
   PIN_MUST_BE_4_DIGITS: 'Court PINs must be exactly 4 digits.',
   NOT_ADMIN: 'Your settings session expired — enter the admin PIN again.',
+  IMAGE_TOO_LARGE: 'That image is too large — pick one under 4 MB.',
+  LOGO_TOO_LARGE: 'That logo is too large to save.',
+  BAD_IMAGE: 'That file could not be read as an image.',
+  NO_TEAM: 'That team no longer exists.',
 }[m] ?? m)

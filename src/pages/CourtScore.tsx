@@ -8,7 +8,7 @@ import { enqueue, flush, pending, stalledCount, retryStalled, lastQueueError } f
 import { useWakeLockEffect } from '../lib/wakelock'
 import { useLandscape } from '../lib/orientation'
 import { tapPoint, tapUndo, hornEnd, chimeSwitch } from '../lib/feedback'
-import { Screen, Spinner, FullscreenButton, Flag } from '../components/ui'
+import { Screen, Spinner, FullscreenButton, Flag, Emblem } from '../components/ui'
 import Court from '../components/Court'
 
 export default function CourtScore() {
@@ -305,6 +305,8 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
     if (!t?.side) return null
     return (t.side === 'A' ? ev.side_a_name : ev.side_b_name) ?? null
   }
+  const teamLogoOf = (teamId: string | null): string | null =>
+    bundle.teams.find((x: typeof bundle.teams[number]) => x.id === teamId)?.logo ?? null
   const leftTeamId = m.a_on_left ? m.team_a_id : m.team_b_id
   const rightTeamId = m.a_on_left ? m.team_b_id : m.team_a_id
   // SWAP persists to the server (a_on_left) so the live board and TV mirror it.
@@ -387,6 +389,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 leftName={leftName} rightName={rightName}
                 leftScore={s.left} rightScore={s.right}
                 leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
+                leftLogo={teamLogoOf(leftTeamId)} rightLogo={teamLogoOf(rightTeamId)}
                 onTap={score} disabled={done}
               />
               <button onClick={swap}
@@ -400,6 +403,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 leftName={leftName} rightName={rightName}
                 leftScore={s.left} rightScore={s.right}
                 leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
+                leftLogo={teamLogoOf(leftTeamId)} rightLogo={teamLogoOf(rightTeamId)}
                 onTap={score} disabled={done}
               />
               <button onClick={swap}
@@ -479,8 +483,8 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
           isPortrait ? 'flex-col gap-6 px-8' : 'gap-10 px-10'}`}>
           <div className={`space-y-2 ${isPortrait ? 'w-full max-w-xs' : 'w-full max-w-sm'}`}>
             <div className="mb-3 font-display text-xl font-bold tracking-widest text-fg-muted">GAME</div>
-            <ResultRow name={leftName} flag={sideName(leftTeamId)} score={s.left} win={s.left > s.right} />
-            <ResultRow name={rightName} flag={sideName(rightTeamId)} score={s.right} win={s.right > s.left} />
+            <ResultRow name={leftName} flag={sideName(leftTeamId)} logo={teamLogoOf(leftTeamId)} score={s.left} win={s.left > s.right} />
+            <ResultRow name={rightName} flag={sideName(rightTeamId)} logo={teamLogoOf(rightTeamId)} score={s.right} win={s.right > s.left} />
           </div>
           <div className={`space-y-3 ${isPortrait ? 'w-full max-w-xs' : 'w-56'}`}>
             <div className="text-sm text-fg-muted">
@@ -501,14 +505,14 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
   )
 }
 
-function ResultRow({ name, flag, score, win }: {
-  name: string; flag?: string | null; score: number; win: boolean
+function ResultRow({ name, flag, logo, score, win }: {
+  name: string; flag?: string | null; logo?: string | null; score: number; win: boolean
 }) {
   return (
     <div className={`flex items-center justify-between rounded-xl border px-4 py-3 ${
       win ? 'border-brand-ink bg-brand/10' : 'border-line'}`}>
       <span className="flex min-w-0 items-center gap-2">
-        <Flag name={flag} className="h-5 w-auto shrink-0 rounded-[2px]" />
+        <Emblem logo={logo} flagName={flag} className="h-5 w-auto shrink-0 rounded-[2px]" />
         <span className="truncate font-display text-xl font-bold">{name}</span>
       </span>
       <span className="tabular font-display text-4xl font-bold">{score}</span>

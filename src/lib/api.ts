@@ -222,6 +222,11 @@ export async function adminDeleteTeam(token: string, teamId: string) {
   await rpc('admin_delete_team', { p_token: token, p_team_id: teamId })
 }
 
+export async function adminSetTeamLogo(token: string, teamId: string, logo: string | null) {
+  if (IS_DEMO) return demo.setTeamLogo(teamId, logo)
+  await rpc('admin_set_team_logo', { p_token: token, p_team_id: teamId, p_logo: logo })
+}
+
 export async function adminSetCourtPin(token: string, courtId: string, pin: string) {
   if (IS_DEMO) return demo.setCourtPin(courtId, pin)
   await rpc('admin_set_court_pin', { p_token: token, p_court_id: courtId, p_pin: pin })

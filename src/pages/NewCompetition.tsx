@@ -31,7 +31,7 @@ export default function NewCompetition() {
   const [target, setTarget] = useState(15)
   const [winBy, setWinBy] = useState(2)
   const [cap, setCap] = useState(17)
-  const [switchAt, setSwitchAt] = useState(8)
+  const [switchAt, setSwitchAt] = useState(0)
 
   const [courtCount, setCourtCount] = useState(6)
   const [pins, setPins] = useState<string[]>(
@@ -174,7 +174,7 @@ export default function NewCompetition() {
           <Sum k="Name" v={name || '—'} />
           <Sum k="Event" v={eventName || '—'} />
           <Sum k="Scoring" v={`to ${target}, win by ${winBy}, cap ${cap}`} />
-          <Sum k="Switch ends" v={`at ${switchAt}`} />
+          <Sum k="Switch ends" v={switchAt > 0 ? `at ${switchAt}` : 'OFF'} />
           <Sum k="Courts" v={String(courtCount)} />
           {format === 'duel' ? (
             <>
@@ -287,7 +287,7 @@ export default function NewCompetition() {
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Field label="Winning score"><Stepper value={target} min={1} max={99}
-              onChange={v => { setTarget(v); setSwitchAt(defaultSwitchAt(v)) }} /></Field>
+              onChange={v => { setTarget(v); setSwitchAt(s => s > 0 ? defaultSwitchAt(v) : 0) }} /></Field>
             <Field label="Win by"><Stepper value={winBy} min={1} max={5} onChange={setWinBy} /></Field>
             <Field label="Hard cap"><Stepper value={cap} min={1} max={120} onChange={setCap} /></Field>
             <Field label="Switch ends at">

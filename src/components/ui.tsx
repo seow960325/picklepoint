@@ -147,6 +147,16 @@ export function FlagGlyph({ name }: { name?: string | null }) {
   return null
 }
 
+/** A team emblem: an uploaded logo if present, else the side/country flag,
+ *  else nothing. Keeps the MCMC26 flag look for duel while letting any
+ *  competition upload its own logos. */
+export function Emblem({ logo, flagName, className = '' }: {
+  logo?: string | null; flagName?: string | null; className?: string
+}) {
+  if (logo) return <img src={logo} alt="" className={`${className} object-contain`} />
+  return <Flag name={flagName} className={className} />
+}
+
 /** A flag for a country name as a standalone element, or nothing. */
 export function Flag({ name, className = '' }: { name?: string | null; className?: string }) {
   if (!match(name)) return null

@@ -290,6 +290,14 @@ export const demo = {
     save(s)
   },
 
+  setTeamLogo(teamId: string, logo: string | null) {
+    const s = load()
+    const t = s.bundle.teams.find(x => x.id === teamId)
+    if (!t) throw new Error('NO_TEAM')
+    t.logo = logo
+    save(s)
+  },
+
   setCourtPin(courtId: string, pin: string) {
     const s = load()
     if (!/^\d{4}$/.test(pin)) throw new Error('PIN_MUST_BE_4_DIGITS')

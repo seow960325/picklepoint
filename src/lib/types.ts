@@ -24,6 +24,8 @@ export interface Team {
   player1: string | null; player2: string | null; pool: string | null
   // only set when the event format is 'duel'
   side?: 'A' | 'B' | null
+  // optional uploaded emblem (base64 data URL); null = show name/flag only
+  logo?: string | null
 }
 export interface Match {
   id: string; event_id: string; court_id: string | null
