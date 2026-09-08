@@ -499,7 +499,6 @@ function Standings({ b }: { b: Bundle }) {
                       <th className="px-2 py-1.5 text-right">P</th>
                       <th className="px-2 py-1.5 text-right">W</th>
                       <th className="px-2 py-1.5 text-right">L</th>
-                      <th className="px-3 py-1.5 text-right">Diff</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
@@ -509,9 +508,6 @@ function Standings({ b }: { b: Bundle }) {
                         <td className="tabular px-2 py-2 text-right text-fg-muted">{r.played}</td>
                         <td className="tabular px-2 py-2 text-right font-bold">{r.won}</td>
                         <td className="tabular px-2 py-2 text-right text-fg-muted">{r.lost}</td>
-                        <td className={`tabular px-3 py-2 text-right ${r.diff > 0 ? 'text-brand-ink' : r.diff < 0 ? 'text-fg-muted' : ''}`}>
-                          {r.diff > 0 ? '+' : ''}{r.diff}
-                        </td>
                       </tr>
                     ))}
                   </tbody>

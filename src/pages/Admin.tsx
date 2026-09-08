@@ -514,10 +514,7 @@ function BracketTab({ bundle, ev, token, run }: any) {
                     className={i < advance ? 'font-semibold text-fg' : 'text-fg-subtle'}>
                     <td className="py-0.5 pr-2 tabular">{i + 1}</td>
                     <td className="w-full truncate py-0.5">{r.team.name}</td>
-                    <td className="py-0.5 pl-2 text-right tabular">{r.won}W</td>
-                    <td className="py-0.5 pl-2 text-right tabular">
-                      {r.diff > 0 ? '+' : ''}{r.diff}
-                    </td>
+                    <td className="py-0.5 pl-2 text-right tabular font-bold">{r.won}</td>
                   </tr>
                 ))}
               </tbody>
@@ -534,12 +531,12 @@ function BracketTab({ bundle, ev, token, run }: any) {
           </div>
           <ul className="space-y-1 text-sm">
             {pairs.map((pr, i) => (
-              <li key={i} className="flex justify-between gap-3 border-b border-line/60 pb-1">
-                <span>{nm(pr[0]) ?? '—'}</span>
-                <span className="shrink-0 text-fg-subtle">
+              <li key={i} className="grid grid-cols-[1fr_2.75rem_1fr] items-center gap-2 border-b border-line/60 pb-1">
+                <span className="truncate text-right">{nm(pr[0]) ?? '—'}</span>
+                <span className="text-center text-xs text-fg-subtle">
                   {pr[1] ? 'vs' : 'bye'}
                 </span>
-                <span className="text-right">{nm(pr[1]) ?? '—'}</span>
+                <span className="truncate text-left">{nm(pr[1]) ?? '—'}</span>
               </li>
             ))}
           </ul>
@@ -562,15 +559,15 @@ function BracketTab({ bundle, ev, token, run }: any) {
               </div>
               <ul className="space-y-1 text-sm">
                 {r.matches.map((m: any) => (
-                  <li key={m.id} className="flex justify-between gap-3">
-                    <span className={m.winner_id === m.team_a_id ? 'font-semibold' : ''}>
+                  <li key={m.id} className="grid grid-cols-[1fr_3.5rem_1fr] items-center gap-2">
+                    <span className={`truncate text-right ${m.winner_id === m.team_a_id ? 'font-semibold' : ''}`}>
                       {nm(m.team_a_id) ?? '—'}
                     </span>
-                    <span className="shrink-0 tabular text-fg-subtle">
+                    <span className="tabular text-center text-fg-subtle">
                       {m.status === 'finished' ? `${m.score_a}–${m.score_b}`
                         : m.team_b_id == null && m.team_a_id != null ? 'bye' : 'vs'}
                     </span>
-                    <span className={`text-right ${m.winner_id === m.team_b_id ? 'font-semibold' : ''}`}>
+                    <span className={`truncate text-left ${m.winner_id === m.team_b_id ? 'font-semibold' : ''}`}>
                       {nm(m.team_b_id) ?? '—'}
                     </span>
                   </li>
