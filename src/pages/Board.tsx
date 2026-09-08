@@ -316,62 +316,126 @@ function PosterBracket({ b }: { b: Bundle }) {
   const play = rounds.filter(r => r !== finalR && r !== thirdR)
   const half = (n: number) => Math.ceil(n / 2)
   const leftCols = play.map(r => ({ round: r.round, matches: r.matches.slice(0, half(r.matches.length)) }))
-  const rightCols = [...play].reverse().map(r => ({ round: r.round, matches: r.matches.slice(half(r.matches.length)) }))
+  const rightCols = play.map(r => ({ round: r.round, matches: r.matches.slice(half(r.matches.length)) }))
+  const finalM = finalR?.matches[0]
+  const thirdM = thirdR?.matches[0]
+  const champId = finalM?.winner_id ?? null
+
   return (
-    <div className="overflow-x-auto p-4">
-      <div className="mx-auto flex min-w-max items-stretch justify-center gap-3 lg:gap-5">
-        {leftCols.map((col, i) => <BracketColumn key={'L' + i} b={b} col={col} side="left" />)}
-        <div className="flex flex-col items-center justify-center gap-2 px-1">
-          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-ink">Final</div>
-          <div className="w-44"><PMatch b={b} m={finalR?.matches[0]} /></div>
-          <Trophy />
-          <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-fg-subtle">Third place</div>
-          <div className="w-44"><PMatch b={b} m={thirdR?.matches[0]} /></div>
-        </div>
-        {rightCols.map((col, i) => <BracketColumn key={'R' + i} b={b} col={col} side="right" />)}
+    <div className="overflow-x-auto bg-[radial-gradient(ellipse_at_top,rgba(198,255,61,0.06),transparent_60%)] p-4">
+      <div className="mx-auto flex min-w-max items-stretch justify-center">
+        {leftCols.map((col, i) => (
+          <div key={'L' + i} className="flex items-stretch">
+            <PColumn b={b} col={col} side="left" />
+            <PConnector count={col.matches.length} side="left" />
+          </div>
+        ))}
+
+        <PCentre b={b} finalM={finalM} thirdM={thirdM} champId={champId} />
+
+        {[...rightCols].reverse().map((col, i) => (
+          <div key={'R' + i} className="flex items-stretch">
+            <PConnector count={col.matches.length} side="right" />
+            <PColumn b={b} col={col} side="right" />
+          </div>
+        ))}
       </div>
     </div>
   )
 }
 
-function BracketColumn({ b, col, side }: { b: Bundle; col: { round: string; matches: Match[] }; side: 'left' | 'right' }) {
+function PColumn({ b, col, side }: { b: Bundle; col: { round: string; matches: Match[] }; side: 'left' | 'right' }) {
   return (
-    <div className="flex min-w-[9.5rem] flex-col justify-around gap-2">
-      <div className={`mb-1 text-[10px] font-bold uppercase tracking-widest text-fg-subtle ${side === 'right' ? 'text-right' : ''}`}>
+    <div className="flex min-w-[8.5rem] flex-col lg:min-w-[10rem]">
+      <div className={`mb-1 h-4 text-[10px] font-bold uppercase tracking-widest text-fg-subtle ${side === 'right' ? 'text-right' : ''}`}>
         {col.round}
       </div>
-      {col.matches.map(m => <PMatch key={m.id} b={b} m={m} />)}
+      <div className="flex flex-1 flex-col">
+        {col.matches.map(m => (
+          <div key={m.id} className="flex flex-1 items-center">
+            <div className="w-full"><PMatch b={b} m={m} /></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function PConnector({ count, side }: { count: number; side: 'left' | 'right' }) {
+  const cells = Math.max(1, Math.ceil(count / 2))
+  const single = count <= 1
+  return (
+    <div className="flex w-5 flex-col lg:w-8">
+      <div className="mb-1 h-4" />
+      <div className="flex flex-1 flex-col text-fg-subtle/50">
+        {Array.from({ length: cells }).map((_, i) => (
+          <div key={i} className="flex-1">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full">
+              <path
+                d={single
+                  ? 'M0 50 H100'
+                  : side === 'left'
+                    ? 'M0 25 H60 V75 H0 M60 50 H100'
+                    : 'M100 25 H40 V75 H100 M40 50 H0'}
+                fill="none" stroke="currentColor" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+            </svg>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
 function PMatch({ b, m }: { b: Bundle; m?: Match }) {
-  if (!m) return <div className="rounded-lg border border-dashed border-line/70 bg-surface/40 px-2 py-3 text-center text-[10px] text-fg-subtle">TBD</div>
+  if (!m) return <div className="rounded-md border border-dashed border-line/60 bg-surface/30 px-2 py-3 text-center text-[10px] text-fg-subtle">TBD</div>
   const bye = m.team_b_id == null && m.team_a_id != null
+  const decided = m.status === 'finished'
   return (
-    <div className={`overflow-hidden rounded-lg border ${m.status === 'live' ? 'border-brand' : 'border-line'} bg-surface`}>
-      <PTeam b={b} teamId={m.team_a_id} score={m.score_a} win={m.winner_id != null && m.winner_id === m.team_a_id} finished={m.status === 'finished'} />
+    <div className={`overflow-hidden rounded-md border ${m.status === 'live' ? 'border-brand shadow-[0_0_0_1px_rgba(198,255,61,0.4)]' : 'border-line'} bg-surface`}>
+      <PTeam b={b} teamId={m.team_a_id} score={m.score_a} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} />
       <div className="h-px bg-line" />
       {bye
         ? <div className="px-2 py-1 text-[11px] italic text-fg-subtle">bye</div>
-        : <PTeam b={b} teamId={m.team_b_id} score={m.score_b} win={m.winner_id != null && m.winner_id === m.team_b_id} finished={m.status === 'finished'} />}
+        : <PTeam b={b} teamId={m.team_b_id} score={m.score_b} win={decided && m.winner_id === m.team_b_id} lose={decided && m.winner_id !== m.team_b_id} finished={decided} />}
     </div>
   )
 }
 
-function PTeam({ b, teamId, score, win, finished }: { b: Bundle; teamId: string | null; score: number; win: boolean; finished: boolean }) {
+function PTeam({ b, teamId, score, win, lose, finished }: { b: Bundle; teamId: string | null; score: number; win: boolean; lose: boolean; finished: boolean }) {
   return (
-    <div className={`flex items-center gap-1.5 px-2 py-1 ${win ? 'bg-brand/10' : ''}`}>
+    <div className={`flex items-center gap-1.5 border-l-2 px-2 py-1 ${win ? 'border-brand bg-brand/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
       <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className="h-3.5 w-5 shrink-0 rounded-[1px] object-contain" />
       <span className={`min-w-0 flex-1 truncate text-xs ${win ? 'font-bold text-fg' : 'text-fg-muted'}`}>{teamName(b, teamId)}</span>
-      {finished && <span className="tabular shrink-0 text-xs text-fg-subtle">{score}</span>}
+      {finished && <span className={`tabular shrink-0 text-xs ${win ? 'font-bold text-brand-ink' : 'text-fg-subtle'}`}>{score}</span>}
     </div>
   )
 }
 
-function Trophy() {
+function PCentre({ b, finalM, thirdM, champId }: { b: Bundle; finalM?: Match; thirdM?: Match; champId: string | null }) {
   return (
-    <svg viewBox="0 0 48 60" className="h-14 w-14" aria-hidden="true">
+    <div className="flex flex-col px-2 lg:px-5">
+      <div className="mb-1 h-4 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-brand-ink">Final</div>
+      <div className="flex flex-1 flex-col items-center justify-center gap-2">
+        <div className="w-44"><PMatch b={b} m={finalM} /></div>
+        <div className="my-1 flex flex-col items-center">
+          <Trophy lit={!!champId} />
+          {champId
+            ? <div className="mt-1 flex items-center gap-1.5 rounded-full border border-[#c2922c]/60 bg-[#f7d774]/10 px-3 py-1">
+                <Emblem logo={teamLogo(b, champId)} flagName={teamSideName(b, champId)} className="h-4 w-6 shrink-0 rounded-[1px] object-contain" />
+                <span className="text-sm font-bold text-[#f7d774]">{teamName(b, champId)}</span>
+              </div>
+            : <div className="mt-1 text-[10px] uppercase tracking-widest text-fg-subtle">champion</div>}
+        </div>
+        <div className="mt-1 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-fg-subtle">Third place</div>
+        <div className="w-40"><PMatch b={b} m={thirdM} /></div>
+      </div>
+    </div>
+  )
+}
+
+function Trophy({ lit }: { lit?: boolean }) {
+  return (
+    <svg viewBox="0 0 48 60" className={`h-16 w-16 ${lit ? 'drop-shadow-[0_0_10px_rgba(247,215,116,0.6)]' : 'opacity-60'}`} aria-hidden="true">
       <defs>
         <linearGradient id="ppTrophy" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#f7d774" /><stop offset="100%" stopColor="#c2922c" />
