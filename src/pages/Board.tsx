@@ -115,7 +115,9 @@ export default function Board() {
         <div className="mt-3 flex gap-1 overflow-x-auto lg:mt-4 lg:gap-2">
           {((bundle.events.some(e => e.format === 'groups_ko')
               ? ['live', 'schedule', 'standings', 'bracket', 'poster', 'results']
-              : ['live', 'schedule', 'standings', 'results']) as Tab[]).map(t => (
+              : bundle.events.some(e => e.format === 'duel')
+                ? ['live', 'standings', 'results']
+                : ['live', 'schedule', 'standings', 'results']) as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider lg:px-4 lg:py-2 lg:text-sm ${
                 tab === t ? 'bg-brand text-brand-fg' : 'text-fg-muted'}`}>
