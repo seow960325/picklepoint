@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  useCompetition, teamName, teamSideName, teamLogo, liveOnCourt, nextOnCourt, results, standings,
+  useCompetition, teamName, teamSideName, teamLogo, liveOnCourt, nextOnCourt, onDeck, results, standings,
   eventOf, duelTally, duelPods, groupStandings, bracketRounds, bracketSeeded, isKoMatch,
 } from '../lib/store'
 import { displayScores } from '../lib/scoring'
@@ -137,11 +137,44 @@ export default function Board() {
 }
 
 // ------------------------------------------------------------- live grid
+function TvIdle({ b }: { b: Bundle }) {
+  const ups = onDeck(b, { n: 6 })
+  return (
+    <div className="px-6 py-16 text-center">
+      <div className="font-display text-2xl font-bold tracking-wide text-fg-muted sm:text-3xl">
+        No match live right now
+      </div>
+      {ups.length > 0 && (
+        <div className="mx-auto mt-6 max-w-lg space-y-2">
+          <div className="text-xs font-bold uppercase tracking-widest text-accent">Up next</div>
+          {ups.map(m => (
+            <div key={m.id} className="flex items-center justify-center gap-2 text-base sm:text-lg">
+              <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-4 w-auto shrink-0 rounded-[1px]" />
+              <span className="truncate">{teamName(b, m.team_a_id)}</span>
+              <span className="text-fg-subtle">vs</span>
+              <span className="truncate">{teamName(b, m.team_b_id)}</span>
+              <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-4 w-auto shrink-0 rounded-[1px]" />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
+  const shownCourts = tv ? b.courts.filter(ct => liveOnCourt(b, ct.id)) : b.courts
+  if (tv && shownCourts.length === 0) return <TvIdle b={b} />
+  const cols = !tv
+    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+    : shownCourts.length <= 1 ? 'grid-cols-1'
+    : shownCourts.length === 2 ? 'grid-cols-1 sm:grid-cols-2'
+    : 'grid-cols-1 sm:grid-cols-3'
+  const wrap = tv && shownCourts.length === 1 ? 'mx-auto w-full max-w-[1100px] ' : ''
   return (
     <div className={tv ? '' : 'p-3 lg:p-5'}>
-      <div className={`grid gap-3 lg:gap-5 ${tv ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
-        {b.courts.map(ct => {
+      <div className={`${wrap}grid gap-3 lg:gap-5 ${cols}`}>
+        {shownCourts.map(ct => {
           const m = liveOnCourt(b, ct.id)
           const up = nextOnCourt(b, ct.id)
           return (
