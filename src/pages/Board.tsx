@@ -330,20 +330,44 @@ function FitBox({ children }: { children: any }) {
   const inner = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
   useLayoutEffect(() => {
+    let raf1 = 0, raf2 = 0
+    const timers: ReturnType<typeof setTimeout>[] = []
     const recompute = () => {
       const o = outer.current, i = inner.current
       if (!o || !i) return
+      const ow = o.clientWidth, oh = o.clientHeight
       const w = i.offsetWidth, h = i.offsetHeight
-      if (!w || !h) return
-      const s = Math.min(o.clientWidth / w, o.clientHeight / h)
+      if (!w || !h || !ow || !oh) return
+      // tiny safety margin so sub-pixel rounding never lets an edge get clipped
+      const s = Math.min(ow / w, oh / h) * 0.995
       if (isFinite(s) && s > 0) setScale(s)
     }
     recompute()
+    // content can still reflow after the first paint (webfonts swapping in,
+    // iOS toolbar show/hide changing the visible viewport, slow layout on
+    // first load) -- keep re-measuring for a bit so the scale always matches
+    // the FINAL rendered size, on every device, not just fast desktop ones.
+    raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(recompute) })
+    ;[100, 300, 600, 1200, 2000].forEach(ms => timers.push(setTimeout(recompute, ms)))
+    const fonts: any = (document as any).fonts
+    if (fonts?.ready) fonts.ready.then(recompute).catch(() => {})
     const ro = new ResizeObserver(recompute)
     if (outer.current) ro.observe(outer.current)
     if (inner.current) ro.observe(inner.current)
     window.addEventListener('resize', recompute)
-    return () => { ro.disconnect(); window.removeEventListener('resize', recompute) }
+    window.addEventListener('orientationchange', recompute)
+    const vv: any = (window as any).visualViewport
+    vv?.addEventListener('resize', recompute)
+    vv?.addEventListener('scroll', recompute)
+    return () => {
+      ro.disconnect()
+      cancelAnimationFrame(raf1); cancelAnimationFrame(raf2)
+      timers.forEach(clearTimeout)
+      window.removeEventListener('resize', recompute)
+      window.removeEventListener('orientationchange', recompute)
+      vv?.removeEventListener('resize', recompute)
+      vv?.removeEventListener('scroll', recompute)
+    }
   }, [])
   return (
     <div ref={outer} className="grid h-full w-full place-items-center overflow-hidden">
@@ -918,7 +942,7 @@ function Matches({ b, code }: { b: Bundle; code: string }) {
                         <span className={`flex min-w-0 items-center justify-end gap-1.5 truncate text-sm ${nameCls(aWin)}`}>
                           <span className="truncate">{teamName(b, m.team_a_id)}</span>
                           <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-                          {(decided || live) && <span className={`tabular pl-1 font-display font-bold ${live ? 'text-brand-ink' : scoreCls(aWin)}`}>{m.score_a}</span>}
+                          {(decided || live) && <span className={`tabular inline-block min-w-[1.4rem] pl-1 text-right font-display font-bold ${live ? 'text-brand-ink' : scoreCls(aWin)}`}>{m.score_a}</span>}
                         </span>
                         <span className="flex justify-center">
                           {live
@@ -929,7 +953,7 @@ function Matches({ b, code }: { b: Bundle; code: string }) {
                             : null}
                         </span>
                         <span className={`flex min-w-0 items-center gap-1.5 truncate text-sm ${nameCls(bWin)}`}>
-                          {(decided || live) && <span className={`tabular pr-1 font-display font-bold ${live ? 'text-brand-ink' : scoreCls(bWin)}`}>{m.score_b}</span>}
+                          {(decided || live) && <span className={`tabular inline-block min-w-[1.4rem] pr-1 text-left font-display font-bold ${live ? 'text-brand-ink' : scoreCls(bWin)}`}>{m.score_b}</span>}
                           <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
                           <span className="truncate">{teamName(b, m.team_b_id)}</span>
                         </span>
@@ -996,7 +1020,7 @@ function GroupCard({ b, code, g, rows, advance, matches }: {
                 <span className={`flex min-w-0 items-center justify-end gap-1 truncate ${nameCls(aWin)}`}>
                   <span className="truncate">{teamName(b, m.team_a_id)}</span>
                   <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-                  {(decided || live) && <span className={`tabular pl-0.5 font-bold ${live ? 'text-brand-ink' : scoreCls(aWin)}`}>{m.score_a}</span>}
+                  {(decided || live) && <span className={`tabular inline-block min-w-[1.1rem] pl-0.5 text-right font-bold ${live ? 'text-brand-ink' : scoreCls(aWin)}`}>{m.score_a}</span>}
                 </span>
                 <span className="flex justify-center">
                   {live
@@ -1006,7 +1030,7 @@ function GroupCard({ b, code, g, rows, advance, matches }: {
                     : null}
                 </span>
                 <span className={`flex min-w-0 items-center gap-1 truncate ${nameCls(bWin)}`}>
-                  {(decided || live) && <span className={`tabular pr-0.5 font-bold ${live ? 'text-brand-ink' : scoreCls(bWin)}`}>{m.score_b}</span>}
+                  {(decided || live) && <span className={`tabular inline-block min-w-[1.1rem] pr-0.5 text-left font-bold ${live ? 'text-brand-ink' : scoreCls(bWin)}`}>{m.score_b}</span>}
                   <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
                   <span className="truncate">{teamName(b, m.team_b_id)}</span>
                 </span>
