@@ -446,7 +446,7 @@ function PMatch({ b, m }: { b: Bundle; m?: Match }) {
   return (
     <div className="relative">
       {live && (
-        <div className="absolute -right-2 -top-2 z-10">
+        <div className="absolute right-0 top-0 z-10 -translate-y-[130%]">
           <Pill tone="live"><span className="mr-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-current align-middle" />live</Pill>
         </div>
       )}
@@ -464,7 +464,7 @@ function PMatch({ b, m }: { b: Bundle; m?: Match }) {
 function PTeam({ b, teamId, score, win, lose, finished }: { b: Bundle; teamId: string | null; score: number; win: boolean; lose: boolean; finished: boolean }) {
   return (
     <div className={`flex items-center gap-2 border-l-2 px-2.5 py-1.5 ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
-      <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className="h-3.5 w-5 shrink-0 rounded-[1px] object-contain" />
+      <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
       <span className={`min-w-0 flex-1 truncate text-xs ${win ? 'font-bold text-fg' : 'text-fg-muted'}`}>{teamName(b, teamId)}</span>
       {finished && <span className={`tabular shrink-0 text-xs ${win ? 'font-bold text-gold' : 'text-fg-subtle'}`}>{score}</span>}
     </div>
@@ -917,7 +917,7 @@ function Matches({ b, code }: { b: Bundle; code: string }) {
                         className={`grid grid-cols-[1fr_4rem_1fr] items-center gap-2 rounded-lg px-1 py-1.5 active:bg-surface-2 ${live ? 'bg-brand/[0.06]' : ''}`}>
                         <span className={`flex min-w-0 items-center justify-end gap-1.5 truncate text-sm ${nameCls(aWin)}`}>
                           <span className="truncate">{teamName(b, m.team_a_id)}</span>
-                          <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-3.5 w-5 shrink-0 rounded-[1px] object-contain" />
+                          <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
                           {(decided || live) && <span className={`tabular pl-1 font-display font-bold ${live ? 'text-brand-ink' : scoreCls(aWin)}`}>{m.score_a}</span>}
                         </span>
                         <span className="flex justify-center">
@@ -930,7 +930,7 @@ function Matches({ b, code }: { b: Bundle; code: string }) {
                         </span>
                         <span className={`flex min-w-0 items-center gap-1.5 truncate text-sm ${nameCls(bWin)}`}>
                           {(decided || live) && <span className={`tabular pr-1 font-display font-bold ${live ? 'text-brand-ink' : scoreCls(bWin)}`}>{m.score_b}</span>}
-                          <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-3.5 w-5 shrink-0 rounded-[1px] object-contain" />
+                          <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
                           <span className="truncate">{teamName(b, m.team_b_id)}</span>
                         </span>
                       </Link>
@@ -970,18 +970,16 @@ function GroupCard({ b, code, g, rows, advance, matches }: {
           <span className="text-[11px] font-bold uppercase tracking-wider text-fg-subtle">Group {g}</span>
           <span className="text-[11px] text-fg-subtle">{open ? 'hide matches' : `${matches.length} matches`}</span>
         </div>
-        <table className="w-full text-sm">
-          <tbody>
-            {rows.map((r: any, i: number) => (
-              <tr key={r.team.id} className={i < advance ? 'font-semibold text-fg' : 'text-fg-subtle'}>
-                <td className="py-0.5 pr-2 tabular">{i + 1}</td>
-                <td className="py-0.5 pr-1"><Emblem logo={teamLogo(b, r.team.id)} flagName={teamSideName(b, r.team.id)} className="inline-block h-3 w-4 rounded-[1px] align-[-1px] object-contain" /></td>
-                <td className="w-full truncate py-0.5">{r.team.name}</td>
-                <td className="py-0.5 pl-2 text-right tabular font-bold">{r.won}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="text-sm">
+          {rows.map((r: any, i: number) => (
+            <div key={r.team.id} className={`flex items-center gap-2 py-0.5 ${i < advance ? 'font-semibold text-fg' : 'text-fg-subtle'}`}>
+              <span className="w-3.5 shrink-0 tabular">{i + 1}</span>
+              <Emblem logo={teamLogo(b, r.team.id)} flagName={teamSideName(b, r.team.id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
+              <span className="min-w-0 flex-1 truncate">{r.team.name}</span>
+              <span className="shrink-0 tabular font-bold">{r.won}</span>
+            </div>
+          ))}
+        </div>
       </button>
       {open && (
         <div className="border-t border-line">
@@ -997,7 +995,7 @@ function GroupCard({ b, code, g, rows, advance, matches }: {
                 className={`grid grid-cols-[1fr_3.5rem_1fr] items-center gap-2 border-b border-line/60 px-3 py-2 text-xs last:border-0 active:bg-surface-2 ${live ? 'bg-brand/[0.06]' : ''}`}>
                 <span className={`flex min-w-0 items-center justify-end gap-1 truncate ${nameCls(aWin)}`}>
                   <span className="truncate">{teamName(b, m.team_a_id)}</span>
-                  <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-3.5 w-5 shrink-0 rounded-[1px] object-contain" />
+                  <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
                   {(decided || live) && <span className={`tabular pl-0.5 font-bold ${live ? 'text-brand-ink' : scoreCls(aWin)}`}>{m.score_a}</span>}
                 </span>
                 <span className="flex justify-center">
@@ -1009,7 +1007,7 @@ function GroupCard({ b, code, g, rows, advance, matches }: {
                 </span>
                 <span className={`flex min-w-0 items-center gap-1 truncate ${nameCls(bWin)}`}>
                   {(decided || live) && <span className={`tabular pr-0.5 font-bold ${live ? 'text-brand-ink' : scoreCls(bWin)}`}>{m.score_b}</span>}
-                  <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-3.5 w-5 shrink-0 rounded-[1px] object-contain" />
+                  <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
                   <span className="truncate">{teamName(b, m.team_b_id)}</span>
                 </span>
               </Link>
