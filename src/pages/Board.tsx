@@ -949,59 +949,84 @@ function FlatMatches({ b, code }: { b: Bundle; code: string }) {
     b.courts,
   )
   const done = results(b)
-  const line = (m: Match, showScore: boolean) => (
-    <Link key={m.id} to={`/c/${code}/match/${m.id}`} className={`flex items-center gap-3 px-4 py-3 active:bg-surface-2 ${m.status === 'live' ? 'bg-brand/[0.06]' : ''}`}>
-      <div className="w-9 shrink-0 text-center font-display text-base font-bold text-fg-subtle">
-        {b.courts.find(c => c.id === m.court_id)?.number ?? '–'}
-      </div>
+  const statusPill = (m: Match) =>
+    m.status === 'live'
+      ? <Pill tone="live"><span className="mr-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-current align-middle" />live</Pill>
+      : m.status === 'finished'
+        ? <Pill tone="done">finished</Pill>
+        : <Pill>{m.status.replace('_', ' ')}</Pill>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-4">
-        <div className={`flex min-w-0 items-center gap-2 sm:flex-1 sm:justify-end sm:text-right ${showScore && m.winner_id === m.team_a_id ? 'font-bold text-fg' : 'text-fg-muted'}`}>
-          <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-3.5 w-auto shrink-0 rounded-[1px]" />
-          <span className="truncate text-sm">{teamName(b, m.team_a_id)}</span>
-        </div>
-
-        <div className="hidden shrink-0 items-center justify-center sm:flex sm:w-24">
-          {showScore
-            ? <span className="tabular font-display text-xl font-bold leading-none">
-                <span className={m.winner_id === m.team_a_id ? 'text-gold' : 'text-fg-muted'}>{m.score_a}</span>
-                <span className="mx-1 text-fg-subtle">–</span>
-                <span className={m.winner_id === m.team_b_id ? 'text-gold' : 'text-fg-muted'}>{m.score_b}</span>
-              </span>
-            : m.status === 'live' ? <span className="pp-live inline-block rounded-full"><Pill tone="live">live</Pill></span> : <Pill>{m.status.replace('_', ' ')}</Pill>}
-        </div>
-
-        <div className={`flex min-w-0 items-center gap-2 sm:flex-1 ${showScore && m.winner_id === m.team_b_id ? 'font-bold text-fg' : 'text-fg-muted'}`}>
-          <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-3.5 w-auto shrink-0 rounded-[1px]" />
-          <span className="truncate text-sm">{teamName(b, m.team_b_id)}</span>
-        </div>
-
-        <div className="text-[11px] tracking-wide text-fg-subtle sm:hidden">{(m.round ?? '').replace(/pod/i, 'Court')} · #{m.sequence}</div>
-      </div>
-
-      <div className="shrink-0 sm:hidden">
-        {showScore
-          ? <div className="tabular text-right font-display text-2xl font-bold leading-tight">
-              <div className={m.winner_id === m.team_a_id ? 'text-gold' : 'text-fg-muted'}>{m.score_a}</div>
-              <div className={m.winner_id === m.team_b_id ? 'text-gold' : 'text-fg-muted'}>{m.score_b}</div>
-            </div>
-          : m.status === 'live' ? <span className="pp-live inline-block rounded-full"><Pill tone="live">live</Pill></span> : <Pill>{m.status.replace('_', ' ')}</Pill>}
-      </div>
-    </Link>
+  const Header = () => (
+    <div className="hidden grid-cols-[3rem_1fr_7rem_1fr] items-center gap-3 px-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-fg-subtle sm:grid">
+      <div className="text-center">Court</div>
+      <div>Team</div>
+      <div className="text-center">Status</div>
+      <div className="text-right">Team</div>
+    </div>
   )
+
+  const row = (m: Match) => {
+    const finished = m.status === 'finished'
+    const live = m.status === 'live'
+    const aWin = finished && m.winner_id === m.team_a_id
+    const bWin = finished && m.winner_id === m.team_b_id
+    const court = b.courts.find(c => c.id === m.court_id)?.number ?? '–'
+    const nameCls = (win: boolean) => win ? 'font-bold text-gold' : 'text-fg-muted'
+    const scoreCls = (win: boolean) => win ? 'text-gold' : 'text-fg-subtle'
+    const flag = 'h-4 w-6 shrink-0 rounded-[1px] object-contain'
+    return (
+      <Link key={m.id} to={`/c/${code}/match/${m.id}`}
+        className={`block px-4 py-3 active:bg-surface-2 ${live ? 'bg-brand/[0.06]' : ''}`}>
+        {/* wide: teams pushed to the edges, status centered */}
+        <div className="hidden grid-cols-[3rem_1fr_7rem_1fr] items-center gap-3 sm:grid">
+          <div className="text-center font-display text-base font-bold text-fg-subtle">{court}</div>
+          <div className="flex min-w-0 items-center gap-2">
+            <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={flag} />
+            <span className={`truncate text-sm ${nameCls(aWin)}`}>{teamName(b, m.team_a_id)}</span>
+            {finished && <span className={`ml-auto pl-2 tabular font-display text-lg font-bold ${scoreCls(aWin)}`}>{m.score_a}</span>}
+          </div>
+          <div className="flex justify-center">{statusPill(m)}</div>
+          <div className="flex min-w-0 items-center justify-end gap-2">
+            {finished && <span className={`mr-auto pr-2 tabular font-display text-lg font-bold ${scoreCls(bWin)}`}>{m.score_b}</span>}
+            <span className={`truncate text-right text-sm ${nameCls(bWin)}`}>{teamName(b, m.team_b_id)}</span>
+            <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={flag} />
+          </div>
+        </div>
+        {/* mobile: stacked */}
+        <div className="flex items-center gap-3 sm:hidden">
+          <div className="w-8 shrink-0 text-center font-display text-base font-bold text-fg-subtle">{court}</div>
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <div className="flex items-center gap-2">
+              <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={flag} />
+              <span className={`truncate text-sm ${nameCls(aWin)}`}>{teamName(b, m.team_a_id)}</span>
+              {finished && <span className={`ml-auto tabular font-bold ${scoreCls(aWin)}`}>{m.score_a}</span>}
+            </div>
+            <div className="flex items-center gap-2">
+              <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={flag} />
+              <span className={`truncate text-sm ${nameCls(bWin)}`}>{teamName(b, m.team_b_id)}</span>
+              {finished && <span className={`ml-auto tabular font-bold ${scoreCls(bWin)}`}>{m.score_b}</span>}
+            </div>
+          </div>
+          {!finished && <div className="shrink-0">{statusPill(m)}</div>}
+        </div>
+      </Link>
+    )
+  }
 
   return (
     <div className="space-y-6 p-3">
       <section>
         <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">Up next</div>
+        <Header />
         <div className="divide-y divide-line overflow-hidden rounded-xl border border-line">
-          {upcoming.length ? upcoming.map(m => line(m, false)) : <div className="p-4 text-sm text-fg-subtle">Nothing scheduled right now.</div>}
+          {upcoming.length ? upcoming.map(row) : <div className="p-4 text-sm text-fg-subtle">Nothing scheduled right now.</div>}
         </div>
       </section>
       <section>
         <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">Results</div>
+        <Header />
         <div className="divide-y divide-line overflow-hidden rounded-xl border border-line">
-          {done.length ? done.map(m => line(m, true)) : <div className="p-4 text-sm text-fg-subtle">No completed matches yet.</div>}
+          {done.length ? done.map(row) : <div className="p-4 text-sm text-fg-subtle">No completed matches yet.</div>}
         </div>
       </section>
     </div>
