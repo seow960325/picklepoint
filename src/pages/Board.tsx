@@ -131,8 +131,8 @@ export default function Board() {
 
         <div className="mt-3 flex gap-1 overflow-x-auto lg:mt-4 lg:gap-2">
           {((bundle.events.some(e => e.format === 'groups_ko')
-              ? ['live', 'standings', 'bracket', 'matches']
-              : ['live', 'standings', 'matches']) as Tab[]).map(t => (
+              ? ['live', 'matches', 'bracket']
+              : ['live', 'matches']) as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider lg:px-4 lg:py-2 lg:text-sm ${
                 tab === t ? 'bg-brand text-brand-fg' : 'text-fg-muted'}`}>
@@ -143,7 +143,6 @@ export default function Board() {
       </div>
 
       {tab === 'live' && <LiveGrid b={bundle} code={code!} tv={false} />}
-      {tab === 'standings' && <Standings b={bundle} />}
       {tab === 'bracket' && <PosterBracket b={bundle} />}
       {tab === 'matches' && <Matches b={bundle} code={code!} />}
 
@@ -787,22 +786,14 @@ function Matches({ b, code }: { b: Bundle; code: string }) {
   const advance = koEv.advance_per_group ?? 2
   const tables = groupStandings(b, koEv.id)
   const poolOf = (id: string | null) => b.teams.find(t => t.id === id)?.pool ?? '—'
-  const rounds = bracketSeeded(b, koEv.id) ? bracketRounds(b, koEv.id) : []
+  const rawRounds = bracketSeeded(b, koEv.id) ? bracketRounds(b, koEv.id) : []
+  const finalR = rawRounds.find(r => r.round === 'Final')
+  const thirdR = rawRounds.find(r => r.round === 'Third place')
+  const restR = rawRounds.filter(r => r !== finalR && r !== thirdR).reverse()
+  const rounds = [finalR, thirdR, ...restR].filter(Boolean) as typeof rawRounds
 
   return (
     <div className="space-y-6 p-3">
-      <section>
-        <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">Groups</div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {Object.keys(tables).sort().map(g => (
-            <GroupCard key={g} b={b} code={code} g={g} rows={tables[g]} advance={advance}
-              matches={b.matches
-                .filter(m => m.event_id === koEv.id && !isKoMatch(m) && poolOf(m.team_a_id) === g)
-                .sort((x, y) => x.sequence - y.sequence)} />
-          ))}
-        </div>
-      </section>
-
       {rounds.length > 0 && (
         <section>
           <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">Knockout</div>
@@ -837,6 +828,18 @@ function Matches({ b, code }: { b: Bundle; code: string }) {
           </div>
         </section>
       )}
+
+      <section>
+        <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">Groups</div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {Object.keys(tables).sort().map(g => (
+            <GroupCard key={g} b={b} code={code} g={g} rows={tables[g]} advance={advance}
+              matches={b.matches
+                .filter(m => m.event_id === koEv.id && !isKoMatch(m) && poolOf(m.team_a_id) === g)
+                .sort((x, y) => x.sequence - y.sequence)} />
+          ))}
+        </div>
+      </section>
     </div>
   )
 }
