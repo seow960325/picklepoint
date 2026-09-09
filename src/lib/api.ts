@@ -291,4 +291,15 @@ export async function ownerDeleteCompetition(token: string, competitionId: strin
   await rpc('owner_delete_competition', { p_token: token, p_competition_id: competitionId })
 }
 
+
+export async function ownerGetSettings(token: string): Promise<{ frozen: boolean }> {
+  if (IS_DEMO) return { frozen: false }
+  return rpc<{ frozen: boolean }>('owner_get_settings', { p_token: token })
+}
+
+export async function ownerSetFrozen(token: string, frozen: boolean): Promise<void> {
+  if (IS_DEMO) return
+  await rpc('owner_set_frozen', { p_token: token, p_frozen: frozen })
+}
+
 export { demo }

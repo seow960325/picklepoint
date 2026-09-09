@@ -67,6 +67,8 @@ function OwnerGate({ onIn }: { onIn: (t: string) => void }) {
 
 function OwnerPanel({ token, onLogout }: { token: string; onLogout: () => void }) {
   const [list, setList] = useState<api.OwnerCompetition[] | null>(null)
+  const [frozen, setFrozen] = useState<boolean | null>(null)
+  const [freezeBusy, setFreezeBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [pending, setPending] = useState<api.OwnerCompetition | null>(null)
   const [busy, setBusy] = useState(false)
@@ -77,8 +79,17 @@ function OwnerPanel({ token, onLogout }: { token: string; onLogout: () => void }
       setErr(e?.message ?? 'Failed to load')
       setList([])
     })
+    api.ownerGetSettings(token).then(s => setFrozen(s.frozen)).catch(() => setFrozen(false))
   }
   useEffect(load, [token])
+
+  const toggleFrozen = async () => {
+    if (frozen === null) return
+    setFreezeBusy(true)
+    try { await api.ownerSetFrozen(token, !frozen); setFrozen(!frozen) }
+    catch (e: any) { setErr(e?.message ?? 'Failed to update') }
+    finally { setFreezeBusy(false) }
+  }
 
   const doDelete = async () => {
     if (!pending) return
@@ -105,6 +116,25 @@ function OwnerPanel({ token, onLogout }: { token: string; onLogout: () => void }
         <button onClick={onLogout}
           className="rounded-lg border border-line px-3 py-1.5 text-sm text-fg-muted active:bg-surface-2">
           Log out
+        </button>
+      </div>
+
+      <div className={`mb-4 flex items-center justify-between gap-3 rounded-xl border p-3 ${
+        frozen ? 'border-red-500/40 bg-red-500/5' : 'border-line bg-surface'}`}>
+        <div>
+          <div className="text-sm font-bold">
+            {frozen ? '🧊 Frozen — new competitions are blocked' : 'New competitions allowed'}
+          </div>
+          <div className="text-xs text-fg-subtle">
+            {frozen
+              ? 'Existing competitions still work. Turn this off to let people create new ones again.'
+              : 'Turn this on to stop anyone from creating new competitions (e.g. if storage cost is a concern).'}
+          </div>
+        </div>
+        <button onClick={toggleFrozen} disabled={frozen === null || freezeBusy}
+          className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold disabled:opacity-40 ${
+            frozen ? 'bg-brand text-brand-fg' : 'bg-red-600 text-white'}`}>
+          {freezeBusy ? '…' : frozen ? 'Unfreeze' : 'Freeze'}
         </button>
       </div>
 

@@ -204,6 +204,7 @@ export default function NewCompetition() {
     } catch (e: any) {
       setErr(e.message === 'CODE_TAKEN' ? 'That join code is already taken — try another.'
         : e.message === 'BAD_CODE' ? 'Join code must be 3-12 letters/numbers.'
+        : e.message === 'FROZEN' ? 'New competitions are temporarily paused — please try again later.'
         : e.message)
     }
     finally { setBusy(false) }
