@@ -932,23 +932,42 @@ function FlatMatches({ b, code }: { b: Bundle; code: string }) {
       <div className="w-9 shrink-0 text-center font-display text-base font-bold text-fg-subtle">
         {b.courts.find(c => c.id === m.court_id)?.number ?? '–'}
       </div>
-      <div className="min-w-0 flex-1">
-        <div className={`truncate text-sm ${showScore && m.winner_id === m.team_a_id ? 'font-bold text-fg' : 'text-fg-muted'}`}>
-          <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="mr-1.5 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_a_id)}
+
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-4">
+        <div className={`flex min-w-0 items-center gap-2 sm:flex-1 sm:justify-end sm:text-right ${showScore && m.winner_id === m.team_a_id ? 'font-bold text-fg' : 'text-fg-muted'}`}>
+          <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-3.5 w-auto shrink-0 rounded-[1px]" />
+          <span className="truncate text-sm">{teamName(b, m.team_a_id)}</span>
         </div>
-        <div className={`truncate text-sm ${showScore && m.winner_id === m.team_b_id ? 'font-bold text-fg' : 'text-fg-muted'}`}>
-          <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="mr-1.5 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_b_id)}
+
+        <div className="hidden shrink-0 items-center justify-center sm:flex sm:w-24">
+          {showScore
+            ? <span className="tabular font-display text-xl font-bold leading-none">
+                <span className={m.winner_id === m.team_a_id ? 'text-gold' : 'text-fg-muted'}>{m.score_a}</span>
+                <span className="mx-1 text-fg-subtle">–</span>
+                <span className={m.winner_id === m.team_b_id ? 'text-gold' : 'text-fg-muted'}>{m.score_b}</span>
+              </span>
+            : m.status === 'live' ? <Pill tone="live">live</Pill> : <Pill>{m.status.replace('_', ' ')}</Pill>}
         </div>
-        <div className="mt-0.5 text-[11px] tracking-wide text-fg-subtle">{(m.round ?? '').replace(/pod/i, 'Court')} · #{m.sequence}</div>
+
+        <div className={`flex min-w-0 items-center gap-2 sm:flex-1 ${showScore && m.winner_id === m.team_b_id ? 'font-bold text-fg' : 'text-fg-muted'}`}>
+          <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-3.5 w-auto shrink-0 rounded-[1px]" />
+          <span className="truncate text-sm">{teamName(b, m.team_b_id)}</span>
+        </div>
+
+        <div className="text-[11px] tracking-wide text-fg-subtle sm:hidden">{(m.round ?? '').replace(/pod/i, 'Court')} · #{m.sequence}</div>
       </div>
-      {showScore
-        ? <div className="tabular shrink-0 text-right font-display text-2xl font-bold leading-tight">
-            <div className={m.winner_id === m.team_a_id ? 'text-gold' : 'text-fg-muted'}>{m.score_a}</div>
-            <div className={m.winner_id === m.team_b_id ? 'text-gold' : 'text-fg-muted'}>{m.score_b}</div>
-          </div>
-        : m.status === 'live' ? <Pill tone="live">live</Pill> : <Pill>{m.status.replace('_', ' ')}</Pill>}
+
+      <div className="shrink-0 sm:hidden">
+        {showScore
+          ? <div className="tabular text-right font-display text-2xl font-bold leading-tight">
+              <div className={m.winner_id === m.team_a_id ? 'text-gold' : 'text-fg-muted'}>{m.score_a}</div>
+              <div className={m.winner_id === m.team_b_id ? 'text-gold' : 'text-fg-muted'}>{m.score_b}</div>
+            </div>
+          : m.status === 'live' ? <Pill tone="live">live</Pill> : <Pill>{m.status.replace('_', ' ')}</Pill>}
+      </div>
     </Link>
   )
+
   return (
     <div className="space-y-6 p-3">
       <section>
