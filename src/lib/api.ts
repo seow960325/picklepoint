@@ -232,6 +232,11 @@ export async function adminSetCourtPin(token: string, courtId: string, pin: stri
   await rpc('admin_set_court_pin', { p_token: token, p_court_id: courtId, p_pin: pin })
 }
 
+export async function adminSetAdminPin(token: string, pin: string) {
+  if (IS_DEMO) return demo.setAdminPin(pin)
+  await rpc('admin_set_admin_pin', { p_token: token, p_pin: pin })
+}
+
 export async function adminReplaceSchedule(
   token: string, eventId: string, draft: DraftMatch[],
   teamIds: string[], courtIds: string[],

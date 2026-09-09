@@ -307,6 +307,13 @@ export const demo = {
     localStorage.removeItem(`pp.token.${courtId}`)
   },
 
+  setAdminPin(pin: string) {
+    const s = load()
+    if (!/^\d{4}$/.test(pin)) throw new Error('PIN_MUST_BE_4_DIGITS')
+    s.adminPin = pin
+    save(s)
+  },
+
   replaceSchedule(eventId: string, draft: DraftMatch[]) {
     const s = load()
     if (s.bundle.matches.some(m => m.status === 'finished' || m.score_a > 0 || m.score_b > 0)) {

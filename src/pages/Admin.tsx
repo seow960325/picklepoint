@@ -150,7 +150,8 @@ function Panel({ bundle, token, code, reload, onLogout }: {
         {msg && <div className="mb-4 rounded-lg border border-brand-ink/40 bg-brand/10 px-3 py-2 text-sm text-brand-ink">{msg}</div>}
         {err && <Warn>{err}</Warn>}
 
-        {tab === 'competition' && <CompetitionTab bundle={bundle} token={token} run={run} secrets={secrets} />}
+        {tab === 'competition' && <CompetitionTab bundle={bundle} token={token} run={run} secrets={secrets}
+          refreshSecrets={() => api.adminBundle(token).then(setSecrets)} />}
         {tab === 'scoring' && <ScoringTab ev={ev} token={token} run={run} />}
         {tab === 'teams' && <TeamsTab bundle={bundle} ev={ev} token={token} run={run} />}
         {tab === 'courts' && <CourtsTab bundle={bundle} token={token} run={run} secrets={secrets}
@@ -163,7 +164,7 @@ function Panel({ bundle, token, code, reload, onLogout }: {
 }
 
 // ------------------------------------------------------------ tabs
-function CompetitionTab({ bundle, token, run, secrets }: any) {
+function CompetitionTab({ bundle, token, run, secrets, refreshSecrets }: any) {
   const c = bundle.competition
   const [name, setName] = useState(c.name)
   const [venue, setVenue] = useState(c.venue ?? '')
@@ -205,7 +206,9 @@ function CompetitionTab({ bundle, token, run, secrets }: any) {
       <div className="mt-8 rounded-xl border border-line bg-surface p-4">
         <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">Access</div>
         <Row k="Join code (share freely)" v={c.code} accent="brand" />
-        {secrets && <Row k="Admin PIN (keep private)" v={secrets.competition.admin_pin} accent="accent" />}
+        {secrets && (
+          <AdminPinRow token={token} pin={secrets.competition.admin_pin} run={run} after={refreshSecrets} />
+        )}
       </div>
 
       <div className="mt-8 rounded-xl border border-red-500/40 bg-red-500/5 p-4">
@@ -738,6 +741,47 @@ const Row = ({ k, v, accent }: { k: string; v: string; accent: 'brand' | 'accent
     </span>
   </div>
 )
+
+function AdminPinRow({ token, pin, run, after }: any) {
+  const [v, setV] = useState(pin)
+  const [editing, setEditing] = useState(false)
+  useEffect(() => setV(pin), [pin])
+
+  if (!editing) {
+    return (
+      <div className="flex items-center justify-between border-t border-line/60 py-2 text-sm">
+        <span className="text-fg-muted">Admin PIN (keep private)</span>
+        <span className="flex items-center gap-2">
+          <span className="tabular font-display text-xl font-bold text-accent">{pin}</span>
+          <button onClick={() => setEditing(true)}
+            className="rounded-lg border border-line px-2.5 py-1 text-xs font-semibold text-fg-muted active:bg-surface-2">
+            Change
+          </button>
+        </span>
+      </div>
+    )
+  }
+  return (
+    <div className="flex items-center justify-between gap-3 border-t border-line/60 py-2 text-sm">
+      <span className="text-fg-muted">Admin PIN (keep private)</span>
+      <span className="flex items-center gap-2">
+        <input className={`${input} tabular w-24 text-center`} value={v} maxLength={4} inputMode="numeric"
+          onChange={e => setV(e.target.value.replace(/\D/g, '').slice(0, 4))} />
+        <button disabled={v.length !== 4}
+          onClick={() => run(async () => {
+            await api.adminSetAdminPin(token, v); await after?.(); setEditing(false)
+          }, 'Admin PIN changed')}
+          className="rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-brand-fg disabled:opacity-20">
+          SAVE
+        </button>
+        <button onClick={() => { setV(pin); setEditing(false) }}
+          className="rounded-lg border border-line px-2.5 py-1 text-xs font-semibold text-fg-muted active:bg-surface-2">
+          Cancel
+        </button>
+      </span>
+    </div>
+  )
+}
 
 const readable = (m: string) => ({
   TEAM_HAS_RESULTS: 'That team has already finished a match, so it can\'t be deleted.',
