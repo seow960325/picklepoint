@@ -563,23 +563,28 @@ function BracketTab({ bundle, ev, token, run }: any) {
       {/* the live bracket */}
       {seeded && (
         <div className="space-y-3">
-          {rounds.map(r => (
+          {(() => {
+            const finalR = rounds.find(r => r.round === 'Final')
+            const thirdR = rounds.find(r => r.round === 'Third place')
+            const restR = rounds.filter(r => r !== finalR && r !== thirdR).reverse()
+            return [finalR, thirdR, ...restR].filter((x): x is NonNullable<typeof x> => x != null)
+          })().map(r => (
             <div key={r.round} className="rounded-xl border border-line bg-surface p-3">
               <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
                 {r.round}
               </div>
               <ul className="space-y-1 text-sm">
                 {r.matches.map((m: any) => (
-                  <li key={m.id} className="grid grid-cols-[1fr_3.5rem_1fr] items-center gap-2">
-                    <span className={`flex min-w-0 items-center justify-end gap-1.5 truncate text-right ${m.winner_id === m.team_a_id ? 'font-semibold' : ''}`}>
-                      <span className="truncate">{nm(m.team_a_id) ?? '—'}</span>
+                  <li key={m.id} className="grid grid-cols-[1fr_4rem_1fr] items-center gap-2">
+                    <span className={`flex min-w-0 items-center justify-end gap-1.5 ${m.winner_id === m.team_a_id ? 'font-semibold' : ''}`}>
+                      <span className="truncate text-right">{nm(m.team_a_id) ?? '—'}</span>
                       {m.team_a_id && <Emblem logo={teamLogo(bundle, m.team_a_id)} flagName={teamSideName(bundle, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />}
                     </span>
-                    <span className="tabular text-center text-fg-subtle">
+                    <span className="tabular text-center text-xs text-fg-subtle">
                       {m.status === 'finished' ? `${m.score_a}–${m.score_b}`
                         : m.team_b_id == null && m.team_a_id != null ? 'bye' : 'vs'}
                     </span>
-                    <span className={`flex min-w-0 items-center gap-1.5 truncate text-left ${m.winner_id === m.team_b_id ? 'font-semibold' : ''}`}>
+                    <span className={`flex min-w-0 items-center gap-1.5 ${m.winner_id === m.team_b_id ? 'font-semibold' : ''}`}>
                       {m.team_b_id && <Emblem logo={teamLogo(bundle, m.team_b_id)} flagName={teamSideName(bundle, m.team_b_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />}
                       <span className="truncate">{nm(m.team_b_id) ?? '—'}</span>
                     </span>
