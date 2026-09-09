@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import * as api from '../lib/api'
 import {
-  buildDraw, buildDuelDraw, buildGroupKoDraw, defaultSwitchAt, validateRules,
+  buildDuelDraw, buildGroupKoDraw, defaultSwitchAt, validateRules,
   validateDuelSquads, validateGroupKo,
-  type DraftTeam, type DuelTeam,
+  type DuelTeam,
 } from '../lib/draw'
 import { rememberCode } from '../lib/store'
 import { Section, Field, Stepper, Choice, Select, Warn, input, inputFull } from '../components/form'
@@ -15,7 +15,7 @@ const CATEGORY_PRESETS = [
   'Mixed Doubles', "Men's Doubles", "Women's Doubles",
   "Men's Singles", "Women's Singles", 'Open / Team Event',
 ]
-type Format = 'round_robin' | 'duel' | 'groups_ko'
+type Format = 'duel' | 'groups_ko'
 
 const TOTAL_STEPS = 5
 
@@ -82,7 +82,7 @@ export default function NewCompetition() {
   const nav = useNavigate()
   const [step, setStep] = useState(1)
 
-  const [format, setFormat] = useState<Format>('round_robin')
+  const [format, setFormat] = useState<Format>('duel')
 
   const [name, setName] = useState('')
   const [venue, setVenue] = useState('')
@@ -99,10 +99,6 @@ export default function NewCompetition() {
   const [pins, setPins] = useState<string[]>(
     () => Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(4, '0')))
   const [adminPin, setAdminPin] = useState(pin4)
-
-  // round-robin mode
-  const [teamText, setTeamText] = useState('')
-  const [poolCount, setPoolCount] = useState(1)
 
   // groups_ko mode
   const [groupSize, setGroupSize] = useState(4)
@@ -138,14 +134,6 @@ export default function NewCompetition() {
     setTarget(t); setSwitchAt(0); setCap(t + 2)
   }
 
-  const rrTeams: DraftTeam[] = useMemo(() => {
-    const names = teamText.split('\n').map(s => s.trim()).filter(Boolean)
-    const per = Math.ceil(names.length / poolCount)
-    return names.map((n, i) => ({
-      name: n,
-      pool: poolCount === 1 ? 'A' : String.fromCharCode(65 + Math.floor(i / per)),
-    }))
-  }, [teamText, poolCount])
 
   const sideANames = useMemo(
     () => sideAText.split('\n').map(s => s.trim()).filter(Boolean), [sideAText])
@@ -169,13 +157,12 @@ export default function NewCompetition() {
       : null,
     [format, koError, koNames, courtCount, groupSize, advancePerGroup, thirdPlace])
 
-  const teams = format === 'duel' ? duelTeams : format === 'groups_ko' ? (ko?.teams ?? []) : rrTeams
+  const teams = format === 'duel' ? duelTeams : (ko?.teams ?? [])
   const draw = useMemo(() => {
     if (format === 'duel') return !duelError && duelTeams.length >= 4
       ? buildDuelDraw(duelTeams, courtCount) : []
-    if (format === 'groups_ko') return ko?.groupMatches ?? []
-    return rrTeams.length >= 2 ? buildDraw(rrTeams, courtCount) : []
-  }, [format, duelTeams, duelError, rrTeams, courtCount, ko])
+    return ko?.groupMatches ?? []
+  }, [format, duelTeams, duelError, courtCount, ko])
 
   const ruleError = validateRules({ target_score: target, win_by: winBy, cap, switch_at: switchAt })
   const codeError = code.trim() && (code.trim().length < 3 || code.trim().length > 12)
@@ -189,9 +176,7 @@ export default function NewCompetition() {
     4: true,                                     // courts — always valid
     5: format === 'duel'
       ? (!duelError && !busy)
-      : format === 'groups_ko'
-        ? (!koError && !busy)
-        : (rrTeams.length >= 2 && !busy),
+      : (!koError && !busy),
   }
 
   const create = async () => {
@@ -246,10 +231,7 @@ export default function NewCompetition() {
           <div>
             <h2 className="mb-1 font-display text-2xl font-bold tracking-wide">Choose a format</h2>
             <p className="mb-5 text-sm text-fg-muted">How should the competition be structured?</p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <FormatCard icon="🔄" label="Round Robin"
-                desc="Everyone plays everyone. Simple, fair, great for small groups."
-                active={format === 'round_robin'} onClick={() => setFormat('round_robin')} />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormatCard icon="⚔️" label="Team Battle"
                 desc="Two sides face off — every team from one side plays every team from the other."
                 active={format === 'duel'} onClick={() => setFormat('duel')} />
@@ -372,34 +354,6 @@ export default function NewCompetition() {
         )}
 
         {/* ── STEP 5: Teams ───────────────────────────── */}
-        {step === 5 && format === 'round_robin' && (
-          <div>
-            <h2 className="mb-1 font-display text-2xl font-bold tracking-wide">Teams</h2>
-            <p className="mb-5 text-sm text-fg-muted">Enter one team name per line.</p>
-            <div className="space-y-4">
-              <Field label={`Team names — ${rrTeams.length} entered`}>
-                <textarea className={`${inputFull} h-48 resize-y font-mono text-[13px] leading-relaxed`}
-                  value={teamText} onChange={e => setTeamText(e.target.value)}
-                  placeholder={'Smash Bros\nDink Dynasty\nNet Ninjas\nKitchen Kings'} />
-              </Field>
-              <Field label="Pools">
-                <Choice value={poolCount} onChange={setPoolCount}
-                  options={[{ label: 'One group', value: 1 }, { label: '2 pools', value: 2 },
-                            { label: '3 pools', value: 3 }, { label: '4 pools', value: 4 }]} />
-              </Field>
-              {rrTeams.length >= 2 && (
-                <div className="rounded-lg border border-line bg-surface p-3 text-xs">
-                  <div className="mb-1.5 font-bold uppercase tracking-wider text-fg-muted">Draw preview</div>
-                  <div className="text-fg-muted">{draw.length} matches, {new Set(draw.map(d => d.round)).size} rounds</div>
-                  <div className="mt-1 text-fg-subtle">
-                    Round robin inside each pool, spread across {courtCount} court{courtCount > 1 ? 's' : ''}.
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         {step === 5 && format === 'duel' && (
           <div>
             <h2 className="mb-1 font-display text-2xl font-bold tracking-wide">Sides</h2>
