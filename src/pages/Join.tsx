@@ -59,7 +59,7 @@ export default function Join() {
           </button>
         )}
       </div>
-      <div className="mt-10 text-center text-xs text-fg-subtle">Developed by SisiKita</div>
+      <div className="mt-10 text-center text-xs text-fg-subtle">Developed by Sisikita.Event</div>
 
       <Link to="/owner" aria-label="owner"
         className="fixed bottom-3 right-3 h-9 w-9 rounded-full opacity-0 active:opacity-10" />
