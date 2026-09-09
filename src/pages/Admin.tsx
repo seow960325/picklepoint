@@ -1,7 +1,7 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  useCompetition, teamName, teamSideName, forgetCode,
+  useCompetition, teamName, teamSideName, teamLogo, forgetCode,
   groupStandings, groupStageComplete, bracketSeeded, qualifiers, bracketRounds,
 } from '../lib/store'
 import * as api from '../lib/api'
@@ -10,7 +10,7 @@ import {
   seedBracket, nextPowerOfTwo,
   type DraftTeam, type DuelTeam,
 } from '../lib/draw'
-import { Screen, Spinner, ThemeToggle } from '../components/ui'
+import { Screen, Spinner, ThemeToggle, Emblem } from '../components/ui'
 import { Flag } from '../components/ui'
 import { Field, Stepper, Choice, Warn, input, inputFull } from '../components/form'
 import { resizeImage } from '../lib/image'
@@ -513,7 +513,12 @@ function BracketTab({ bundle, ev, token, run }: any) {
                   <tr key={r.team.id}
                     className={i < advance ? 'font-semibold text-fg' : 'text-fg-subtle'}>
                     <td className="py-0.5 pr-2 tabular">{i + 1}</td>
-                    <td className="w-full truncate py-0.5">{r.team.name}</td>
+                    <td className="w-full py-0.5">
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <Emblem logo={teamLogo(bundle, r.team.id)} flagName={teamSideName(bundle, r.team.id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
+                        <span className="truncate">{r.team.name}</span>
+                      </span>
+                    </td>
                     <td className="py-0.5 pl-2 text-right tabular font-bold">{r.won}</td>
                   </tr>
                 ))}
@@ -532,11 +537,17 @@ function BracketTab({ bundle, ev, token, run }: any) {
           <ul className="space-y-1 text-sm">
             {pairs.map((pr, i) => (
               <li key={i} className="grid grid-cols-[1fr_2.75rem_1fr] items-center gap-2 border-b border-line/60 pb-1">
-                <span className="truncate text-right">{nm(pr[0]) ?? '—'}</span>
+                <span className="flex min-w-0 items-center justify-end gap-1.5 truncate text-right">
+                  <span className="truncate">{nm(pr[0]) ?? '—'}</span>
+                  {pr[0] && <Emblem logo={teamLogo(bundle, pr[0])} flagName={teamSideName(bundle, pr[0])} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />}
+                </span>
                 <span className="text-center text-xs text-fg-subtle">
                   {pr[1] ? 'vs' : 'bye'}
                 </span>
-                <span className="truncate text-left">{nm(pr[1]) ?? '—'}</span>
+                <span className="flex min-w-0 items-center gap-1.5 truncate text-left">
+                  {pr[1] && <Emblem logo={teamLogo(bundle, pr[1])} flagName={teamSideName(bundle, pr[1])} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />}
+                  <span className="truncate">{nm(pr[1]) ?? '—'}</span>
+                </span>
               </li>
             ))}
           </ul>
@@ -560,15 +571,17 @@ function BracketTab({ bundle, ev, token, run }: any) {
               <ul className="space-y-1 text-sm">
                 {r.matches.map((m: any) => (
                   <li key={m.id} className="grid grid-cols-[1fr_3.5rem_1fr] items-center gap-2">
-                    <span className={`truncate text-right ${m.winner_id === m.team_a_id ? 'font-semibold' : ''}`}>
-                      {nm(m.team_a_id) ?? '—'}
+                    <span className={`flex min-w-0 items-center justify-end gap-1.5 truncate text-right ${m.winner_id === m.team_a_id ? 'font-semibold' : ''}`}>
+                      <span className="truncate">{nm(m.team_a_id) ?? '—'}</span>
+                      {m.team_a_id && <Emblem logo={teamLogo(bundle, m.team_a_id)} flagName={teamSideName(bundle, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />}
                     </span>
                     <span className="tabular text-center text-fg-subtle">
                       {m.status === 'finished' ? `${m.score_a}–${m.score_b}`
                         : m.team_b_id == null && m.team_a_id != null ? 'bye' : 'vs'}
                     </span>
-                    <span className={`truncate text-left ${m.winner_id === m.team_b_id ? 'font-semibold' : ''}`}>
-                      {nm(m.team_b_id) ?? '—'}
+                    <span className={`flex min-w-0 items-center gap-1.5 truncate text-left ${m.winner_id === m.team_b_id ? 'font-semibold' : ''}`}>
+                      {m.team_b_id && <Emblem logo={teamLogo(bundle, m.team_b_id)} flagName={teamSideName(bundle, m.team_b_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />}
+                      <span className="truncate">{nm(m.team_b_id) ?? '—'}</span>
                     </span>
                   </li>
                 ))}
@@ -655,8 +668,12 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
                 <span className="w-6 text-center text-xs text-fg-subtle">
                   {bundle.courts.find((c: any) => c.id === m.court_id)?.number ?? '–'}
                 </span>
-                <span className="min-w-0 flex-1 truncate">
-                  <Flag name={teamSideName(bundle, m.team_a_id)} className={fl} />{teamName(bundle, m.team_a_id)} <span className="text-fg-subtle">vs</span> <Flag name={teamSideName(bundle, m.team_b_id)} className={fl} />{teamName(bundle, m.team_b_id)}
+                <span className="flex min-w-0 flex-1 items-center gap-1 truncate">
+                  <Emblem logo={teamLogo(bundle, m.team_a_id)} flagName={teamSideName(bundle, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
+                  <span className="truncate">{teamName(bundle, m.team_a_id)}</span>
+                  <span className="shrink-0 text-fg-subtle">vs</span>
+                  <Emblem logo={teamLogo(bundle, m.team_b_id)} flagName={teamSideName(bundle, m.team_b_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
+                  <span className="truncate">{teamName(bundle, m.team_b_id)}</span>
                 </span>
                 <span className="tabular shrink-0 text-xs text-fg-muted">
                   {m.status === 'scheduled' ? (m.round ?? '').replace(/pod/i, 'Court') : `${m.score_a}–${m.score_b}`}

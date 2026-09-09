@@ -394,6 +394,7 @@ function PosterBracket({ b, broadcast = false }: { b: Bundle; broadcast?: boolea
   const finalM = finalR?.matches[0]
   const thirdM = thirdR?.matches[0]
   const champId = finalM?.winner_id ?? null
+  const podium = koPodium(b)
 
   return (
     <div className={`${broadcast ? 'w-max' : 'overflow-x-auto'} p-4 text-fg`} style={{ background: broadcast
@@ -407,7 +408,7 @@ function PosterBracket({ b, broadcast = false }: { b: Bundle; broadcast?: boolea
           </div>
         ))}
 
-        <PCentre b={b} finalM={finalM} thirdM={thirdM} champId={champId} />
+        <PCentre b={b} finalM={finalM} thirdM={thirdM} champId={champId} podium={podium} />
 
         {[...rightCols].reverse().map((col, i) => (
           <div key={'R' + i} className="flex items-stretch">
@@ -462,7 +463,7 @@ function PConnector({ count, side }: { count: number; side: 'left' | 'right' }) 
   )
 }
 
-function PMatch({ b, m }: { b: Bundle; m?: Match }) {
+function PMatch({ b, m, medalOf }: { b: Bundle; m?: Match; medalOf?: (id: string | null) => 'gold' | 'silver' | 'bronze' | null }) {
   if (!m) return <div className="rounded-md border border-dashed border-line/60 bg-surface/30 px-2 py-3 text-center text-[10px] text-fg-subtle">TBD</div>
   const bye = m.team_b_id == null && m.team_a_id != null
   const decided = m.status === 'finished'
@@ -475,32 +476,45 @@ function PMatch({ b, m }: { b: Bundle; m?: Match }) {
         </div>
       )}
       <div className={`overflow-hidden rounded-md border ${live ? 'border-brand pp-live' : 'border-line'} bg-surface`}>
-        <PTeam b={b} teamId={m.team_a_id} score={m.score_a} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} />
+        <PTeam b={b} teamId={m.team_a_id} score={m.score_a} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} medal={medalOf?.(m.team_a_id) ?? null} />
         <div className="h-px bg-line" />
         {bye
           ? <div className="px-2.5 py-1.5 text-[11px] italic text-fg-subtle">bye</div>
-          : <PTeam b={b} teamId={m.team_b_id} score={m.score_b} win={decided && m.winner_id === m.team_b_id} lose={decided && m.winner_id !== m.team_b_id} finished={decided} />}
+          : <PTeam b={b} teamId={m.team_b_id} score={m.score_b} win={decided && m.winner_id === m.team_b_id} lose={decided && m.winner_id !== m.team_b_id} finished={decided} medal={medalOf?.(m.team_b_id) ?? null} />}
       </div>
     </div>
   )
 }
 
-function PTeam({ b, teamId, score, win, lose, finished }: { b: Bundle; teamId: string | null; score: number; win: boolean; lose: boolean; finished: boolean }) {
+function PTeam({ b, teamId, score, win, lose, finished, medal }: { b: Bundle; teamId: string | null; score: number; win: boolean; lose: boolean; finished: boolean; medal?: 'gold' | 'silver' | 'bronze' | null }) {
   return (
     <div className={`flex items-center gap-2 border-l-2 px-2.5 py-1.5 ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
       <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
       <span className={`min-w-0 flex-1 truncate text-xs ${win ? 'font-bold text-fg' : 'text-fg-muted'}`}>{teamName(b, teamId)}</span>
+      {medal && <span className="shrink-0 text-xs leading-none" aria-label={medal}>{medal === 'gold' ? '🥇' : medal === 'silver' ? '🥈' : '🥉'}</span>}
       {finished && <span className={`tabular shrink-0 text-xs ${win ? 'font-bold text-gold' : 'text-fg-subtle'}`}>{score}</span>}
     </div>
   )
 }
 
-function PCentre({ b, finalM, thirdM, champId }: { b: Bundle; finalM?: Match; thirdM?: Match; champId: string | null }) {
+function PCentre({ b, finalM, thirdM, champId, podium }: {
+  b: Bundle; finalM?: Match; thirdM?: Match; champId: string | null
+  podium: { champion: string; runnerUp: string | null; third: string | null } | null
+}) {
+  // medals only once BOTH the Final and Third place matches are confirmed
+  const medalsReady = finalM?.status === 'finished' && thirdM?.status === 'finished' && !!podium
+  const medalOf = (id: string | null): 'gold' | 'silver' | 'bronze' | null => {
+    if (!medalsReady || !id) return null
+    if (id === podium!.champion) return 'gold'
+    if (id === podium!.runnerUp) return 'silver'
+    if (id === podium!.third) return 'bronze'
+    return null
+  }
   return (
     <div className="flex flex-col px-2 lg:px-5">
       <div className="mb-1 h-4 text-center font-cer text-[11px] font-bold uppercase tracking-[0.28em] text-gold">Final</div>
       <div className="flex flex-1 flex-col items-center justify-center gap-2">
-        <div className="w-52"><PMatch b={b} m={finalM} /></div>
+        <div className="w-52"><PMatch b={b} m={finalM} medalOf={medalOf} /></div>
         <div className="my-1 flex flex-col items-center">
           <Trophy lit={!!champId} />
           {champId
@@ -511,7 +525,7 @@ function PCentre({ b, finalM, thirdM, champId }: { b: Bundle; finalM?: Match; th
             : <div className="mt-1 text-[10px] uppercase tracking-widest text-fg-subtle">champion</div>}
         </div>
         <div className="mt-1 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-fg-subtle">Third place</div>
-        <div className="w-48"><PMatch b={b} m={thirdM} /></div>
+        <div className="w-48"><PMatch b={b} m={thirdM} medalOf={medalOf} /></div>
       </div>
     </div>
   )
