@@ -443,15 +443,23 @@ function PMatch({ b, m }: { b: Bundle; m?: Match }) {
   const bye = m.team_b_id == null && m.team_a_id != null
   const decided = m.status === 'finished'
   const live = m.status === 'live'
+  const bothKnown = m.team_a_id != null && m.team_b_id != null
   return (
-    <div className={`overflow-hidden rounded-md border ${live ? 'border-gold pp-live' : 'border-line'} bg-surface`}>
-      <PTeam b={b} teamId={m.team_a_id} score={m.score_a} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} />
-      {decided
-        ? <div className="h-px bg-line" />
-        : <div className={`border-y border-line/60 py-0.5 text-center text-[9px] font-bold uppercase tracking-[0.18em] ${live ? 'animate-pulse text-gold' : 'text-fg-subtle'}`}>{live ? 'live' : 'vs'}</div>}
-      {bye
-        ? <div className="px-2.5 py-1.5 text-[11px] italic text-fg-subtle">bye</div>
-        : <PTeam b={b} teamId={m.team_b_id} score={m.score_b} win={decided && m.winner_id === m.team_b_id} lose={decided && m.winner_id !== m.team_b_id} finished={decided} />}
+    <div className="relative">
+      {live && (
+        <div className="absolute -right-1 top-1/2 z-10 -translate-y-1/2 translate-x-full pl-1.5">
+          <Pill tone="live"><span className="mr-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-current align-middle" />live</Pill>
+        </div>
+      )}
+      <div className={`overflow-hidden rounded-md border ${live ? 'border-gold pp-live' : 'border-line'} bg-surface`}>
+        <PTeam b={b} teamId={m.team_a_id} score={m.score_a} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} />
+        {decided
+          ? <div className="h-px bg-line" />
+          : <div className="border-y border-line/60 py-0.5 text-center text-[9px] font-bold uppercase tracking-[0.18em] text-fg-subtle">{bothKnown ? 'vs' : ''}</div>}
+        {bye
+          ? <div className="px-2.5 py-1.5 text-[11px] italic text-fg-subtle">bye</div>
+          : <PTeam b={b} teamId={m.team_b_id} score={m.score_b} win={decided && m.winner_id === m.team_b_id} lose={decided && m.winner_id !== m.team_b_id} finished={decided} />}
+      </div>
     </div>
   )
 }
@@ -915,9 +923,13 @@ function Matches({ b, code }: { b: Bundle; code: string }) {
                           <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-3.5 w-5 shrink-0 rounded-[1px] object-contain" />
                           {(decided || live) && <span className={`tabular pl-1 font-display font-bold ${live ? 'text-brand-ink' : scoreCls(aWin)}`}>{m.score_a}</span>}
                         </span>
-                        <span className="text-center text-[10px] font-bold uppercase tracking-widest text-fg-subtle">
-                          {live ? <span className="animate-pulse text-brand-ink">live</span>
-                            : decided ? '' : m.team_b_id == null && m.team_a_id != null ? 'bye' : 'vs'}
+                        <span className="flex justify-center">
+                          {live
+                            ? <Pill tone="live"><span className="mr-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-current align-middle" />live</Pill>
+                            : decided ? null
+                            : m.team_b_id == null && m.team_a_id != null ? <span className="text-[10px] font-bold uppercase tracking-widest text-fg-subtle">bye</span>
+                            : m.team_a_id != null && m.team_b_id != null ? <span className="text-[10px] font-bold uppercase tracking-widest text-fg-subtle">vs</span>
+                            : null}
                         </span>
                         <span className={`flex min-w-0 items-center gap-1.5 truncate text-sm ${nameCls(bWin)}`}>
                           {(decided || live) && <span className={`tabular pr-1 font-display font-bold ${live ? 'text-brand-ink' : scoreCls(bWin)}`}>{m.score_b}</span>}
@@ -991,8 +1003,12 @@ function GroupCard({ b, code, g, rows, advance, matches }: {
                   <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-3.5 w-5 shrink-0 rounded-[1px] object-contain" />
                   {(decided || live) && <span className={`tabular pl-0.5 font-bold ${live ? 'text-brand-ink' : scoreCls(aWin)}`}>{m.score_a}</span>}
                 </span>
-                <span className="text-center text-[10px] font-bold uppercase tracking-widest text-fg-subtle">
-                  {live ? <span className="animate-pulse text-brand-ink">live</span> : decided ? '' : 'vs'}
+                <span className="flex justify-center">
+                  {live
+                    ? <Pill tone="live"><span className="mr-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-current align-middle" />live</Pill>
+                    : decided ? null
+                    : m.team_a_id != null && m.team_b_id != null ? <span className="text-[10px] font-bold uppercase tracking-widest text-fg-subtle">vs</span>
+                    : null}
                 </span>
                 <span className={`flex min-w-0 items-center gap-1 truncate ${nameCls(bWin)}`}>
                   {(decided || live) && <span className={`tabular pr-0.5 font-bold ${live ? 'text-brand-ink' : scoreCls(bWin)}`}>{m.score_b}</span>}
