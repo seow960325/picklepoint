@@ -253,8 +253,8 @@ export default function NewCompetition() {
                   placeholder="Puchong Open 2026" />
               </Field>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="Date">
-                  <input type="date" className={inputFull} value={date} onChange={e => setDate(e.target.value)} />
+                <Field label="Date" className="min-w-0">
+                  <input type="date" className={inputFull + ' min-w-0'} value={date} onChange={e => setDate(e.target.value)} />
                 </Field>
                 <Field label="Venue">
                   <input className={inputFull} value={venue} onChange={e => setVenue(e.target.value)}

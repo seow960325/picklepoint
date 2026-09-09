@@ -268,4 +268,27 @@ export async function adminOverrideScore(
   })
 }
 
+
+// ------------------------------------------------------------- owner console
+export interface OwnerCompetition {
+  id: string; code: string; name: string; venue: string | null
+  event_date: string; status: string; created_at: string
+  team_count: number; match_count: number
+}
+
+export async function ownerLogin(pin: string): Promise<string> {
+  if (IS_DEMO) throw new Error('NOT_AVAILABLE_IN_DEMO')
+  return rpc<string>('owner_login', { p_pin: pin })
+}
+
+export async function ownerListCompetitions(token: string): Promise<OwnerCompetition[]> {
+  if (IS_DEMO) return []
+  return rpc<OwnerCompetition[]>('owner_list_competitions', { p_token: token })
+}
+
+export async function ownerDeleteCompetition(token: string, competitionId: string): Promise<void> {
+  if (IS_DEMO) return
+  await rpc('owner_delete_competition', { p_token: token, p_competition_id: competitionId })
+}
+
 export { demo }

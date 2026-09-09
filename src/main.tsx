@@ -8,6 +8,7 @@ import CourtScore from './pages/CourtScore'
 import MatchDetail from './pages/MatchDetail'
 import NewCompetition from './pages/NewCompetition'
 import Admin from './pages/Admin'
+import Owner from './pages/Owner'
 
 const router = createBrowserRouter([
   { path: '/', element: <Join /> },
@@ -16,6 +17,7 @@ const router = createBrowserRouter([
   { path: '/c/:code/court/:number', element: <CourtScore /> },
   { path: '/c/:code/match/:id', element: <MatchDetail /> },
   { path: '/c/:code/admin', element: <Admin /> },
+  { path: '/owner', element: <Owner /> },
 ])
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
