@@ -983,11 +983,11 @@ function FlatMatches({ b, code }: { b: Bundle; code: string }) {
           <div className="flex min-w-0 items-center gap-2">
             <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={flag} />
             <span className={`truncate text-sm ${nameCls(aWin)}`}>{teamName(b, m.team_a_id)}</span>
-            {finished && <span className={`ml-auto pl-2 tabular font-display text-lg font-bold ${scoreCls(aWin)}`}>{m.score_a}</span>}
+            {(finished || live) && <span className={`ml-auto pl-2 tabular font-display text-lg font-bold ${live ? 'text-brand-ink' : scoreCls(aWin)}`}>{m.score_a}</span>}
           </div>
           <div className="flex justify-center">{statusPill(m)}</div>
           <div className="flex min-w-0 items-center justify-end gap-2">
-            {finished && <span className={`mr-auto pr-2 tabular font-display text-lg font-bold ${scoreCls(bWin)}`}>{m.score_b}</span>}
+            {(finished || live) && <span className={`mr-auto pr-2 tabular font-display text-lg font-bold ${live ? 'text-brand-ink' : scoreCls(bWin)}`}>{m.score_b}</span>}
             <span className={`truncate text-right text-sm ${nameCls(bWin)}`}>{teamName(b, m.team_b_id)}</span>
             <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={flag} />
           </div>
@@ -999,12 +999,12 @@ function FlatMatches({ b, code }: { b: Bundle; code: string }) {
             <div className="flex items-center gap-2">
               <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={flag} />
               <span className={`truncate text-sm ${nameCls(aWin)}`}>{teamName(b, m.team_a_id)}</span>
-              {finished && <span className={`ml-auto tabular font-bold ${scoreCls(aWin)}`}>{m.score_a}</span>}
+              {(finished || live) && <span className={`ml-auto tabular font-bold ${live ? 'text-brand-ink' : scoreCls(aWin)}`}>{m.score_a}</span>}
             </div>
             <div className="flex items-center gap-2">
               <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={flag} />
               <span className={`truncate text-sm ${nameCls(bWin)}`}>{teamName(b, m.team_b_id)}</span>
-              {finished && <span className={`ml-auto tabular font-bold ${scoreCls(bWin)}`}>{m.score_b}</span>}
+              {(finished || live) && <span className={`ml-auto tabular font-bold ${live ? 'text-brand-ink' : scoreCls(bWin)}`}>{m.score_b}</span>}
             </div>
           </div>
           {!finished && <div className="shrink-0">{statusPill(m)}</div>}
