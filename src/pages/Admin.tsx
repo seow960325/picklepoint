@@ -326,7 +326,7 @@ function TeamsTab({ bundle, ev, token, run }: any) {
   const sideB = isDuel ? teams.filter((t: any) => t.side === 'B') : []
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="max-w-5xl space-y-4">
       <H>Teams</H>
 
       {isDuel ? (
@@ -752,11 +752,11 @@ function AdminPinRow({ token, pin, run, after }: any) {
       <div className="flex items-center justify-between border-t border-line/60 py-2 text-sm">
         <span className="text-fg-muted">Admin PIN (keep private)</span>
         <span className="flex items-center gap-2">
-          <span className="tabular font-display text-xl font-bold text-accent">{pin}</span>
           <button onClick={() => setEditing(true)}
             className="rounded-lg border border-line px-2.5 py-1 text-xs font-semibold text-fg-muted active:bg-surface-2">
             Change
           </button>
+          <span className="tabular font-display text-xl font-bold text-accent">{pin}</span>
         </span>
       </div>
     )
