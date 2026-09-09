@@ -394,7 +394,7 @@ function PosterBracket({ b, broadcast = false }: { b: Bundle; broadcast?: boolea
 
 function PColumn({ b, col, side }: { b: Bundle; col: { round: string; matches: Match[] }; side: 'left' | 'right' }) {
   return (
-    <div className="flex min-w-[8.5rem] flex-col lg:min-w-[10rem]">
+    <div className="flex min-w-[9.5rem] flex-col lg:min-w-[11rem]">
       <div className={`mb-1 h-4 text-[10px] font-bold uppercase tracking-widest text-fg-subtle ${side === 'right' ? 'text-right' : ''}`}>
         {col.round}
       </div>
@@ -438,12 +438,15 @@ function PMatch({ b, m }: { b: Bundle; m?: Match }) {
   if (!m) return <div className="rounded-md border border-dashed border-line/60 bg-surface/30 px-2 py-3 text-center text-[10px] text-fg-subtle">TBD</div>
   const bye = m.team_b_id == null && m.team_a_id != null
   const decided = m.status === 'finished'
+  const live = m.status === 'live'
   return (
-    <div className={`overflow-hidden rounded-md border ${m.status === 'live' ? 'border-gold shadow-[0_0_0_1px_rgba(244,205,106,0.45)]' : 'border-line'} bg-surface`}>
+    <div className={`overflow-hidden rounded-md border ${live ? 'border-gold pp-live' : 'border-line'} bg-surface`}>
       <PTeam b={b} teamId={m.team_a_id} score={m.score_a} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} />
-      <div className="h-px bg-line" />
+      {decided
+        ? <div className="h-px bg-line" />
+        : <div className={`border-y border-line/60 py-0.5 text-center text-[9px] font-bold uppercase tracking-[0.18em] ${live ? 'animate-pulse text-gold' : 'text-fg-subtle'}`}>{live ? 'live' : 'vs'}</div>}
       {bye
-        ? <div className="px-2 py-1 text-[11px] italic text-fg-subtle">bye</div>
+        ? <div className="px-2.5 py-1.5 text-[11px] italic text-fg-subtle">bye</div>
         : <PTeam b={b} teamId={m.team_b_id} score={m.score_b} win={decided && m.winner_id === m.team_b_id} lose={decided && m.winner_id !== m.team_b_id} finished={decided} />}
     </div>
   )
@@ -451,7 +454,7 @@ function PMatch({ b, m }: { b: Bundle; m?: Match }) {
 
 function PTeam({ b, teamId, score, win, lose, finished }: { b: Bundle; teamId: string | null; score: number; win: boolean; lose: boolean; finished: boolean }) {
   return (
-    <div className={`flex items-center gap-1.5 border-l-2 px-2 py-1 ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
+    <div className={`flex items-center gap-2 border-l-2 px-2.5 py-1.5 ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
       <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className="h-3.5 w-5 shrink-0 rounded-[1px] object-contain" />
       <span className={`min-w-0 flex-1 truncate text-xs ${win ? 'font-bold text-fg' : 'text-fg-muted'}`}>{teamName(b, teamId)}</span>
       {finished && <span className={`tabular shrink-0 text-xs ${win ? 'font-bold text-gold' : 'text-fg-subtle'}`}>{score}</span>}
@@ -464,7 +467,7 @@ function PCentre({ b, finalM, thirdM, champId }: { b: Bundle; finalM?: Match; th
     <div className="flex flex-col px-2 lg:px-5">
       <div className="mb-1 h-4 text-center font-cer text-[11px] font-bold uppercase tracking-[0.28em] text-gold">Final</div>
       <div className="flex flex-1 flex-col items-center justify-center gap-2">
-        <div className="w-44"><PMatch b={b} m={finalM} /></div>
+        <div className="w-52"><PMatch b={b} m={finalM} /></div>
         <div className="my-1 flex flex-col items-center">
           <Trophy lit={!!champId} />
           {champId
@@ -475,7 +478,7 @@ function PCentre({ b, finalM, thirdM, champId }: { b: Bundle; finalM?: Match; th
             : <div className="mt-1 text-[10px] uppercase tracking-widest text-fg-subtle">champion</div>}
         </div>
         <div className="mt-1 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-fg-subtle">Third place</div>
-        <div className="w-40"><PMatch b={b} m={thirdM} /></div>
+        <div className="w-48"><PMatch b={b} m={thirdM} /></div>
       </div>
     </div>
   )
@@ -832,14 +835,14 @@ function Matches({ b, code }: { b: Bundle; code: string }) {
                   {r.matches.map(m => (
                     <li key={m.id}>
                       <Link to={`/c/${code}/match/${m.id}`}
-                        className="grid grid-cols-[1fr_3.5rem_1fr] items-center gap-2 rounded-lg px-1 py-1 active:bg-surface-2">
+                        className={`grid grid-cols-[1fr_3.5rem_1fr] items-center gap-2 rounded-lg px-1 py-1 active:bg-surface-2 ${m.status === 'live' ? 'bg-brand/[0.06]' : ''}`}>
                         <span className={`flex items-center justify-end gap-1.5 truncate ${m.winner_id === m.team_a_id ? 'font-semibold text-fg' : 'text-fg-muted'}`}>
                           <span className="truncate">{teamName(b, m.team_a_id)}</span>
                           <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-3 w-4 shrink-0 rounded-[1px] object-contain" />
                         </span>
                         <span className="tabular text-center text-xs text-fg-subtle">
                           {m.status === 'finished' ? `${m.score_a}–${m.score_b}`
-                            : m.status === 'live' ? 'live'
+                            : m.status === 'live' ? <span className="animate-pulse font-bold text-brand-ink">live</span>
                             : m.team_b_id == null && m.team_a_id != null ? 'bye' : 'vs'}
                         </span>
                         <span className={`flex items-center gap-1.5 truncate ${m.winner_id === m.team_b_id ? 'font-semibold text-fg' : 'text-fg-muted'}`}>
@@ -901,13 +904,13 @@ function GroupCard({ b, code, g, rows, advance, matches }: {
             const decided = m.status === 'finished'
             return (
               <Link key={m.id} to={`/c/${code}/match/${m.id}`}
-                className="grid grid-cols-[1fr_3rem_1fr] items-center gap-2 border-b border-line/60 px-3 py-2 text-xs last:border-0 active:bg-surface-2">
+                className={`grid grid-cols-[1fr_3rem_1fr] items-center gap-2 border-b border-line/60 px-3 py-2 text-xs last:border-0 active:bg-surface-2 ${decided ? '' : m.status === 'live' ? 'bg-brand/[0.06]' : ''}`}>
                 <span className={`flex items-center justify-end gap-1 truncate ${decided && m.winner_id === m.team_a_id ? 'font-semibold text-fg' : 'text-fg-muted'}`}>
                   <span className="truncate">{teamName(b, m.team_a_id)}</span>
                   <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-3 w-4 shrink-0 rounded-[1px] object-contain" />
                 </span>
                 <span className="tabular text-center text-fg-subtle">
-                  {decided ? `${m.score_a}–${m.score_b}` : m.status === 'live' ? 'live' : 'vs'}
+                  {decided ? `${m.score_a}–${m.score_b}` : m.status === 'live' ? <span className="animate-pulse font-bold text-brand-ink">live</span> : 'vs'}
                 </span>
                 <span className={`flex items-center gap-1 truncate ${decided && m.winner_id === m.team_b_id ? 'font-semibold text-fg' : 'text-fg-muted'}`}>
                   <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-3 w-4 shrink-0 rounded-[1px] object-contain" />
@@ -922,13 +925,32 @@ function GroupCard({ b, code, g, rows, advance, matches }: {
   )
 }
 
+function interleaveByCourt(ms: Match[], courts: { id: string; number: number }[]): Match[] {
+  const groups = new Map<string, Match[]>()
+  for (const m of ms) {
+    const k = m.court_id ?? '~'
+    const g = groups.get(k); if (g) g.push(m); else groups.set(k, [m])
+  }
+  for (const g of groups.values()) g.sort((x, y) => x.sequence - y.sequence)
+  const ordered = courts.slice().sort((a, z) => a.number - z.number).map(c => c.id).filter(id => groups.has(id))
+  for (const k of groups.keys()) if (!ordered.includes(k)) ordered.push(k)
+  const out: Match[] = []
+  for (let i = 0; ; i++) {
+    let any = false
+    for (const k of ordered) { const g = groups.get(k)!; if (i < g.length) { out.push(g[i]); any = true } }
+    if (!any) break
+  }
+  return out
+}
+
 function FlatMatches({ b, code }: { b: Bundle; code: string }) {
-  const upcoming = b.matches
-    .filter(m => m.status !== 'finished' && (m.team_a_id != null || m.team_b_id != null))
-    .sort((x, y) => x.sequence - y.sequence)
+  const upcoming = interleaveByCourt(
+    b.matches.filter(m => m.status !== 'finished' && (m.team_a_id != null || m.team_b_id != null)),
+    b.courts,
+  )
   const done = results(b)
   const line = (m: Match, showScore: boolean) => (
-    <Link key={m.id} to={`/c/${code}/match/${m.id}`} className="flex items-center gap-3 px-4 py-3 active:bg-surface-2">
+    <Link key={m.id} to={`/c/${code}/match/${m.id}`} className={`flex items-center gap-3 px-4 py-3 active:bg-surface-2 ${m.status === 'live' ? 'bg-brand/[0.06]' : ''}`}>
       <div className="w-9 shrink-0 text-center font-display text-base font-bold text-fg-subtle">
         {b.courts.find(c => c.id === m.court_id)?.number ?? '–'}
       </div>
@@ -946,7 +968,7 @@ function FlatMatches({ b, code }: { b: Bundle; code: string }) {
                 <span className="mx-1 text-fg-subtle">–</span>
                 <span className={m.winner_id === m.team_b_id ? 'text-gold' : 'text-fg-muted'}>{m.score_b}</span>
               </span>
-            : m.status === 'live' ? <Pill tone="live">live</Pill> : <Pill>{m.status.replace('_', ' ')}</Pill>}
+            : m.status === 'live' ? <span className="pp-live inline-block rounded-full"><Pill tone="live">live</Pill></span> : <Pill>{m.status.replace('_', ' ')}</Pill>}
         </div>
 
         <div className={`flex min-w-0 items-center gap-2 sm:flex-1 ${showScore && m.winner_id === m.team_b_id ? 'font-bold text-fg' : 'text-fg-muted'}`}>
@@ -963,7 +985,7 @@ function FlatMatches({ b, code }: { b: Bundle; code: string }) {
               <div className={m.winner_id === m.team_a_id ? 'text-gold' : 'text-fg-muted'}>{m.score_a}</div>
               <div className={m.winner_id === m.team_b_id ? 'text-gold' : 'text-fg-muted'}>{m.score_b}</div>
             </div>
-          : m.status === 'live' ? <Pill tone="live">live</Pill> : <Pill>{m.status.replace('_', ' ')}</Pill>}
+          : m.status === 'live' ? <span className="pp-live inline-block rounded-full"><Pill tone="live">live</Pill></span> : <Pill>{m.status.replace('_', ' ')}</Pill>}
       </div>
     </Link>
   )
