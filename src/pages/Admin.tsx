@@ -668,12 +668,16 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
                 <span className="w-6 text-center text-xs text-fg-subtle">
                   {bundle.courts.find((c: any) => c.id === m.court_id)?.number ?? '–'}
                 </span>
-                <span className="flex min-w-0 flex-1 items-center gap-1 truncate">
-                  <Emblem logo={teamLogo(bundle, m.team_a_id)} flagName={teamSideName(bundle, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-                  <span className="truncate">{teamName(bundle, m.team_a_id)}</span>
-                  <span className="shrink-0 text-fg-subtle">vs</span>
-                  <Emblem logo={teamLogo(bundle, m.team_b_id)} flagName={teamSideName(bundle, m.team_b_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-                  <span className="truncate">{teamName(bundle, m.team_b_id)}</span>
+                <span className="grid min-w-0 flex-1 grid-cols-[1fr_1.75rem_1fr] items-center gap-1">
+                  <span className="flex min-w-0 items-center justify-end gap-1.5">
+                    <span className="truncate text-right">{teamName(bundle, m.team_a_id)}</span>
+                    <Emblem logo={teamLogo(bundle, m.team_a_id)} flagName={teamSideName(bundle, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
+                  </span>
+                  <span className="text-center text-xs text-fg-subtle">vs</span>
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <Emblem logo={teamLogo(bundle, m.team_b_id)} flagName={teamSideName(bundle, m.team_b_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
+                    <span className="truncate">{teamName(bundle, m.team_b_id)}</span>
+                  </span>
                 </span>
                 <span className="tabular shrink-0 text-xs text-fg-muted">
                   {m.status === 'scheduled' ? (m.round ?? '').replace(/pod/i, 'Court') : `${m.score_a}–${m.score_b}`}

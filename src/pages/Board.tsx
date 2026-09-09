@@ -172,12 +172,16 @@ function TvIdle({ b }: { b: Bundle }) {
         <div className="mx-auto mt-6 max-w-lg space-y-2">
           <div className="text-xs font-bold uppercase tracking-widest text-accent">Up next</div>
           {ups.map(m => (
-            <div key={m.id} className="flex items-center justify-center gap-2 text-base sm:text-lg">
-              <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-4 w-auto shrink-0 rounded-[1px]" />
-              <span className="truncate">{teamName(b, m.team_a_id)}</span>
-              <span className="text-fg-subtle">vs</span>
-              <span className="truncate">{teamName(b, m.team_b_id)}</span>
-              <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-4 w-auto shrink-0 rounded-[1px]" />
+            <div key={m.id} className="grid grid-cols-[1fr_2rem_1fr] items-center gap-2 text-base sm:text-lg">
+              <span className="flex min-w-0 items-center justify-end gap-2">
+                <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
+                <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-4 w-auto shrink-0 rounded-[1px]" />
+              </span>
+              <span className="text-center text-fg-subtle">vs</span>
+              <span className="flex min-w-0 items-center gap-2">
+                <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-4 w-auto shrink-0 rounded-[1px]" />
+                <span className="truncate">{teamName(b, m.team_b_id)}</span>
+              </span>
             </div>
           ))}
         </div>
@@ -311,7 +315,17 @@ function Schedule({ b }: { b: Bundle }) {
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm leading-relaxed">
-              <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={fl} />{teamName(b, m.team_a_id)}<span className="mx-2 text-fg-subtle">vs</span><Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={fl} />{teamName(b, m.team_b_id)}
+              <span className="grid grid-cols-[1fr_1.75rem_1fr] items-center gap-1">
+                <span className="flex min-w-0 items-center justify-end gap-1">
+                  <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
+                  <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={fl} />
+                </span>
+                <span className="text-center text-xs text-fg-subtle">vs</span>
+                <span className="flex min-w-0 items-center gap-1">
+                  <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={fl} />
+                  <span className="truncate">{teamName(b, m.team_b_id)}</span>
+                </span>
+              </span>
             </div>
             <div className="mt-1 text-[11px] tracking-wide text-fg-subtle">{(m.round ?? '').replace(/pod/i, 'Court')} · #{m.sequence}</div>
           </div>
