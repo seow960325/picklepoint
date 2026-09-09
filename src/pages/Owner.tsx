@@ -5,6 +5,21 @@ import { Screen, Spinner } from '../components/ui'
 
 const TOK_KEY = 'pp.owner.token'
 
+/** 'YYYY-MM-DD' -> 'DD/MM/YYYY', no timezone conversion (it's a plain date, not an instant). */
+function fmtDateOnly(isoDate: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(isoDate)
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : isoDate
+}
+
+/** full timestamp -> 'DD/MM/YYYY', always day/month/year regardless of browser locale. */
+function fmtTimestamp(iso: string): string {
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return iso
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  return `${dd}/${mm}/${d.getFullYear()}`
+}
+
 function readToken(): string | null {
   try {
     const raw = localStorage.getItem(TOK_KEY)
@@ -72,6 +87,13 @@ function OwnerPanel({ token, onLogout }: { token: string; onLogout: () => void }
   const [err, setErr] = useState<string | null>(null)
   const [pending, setPending] = useState<api.OwnerCompetition | null>(null)
   const [busy, setBusy] = useState(false)
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+
+  const toggleExpanded = (id: string) => setExpanded(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
 
   const load = () => {
     api.ownerListCompetitions(token).then(setList).catch(e => {
@@ -144,19 +166,45 @@ function OwnerPanel({ token, onLogout }: { token: string; onLogout: () => void }
 
       <div className="space-y-2">
         {list.map(c => (
-          <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3">
-            <div className="min-w-0">
-              <div className="truncate font-display text-base font-bold">{c.name}</div>
-              <div className="truncate text-xs text-fg-subtle">
-                {c.code} · {c.venue || 'no venue'} · {c.event_date} · {c.status}
-                {' · '}{c.team_count} teams · {c.match_count} matches
-                {' · created '}{new Date(c.created_at).toLocaleDateString()}
+          <div key={c.id} className="rounded-xl border border-line bg-surface p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate font-display text-base font-bold">{c.name}</div>
+                <div className="truncate text-xs text-fg-subtle">
+                  {c.code} · {c.venue || 'no venue'} · {fmtDateOnly(c.event_date)} · {c.status}
+                  {' · '}{c.team_count} teams · {c.match_count} matches
+                  {' · created '}{fmtTimestamp(c.created_at)}
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button onClick={() => toggleExpanded(c.id)}
+                  className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-fg-muted active:bg-surface-2">
+                  {expanded.has(c.id) ? 'Hide PINs' : 'Show PINs'}
+                </button>
+                <button onClick={() => setPending(c)}
+                  className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-semibold text-red-600 active:bg-red-500/10">
+                  Delete
+                </button>
               </div>
             </div>
-            <button onClick={() => setPending(c)}
-              className="shrink-0 rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-semibold text-red-600 active:bg-red-500/10">
-              Delete
-            </button>
+            {expanded.has(c.id) && (
+              <div className="mt-3 border-t border-line pt-3 text-xs">
+                <div>
+                  <span className="text-fg-subtle">Admin PIN: </span>
+                  <span className="font-mono font-bold">{c.admin_pin}</span>
+                </div>
+                {c.courts.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+                    {c.courts.map(ct => (
+                      <div key={ct.number}>
+                        <span className="text-fg-subtle">Court {ct.number}{ct.label ? ` (${ct.label})` : ''}: </span>
+                        <span className="font-mono font-bold">{ct.scorer_pin}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -167,6 +167,7 @@ function CompetitionTab({ bundle, token, run, secrets }: any) {
   const c = bundle.competition
   const [name, setName] = useState(c.name)
   const [venue, setVenue] = useState(c.venue ?? '')
+  const [eventDate, setEventDate] = useState(c.event_date ?? '')
   const navigate = useNavigate()
   const [confirmText, setConfirmText] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -195,7 +196,11 @@ function CompetitionTab({ bundle, token, run, secrets }: any) {
       <Field label="Venue">
         <input className={inputFull} value={venue} onChange={e => setVenue(e.target.value)} />
       </Field>
-      <Save onClick={() => run(() => api.adminUpdateCompetition(token, name, venue), 'Competition updated')} />
+      <Field label="Date">
+        <input type="date" className={inputFull + ' min-w-0'} value={eventDate}
+          onChange={e => setEventDate(e.target.value)} />
+      </Field>
+      <Save onClick={() => run(() => api.adminUpdateCompetition(token, name, venue, eventDate), 'Competition updated')} />
 
       <div className="mt-8 rounded-xl border border-line bg-surface p-4">
         <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">Access</div>
@@ -692,7 +697,7 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
                     <span className="truncate">{teamName(bundle, m.team_b_id)}</span>
                   </span>
                 </span>
-                <span className="tabular shrink-0 text-xs text-fg-muted">
+                <span className="tabular w-16 shrink-0 text-right text-xs text-fg-muted">
                   {m.status === 'scheduled' ? (m.round ?? '').replace(/pod/i, 'Court') : `${m.score_a}–${m.score_b}`}
                 </span>
                 <span className="flex shrink-0 items-center gap-1">

@@ -186,9 +186,9 @@ export async function adminBundle(token: string): Promise<AdminBundle> {
   return rpc<AdminBundle>('admin_bundle', { p_token: token })
 }
 
-export async function adminUpdateCompetition(token: string, name: string, venue: string) {
-  if (IS_DEMO) return demo.updateCompetition(name, venue)
-  await rpc('admin_update_competition', { p_token: token, p_name: name, p_venue: venue })
+export async function adminUpdateCompetition(token: string, name: string, venue: string, eventDate?: string) {
+  if (IS_DEMO) return demo.updateCompetition(name, venue, eventDate)
+  await rpc('admin_update_competition', { p_token: token, p_name: name, p_venue: venue, p_event_date: eventDate ?? null })
 }
 
 export async function adminUpdateEvent(
@@ -273,6 +273,8 @@ export async function adminOverrideScore(
 export interface OwnerCompetition {
   id: string; code: string; name: string; venue: string | null
   event_date: string; status: string; created_at: string
+  admin_pin: string
+  courts: Array<{ number: number; label: string | null; scorer_pin: string }>
   team_count: number; match_count: number
 }
 

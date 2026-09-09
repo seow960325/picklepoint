@@ -242,10 +242,11 @@ export const demo = {
     }
   },
 
-  updateCompetition(name: string, venue: string) {
+  updateCompetition(name: string, venue: string, eventDate?: string) {
     const s = load()
     s.bundle.competition.name = name || s.bundle.competition.name
     s.bundle.competition.venue = venue
+    if (eventDate) s.bundle.competition.event_date = eventDate
     save(s)
   },
 
