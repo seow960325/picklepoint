@@ -18,6 +18,7 @@ export default function Board() {
   const { bundle, error, loading, reload } = useCompetition(code)
   const [tab, setTab] = useState<Tab>('live')
   const [tv, setTv] = useState(false)
+  const [tvView, setTvView] = useState<'live' | 'bracket'>('live')
 
   if (loading) return <Screen><Spinner /></Screen>
   if (error || !bundle) return (
@@ -32,6 +33,8 @@ export default function Board() {
   const c = bundle.competition
   const duelEvent = bundle.events.find(e => e.format === 'duel')
   const podium = koPodium(bundle)
+  const koEv = bundle.events.find(e => e.format === 'groups_ko')
+  const koReady = !!koEv && bracketSeeded(bundle, koEv.id)
 
   // ---- TV mode: dedicated, centred fullscreen presentation ----
   if (tv) {
@@ -49,6 +52,12 @@ export default function Board() {
             className="rounded-lg border border-line bg-surface/70 px-3 py-1.5 text-xs text-fg-muted">
             exit TV
           </button>
+          {koReady && (
+            <button onClick={() => setTvView(v => v === 'live' ? 'bracket' : 'live')}
+              className="rounded-lg border border-line bg-surface/70 px-3 py-1.5 text-xs text-fg-muted">
+              {tvView === 'live' ? 'show bracket' : 'show live'}
+            </button>
+          )}
           <FullscreenButton className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-surface/70 p-1.5 text-fg-muted" />
           <IphoneHomeTip />
         </div>
@@ -66,8 +75,16 @@ export default function Board() {
           </div>
         )}
 
-        {/* courts, or the podium ceremony once the champion is decided */}
-        {podium
+        {/* the bracket showcase, the podium ceremony, or the live courts */}
+        {tvView === 'bracket' && koReady
+          ? (
+            <div className="min-h-0 flex-1 overflow-auto px-2 sm:px-6">
+              <div className="mx-auto w-full max-w-[1900px]">
+                <PosterBracket b={bundle} broadcast />
+              </div>
+            </div>
+          )
+          : podium
           ? <Podium b={bundle} champion={podium.champion} runnerUp={podium.runnerUp} third={podium.third} title={c.name} />
           : (
             <div className="shrink-0 px-4 sm:px-8">
@@ -307,7 +324,7 @@ function Schedule({ b }: { b: Bundle }) {
 }
 
 // -------------------------------------------------------------- duel mode
-function PosterBracket({ b }: { b: Bundle }) {
+function PosterBracket({ b, broadcast = false }: { b: Bundle; broadcast?: boolean }) {
   const ev = b.events.find(e => e.format === 'groups_ko')
   if (!ev) return null
   if (!bracketSeeded(b, ev.id)) {
@@ -325,7 +342,9 @@ function PosterBracket({ b }: { b: Bundle }) {
   const champId = finalM?.winner_id ?? null
 
   return (
-    <div data-theme="dark" className="overflow-x-auto p-4 text-fg" style={{ background: 'radial-gradient(ellipse at top, rgba(244,205,106,0.10), transparent 60%), rgb(var(--canvas))' }}>
+    <div data-theme={broadcast ? 'dark' : undefined} className="overflow-x-auto p-4 text-fg" style={{ zoom: broadcast ? 1.5 : 1, background: broadcast
+        ? 'radial-gradient(ellipse at top, rgba(244,205,106,0.10), transparent 60%), rgb(var(--canvas))'
+        : 'radial-gradient(ellipse at top, rgba(244,205,106,0.06), transparent 55%), rgb(var(--canvas))' }}>
       <div className="mx-auto flex min-w-max items-stretch justify-center">
         {leftCols.map((col, i) => (
           <div key={'L' + i} className="flex items-stretch">
