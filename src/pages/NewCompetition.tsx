@@ -17,8 +17,70 @@ const CATEGORY_PRESETS = [
 ]
 type Format = 'round_robin' | 'duel' | 'groups_ko'
 
+const TOTAL_STEPS = 5
+
+/* ── step indicator ────────────────────────────────────── */
+const StepBar = ({ current, total }: { current: number; total: number }) => (
+  <div className="flex items-center justify-center gap-1.5 py-4">
+    {Array.from({ length: total }, (_, i) => (
+      <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${
+        i + 1 === current ? 'w-8 bg-brand' : i + 1 < current ? 'w-4 bg-brand/60' : 'w-4 bg-line'
+      }`} />
+    ))}
+  </div>
+)
+
+/* ── nav buttons ───────────────────────────────────────── */
+const NavButtons = ({ step, setStep, canNext, onSubmit, busy }: {
+  step: number; setStep: (s: number) => void; canNext: boolean
+  onSubmit: () => void; busy: boolean
+}) => (
+  <div className="flex items-center justify-between gap-3 px-1 pt-4">
+    {step > 1 ? (
+      <button type="button" onClick={() => setStep(step - 1)}
+        className="rounded-xl border border-line bg-surface px-6 py-3 font-display text-sm font-bold uppercase tracking-wider text-fg-muted active:bg-surface-2">
+        ← Back
+      </button>
+    ) : (
+      <Link to="/"
+        className="rounded-xl border border-line bg-surface px-6 py-3 font-display text-sm font-bold uppercase tracking-wider text-fg-muted active:bg-surface-2 text-center">
+        Cancel
+      </Link>
+    )}
+    {step < TOTAL_STEPS ? (
+      <button type="button" onClick={() => setStep(step + 1)} disabled={!canNext}
+        className="rounded-xl bg-brand px-8 py-3 font-display text-sm font-bold uppercase tracking-wider text-brand-fg disabled:opacity-30">
+        Next →
+      </button>
+    ) : (
+      <button type="button" onClick={onSubmit} disabled={!canNext || busy}
+        className="rounded-xl bg-brand px-8 py-3 font-display text-sm font-bold uppercase tracking-wider text-brand-fg disabled:opacity-30">
+        {busy ? 'Creating…' : 'Create Competition'}
+      </button>
+    )}
+  </div>
+)
+
+/* ── format card ───────────────────────────────────────── */
+const FormatCard = ({ label, desc, icon, active, onClick }: {
+  label: string; desc: string; icon: string; active: boolean; onClick: () => void
+}) => (
+  <button type="button" onClick={onClick}
+    className={`flex flex-col items-center gap-2 rounded-2xl border-2 p-6 text-center transition-all ${
+      active
+        ? 'border-brand bg-brand/10 shadow-lg shadow-brand/10'
+        : 'border-line bg-surface hover:border-fg-subtle'
+    }`}>
+    <span className="text-4xl">{icon}</span>
+    <span className="font-display text-lg font-bold tracking-wide">{label}</span>
+    <span className="text-xs leading-relaxed text-fg-muted">{desc}</span>
+  </button>
+)
+
+/* ── main component ────────────────────────────────────── */
 export default function NewCompetition() {
   const nav = useNavigate()
+  const [step, setStep] = useState(1)
 
   const [format, setFormat] = useState<Format>('round_robin')
 
@@ -42,9 +104,7 @@ export default function NewCompetition() {
   const [teamText, setTeamText] = useState('')
   const [poolCount, setPoolCount] = useState(1)
 
-  // groups_ko mode — count picked first, then one labelled slot per team,
-  // so it's obvious at a glance how many are in vs still needed (unlike a
-  // single free-text box, where the count is easy to lose track of)
+  // groups_ko mode
   const [groupSize, setGroupSize] = useState(4)
   const [advancePerGroup, setAdvancePerGroup] = useState(2)
   const [thirdPlace, setThirdPlace] = useState(true)
@@ -75,7 +135,7 @@ export default function NewCompetition() {
   const [result, setResult] = useState<api.CreateResult | null>(null)
 
   const applyPreset = (t: number) => {
-    setTarget(t); setSwitchAt(defaultSwitchAt(t)); setCap(t + 2)
+    setTarget(t); setSwitchAt(0); setCap(t + 2)
   }
 
   const rrTeams: DraftTeam[] = useMemo(() => {
@@ -120,11 +180,19 @@ export default function NewCompetition() {
   const ruleError = validateRules({ target_score: target, win_by: winBy, cap, switch_at: switchAt })
   const codeError = code.trim() && (code.trim().length < 3 || code.trim().length > 12)
     ? 'Join code must be 3-12 letters/numbers.' : null
-  const canCreate = format === 'duel'
-    ? (!duelError && !ruleError && !codeError && !busy)
-    : format === 'groups_ko'
-      ? (!koError && !ruleError && !codeError && !busy)
-      : (rrTeams.length >= 2 && !ruleError && !codeError && !busy)
+
+  /* per-step "can proceed" checks */
+  const canStep: Record<number, boolean> = {
+    1: true,                                     // format — always valid, one is always selected
+    2: !codeError,                               // details — code is the only thing that can be wrong
+    3: !ruleError,                               // scoring
+    4: true,                                     // courts — always valid
+    5: format === 'duel'
+      ? (!duelError && !busy)
+      : format === 'groups_ko'
+        ? (!koError && !busy)
+        : (rrTeams.length >= 2 && !busy),
+  }
 
   const create = async () => {
     setBusy(true); setErr(null)
@@ -159,315 +227,283 @@ export default function NewCompetition() {
   if (result) return <Created res={result} onOpen={() => nav(`/c/${result.code}`)} />
 
   return (
-    <div className="flex h-full min-h-screen bg-canvas">
-      {/* summary rail */}
-      <aside className="hidden w-72 shrink-0 flex-col border-r border-line bg-surface p-5 md:flex">
-        <Link to="/" className="mb-6 text-xs text-fg-subtle">← back</Link>
-        <div className="font-display text-3xl font-bold leading-none tracking-tight text-brand-ink">
-          NEW<br />COMPETITION
+    <div className="flex min-h-screen flex-col bg-canvas">
+      {/* header */}
+      <div className="border-b border-line bg-surface px-5 pt-4 pb-1">
+        <div className="mx-auto max-w-lg">
+          <div className="font-display text-xl font-bold tracking-wide text-brand-ink">
+            NEW COMPETITION
+          </div>
+          <StepBar current={step} total={TOTAL_STEPS} />
         </div>
+      </div>
 
-        <dl className="mt-7 space-y-2.5 text-sm">
-          <Sum k="Format" v={
-            format === 'duel' ? 'Team Battle'
-              : format === 'groups_ko' ? 'Groups + Knockout' : 'Round Robin'} />
-          <Sum k="Name" v={name || '—'} />
-          <Sum k="Event" v={eventName || '—'} />
-          <Sum k="Scoring" v={`to ${target}, win by ${winBy}, cap ${cap}`} />
-          <Sum k="Switch ends" v={switchAt > 0 ? `at ${switchAt}` : 'OFF'} />
-          <Sum k="Courts" v={String(courtCount)} />
-          {format === 'duel' ? (
-            <>
-              <Sum k={sideAName || 'Side A'} v={`${sideANames.length} teams`} />
-              <Sum k={sideBName || 'Side B'} v={`${sideBNames.length} teams`} />
-              <Sum k="Pods" v={draw.length ? String(draw.length / 4) : '—'} />
-            </>
-          ) : format === 'groups_ko' ? (
-            <>
-              <Sum k="Teams" v={String(koNames.length)} />
-              <Sum k="Groups" v={ko ? `${ko.groupCount} of ~${groupSize}` : '—'} />
-              <Sum k="Qualifiers" v={ko ? String(ko.qualifiers) : '—'} />
-              <Sum k="Bracket" v={ko
-                ? `${ko.bracketSize}${ko.byes ? ` (${ko.byes} bye${ko.byes > 1 ? 's' : ''})` : ''}`
-                : '—'} />
-            </>
-          ) : (
-            <>
-              <Sum k="Teams" v={String(teams.length)} />
-              <Sum k="Pools" v={poolCount === 1 ? 'single' : `${poolCount} pools`} />
-            </>
-          )}
-          <Sum k="Fixtures" v={draw.length ? `${draw.length} matches` : '—'} />
-        </dl>
+      {/* step content */}
+      <div className="mx-auto w-full max-w-lg flex-1 px-5 py-5">
 
-        <div className="mt-auto pt-6">
-          {ruleError && <Warn>{ruleError}</Warn>}
-          {format === 'duel' && duelError && <Warn>{duelError}</Warn>}
-          {format === 'groups_ko' && koError && <Warn>{koError}</Warn>}
-          {format === 'round_robin' && teams.length < 2 && (
-            <div className="mb-2 text-xs text-fg-subtle">Add at least two teams.</div>
-          )}
-          {err && <Warn>{err}</Warn>}
-          <button onClick={create} disabled={!canCreate}
-            className="mt-2 w-full rounded-xl bg-brand py-3.5 font-display text-lg font-bold tracking-wide text-brand-fg disabled:opacity-30">
-            {busy ? 'CREATING…' : 'CREATE COMPETITION'}
-          </button>
-        </div>
-      </aside>
+        {/* ── STEP 1: Format ──────────────────────────── */}
+        {step === 1 && (
+          <div>
+            <h2 className="mb-1 font-display text-2xl font-bold tracking-wide">Choose a format</h2>
+            <p className="mb-5 text-sm text-fg-muted">How should the competition be structured?</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <FormatCard icon="🔄" label="Round Robin"
+                desc="Everyone plays everyone. Simple, fair, great for small groups."
+                active={format === 'round_robin'} onClick={() => setFormat('round_robin')} />
+              <FormatCard icon="⚔️" label="Team Battle"
+                desc="Two sides face off — every team from one side plays every team from the other."
+                active={format === 'duel'} onClick={() => setFormat('duel')} />
+              <FormatCard icon="🏆" label="Groups + Knockout"
+                desc="FIFA-style. Group round robin, then a knockout bracket with a final."
+                active={format === 'groups_ko'} onClick={() => setFormat('groups_ko')} />
+            </div>
+          </div>
+        )}
 
-      {/* form */}
-      <div className="min-w-0 flex-1 overflow-y-auto">
-        <Section n={1} title="Competition">
-          <div className="mb-4">
-            <Field label="Format">
-              <Choice value={format} onChange={setFormat}
-                options={[
-                  { label: 'Round Robin', value: 'round_robin' },
-                  { label: 'Team Battle', value: 'duel' },
-                  { label: 'Groups + Knockout', value: 'groups_ko' },
-                ]} />
-            </Field>
-            {format === 'groups_ko' && (
-              <p className="mt-2 text-xs text-fg-subtle">
-                World-Cup shaped. Teams are drawn at random into small groups and play a
-                round robin inside their group. When every group match is done you lock
-                the tables from Admin, and the top finishers are seeded into a knockout
-                bracket that ends with a third-place playoff and a final.
-              </p>
-            )}
-            {format === 'duel' && (
-              <p className="mt-2 text-xs text-fg-subtle">
-                Two sides face off — every team from one side plays every team from
-                the other once. Each game's winner scores a point for their side; most
-                games won overall wins the whole thing.
-              </p>
-            )}
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Field label="Competition name" className="sm:col-span-2">
-              <input className={inputFull} value={name} onChange={e => setName(e.target.value)}
-                placeholder="Puchong Open 2026" />
-            </Field>
-            <Field label="Date">
-              <input type="date" className={inputFull} value={date} onChange={e => setDate(e.target.value)} />
-            </Field>
-            <Field label="Venue" className="sm:col-span-2">
-              <input className={inputFull} value={venue} onChange={e => setVenue(e.target.value)}
-                placeholder="IOI Mall Courts" />
-            </Field>
-            <Field label="Event / category">
-              <Select
-                value={CATEGORY_PRESETS.includes(eventName) ? eventName : '__custom__'}
-                onChange={v => setEventName(v === '__custom__' ? '' : v)}
-                options={[
-                  ...CATEGORY_PRESETS.map(c => ({ label: c, value: c })),
-                  { label: 'Custom…', value: '__custom__' },
-                ]} />
-              {!CATEGORY_PRESETS.includes(eventName) && (
-                <input className={`${inputFull} mt-2`} value={eventName}
-                  onChange={e => setEventName(e.target.value)} placeholder="Type a category name" />
-              )}
-            </Field>
-            <Field label="Join code (optional)">
-              <input className={`${inputFull} font-mono uppercase tracking-wider`}
-                value={code} maxLength={12}
-                onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-                placeholder="Auto-generated" />
-            </Field>
-          </div>
-          {codeError && <Warn>{codeError}</Warn>}
-        </Section>
-
-        <Section n={2} title="Scoring" hint="applies to every match">
-          <div className="mb-4">
-            <Field label="Preset">
-              <Choice value={target} onChange={applyPreset}
-                options={[{ label: 'to 11', value: 11 }, { label: 'to 15', value: 15 }, { label: 'to 21', value: 21 }]} />
-            </Field>
-          </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Field label="Winning score"><Stepper value={target} min={1} max={99}
-              onChange={v => { setTarget(v); setSwitchAt(s => s > 0 ? defaultSwitchAt(v) : 0) }} /></Field>
-            <Field label="Win by"><Stepper value={winBy} min={1} max={5} onChange={setWinBy} /></Field>
-            <Field label="Hard cap"><Stepper value={cap} min={1} max={120} onChange={setCap} /></Field>
-            <Field label="Switch ends at">
-              <Stepper value={switchAt} min={0} max={target} onChange={setSwitchAt}
-                format={v => v === 0 ? 'OFF' : String(v)} />
-            </Field>
-          </div>
-          {ruleError && <Warn>{ruleError}</Warn>}
-          <p className="mt-3 text-xs text-fg-subtle">
-            First to {target}, must lead by {winBy}. If it drags on, first to {cap} wins outright.
-            {switchAt > 0
-              ? ` Players change ends when either side reaches ${switchAt} — the court flips on
-                 screen so the buttons keep matching what the referee sees.`
-              : ' End-switching is off — teams stay on the same side for the whole game.'}
-          </p>
-        </Section>
-
-        <Section n={3} title="Courts">
-          <div className="flex flex-wrap items-end gap-6">
-            <Field label="How many courts"><Stepper value={courtCount} min={1} max={12} onChange={setCourtCount} /></Field>
-            <Field label="Admin PIN" >
-              <input className={`${input} w-28 tabular`} value={adminPin} maxLength={4}
-                inputMode="numeric"
-                onChange={e => setAdminPin(e.target.value.replace(/\D/g, '').slice(0, 4))} />
-            </Field>
-          </div>
-          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {Array.from({ length: courtCount }, (_, i) => (
-              <Field key={i} label={`Court ${i + 1} PIN`}>
-                <input className={`${inputFull} tabular text-center`} value={pins[i]} maxLength={4}
-                  inputMode="numeric"
-                  onChange={e => setPins(p => {
-                    const n = [...p]; n[i] = e.target.value.replace(/\D/g, '').slice(0, 4); return n
-                  })} />
+        {/* ── STEP 2: Details ─────────────────────────── */}
+        {step === 2 && (
+          <div>
+            <h2 className="mb-1 font-display text-2xl font-bold tracking-wide">Competition details</h2>
+            <p className="mb-5 text-sm text-fg-muted">Name it, set the date and venue.</p>
+            <div className="space-y-4">
+              <Field label="Competition name">
+                <input className={inputFull} value={name} onChange={e => setName(e.target.value)}
+                  placeholder="Puchong Open 2026" />
               </Field>
-            ))}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label="Date">
+                  <input type="date" className={inputFull} value={date} onChange={e => setDate(e.target.value)} />
+                </Field>
+                <Field label="Venue">
+                  <input className={inputFull} value={venue} onChange={e => setVenue(e.target.value)}
+                    placeholder="IOI Mall Courts" />
+                </Field>
+              </div>
+              <Field label="Event / category">
+                <Select
+                  value={CATEGORY_PRESETS.includes(eventName) ? eventName : '__custom__'}
+                  onChange={v => setEventName(v === '__custom__' ? '' : v)}
+                  options={[
+                    ...CATEGORY_PRESETS.map(c => ({ label: c, value: c })),
+                    { label: 'Custom…', value: '__custom__' },
+                  ]} />
+                {!CATEGORY_PRESETS.includes(eventName) && (
+                  <input className={`${inputFull} mt-2`} value={eventName}
+                    onChange={e => setEventName(e.target.value)} placeholder="Type a category name" />
+                )}
+              </Field>
+              <Field label="Join code (optional)">
+                <input className={`${inputFull} font-mono uppercase tracking-wider`}
+                  value={code} maxLength={12}
+                  onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                  placeholder="Auto-generated if left blank" />
+              </Field>
+              {codeError && <Warn>{codeError}</Warn>}
+            </div>
           </div>
-        </Section>
+        )}
 
-        {format === 'round_robin' ? (
-          <Section n={4} title="Teams" hint="one per line">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto]">
-              <Field label={`Team names — ${teams.length} entered`}>
-                <textarea className={`${inputFull} h-44 resize-y font-mono text-[13px] leading-relaxed`}
+        {/* ── STEP 3: Scoring ─────────────────────────── */}
+        {step === 3 && (
+          <div>
+            <h2 className="mb-1 font-display text-2xl font-bold tracking-wide">Scoring rules</h2>
+            <p className="mb-5 text-sm text-fg-muted">Applies to every match in this competition.</p>
+            <div className="space-y-5">
+              <Field label="Preset">
+                <Choice value={target} onChange={applyPreset}
+                  options={[{ label: 'to 11', value: 11 }, { label: 'to 15', value: 15 }, { label: 'to 21', value: 21 }]} />
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Winning score">
+                  <Stepper value={target} min={1} max={99}
+                    onChange={v => { setTarget(v); setSwitchAt(s => s > 0 ? defaultSwitchAt(v) : 0) }} />
+                </Field>
+                <Field label="Win by">
+                  <Stepper value={winBy} min={1} max={5} onChange={setWinBy} />
+                </Field>
+                <Field label="Hard cap">
+                  <Stepper value={cap} min={1} max={120} onChange={setCap} />
+                </Field>
+                <Field label="Switch ends at">
+                  <Stepper value={switchAt} min={0} max={target} onChange={setSwitchAt}
+                    format={v => v === 0 ? 'OFF' : String(v)} />
+                </Field>
+              </div>
+              {ruleError && <Warn>{ruleError}</Warn>}
+              <p className="text-xs text-fg-subtle leading-relaxed">
+                First to {target}, must lead by {winBy}. If it drags on, first to {cap} wins outright.
+                {switchAt > 0
+                  ? ` Players change ends when either side reaches ${switchAt}.`
+                  : ' End-switching is off — teams stay on the same side for the whole game.'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 4: Courts ──────────────────────────── */}
+        {step === 4 && (
+          <div>
+            <h2 className="mb-1 font-display text-2xl font-bold tracking-wide">Courts</h2>
+            <p className="mb-5 text-sm text-fg-muted">Set how many courts and their scorer PINs.</p>
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-end gap-6">
+                <Field label="How many courts">
+                  <Stepper value={courtCount} min={1} max={12} onChange={setCourtCount} />
+                </Field>
+                <Field label="Admin PIN">
+                  <input className={`${input} w-28 tabular`} value={adminPin} maxLength={4}
+                    inputMode="numeric"
+                    onChange={e => setAdminPin(e.target.value.replace(/\D/g, '').slice(0, 4))} />
+                </Field>
+              </div>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {Array.from({ length: courtCount }, (_, i) => (
+                  <Field key={i} label={`Court ${i + 1} PIN`}>
+                    <input className={`${inputFull} tabular text-center`} value={pins[i]} maxLength={4}
+                      inputMode="numeric"
+                      onChange={e => setPins(p => {
+                        const n = [...p]; n[i] = e.target.value.replace(/\D/g, '').slice(0, 4); return n
+                      })} />
+                  </Field>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 5: Teams ───────────────────────────── */}
+        {step === 5 && format === 'round_robin' && (
+          <div>
+            <h2 className="mb-1 font-display text-2xl font-bold tracking-wide">Teams</h2>
+            <p className="mb-5 text-sm text-fg-muted">Enter one team name per line.</p>
+            <div className="space-y-4">
+              <Field label={`Team names — ${rrTeams.length} entered`}>
+                <textarea className={`${inputFull} h-48 resize-y font-mono text-[13px] leading-relaxed`}
                   value={teamText} onChange={e => setTeamText(e.target.value)}
                   placeholder={'Smash Bros\nDink Dynasty\nNet Ninjas\nKitchen Kings'} />
               </Field>
-              <div className="space-y-4">
-                <Field label="Pools">
-                  <Choice value={poolCount} onChange={setPoolCount}
-                    options={[{ label: 'One group', value: 1 }, { label: '2 pools', value: 2 },
-                              { label: '3 pools', value: 3 }, { label: '4 pools', value: 4 }]} />
-                </Field>
-                {teams.length >= 2 && (
-                  <div className="rounded-lg border border-line bg-surface p-3 text-xs">
-                    <div className="mb-1.5 font-bold uppercase tracking-wider text-fg-muted">Draw preview</div>
-                    <div className="text-fg-muted">{draw.length} matches, {new Set(draw.map(d => d.round)).size} rounds</div>
-                    <div className="mt-1 text-fg-subtle">
-                      Round robin inside each pool, spread across {courtCount} court{courtCount > 1 ? 's' : ''}.
-                      No team is booked on two courts at once.
-                    </div>
+              <Field label="Pools">
+                <Choice value={poolCount} onChange={setPoolCount}
+                  options={[{ label: 'One group', value: 1 }, { label: '2 pools', value: 2 },
+                            { label: '3 pools', value: 3 }, { label: '4 pools', value: 4 }]} />
+              </Field>
+              {rrTeams.length >= 2 && (
+                <div className="rounded-lg border border-line bg-surface p-3 text-xs">
+                  <div className="mb-1.5 font-bold uppercase tracking-wider text-fg-muted">Draw preview</div>
+                  <div className="text-fg-muted">{draw.length} matches, {new Set(draw.map(d => d.round)).size} rounds</div>
+                  <div className="mt-1 text-fg-subtle">
+                    Round robin inside each pool, spread across {courtCount} court{courtCount > 1 ? 's' : ''}.
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
-          </Section>
-        ) : format === 'duel' ? (
-          <Section n={4} title="Sides" hint="one team per line, both sides equal & even">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Side A name">
-                <input className={inputFull} value={sideAName} onChange={e => setSideAName(e.target.value)}
-                  placeholder="Cambodia" />
-              </Field>
-              <Field label="Side B name">
-                <input className={inputFull} value={sideBName} onChange={e => setSideBName(e.target.value)}
-                  placeholder="Malaysia" />
-              </Field>
-              <Field label={`${sideAName || 'Side A'} teams — ${sideANames.length} entered`}>
-                <textarea className={`${inputFull} h-44 resize-y font-mono text-[13px] leading-relaxed`}
-                  value={sideAText} onChange={e => setSideAText(e.target.value)}
-                  placeholder={'Team A\nTeam B\nTeam E\nTeam F'} />
-              </Field>
-              <Field label={`${sideBName || 'Side B'} teams — ${sideBNames.length} entered`}>
-                <textarea className={`${inputFull} h-44 resize-y font-mono text-[13px] leading-relaxed`}
-                  value={sideBText} onChange={e => setSideBText(e.target.value)}
-                  placeholder={'Team C\nTeam D\nTeam G\nTeam H'} />
-              </Field>
-            </div>
-            {duelError && <Warn>{duelError}</Warn>}
-            {!duelError && draw.length > 0 && (
-              <div className="mt-3 rounded-lg border border-line bg-surface p-3 text-xs">
-                <div className="mb-1.5 font-bold uppercase tracking-wider text-fg-muted">Draw preview</div>
-                <div className="text-fg-muted">
-                  {draw.length / 4} pod{draw.length / 4 > 1 ? 's' : ''} × 4 games = {draw.length} total games,
-                  spread across {courtCount} court{courtCount > 1 ? 's' : ''}.
-                </div>
-                <div className="mt-1 text-fg-subtle">
-                  Each pod is 2 {sideAName || 'Side A'} teams vs 2 {sideBName || 'Side B'} teams — every
-                  team meets every opposing team in the pod exactly once. Final result is total games won,
-                  summed across every pod.
-                </div>
-              </div>
-            )}
-          </Section>
-        ) : (
-          <Section n={4} title="Teams & groups" hint="groups are drawn at random">
-            <div className="mb-5 flex flex-wrap items-end gap-6">
-              <Field label="How many teams">
-                <Stepper value={koTeamCount} min={6} max={64} onChange={setKoCount} />
-              </Field>
-              <Field label="Teams per group">
-                <Stepper value={groupSize} min={3} max={8} onChange={setGroupSize} />
-              </Field>
-              <Field label="Advance per group">
-                <Stepper value={advancePerGroup} min={1} max={Math.max(1, groupSize - 1)}
-                  onChange={setAdvancePerGroup} />
-              </Field>
-              <Field label="Third-place playoff">
-                <Choice value={thirdPlace ? 1 : 0} onChange={v => setThirdPlace(v === 1)}
-                  options={[{ label: 'Yes', value: 1 }, { label: 'No', value: 0 }]} />
-              </Field>
-            </div>
-
-            <Field label={`Team names — ${koNames.length} of ${koTeamCount} entered`}>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                {Array.from({ length: koTeamCount }, (_, i) => (
-                  <input key={i} className={inputFull} value={koTeamNames[i] ?? ''}
-                    onChange={e => setKoTeamName(i, e.target.value)}
-                    placeholder={`Team ${i + 1}`} />
-                ))}
-              </div>
-            </Field>
-
-            {koError && <Warn>{koError}</Warn>}
-            {ko && (
-              <div className="mt-3 rounded-lg border border-line bg-surface p-3 text-xs">
-                <div className="mb-1.5 font-bold uppercase tracking-wider text-fg-muted">Draw preview</div>
-                <div className="text-fg-muted">
-                  {ko.groupCount} group{ko.groupCount > 1 ? 's' : ''} ·{' '}
-                  {ko.groupMatches.length} group matches ·{' '}
-                  {ko.qualifiers} qualifiers into a bracket of {ko.bracketSize}
-                  {ko.byes > 0 && `, with ${ko.byes} bye${ko.byes > 1 ? 's' : ''} to the top seeds`}.
-                </div>
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  {[...new Set(ko.teams.map(t => t.pool))].sort().map(g => (
-                    <span key={g} className="rounded bg-canvas px-1.5 py-0.5 text-fg-subtle">
-                      Group {g}: {ko.teams.filter(t => t.pool === g).length}
-                    </span>
-                  ))}
-                </div>
-                <div className="mt-1.5 text-fg-subtle">
-                  Groups are drawn fresh every time you change the team list. Knockout
-                  matches stay empty and off-court until you lock the group tables from
-                  Admin — so a court can never open on a match with no teams in it.
-                </div>
-              </div>
-            )}
-          </Section>
+          </div>
         )}
 
-        {/* mobile create button */}
-        <div className="p-5 md:hidden">
-          {ruleError && <Warn>{ruleError}</Warn>}
-          {err && <Warn>{err}</Warn>}
-          <button onClick={create} disabled={!canCreate}
-            className="w-full rounded-xl bg-brand py-4 font-display text-lg font-bold text-brand-fg disabled:opacity-30">
-            {busy ? 'CREATING…' : 'CREATE COMPETITION'}
-          </button>
-        </div>
+        {step === 5 && format === 'duel' && (
+          <div>
+            <h2 className="mb-1 font-display text-2xl font-bold tracking-wide">Sides</h2>
+            <p className="mb-5 text-sm text-fg-muted">One team per line, both sides equal & even.</p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Side A name">
+                  <input className={inputFull} value={sideAName} onChange={e => setSideAName(e.target.value)}
+                    placeholder="Cambodia" />
+                </Field>
+                <Field label="Side B name">
+                  <input className={inputFull} value={sideBName} onChange={e => setSideBName(e.target.value)}
+                    placeholder="Malaysia" />
+                </Field>
+                <Field label={`${sideAName || 'Side A'} teams — ${sideANames.length}`}>
+                  <textarea className={`${inputFull} h-44 resize-y font-mono text-[13px] leading-relaxed`}
+                    value={sideAText} onChange={e => setSideAText(e.target.value)}
+                    placeholder={'Team A\nTeam B\nTeam E\nTeam F'} />
+                </Field>
+                <Field label={`${sideBName || 'Side B'} teams — ${sideBNames.length}`}>
+                  <textarea className={`${inputFull} h-44 resize-y font-mono text-[13px] leading-relaxed`}
+                    value={sideBText} onChange={e => setSideBText(e.target.value)}
+                    placeholder={'Team C\nTeam D\nTeam G\nTeam H'} />
+                </Field>
+              </div>
+              {duelError && <Warn>{duelError}</Warn>}
+              {!duelError && draw.length > 0 && (
+                <div className="rounded-lg border border-line bg-surface p-3 text-xs">
+                  <div className="mb-1.5 font-bold uppercase tracking-wider text-fg-muted">Draw preview</div>
+                  <div className="text-fg-muted">
+                    {draw.length / 4} pod{draw.length / 4 > 1 ? 's' : ''} × 4 games = {draw.length} total,
+                    across {courtCount} court{courtCount > 1 ? 's' : ''}.
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {step === 5 && format === 'groups_ko' && (
+          <div>
+            <h2 className="mb-1 font-display text-2xl font-bold tracking-wide">Teams & groups</h2>
+            <p className="mb-5 text-sm text-fg-muted">Groups are drawn at random.</p>
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-end gap-4">
+                <Field label="How many teams">
+                  <Stepper value={koTeamCount} min={6} max={64} onChange={setKoCount} />
+                </Field>
+                <Field label="Per group">
+                  <Stepper value={groupSize} min={3} max={8} onChange={setGroupSize} />
+                </Field>
+                <Field label="Advance">
+                  <Stepper value={advancePerGroup} min={1} max={Math.max(1, groupSize - 1)}
+                    onChange={setAdvancePerGroup} />
+                </Field>
+                <Field label="3rd place">
+                  <Choice value={thirdPlace ? 1 : 0} onChange={v => setThirdPlace(v === 1)}
+                    options={[{ label: 'Yes', value: 1 }, { label: 'No', value: 0 }]} />
+                </Field>
+              </div>
+
+              <Field label={`Team names — ${koNames.length} of ${koTeamCount}`}>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                  {Array.from({ length: koTeamCount }, (_, i) => (
+                    <input key={i} className={inputFull} value={koTeamNames[i] ?? ''}
+                      onChange={e => setKoTeamName(i, e.target.value)}
+                      placeholder={`Team ${i + 1}`} />
+                  ))}
+                </div>
+              </Field>
+
+              {koError && <Warn>{koError}</Warn>}
+              {ko && (
+                <div className="rounded-lg border border-line bg-surface p-3 text-xs">
+                  <div className="mb-1.5 font-bold uppercase tracking-wider text-fg-muted">Draw preview</div>
+                  <div className="text-fg-muted">
+                    {ko.groupCount} group{ko.groupCount > 1 ? 's' : ''} ·{' '}
+                    {ko.groupMatches.length} group matches ·{' '}
+                    {ko.qualifiers} qualifiers → bracket of {ko.bracketSize}
+                    {ko.byes > 0 && `, ${ko.byes} bye${ko.byes > 1 ? 's' : ''}`}.
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {[...new Set(ko.teams.map(t => t.pool))].sort().map(g => (
+                      <span key={g} className="rounded bg-canvas px-1.5 py-0.5 text-fg-subtle">
+                        Group {g}: {ko.teams.filter(t => t.pool === g).length}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* error from submit */}
+        {err && <Warn>{err}</Warn>}
+
+        {/* nav */}
+        <NavButtons step={step} setStep={setStep} canNext={canStep[step] ?? true}
+          onSubmit={create} busy={busy} />
       </div>
     </div>
   )
 }
-
-const Sum = ({ k, v }: { k: string; v: string }) => (
-  <div className="flex justify-between gap-3 border-b border-line/60 pb-1.5">
-    <dt className="shrink-0 text-[11px] uppercase tracking-wider text-fg-subtle">{k}</dt>
-    <dd className="truncate text-right text-fg">{v}</dd>
-  </div>
-)
 
 function Created({ res, onOpen }: { res: api.CreateResult; onOpen: () => void }) {
   return (
