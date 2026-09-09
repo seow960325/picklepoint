@@ -762,6 +762,118 @@ function IphoneHomeTip() {
 }
 
 function Matches({ b, code }: { b: Bundle; code: string }) {
+  const koEv = b.events.find(e => e.format === 'groups_ko')
+  if (!koEv) return <FlatMatches b={b} code={code} />
+
+  const advance = koEv.advance_per_group ?? 2
+  const tables = groupStandings(b, koEv.id)
+  const poolOf = (id: string | null) => b.teams.find(t => t.id === id)?.pool ?? '—'
+  const rounds = bracketSeeded(b, koEv.id) ? bracketRounds(b, koEv.id) : []
+
+  return (
+    <div className="space-y-6 p-3">
+      <section>
+        <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">Groups</div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {Object.keys(tables).sort().map(g => (
+            <GroupCard key={g} b={b} code={code} g={g} rows={tables[g]} advance={advance}
+              matches={b.matches
+                .filter(m => m.event_id === koEv.id && !isKoMatch(m) && poolOf(m.team_a_id) === g)
+                .sort((x, y) => x.sequence - y.sequence)} />
+          ))}
+        </div>
+      </section>
+
+      {rounds.length > 0 && (
+        <section>
+          <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">Knockout</div>
+          <div className="space-y-3">
+            {rounds.map(r => (
+              <div key={r.round} className="rounded-xl border border-line bg-surface p-3">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">{r.round}</div>
+                <ul className="space-y-1 text-sm">
+                  {r.matches.map(m => (
+                    <li key={m.id}>
+                      <Link to={`/c/${code}/match/${m.id}`}
+                        className="grid grid-cols-[1fr_3.5rem_1fr] items-center gap-2 rounded-lg px-1 py-1 active:bg-surface-2">
+                        <span className={`flex items-center justify-end gap-1.5 truncate ${m.winner_id === m.team_a_id ? 'font-semibold text-fg' : 'text-fg-muted'}`}>
+                          <span className="truncate">{teamName(b, m.team_a_id)}</span>
+                          <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-3 w-4 shrink-0 rounded-[1px] object-contain" />
+                        </span>
+                        <span className="tabular text-center text-xs text-fg-subtle">
+                          {m.status === 'finished' ? `${m.score_a}–${m.score_b}`
+                            : m.status === 'live' ? 'live'
+                            : m.team_b_id == null && m.team_a_id != null ? 'bye' : 'vs'}
+                        </span>
+                        <span className={`flex items-center gap-1.5 truncate ${m.winner_id === m.team_b_id ? 'font-semibold text-fg' : 'text-fg-muted'}`}>
+                          <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-3 w-4 shrink-0 rounded-[1px] object-contain" />
+                          <span className="truncate">{teamName(b, m.team_b_id)}</span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  )
+}
+
+function GroupCard({ b, code, g, rows, advance, matches }: {
+  b: Bundle; code: string; g: string; rows: any[]; advance: number; matches: Match[]
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="rounded-xl border border-line bg-surface">
+      <button onClick={() => setOpen(o => !o)} className="w-full p-3 text-left active:bg-surface-2">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-fg-subtle">Group {g}</span>
+          <span className="text-[11px] text-fg-subtle">{open ? 'hide matches' : `${matches.length} matches`}</span>
+        </div>
+        <table className="w-full text-sm">
+          <tbody>
+            {rows.map((r: any, i: number) => (
+              <tr key={r.team.id} className={i < advance ? 'font-semibold text-fg' : 'text-fg-subtle'}>
+                <td className="py-0.5 pr-2 tabular">{i + 1}</td>
+                <td className="py-0.5 pr-1"><Emblem logo={teamLogo(b, r.team.id)} flagName={teamSideName(b, r.team.id)} className="inline-block h-3 w-4 rounded-[1px] align-[-1px] object-contain" /></td>
+                <td className="w-full truncate py-0.5">{r.team.name}</td>
+                <td className="py-0.5 pl-2 text-right tabular font-bold">{r.won}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </button>
+      {open && (
+        <div className="border-t border-line">
+          {matches.length ? matches.map(m => {
+            const decided = m.status === 'finished'
+            return (
+              <Link key={m.id} to={`/c/${code}/match/${m.id}`}
+                className="grid grid-cols-[1fr_3rem_1fr] items-center gap-2 border-b border-line/60 px-3 py-2 text-xs last:border-0 active:bg-surface-2">
+                <span className={`flex items-center justify-end gap-1 truncate ${decided && m.winner_id === m.team_a_id ? 'font-semibold text-fg' : 'text-fg-muted'}`}>
+                  <span className="truncate">{teamName(b, m.team_a_id)}</span>
+                  <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-3 w-4 shrink-0 rounded-[1px] object-contain" />
+                </span>
+                <span className="tabular text-center text-fg-subtle">
+                  {decided ? `${m.score_a}–${m.score_b}` : m.status === 'live' ? 'live' : 'vs'}
+                </span>
+                <span className={`flex items-center gap-1 truncate ${decided && m.winner_id === m.team_b_id ? 'font-semibold text-fg' : 'text-fg-muted'}`}>
+                  <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-3 w-4 shrink-0 rounded-[1px] object-contain" />
+                  <span className="truncate">{teamName(b, m.team_b_id)}</span>
+                </span>
+              </Link>
+            )
+          }) : <div className="p-3 text-xs text-fg-subtle">No group matches.</div>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FlatMatches({ b, code }: { b: Bundle; code: string }) {
   const upcoming = b.matches
     .filter(m => m.status !== 'finished' && (m.team_a_id != null || m.team_b_id != null))
     .sort((x, y) => x.sequence - y.sequence)
