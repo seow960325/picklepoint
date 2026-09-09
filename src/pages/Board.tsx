@@ -944,12 +944,11 @@ function interleaveByCourt(ms: Match[], courts: { id: string; number: number }[]
 }
 
 function FlatMatches({ b, code }: { b: Bundle; code: string }) {
-  const liveNow = interleaveByCourt(
-    b.matches.filter(m => m.status === 'live'),
+  const upcoming = interleaveByCourt(
+    b.matches.filter(m => m.status !== 'finished' && (m.team_a_id != null || m.team_b_id != null)),
     b.courts,
   )
   const done = results(b)
-  const shown = [...liveNow, ...done]
   const statusPill = (m: Match) =>
     m.status === 'live'
       ? <Pill tone="live"><span className="mr-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-current align-middle" />live</Pill>
@@ -984,11 +983,11 @@ function FlatMatches({ b, code }: { b: Bundle; code: string }) {
           <div className="flex min-w-0 items-center gap-2">
             <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={flag} />
             <span className={`truncate text-sm ${nameCls(aWin)}`}>{teamName(b, m.team_a_id)}</span>
-            {(finished || live) && <span className={`ml-auto pl-2 tabular font-display text-lg font-bold ${live ? 'text-brand-ink' : scoreCls(aWin)}`}>{m.score_a}</span>}
+            {finished && <span className={`ml-auto pl-2 tabular font-display text-lg font-bold ${scoreCls(aWin)}`}>{m.score_a}</span>}
           </div>
           <div className="flex justify-center">{statusPill(m)}</div>
           <div className="flex min-w-0 items-center justify-end gap-2">
-            {(finished || live) && <span className={`mr-auto pr-2 tabular font-display text-lg font-bold ${live ? 'text-brand-ink' : scoreCls(bWin)}`}>{m.score_b}</span>}
+            {finished && <span className={`mr-auto pr-2 tabular font-display text-lg font-bold ${scoreCls(bWin)}`}>{m.score_b}</span>}
             <span className={`truncate text-right text-sm ${nameCls(bWin)}`}>{teamName(b, m.team_b_id)}</span>
             <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={flag} />
           </div>
@@ -1000,12 +999,12 @@ function FlatMatches({ b, code }: { b: Bundle; code: string }) {
             <div className="flex items-center gap-2">
               <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={flag} />
               <span className={`truncate text-sm ${nameCls(aWin)}`}>{teamName(b, m.team_a_id)}</span>
-              {(finished || live) && <span className={`ml-auto tabular font-bold ${live ? 'text-brand-ink' : scoreCls(aWin)}`}>{m.score_a}</span>}
+              {finished && <span className={`ml-auto tabular font-bold ${scoreCls(aWin)}`}>{m.score_a}</span>}
             </div>
             <div className="flex items-center gap-2">
               <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={flag} />
               <span className={`truncate text-sm ${nameCls(bWin)}`}>{teamName(b, m.team_b_id)}</span>
-              {(finished || live) && <span className={`ml-auto tabular font-bold ${live ? 'text-brand-ink' : scoreCls(bWin)}`}>{m.score_b}</span>}
+              {finished && <span className={`ml-auto tabular font-bold ${scoreCls(bWin)}`}>{m.score_b}</span>}
             </div>
           </div>
           {!finished && <div className="shrink-0">{statusPill(m)}</div>}
@@ -1017,10 +1016,16 @@ function FlatMatches({ b, code }: { b: Bundle; code: string }) {
   return (
     <div className="space-y-6 p-3">
       <section>
+        <Header />
+        <div className="divide-y divide-line overflow-hidden rounded-xl border border-line">
+          {upcoming.length ? upcoming.map(row) : <div className="p-4 text-sm text-fg-subtle">Nothing scheduled right now.</div>}
+        </div>
+      </section>
+      <section>
         <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">Results</div>
         <Header />
         <div className="divide-y divide-line overflow-hidden rounded-xl border border-line">
-          {shown.length ? shown.map(row) : <div className="p-4 text-sm text-fg-subtle">No matches yet.</div>}
+          {done.length ? done.map(row) : <div className="p-4 text-sm text-fg-subtle">No completed matches yet.</div>}
         </div>
       </section>
     </div>
