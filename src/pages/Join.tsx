@@ -59,6 +59,7 @@ export default function Join() {
           </button>
         )}
       </div>
+      <div className="mt-10 text-center text-xs text-fg-subtle">Developed by SisiKita</div>
     </Screen>
   )
 }

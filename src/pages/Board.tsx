@@ -104,7 +104,7 @@ export default function Board() {
       {duelEvent && <DuelScoreboard b={bundle} ev={duelEvent} big={false} />}
 
       <div className="border-b border-line px-4 py-3 lg:px-6 lg:py-4">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2 lg:gap-3">
             <Link to="/" aria-label="Back to lobby"
               className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-line px-2.5 text-sm text-fg-muted active:bg-surface-2 lg:h-10 lg:px-3">
@@ -205,25 +205,30 @@ function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
         {shownCourts.map(ct => {
           const m = liveOnCourt(b, ct.id)
           const up = nextOnCourt(b, ct.id)
-          return (
-            <Link key={ct.id} to={`/c/${code}/court/${ct.number}`}
-              className="block rounded-2xl border border-line bg-surface p-2 active:scale-[0.99] lg:p-3">
+          const cardBody = <>
               <div className="mb-1.5 flex items-center justify-between lg:mb-2">
                 <span className="font-display text-sm font-bold tracking-widest text-fg-muted lg:text-base">
                   COURT {ct.number}
                 </span>
                 {m ? <Pill tone="live">● live</Pill> : <Pill>open</Pill>}
               </div>
-
               {m ? <CourtScoreRow b={b} m={m} tv={tv} /> : (
                 <div className="py-6 text-center text-sm text-fg-subtle lg:py-10">No match running</div>
               )}
-
               {up && (
                 <div className="mt-3 border-t border-line pt-2 text-[11px] text-fg-muted lg:mt-4 lg:pt-3 lg:text-sm">
                   Next: <span className="truncate">{teamName(b, up.team_a_id)}</span> vs <span className="truncate">{teamName(b, up.team_b_id)}</span>
                 </div>
               )}
+            </>
+          return tv ? (
+            <div key={ct.id} className="block rounded-2xl border border-line bg-surface p-2 lg:p-3">
+              {cardBody}
+            </div>
+          ) : (
+            <Link key={ct.id} to={`/c/${code}/court/${ct.number}`}
+              className="block rounded-2xl border border-line bg-surface p-2 active:scale-[0.99] lg:p-3">
+              {cardBody}
             </Link>
           )
         })}
