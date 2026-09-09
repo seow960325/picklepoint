@@ -48,13 +48,18 @@ export default function Admin() {
 function AdminGate({ code, onIn }: { code: string; onIn: (t: string) => void }) {
   const [pin, setPin] = useState('')
   const [err, setErr] = useState(false)
+  const [locked, setLocked] = useState(false)
 
   const submit = async (v: string) => {
     try { onIn(await api.adminLogin(code, v)) }
-    catch { setErr(true); setPin('') }
+    catch (e: any) {
+      setErr(true); setPin('')
+      setLocked(e?.message === 'LOCKED')
+    }
   }
   const press = (d: string) => {
     setErr(false)
+    setLocked(false)
     const n = (pin + d).slice(0, 4)
     setPin(n)
     if (n.length === 4) submit(n)
@@ -66,6 +71,9 @@ function AdminGate({ code, onIn }: { code: string; onIn: (t: string) => void }) 
       <div className="text-right">
         <div className="font-display text-4xl font-bold tracking-widest text-fg-muted">SETTINGS</div>
         <div className="mt-1 text-sm text-fg-subtle">Admin PIN for {code}</div>
+        {locked && (
+          <div className="mt-2 text-xs font-semibold text-red-500">Too many attempts — try again in a minute</div>
+        )}
         <div className="mt-5 flex justify-end gap-3">
           {[0, 1, 2, 3].map(i => (
             <div key={i} className={`h-3.5 w-3.5 rounded-full border-2 ${

@@ -86,16 +86,21 @@ function PinGate({ courtId, courtNo, code, onUnlock }: {
 }) {
   const [pin, setPin] = useState('')
   const [err, setErr] = useState(false)
+  const [locked, setLocked] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const submit = async (value: string) => {
     setBusy(true)
     try { onUnlock(await api.unlockCourt(courtId, value)) }
-    catch { setErr(true); setPin(''); navigator.vibrate?.([60, 40, 60]) }
+    catch (e: any) {
+      setErr(true); setPin(''); navigator.vibrate?.([60, 40, 60])
+      setLocked(e?.message === 'LOCKED')
+    }
     finally { setBusy(false) }
   }
   const press = (d: string) => {
     setErr(false)
+    setLocked(false)
     const next = (pin + d).slice(0, 4)
     setPin(next)
     if (next.length === 4) submit(next)
@@ -111,6 +116,9 @@ function PinGate({ courtId, courtNo, code, onUnlock }: {
           COURT {courtNo}
         </div>
         <div className="mt-1 text-sm text-fg-subtle">Scorer PIN</div>
+        {locked && (
+          <div className="mt-2 text-xs font-semibold text-red-500">Too many attempts — try again in a minute</div>
+        )}
         <div className="mt-5 flex justify-end gap-3">
           {[0, 1, 2, 3].map(i => (
             <div key={i} className={`h-3.5 w-3.5 rounded-full border-2 ${
@@ -144,16 +152,21 @@ function PinModal({ courtId, courtNo, onUnlock, onCancel }: {
 }) {
   const [pin, setPin] = useState('')
   const [err, setErr] = useState(false)
+  const [locked, setLocked] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const submit = async (value: string) => {
     setBusy(true)
     try { onUnlock(await api.unlockCourt(courtId, value)) }
-    catch { setErr(true); setPin(''); navigator.vibrate?.([60, 40, 60]) }
+    catch (e: any) {
+      setErr(true); setPin(''); navigator.vibrate?.([60, 40, 60])
+      setLocked(e?.message === 'LOCKED')
+    }
     finally { setBusy(false) }
   }
   const press = (d: string) => {
     setErr(false)
+    setLocked(false)
     const next = (pin + d).slice(0, 4)
     setPin(next)
     if (next.length === 4) submit(next)
@@ -166,6 +179,9 @@ function PinModal({ courtId, courtNo, onUnlock, onCancel }: {
           COURT {courtNo}
         </div>
         <div className="mt-1 text-sm text-red-400">Session expired — re-enter PIN to resume</div>
+        {locked && (
+          <div className="mt-2 text-xs font-semibold text-red-500">Too many attempts — try again in a minute</div>
+        )}
         <div className="mt-5 flex justify-end gap-3">
           {[0, 1, 2, 3].map(i => (
             <div key={i} className={`h-3.5 w-3.5 rounded-full border-2 ${
