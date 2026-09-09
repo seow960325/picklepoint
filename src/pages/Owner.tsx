@@ -73,8 +73,9 @@ function OwnerPanel({ token, onLogout }: { token: string; onLogout: () => void }
 
   const load = () => {
     api.ownerListCompetitions(token).then(setList).catch(e => {
-      if (e?.message === 'NOT_OWNER') onLogout()
-      else setErr(e?.message ?? 'Failed to load')
+      if (e?.message === 'NOT_OWNER') { onLogout(); return }
+      setErr(e?.message ?? 'Failed to load')
+      setList([])
     })
   }
   useEffect(load, [token])
