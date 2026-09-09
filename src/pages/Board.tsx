@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   useCompetition, teamName, teamSideName, teamLogo, liveOnCourt, nextOnCourt, onDeck, results, standings,
@@ -78,10 +78,8 @@ export default function Board() {
         {/* the bracket showcase, the podium ceremony, or the live courts */}
         {tvView === 'bracket' && koReady
           ? (
-            <div className="min-h-0 flex-1 overflow-auto px-2 sm:px-6">
-              <div className="mx-auto w-full max-w-[1900px]">
-                <PosterBracket b={bundle} broadcast />
-              </div>
+            <div className="min-h-0 flex-1 px-2 sm:px-6">
+              <FitBox><PosterBracket b={bundle} broadcast /></FitBox>
             </div>
           )
           : podium
@@ -323,6 +321,35 @@ function Schedule({ b }: { b: Bundle }) {
 }
 
 // -------------------------------------------------------------- duel mode
+function FitBox({ children }: { children: any }) {
+  const outer = useRef<HTMLDivElement>(null)
+  const inner = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+  useLayoutEffect(() => {
+    const recompute = () => {
+      const o = outer.current, i = inner.current
+      if (!o || !i) return
+      const w = i.offsetWidth, h = i.offsetHeight
+      if (!w || !h) return
+      const s = Math.min(o.clientWidth / w, o.clientHeight / h)
+      if (isFinite(s) && s > 0) setScale(s)
+    }
+    recompute()
+    const ro = new ResizeObserver(recompute)
+    if (outer.current) ro.observe(outer.current)
+    if (inner.current) ro.observe(inner.current)
+    window.addEventListener('resize', recompute)
+    return () => { ro.disconnect(); window.removeEventListener('resize', recompute) }
+  }, [])
+  return (
+    <div ref={outer} className="grid h-full w-full place-items-center overflow-hidden">
+      <div ref={inner} style={{ transform: `scale(${scale})`, transformOrigin: 'center' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 function PosterBracket({ b, broadcast = false }: { b: Bundle; broadcast?: boolean }) {
   const ev = b.events.find(e => e.format === 'groups_ko')
   if (!ev) return null
@@ -341,7 +368,7 @@ function PosterBracket({ b, broadcast = false }: { b: Bundle; broadcast?: boolea
   const champId = finalM?.winner_id ?? null
 
   return (
-    <div data-theme={broadcast ? 'dark' : undefined} className="overflow-x-auto p-4 text-fg" style={{ zoom: broadcast ? 1.5 : 1, background: broadcast
+    <div data-theme={broadcast ? 'dark' : undefined} className={`${broadcast ? 'w-max' : 'overflow-x-auto'} p-4 text-fg`} style={{ background: broadcast
         ? 'radial-gradient(ellipse at top, rgba(244,205,106,0.10), transparent 60%), rgb(var(--canvas))'
         : 'radial-gradient(ellipse at top, rgba(244,205,106,0.06), transparent 55%), rgb(var(--canvas))' }}>
       <div className="mx-auto flex min-w-max items-stretch justify-center">
