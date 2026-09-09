@@ -443,19 +443,16 @@ function PMatch({ b, m }: { b: Bundle; m?: Match }) {
   const bye = m.team_b_id == null && m.team_a_id != null
   const decided = m.status === 'finished'
   const live = m.status === 'live'
-  const bothKnown = m.team_a_id != null && m.team_b_id != null
   return (
     <div className="relative">
       {live && (
-        <div className="absolute -right-1 top-1/2 z-10 -translate-y-1/2 translate-x-full pl-1.5">
+        <div className="absolute -right-2 -top-2 z-10">
           <Pill tone="live"><span className="mr-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-current align-middle" />live</Pill>
         </div>
       )}
-      <div className={`overflow-hidden rounded-md border ${live ? 'border-gold pp-live' : 'border-line'} bg-surface`}>
+      <div className={`overflow-hidden rounded-md border ${live ? 'border-brand pp-live' : 'border-line'} bg-surface`}>
         <PTeam b={b} teamId={m.team_a_id} score={m.score_a} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} />
-        {decided
-          ? <div className="h-px bg-line" />
-          : <div className="border-y border-line/60 py-0.5 text-center text-[9px] font-bold uppercase tracking-[0.18em] text-fg-subtle">{bothKnown ? 'vs' : ''}</div>}
+        <div className="h-px bg-line" />
         {bye
           ? <div className="px-2.5 py-1.5 text-[11px] italic text-fg-subtle">bye</div>
           : <PTeam b={b} teamId={m.team_b_id} score={m.score_b} win={decided && m.winner_id === m.team_b_id} lose={decided && m.winner_id !== m.team_b_id} finished={decided} />}

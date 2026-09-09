@@ -62,6 +62,6 @@ body {
 .pp-rise{animation:pp-rise .7s ease both}
 .pp-pop{animation:pp-pop .7s cubic-bezier(.2,1.4,.35,1) both}
 .pp-champ-ring{animation:pp-pop .7s cubic-bezier(.2,1.4,.35,1) .85s both, pp-glow 2.6s ease-in-out 1.7s infinite}
-@keyframes pp-live{0%,100%{box-shadow:0 0 0 0 rgba(244,205,106,0)}50%{box-shadow:0 0 14px 1px rgba(244,205,106,.6)}}
+@keyframes pp-live{0%,100%{box-shadow:0 0 0 0 rgba(198,255,61,0)}50%{box-shadow:0 0 14px 1px rgba(198,255,61,.65)}}
 .pp-live{animation:pp-live 1.6s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){.pp-grow,.pp-rise,.pp-pop,.pp-champ-ring,.pp-live{animation:none !important}}
