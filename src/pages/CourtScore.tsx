@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useCompetition, teamName, liveOnCourt, eventOf } from '../lib/store'
-import { applyPoint, applyUndo, displayScores, isGameOver, rulesOf } from '../lib/scoring'
+import { applyPoint, applyUndo, displayScores, isGameOver, rulesOf, servingSide } from '../lib/scoring'
 import type { Match } from '../lib/types'
 import * as api from '../lib/api'
 import { enqueue, flush, pending, stalledCount, retryStalled, lastQueueError } from '../lib/queue'
@@ -226,7 +226,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
     if (looksLikeAuth) onRelogin()
   }, [looksLikeAuth])
   const landscape = useLandscape()
-  const history = useRef<[number, number][]>([])
+  const history = useRef<[number, number, 'a' | 'b' | null][]>([])
   const prevToken = useRef(token)
 
   useEffect(() => { setM(match) }, [match.id, match.score_a, match.score_b, match.status, match.a_on_left])
@@ -260,7 +260,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
     if (m.status === 'finished' || m.status === 'awaiting_confirm') return
     const before = m
     const next = applyPoint(m, side, rules)
-    history.current.push([before.score_a, before.score_b])
+    history.current.push([before.score_a, before.score_b, before.last_scorer ?? null])
     setM(next)
     tapPoint()
     if (next.sides_switched && !before.sides_switched) { setShowSwitch(true); chimeSwitch() }
@@ -281,7 +281,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
   const undo = async () => {
     const snapshot = m
     const prev = history.current.pop()
-    if (prev) setM(applyUndo(m, prev[0], prev[1], rules))
+    if (prev) setM(applyUndo(m, prev[0], prev[1], rules, prev[2]))
     tapUndo()
     try { setM(await api.undoPoint(m.id, token)) }
     catch {
@@ -336,6 +336,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
     .sort((a: typeof bundle.matches[number], b: typeof bundle.matches[number]) => a.sequence - b.sequence)
     .findIndex((x: typeof bundle.matches[number]) => x.id === m.id) + 1
   const done = m.status === 'awaiting_confirm' || isGameOver(m.score_a, m.score_b, rules)
+  const serving = done ? null : servingSide(m, rules.serve_mode)
   const hi = Math.max(m.score_a, m.score_b), lo = Math.min(m.score_a, m.score_b)
   const matchPoint = !done && hi >= rules.target_score - 1 && hi - lo >= rules.win_by - 1
   const recentDone = useMemo(() =>
@@ -408,6 +409,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
                 leftLogo={teamLogoOf(leftTeamId)} rightLogo={teamLogoOf(rightTeamId)}
                 label={m.bracket_key ? (m.round ?? undefined) : undefined}
+                serving={serving}
                 onTap={score} disabled={done}
               />
               <button onClick={swap}
@@ -423,6 +425,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
                 leftLogo={teamLogoOf(leftTeamId)} rightLogo={teamLogoOf(rightTeamId)}
                 label={m.bracket_key ? (m.round ?? undefined) : undefined}
+                serving={serving}
                 onTap={score} disabled={done}
               />
               <button onClick={swap}

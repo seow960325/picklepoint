@@ -20,19 +20,29 @@ const applyPoint = (m, side, r) => {
     ...m, score_a, score_b,
     a_on_left: doSwitch ? !m.a_on_left : m.a_on_left,
     sides_switched: doSwitch || m.sides_switched,
+    last_scorer: who,
     status: isGameOver(score_a, score_b, r) ? 'awaiting_confirm' : 'live',
   }
 }
-const applyUndo = (m, prevA, prevB, r) => {
+const applyUndo = (m, prevA, prevB, r, prevScorer = null) => {
   const hi = Math.max(prevA, prevB)
   const unSwitch = r.switch_at > 0 && m.sides_switched && hi < r.switch_at
   return {
     ...m, score_a: prevA, score_b: prevB,
     a_on_left: unSwitch ? !m.a_on_left : m.a_on_left,
     sides_switched: m.sides_switched && r.switch_at > 0 && hi >= r.switch_at,
+    last_scorer: prevScorer,
     status: 'live',
   }
 }
+const serverTeam = (m, mode) => {
+  if (mode === 'alternate') {
+    const total = m.score_a + m.score_b
+    return Math.floor(total / 2) % 2 === 0 ? 'a' : 'b'
+  }
+  return m.last_scorer ?? 'a'
+}
+const servingSide = (m, mode) => ((serverTeam(m, mode) === 'a') === m.a_on_left ? 'left' : 'right')
 
 const fresh = () => ({
   score_a: 0, score_b: 0, a_on_left: true, sides_switched: false, status: 'live',
@@ -145,4 +155,43 @@ test('switch_at = 0 means end-switching is off — sides never flip', () => {
   m = applyUndo(m, 14, 13, OFF)
   assert.equal(m.a_on_left, true)
   assert.equal(m.sides_switched, false)
+})
+
+// -------------------------------------------------------- serve mode
+
+test('winner mode: whoever wins the point serves next', () => {
+  let m = fresh()
+  m.last_scorer = null
+  assert.equal(servingSide(m, 'winner'), 'left', 'no points yet — defaults to team A / left')
+  m = tapLeft(m)
+  assert.equal(servingSide(m, 'winner'), 'left', 'team A won, still on the left')
+  m = tapRight(m)
+  assert.equal(servingSide(m, 'winner'), 'right', 'team B just won the point')
+})
+
+test('winner mode follows the team across a switched end', () => {
+  let m = tapLeft(fresh(), 8)          // team A: 8 points, triggers the switch
+  assert.equal(m.a_on_left, false, 'team A now on the right')
+  assert.equal(servingSide(m, 'winner'), 'right', 'server (team A) followed to the right')
+})
+
+test('alternate mode swaps serve every 2 total points, ignoring the winner', () => {
+  let m = fresh()
+  assert.equal(serverTeam(m, 'alternate'), 'a', '0 total points — team A serves')
+  m = tapRight(m)                       // team B scores, total = 1
+  assert.equal(serverTeam(m, 'alternate'), 'a', 'still team A until 2 total points')
+  m = tapRight(m)                       // total = 2
+  assert.equal(serverTeam(m, 'alternate'), 'b', 'swapped to team B at 2 total points')
+  m = tapLeft(m)                        // team A scores, total = 3 — irrelevant to alternate mode
+  assert.equal(serverTeam(m, 'alternate'), 'b', 'winner of the point does not matter in alternate mode')
+  m = tapLeft(m)                        // total = 4
+  assert.equal(serverTeam(m, 'alternate'), 'a', 'swapped back at 4 total points')
+})
+
+test('undo restores the previous server in winner mode', () => {
+  let m = tapLeft(fresh())              // A serves next
+  m = tapRight(m)                       // B serves next
+  assert.equal(servingSide(m, 'winner'), 'right')
+  m = applyUndo(m, 1, 0, R, 'a')        // back to after the first point (A scored)
+  assert.equal(servingSide(m, 'winner'), 'left', 'server rolled back to A')
 })

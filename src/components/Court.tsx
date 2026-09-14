@@ -27,6 +27,23 @@ export interface CourtProps {
 const clip = (n: string, max = 17) =>
   (n.length > max ? n.slice(0, max - 1).trimEnd() + '…' : n).toUpperCase()
 
+/** Small pickleball glyph — a ball with holes — marking who serves next. */
+function PickleballGlyph({ cx, cy, r = 9 }: { cx: number; cy: number; r?: number }) {
+  const holes = [
+    [-0.32, -0.55], [0.48, -0.35], [-0.58, 0.15],
+    [0.1, 0.6], [0.55, 0.2], [-0.05, -0.05],
+  ]
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={r + 2} fill="#0a0e17" opacity="0.35" />
+      <circle cx={cx} cy={cy} r={r} fill="#f5f8ff" stroke="#0a0e17" strokeWidth="1.2" />
+      {holes.map(([dx, dy], i) => (
+        <circle key={i} cx={cx + dx * r} cy={cy + dy * r} r={r * 0.16} fill="#0a0e17" opacity="0.55" />
+      ))}
+    </g>
+  )
+}
+
 export default function Court({
   leftName, rightName, leftScore, rightScore, onTap, disabled, serving,
   leftFlag, rightFlag, leftLogo, rightLogo, label,
@@ -112,7 +129,7 @@ export default function Court({
               fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />
           </>
         )}
-        {serving === 'left' && <circle cx={CXL} cy={MIDY + R + 14} r="5" fill="#c6ff3d" />}
+        {serving === 'left' && <PickleballGlyph cx={CXL} cy={MIDY + R + 17} r={9} />}
 
         {/* tap zone — only the number circle (plus a bit of padding) counts */}
         <circle {...half('left')} cx={CXL} cy={MIDY} r={R + 24} fill="transparent"
@@ -144,7 +161,7 @@ export default function Court({
               fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />
           </>
         )}
-        {serving === 'right' && <circle cx={CXR} cy={MIDY + R + 14} r="5" fill="#22d3ee" />}
+        {serving === 'right' && <PickleballGlyph cx={CXR} cy={MIDY + R + 17} r={9} />}
 
         {/* tap zone — only the number circle (plus a bit of padding) counts */}
         <circle {...half('right')} cx={CXR} cy={MIDY} r={R + 24} fill="transparent"

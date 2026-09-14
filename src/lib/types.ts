@@ -5,10 +5,14 @@ export interface Competition {
   id: string; code: string; name: string
   venue: string | null; event_date: string; status: string
 }
+export type ServeMode = 'winner' | 'alternate'
 export interface EventCfg {
   id: string; competition_id: string; name: string; format: string
   target_score: number; win_by: number; cap: number; switch_at: number
   sort_order: number
+  // 'winner' = team that won the last point serves next (default).
+  // 'alternate' = serve swaps sides every 2 points, regardless of who scores.
+  serve_mode?: ServeMode
   // only set when format === 'duel' — two-side team battle (e.g. country vs country)
   side_a_name?: string | null
   side_b_name?: string | null
@@ -33,6 +37,8 @@ export interface Match {
   team_a_id: string | null; team_b_id: string | null
   score_a: number; score_b: number
   a_on_left: boolean; sides_switched: boolean
+  // which team won the most recent point — drives 'winner' serve mode
+  last_scorer?: 'a' | 'b' | null
   status: MatchStatus; winner_id: string | null
   next_match_id: string | null; next_slot: 'a' | 'b' | null
   // only set on groups_ko knockout slots — null for every group, round-robin

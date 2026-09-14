@@ -4,7 +4,7 @@ import {
   useCompetition, teamName, teamSideName, teamLogo, liveOnCourt, nextOnCourt, onDeck, results, standings,
   eventOf, duelTally, duelPods, groupStandings, bracketRounds, bracketSeeded, isKoMatch,
 } from '../lib/store'
-import { displayScores } from '../lib/scoring'
+import { displayScores, rulesOf, servingSide } from '../lib/scoring'
 import type { Bundle, EventCfg, Match } from '../lib/types'
 import { Screen, Pill, Spinner, FullscreenButton, Flag, Emblem, ThemeToggle } from '../components/ui'
 import Court from '../components/Court'
@@ -289,6 +289,7 @@ function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
   }
   const leftTeamId = m.a_on_left ? m.team_a_id : m.team_b_id
   const rightTeamId = m.a_on_left ? m.team_b_id : m.team_a_id
+  const serving = m.status === 'live' ? servingSide(m, rulesOf(ev).serve_mode) : null
   return (
     <div className="aspect-[2/1] lg:aspect-[7/4]">
       <Court
@@ -298,6 +299,7 @@ function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
         leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
         leftLogo={teamLogo(b, leftTeamId)} rightLogo={teamLogo(b, rightTeamId)}
         label={m.bracket_key ? (m.round ?? undefined) : undefined}
+        serving={serving}
         onTap={() => {}} disabled
       />
     </div>

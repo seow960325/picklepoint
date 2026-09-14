@@ -94,6 +94,7 @@ export default function NewCompetition() {
   const [winBy, setWinBy] = useState(2)
   const [cap, setCap] = useState(17)
   const [switchAt, setSwitchAt] = useState(0)
+  const [serveMode, setServeMode] = useState<'winner' | 'alternate'>('winner')
 
   const [courtCount, setCourtCount] = useState(6)
   const [pins, setPins] = useState<string[]>(
@@ -187,6 +188,7 @@ export default function NewCompetition() {
         ...(code.trim() ? { code: code.trim() } : {}),
         event: {
           name: eventName, target_score: target, win_by: winBy, cap, switch_at: switchAt,
+          serve_mode: serveMode,
           format,
           ...(format === 'duel' ? { side_a_name: sideAName, side_b_name: sideBName } : {}),
           ...(format === 'groups_ko'
@@ -318,6 +320,15 @@ export default function NewCompetition() {
                 {switchAt > 0
                   ? ` Players change ends when either side reaches ${switchAt}.`
                   : ' End-switching is off — teams stay on the same side for the whole game.'}
+              </p>
+              <Field label="Serve mode">
+                <Choice value={serveMode} onChange={setServeMode}
+                  options={[{ label: 'Winner', value: 'winner' }, { label: 'Serve', value: 'alternate' }]} />
+              </Field>
+              <p className="text-xs text-fg-subtle leading-relaxed">
+                {serveMode === 'winner'
+                  ? 'Winner — whichever team wins the point serves next.'
+                  : 'Serve — service swaps sides every 2 points, no matter who scores.'}
               </p>
             </div>
           </div>

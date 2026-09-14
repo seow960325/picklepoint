@@ -25,6 +25,7 @@ export interface CreatePayload {
     name: string; target_score: number; win_by: number; cap: number; switch_at: number
     format?: string; side_a_name?: string; side_b_name?: string
     group_size?: number; advance_per_group?: number; third_place?: boolean
+    serve_mode?: 'winner' | 'alternate'
   }
   courts: Array<{ number: number; label: string; scorer_pin: string }>
   teams: Array<{ name: string; pool?: string; side?: 'A' | 'B' }>
@@ -376,7 +377,9 @@ export const demo = {
     const rest = s.events.filter(e => e.match_id === matchId)
     const prev = rest[rest.length - 1]
     const ev = s.bundle.events.find(e => e.id === m.event_id)!
-    const next = applyUndo(m, prev?.score_a_after ?? 0, prev?.score_b_after ?? 0, rulesOf(ev))
+    const prevScorer: 'a' | 'b' | null = !prev ? null
+      : prev.team_id === m.team_a_id ? 'a' : prev.team_id === m.team_b_id ? 'b' : null
+    const next = applyUndo(m, prev?.score_a_after ?? 0, prev?.score_b_after ?? 0, rulesOf(ev), prevScorer)
     s.bundle.matches[i] = next
     save(s)
     return next
@@ -491,7 +494,7 @@ export const demo = {
       if (x.id !== m.id && x.court_id === m.court_id && x.status === 'live') x.status = 'scheduled'
     })
     const next: Match = {
-      ...m, score_a: 0, score_b: 0, a_on_left: true, sides_switched: false,
+      ...m, score_a: 0, score_b: 0, a_on_left: true, sides_switched: false, last_scorer: null,
       status: 'live', winner_id: null, started_at: null, finished_at: null, duration_seconds: null,
     }
     s.bundle.matches[i] = next

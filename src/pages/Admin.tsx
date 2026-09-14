@@ -264,6 +264,7 @@ function ScoringTab({ ev, token, run }: any) {
   const [sw, setSw] = useState(ev.switch_at)
   const [aName, setAName] = useState(ev.side_a_name ?? '')
   const [bName, setBName] = useState(ev.side_b_name ?? '')
+  const [serveMode, setServeMode] = useState<'winner' | 'alternate'>(ev.serve_mode ?? 'winner')
   const bad = validateRules({ target_score: t, win_by: w, cap, switch_at: sw })
   const isDuel = ev.format === 'duel'
 
@@ -298,12 +299,21 @@ function ScoringTab({ ev, token, run }: any) {
         </Field>
       </div>
       {bad && <Warn>{bad}</Warn>}
+      <Field label="Serve mode">
+        <Choice value={serveMode} onChange={setServeMode}
+          options={[{ label: 'Winner', value: 'winner' }, { label: 'Serve', value: 'alternate' }]} />
+      </Field>
+      <p className="text-xs text-fg-subtle leading-relaxed">
+        {serveMode === 'winner'
+          ? 'Winner — whichever team wins the point serves next.'
+          : 'Serve — service swaps sides every 2 points, no matter who scores.'}
+      </p>
       <p className="text-xs text-fg-subtle">
         Changes apply to every match, including ones already in progress.
       </p>
       <Save disabled={!!bad}
         onClick={() => run(() => api.adminUpdateEvent(token, ev.id, name,
-          { target_score: t, win_by: w, cap, switch_at: sw, side_a_name: aName, side_b_name: bName }),
+          { target_score: t, win_by: w, cap, switch_at: sw, side_a_name: aName, side_b_name: bName, serve_mode: serveMode }),
           'Scoring updated')} />
     </div>
   )

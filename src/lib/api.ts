@@ -195,7 +195,7 @@ export async function adminUpdateEvent(
   token: string, eventId: string, name: string,
   r: {
     target_score: number; win_by: number; cap: number; switch_at: number
-    side_a_name?: string; side_b_name?: string
+    side_a_name?: string; side_b_name?: string; serve_mode?: 'winner' | 'alternate'
   },
 ) {
   if (IS_DEMO) return demo.updateEvent(eventId, { name, ...r })
@@ -203,6 +203,7 @@ export async function adminUpdateEvent(
     p_token: token, p_event_id: eventId, p_name: name,
     p_target: r.target_score, p_win_by: r.win_by, p_cap: r.cap, p_switch_at: r.switch_at,
     p_side_a_name: r.side_a_name ?? null, p_side_b_name: r.side_b_name ?? null,
+    p_serve_mode: r.serve_mode ?? null,
   })
 }
 
