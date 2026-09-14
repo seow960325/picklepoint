@@ -146,10 +146,10 @@ export function servingSide(m: Match, mode: ServeMode): 'left' | 'right' {
 
 /** Which service court the server stands in, per the international rule:
  *  even score (server's own team score) → right court, odd → left court.
- *  Only meaningful in 'alternate' (Serve) mode — 'winner' mode has no
- *  concept of a service court, so this returns null there. */
-export function serverCourt(m: Match, mode: ServeMode): 'right' | 'left' | null {
-  if (mode !== 'alternate') return null
+ *  Applied in both modes now — in 'winner' mode the "server" is just
+ *  whoever won the last rally, but the same even/odd positioning still
+ *  gives the ball a real court reference instead of a fixed spot. */
+export function serverCourt(m: Match, mode: ServeMode): 'right' | 'left' {
   const team = serverTeam(m, mode)
   const score = team === 'a' ? m.score_a : m.score_b
   return score % 2 === 0 ? 'right' : 'left'

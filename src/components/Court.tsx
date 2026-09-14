@@ -21,8 +21,9 @@ export interface CourtProps {
    *  pass null/undefined in Winner mode where it has no meaning. */
   serverNo?: 1 | 2 | null
   /** Which service court (international rule: even score → right, odd →
-   *  left) the serve ball sits in. null/undefined in Winner mode — the ball
-   *  then stays at its old spot just below the score circle. */
+   *  left) the serve ball sits in — applies in both serve modes. Pass
+   *  null/undefined only when there's no active server (game over) —
+   *  the ball then stays at its old spot just below the score circle. */
   serverCourt?: 'right' | 'left' | null
   leftFlag?: string | null
   rightFlag?: string | null
@@ -83,7 +84,7 @@ export default function Court({
   const [down, setDown] = useState<'left' | 'right' | null>(null)
   const ballCy = serverCourt === 'right' ? BALL_Y_RIGHT_COURT
     : serverCourt === 'left' ? BALL_Y_LEFT_COURT
-    : MIDY + R + 17 // winner mode / unknown — old fixed spot below the circle
+    : MIDY + R + 17 // no active server (game over) — old fixed spot below the circle
   // Tap acknowledgement — flashes the tapped half on every tap, even when the
   // score doesn't move (side-out mode: a fault or the receiving team getting
   // tapped by mistake), so the ref always sees "that tap counted".

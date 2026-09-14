@@ -72,7 +72,6 @@ const serverTeam = (m, mode) => {
 const servingSide = (m, mode) => ((serverTeam(m, mode) === 'a') === m.a_on_left ? 'left' : 'right')
 
 const serverCourt = (m, mode) => {
-  if (mode !== 'alternate') return null
   const team = serverTeam(m, mode)
   const score = team === 'a' ? m.score_a : m.score_b
   return score % 2 === 0 ? 'right' : 'left'
@@ -290,7 +289,9 @@ test('serverCourt: even server score -> right court, odd -> left court', () => {
   assert.equal(serverCourt(m, 'alternate'), 'right', '2 is even -> right court again')
 })
 
-test('serverCourt: null in Winner mode — no service-court concept there', () => {
-  const m = { ...fresh(), last_scorer: 'a' }
-  assert.equal(serverCourt(m, 'winner'), null)
+test('serverCourt: also applies in Winner mode (server = last scorer)', () => {
+  let m = { ...fresh(), last_scorer: 'a', score_a: 1 }
+  assert.equal(serverCourt(m, 'winner'), 'left', '1 is odd -> left court')
+  m = { ...m, score_a: 2 }
+  assert.equal(serverCourt(m, 'winner'), 'right', '2 is even -> right court')
 })
