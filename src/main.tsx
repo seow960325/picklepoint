@@ -9,9 +9,11 @@ import MatchDetail from './pages/MatchDetail'
 import NewCompetition from './pages/NewCompetition'
 import Admin from './pages/Admin'
 import Owner from './pages/Owner'
+import QuickPlay from './pages/QuickPlay'
 
 const router = createBrowserRouter([
   { path: '/', element: <Join /> },
+  { path: '/quick', element: <QuickPlay /> },
   { path: '/new', element: <NewCompetition /> },
   { path: '/c/:code', element: <Board /> },
   { path: '/c/:code/court/:number', element: <CourtScore /> },

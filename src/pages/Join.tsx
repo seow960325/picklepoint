@@ -45,8 +45,13 @@ export default function Join() {
           </button>
         </form>
 
+        <Link to="/quick"
+          className="mt-5 block rounded-2xl bg-brand-ink py-4 text-center font-display text-lg font-bold tracking-wide text-brand-fg active:scale-[0.99]">
+          ⚡ QUICK START
+        </Link>
+
         <Link to="/new"
-          className="mt-5 block rounded-2xl border border-line bg-surface py-4 text-center font-display text-lg font-bold tracking-wide text-fg-muted active:bg-surface-2">
+          className="mt-3 block rounded-2xl border border-line bg-surface py-4 text-center font-display text-lg font-bold tracking-wide text-fg-muted active:bg-surface-2">
           + NEW COMPETITION
         </Link>
 
