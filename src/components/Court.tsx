@@ -35,28 +35,24 @@ const clip = (n: string, max = 17) =>
   (n.length > max ? n.slice(0, max - 1).trimEnd() + '…' : n).toUpperCase()
 
 /** Small pickleball glyph — a ball with holes — marking who serves next.
- *  This is the PRIMARY signal in the app (louder than sound, which some
- *  refs mute): bright neon green, glowing, with two pulsing/growing rings
- *  so it reads at a glance from across the court, even in bright sun. */
-function PickleballGlyph({ cx, cy, r = 10, serverNo }: { cx: number; cy: number; r?: number; serverNo?: 1 | 2 | null }) {
+ *  Bright neon green with a single gentle pulsing ring — enough to catch
+ *  the eye without being distracting (dialed back from an earlier, busier
+ *  double-pulse + full-glow version). */
+function PickleballGlyph({ cx, cy, r = 9, serverNo }: { cx: number; cy: number; r?: number; serverNo?: 1 | 2 | null }) {
   const BALL = '#c6ff3d' // neon green — swap to '#f7d774' for gold instead
   const holes = [
     [-0.32, -0.55], [0.48, -0.35], [-0.58, 0.15],
     [0.1, 0.6], [0.55, 0.2], [-0.05, -0.05],
   ]
   return (
-    <g filter="url(#neonGlow)">
-      {/* two staggered growing pulse rings for a stronger "alive" glow */}
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke={BALL} strokeWidth="3">
-        <animate attributeName="r" values={`${r};${r * 3};${r}`} dur="1.2s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="0.95;0;0.95" dur="1.2s" repeatCount="indefinite" />
-      </circle>
+    <g>
+      {/* one gentle growing pulse ring */}
       <circle cx={cx} cy={cy} r={r} fill="none" stroke={BALL} strokeWidth="2.5">
-        <animate attributeName="r" values={`${r};${r * 3};${r}`} dur="1.2s" begin="0.6s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="0.95;0;0.95" dur="1.2s" begin="0.6s" repeatCount="indefinite" />
+        <animate attributeName="r" values={`${r};${r * 2};${r}`} dur="1.4s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.85;0;0.85" dur="1.4s" repeatCount="indefinite" />
       </circle>
-      <circle cx={cx} cy={cy} r={r + 2.5} fill="#0a0e17" opacity="0.5" />
-      <circle cx={cx} cy={cy} r={r} fill={BALL} stroke="#0a0e17" strokeWidth="1.2" />
+      <circle cx={cx} cy={cy} r={r + 2} fill="#0a0e17" opacity="0.4" />
+      <circle cx={cx} cy={cy} r={r} fill={BALL} stroke="#0a0e17" strokeWidth="1.2" filter="url(#neonGlow)" />
       {holes.map(([dx, dy], i) => (
         <circle key={i} cx={cx + dx * r} cy={cy + dy * r} r={r * 0.16} fill="#0a0e17" opacity="0.6" />
       ))}
