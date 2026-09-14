@@ -94,7 +94,7 @@ export default function QuickPlay() {
 
             <Field label="Serve mode">
               <Choice value={serveMode} onChange={setServeMode}
-                options={[{ label: 'Winner', value: 'winner' }, { label: 'Serve', value: 'alternate' }]} />
+                options={[{ label: 'Serve', value: 'alternate' }, { label: 'Winner', value: 'winner' }]} />
             </Field>
             <p className="text-xs text-fg-subtle leading-relaxed">
               {serveMode === 'winner'
@@ -114,6 +114,7 @@ export default function QuickPlay() {
 
   return (
     <Scorer
+      key={gameNo}
       match={m} rules={rules} teamAName={teamAName} teamBName={teamBName} gameNo={gameNo}
       onChangeSettings={() => setPhase('setup')}
       onNextGame={loserWasA => {
@@ -134,6 +135,8 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
 }) {
   const m = match
   const [showSwitch, setShowSwitch] = useState(false)
+  // First-serve picker: pops up before the court is usable, once per game.
+  const [serverPicked, setServerPicked] = useState(false)
   const [ignoreRotate, setIgnoreRotate] = useState(false)
   const landscape = useLandscape()
   const history = useRef<[number, number, UndoState][]>([])
@@ -182,6 +185,7 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
   }
 
   const pickFirstServer = (side: 'left' | 'right') => {
+    setServerPicked(true)
     if (m.score_a !== 0 || m.score_b !== 0) return
     const team = (side === 'left') === m.a_on_left ? 'a' : 'b'
     setM(setFirstServerPure(m, team))
@@ -243,22 +247,6 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
           </div>
         </div>
 
-        {notStarted && (
-          <div className="flex shrink-0 items-center justify-center gap-2 border-b border-line bg-surface/60 px-3 py-1.5 text-xs">
-            <span className="text-fg-subtle">First serve:</span>
-            <button type="button" onClick={() => pickFirstServer('left')}
-              className={`rounded-lg px-2.5 py-1 font-display font-bold ${
-                serving === 'left' ? 'bg-brand text-brand-fg' : 'border border-line text-fg-muted active:bg-surface-2'}`}>
-              {leftName}
-            </button>
-            <button type="button" onClick={() => pickFirstServer('right')}
-              className={`rounded-lg px-2.5 py-1 font-display font-bold ${
-                serving === 'right' ? 'bg-brand text-brand-fg' : 'border border-line text-fg-muted active:bg-surface-2'}`}>
-              {rightName}
-            </button>
-          </div>
-        )}
-
         <div className={isPortrait
           ? 'relative flex min-h-0 flex-1 items-center justify-center px-3'
           : 'relative min-h-0 flex-1 px-2 pb-2'}>
@@ -305,6 +293,25 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
           <span className="font-display text-xs font-bold tracking-wide">{confirmingReset ? 'SURE?' : 'RESET'}</span>
         </button>
       </div>
+
+      {notStarted && !serverPicked && (
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-6 bg-canvas px-8">
+          <div className="text-center">
+            <div className="font-display text-3xl font-bold tracking-wide">WHO SERVES FIRST?</div>
+            <div className="mt-1 text-sm text-fg-muted">Referee picks before the game starts.</div>
+          </div>
+          <div className="flex w-full max-w-sm gap-3">
+            <button type="button" onClick={() => pickFirstServer('left')}
+              className="flex-1 rounded-2xl bg-brand py-6 font-display text-xl font-bold text-brand-fg active:scale-[0.98]">
+              {leftName}
+            </button>
+            <button type="button" onClick={() => pickFirstServer('right')}
+              className="flex-1 rounded-2xl bg-brand py-6 font-display text-xl font-bold text-brand-fg active:scale-[0.98]">
+              {rightName}
+            </button>
+          </div>
+        </div>
+      )}
 
       {showSwitch && (
         <button onClick={() => setShowSwitch(false)}
