@@ -9,7 +9,7 @@ import { Field, Stepper, Choice, Warn, inputFull } from '../components/form'
 import { Screen, FullscreenButton } from '../components/ui'
 import Court from '../components/Court'
 import {
-  applyPoint, applyUndo, displayScores, isGameOver, servingSide,
+  applyPoint, applyUndo, displayScores, isGameOver, servingSide, serverCourt as serverCourtOf,
   setFirstServer as setFirstServerPure, type Rules, type UndoState,
 } from '../lib/scoring'
 import { defaultSwitchAt, validateRules } from '../lib/draw'
@@ -29,34 +29,67 @@ function blankMatch(): Match {
   }
 }
 
+// Persist the in-progress game to localStorage so switching apps/tabs (the
+// mobile browser can silently reload the page in the background) doesn't
+// wipe the score. Nothing here ever touches Supabase — this is purely a
+// same-device "resume where I left off" convenience.
+const STORAGE_KEY = 'pp.quickplay.v1'
+interface QuickPlayState {
+  phase: 'setup' | 'playing'
+  teamAName: string; teamBName: string
+  target: number; winBy: number; cap: number; switchAt: number
+  serveMode: ServeMode
+  gameNo: number
+  m: Match
+}
+function loadPersisted(): QuickPlayState | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) as QuickPlayState : null
+  } catch { return null }
+}
+function savePersisted(s: QuickPlayState) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)) } catch { /* ignore (private mode etc.) */ }
+}
+function clearPersisted() {
+  try { localStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
+}
+
 export default function QuickPlay() {
-  const [phase, setPhase] = useState<'setup' | 'playing'>('setup')
-  const [teamAName, setTeamAName] = useState('Team A')
-  const [teamBName, setTeamBName] = useState('Team B')
-  const [target, setTarget] = useState(11)
-  const [winBy, setWinBy] = useState(2)
-  const [cap, setCap] = useState(15)
-  const [switchAt, setSwitchAt] = useState(0)
-  const [serveMode, setServeMode] = useState<ServeMode>('winner')
+  const saved = useMemo(loadPersisted, [])
+  const [phase, setPhase] = useState<'setup' | 'playing'>(saved?.phase ?? 'setup')
+  const [teamAName, setTeamAName] = useState(saved?.teamAName ?? 'Team A')
+  const [teamBName, setTeamBName] = useState(saved?.teamBName ?? 'Team B')
+  const [target, setTarget] = useState(saved?.target ?? 11)
+  const [winBy, setWinBy] = useState(saved?.winBy ?? 2)
+  const [cap, setCap] = useState(saved?.cap ?? 15)
+  const [switchAt, setSwitchAt] = useState(saved?.switchAt ?? 0)
+  const [serveMode, setServeMode] = useState<ServeMode>(saved?.serveMode ?? 'winner')
 
   const ruleError = validateRules({ target_score: target, win_by: winBy, cap, switch_at: switchAt })
   const applyPreset = (t: number) => { setTarget(t); setSwitchAt(0); setCap(t + 4) }
 
-  const [gameNo, setGameNo] = useState(1)
-  const [m, setM] = useState<Match>(blankMatch)
+  const [gameNo, setGameNo] = useState(saved?.gameNo ?? 1)
+  const [m, setM] = useState<Match>(saved?.m ?? blankMatch)
 
   const rules: Rules = useMemo(
     () => ({ target_score: target, win_by: winBy, cap, switch_at: switchAt, serve_mode: serveMode }),
     [target, winBy, cap, switchAt, serveMode],
   )
 
+  // keep localStorage in sync with whatever's on screen
+  useEffect(() => {
+    savePersisted({ phase, teamAName, teamBName, target, winBy, cap, switchAt, serveMode, gameNo, m })
+  }, [phase, teamAName, teamBName, target, winBy, cap, switchAt, serveMode, gameNo, m])
+
   const start = () => { setM(blankMatch()); setGameNo(1); setPhase('playing') }
+  const goHome = () => clearPersisted() // leaving Quick Play entirely — don't resume a stale game next visit
 
   if (phase === 'setup') {
     return (
       <Screen className="flex flex-col items-center justify-center px-6 py-10">
         <div className="w-full max-w-sm">
-          <Link to="/" className="mb-4 inline-block text-sm text-fg-subtle">← back</Link>
+          <Link to="/" onClick={goHome} className="mb-4 inline-block text-sm text-fg-subtle">← back</Link>
           <div className="mb-1 font-display text-3xl font-bold tracking-wide text-brand-ink">QUICK PLAY</div>
           <p className="mb-6 text-sm text-fg-muted">One game, no setup — start scoring right away.</p>
 
@@ -117,6 +150,7 @@ export default function QuickPlay() {
       key={gameNo}
       match={m} rules={rules} teamAName={teamAName} teamBName={teamBName} gameNo={gameNo}
       onChangeSettings={() => setPhase('setup')}
+      onHome={goHome}
       onNextGame={loserWasA => {
         setM({ ...blankMatch(), initial_server: loserWasA === null ? null : (loserWasA ? 'a' : 'b') })
         setGameNo(n => n + 1)
@@ -127,9 +161,10 @@ export default function QuickPlay() {
 }
 
 // ----------------------------------------------------------------- scorer
-function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, onNextGame, setM }: {
+function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, onHome, onNextGame, setM }: {
   match: Match; rules: Rules; teamAName: string; teamBName: string; gameNo: number
   onChangeSettings: () => void
+  onHome: () => void
   onNextGame: (loserWasA: boolean | null) => void
   setM: (m: Match) => void
 }) {
@@ -199,6 +234,7 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
   const done = m.status === 'awaiting_confirm' || isGameOver(m.score_a, m.score_b, rules)
   const serving = done ? null : servingSide(m, rules.serve_mode)
   const serverNo = rules.serve_mode === 'alternate' && !done ? (m.server_no ?? 1) : null
+  const courtSide = done ? null : serverCourtOf(m, rules.serve_mode)
   const notStarted = !done && m.score_a === 0 && m.score_b === 0
   const hi = Math.max(m.score_a, m.score_b), lo = Math.min(m.score_a, m.score_b)
   const matchPoint = !done && hi >= rules.target_score - 1 && hi - lo >= rules.win_by - 1
@@ -228,7 +264,7 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
       }}>
       <div className="flex min-w-0 flex-1 flex-col">
         <div className={`flex shrink-0 items-center justify-between gap-2 px-3 ${isPortrait ? 'py-1.5' : 'py-2'}`}>
-          <Link to="/"
+          <Link to="/" onClick={onHome}
             className={`flex shrink-0 items-center gap-1 rounded-xl border border-line bg-surface/80 font-display font-bold tracking-wide text-fg active:bg-surface-2 ${
               isPortrait ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm'}`}>
             ← HOME
@@ -253,7 +289,7 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
           {isPortrait ? (
             <div className="relative w-full" style={{ maxHeight: '100%', aspectRatio: '2' }}>
               <Court leftName={leftName} rightName={rightName} leftScore={s.left} rightScore={s.right}
-                serving={serving} serverNo={serverNo} onTap={score} disabled={done} />
+                serving={serving} serverNo={serverNo} serverCourt={courtSide} onTap={score} disabled={done} />
               <button onClick={swap}
                 className="absolute left-1/2 -bottom-7 -translate-x-1/2 rounded-lg border border-line bg-surface/90 px-3 py-1 font-display text-xs font-bold tracking-wide text-fg-muted active:scale-95">
                 ⇄ SWAP
@@ -262,7 +298,7 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
           ) : (
             <>
               <Court leftName={leftName} rightName={rightName} leftScore={s.left} rightScore={s.right}
-                serving={serving} serverNo={serverNo} onTap={score} disabled={done} />
+                serving={serving} serverNo={serverNo} serverCourt={courtSide} onTap={score} disabled={done} />
               <button onClick={swap}
                 className="absolute left-1/2 top-0.5 -translate-x-1/2 rounded-lg border border-line bg-surface/90 px-3 py-1 font-display text-xs font-bold tracking-wide text-fg-muted active:scale-95">
                 ⇄ SWAP

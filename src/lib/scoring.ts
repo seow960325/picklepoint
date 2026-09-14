@@ -144,6 +144,17 @@ export function servingSide(m: Match, mode: ServeMode): 'left' | 'right' {
   return (team === 'a') === m.a_on_left ? 'left' : 'right'
 }
 
+/** Which service court the server stands in, per the international rule:
+ *  even score (server's own team score) → right court, odd → left court.
+ *  Only meaningful in 'alternate' (Serve) mode — 'winner' mode has no
+ *  concept of a service court, so this returns null there. */
+export function serverCourt(m: Match, mode: ServeMode): 'right' | 'left' | null {
+  if (mode !== 'alternate') return null
+  const team = serverTeam(m, mode)
+  const score = team === 'a' ? m.score_a : m.score_b
+  return score % 2 === 0 ? 'right' : 'left'
+}
+
 /** "9 - 7", always from the left-hand team's point of view. */
 export function displayScores(m: Match): { left: number; right: number } {
   return m.a_on_left

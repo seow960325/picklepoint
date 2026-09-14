@@ -71,6 +71,13 @@ const serverTeam = (m, mode) => {
 }
 const servingSide = (m, mode) => ((serverTeam(m, mode) === 'a') === m.a_on_left ? 'left' : 'right')
 
+const serverCourt = (m, mode) => {
+  if (mode !== 'alternate') return null
+  const team = serverTeam(m, mode)
+  const score = team === 'a' ? m.score_a : m.score_b
+  return score % 2 === 0 ? 'right' : 'left'
+}
+
 const fresh = () => ({
   score_a: 0, score_b: 0, a_on_left: true, sides_switched: false, status: 'live',
 })
@@ -271,4 +278,19 @@ test('side-out: undo restores the exact prior server state', () => {
   m = applyUndo(m, 0, 0, R, beforeFault)
   assert.equal(m.serving_team, 'a')
   assert.equal(m.server_no, 1, 'server count rolled back too, not just the score')
+})
+
+test('serverCourt: even server score -> right court, odd -> left court', () => {
+  const ALT = { ...R, serve_mode: 'alternate' }
+  let m = { ...fresh(), serving_team: 'a', server_no: 1 }
+  assert.equal(serverCourt(m, 'alternate'), 'right', '0 is even -> right court')
+  m = applyPoint(m, 'left', ALT)   // team A wins, now serving on 1-0
+  assert.equal(serverCourt(m, 'alternate'), 'left', '1 is odd -> left court')
+  m = applyPoint(m, 'left', ALT)   // team A wins again, 2-0
+  assert.equal(serverCourt(m, 'alternate'), 'right', '2 is even -> right court again')
+})
+
+test('serverCourt: null in Winner mode — no service-court concept there', () => {
+  const m = { ...fresh(), last_scorer: 'a' }
+  assert.equal(serverCourt(m, 'winner'), null)
 })

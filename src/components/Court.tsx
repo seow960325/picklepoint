@@ -20,6 +20,10 @@ export interface CourtProps {
   /** Which server (1st or 2nd) is up, for side-out/"Serve" mode only —
    *  pass null/undefined in Winner mode where it has no meaning. */
   serverNo?: 1 | 2 | null
+  /** Which service court (international rule: even score → right, odd →
+   *  left) the serve ball sits in. null/undefined in Winner mode — the ball
+   *  then stays at its old spot just below the score circle. */
+  serverCourt?: 'right' | 'left' | null
   leftFlag?: string | null
   rightFlag?: string | null
   leftLogo?: string | null
@@ -31,22 +35,27 @@ const clip = (n: string, max = 17) =>
   (n.length > max ? n.slice(0, max - 1).trimEnd() + '…' : n).toUpperCase()
 
 /** Small pickleball glyph — a ball with holes — marking who serves next.
- *  Neon green, with a pulsing/growing ring so it reads at a glance from
- *  across the court. */
-function PickleballGlyph({ cx, cy, r = 9, serverNo }: { cx: number; cy: number; r?: number; serverNo?: 1 | 2 | null }) {
+ *  This is the PRIMARY signal in the app (louder than sound, which some
+ *  refs mute): bright neon green, glowing, with two pulsing/growing rings
+ *  so it reads at a glance from across the court, even in bright sun. */
+function PickleballGlyph({ cx, cy, r = 10, serverNo }: { cx: number; cy: number; r?: number; serverNo?: 1 | 2 | null }) {
   const BALL = '#c6ff3d' // neon green — swap to '#f7d774' for gold instead
   const holes = [
     [-0.32, -0.55], [0.48, -0.35], [-0.58, 0.15],
     [0.1, 0.6], [0.55, 0.2], [-0.05, -0.05],
   ]
   return (
-    <g>
-      {/* growing pulse ring */}
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke={BALL} strokeWidth="2.5">
-        <animate attributeName="r" values={`${r};${r * 2.4};${r}`} dur="1.3s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="0.85;0;0.85" dur="1.3s" repeatCount="indefinite" />
+    <g filter="url(#neonGlow)">
+      {/* two staggered growing pulse rings for a stronger "alive" glow */}
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={BALL} strokeWidth="3">
+        <animate attributeName="r" values={`${r};${r * 3};${r}`} dur="1.2s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.95;0;0.95" dur="1.2s" repeatCount="indefinite" />
       </circle>
-      <circle cx={cx} cy={cy} r={r + 2} fill="#0a0e17" opacity="0.4" />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={BALL} strokeWidth="2.5">
+        <animate attributeName="r" values={`${r};${r * 3};${r}`} dur="1.2s" begin="0.6s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.95;0;0.95" dur="1.2s" begin="0.6s" repeatCount="indefinite" />
+      </circle>
+      <circle cx={cx} cy={cy} r={r + 2.5} fill="#0a0e17" opacity="0.5" />
       <circle cx={cx} cy={cy} r={r} fill={BALL} stroke="#0a0e17" strokeWidth="1.2" />
       {holes.map(([dx, dy], i) => (
         <circle key={i} cx={cx + dx * r} cy={cy + dy * r} r={r * 0.16} fill="#0a0e17" opacity="0.6" />
@@ -54,9 +63,9 @@ function PickleballGlyph({ cx, cy, r = 9, serverNo }: { cx: number; cy: number; 
       {/* server number (side-out mode only) — small badge to the right of the ball */}
       {(serverNo === 1 || serverNo === 2) && (
         <g>
-          <circle cx={cx + r + 8} cy={cy} r={7} fill="#0a0e17" stroke={BALL} strokeWidth="1.5" />
-          <text x={cx + r + 8} y={cy} textAnchor="middle" dominantBaseline="central"
-            fill={BALL} fontSize="10" fontWeight="700" fontFamily="'Barlow Condensed', Impact, sans-serif">
+          <circle cx={cx + r + 9} cy={cy} r={7.5} fill="#0a0e17" stroke={BALL} strokeWidth="1.8" />
+          <text x={cx + r + 9} y={cy} textAnchor="middle" dominantBaseline="central"
+            fill={BALL} fontSize="10.5" fontWeight="700" fontFamily="'Barlow Condensed', Impact, sans-serif">
             {serverNo}
           </text>
         </g>
@@ -65,11 +74,20 @@ function PickleballGlyph({ cx, cy, r = 9, serverNo }: { cx: number; cy: number; 
   )
 }
 
+// Corner slots the serve ball can sit in, near the outer baseline+sideline
+// corner of each service court — well clear of the (now sideline-mounted,
+// vertical) team name and the top flag/logo badge.
+const BALL_X_LEFT = 30, BALL_X_RIGHT = 450
+const BALL_Y_RIGHT_COURT = 52, BALL_Y_LEFT_COURT = 188 // 'right'/'left' per the serve rule, not screen side
+
 export default function Court({
-  leftName, rightName, leftScore, rightScore, onTap, disabled, serving, serverNo,
+  leftName, rightName, leftScore, rightScore, onTap, disabled, serving, serverNo, serverCourt,
   leftFlag, rightFlag, leftLogo, rightLogo, label,
 }: CourtProps) {
   const [down, setDown] = useState<'left' | 'right' | null>(null)
+  const ballCy = serverCourt === 'right' ? BALL_Y_RIGHT_COURT
+    : serverCourt === 'left' ? BALL_Y_LEFT_COURT
+    : MIDY + R + 17 // winner mode / unknown — old fixed spot below the circle
   // Tap acknowledgement — flashes the tapped half on every tap, even when the
   // score doesn't move (side-out mode: a fault or the receiving team getting
   // tapped by mistake), so the ref always sees "that tap counted".
@@ -130,6 +148,17 @@ export default function Court({
           <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="6" />
           </filter>
+          {/* neon bloom used by the serve-ball glyph — makes it pop visually
+              since sound alone isn't reliable feedback (some refs mute it) */}
+          <filter id="neonGlow" x="-150%" y="-150%" width="400%" height="400%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="3.2" result="blur1" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="7" result="blur2" />
+            <feMerge>
+              <feMergeNode in="blur2" />
+              <feMergeNode in="blur1" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
 
         {/* left */}
@@ -158,12 +187,12 @@ export default function Court({
               fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />
           </>
         )}
-        {serving === 'left' && <PickleballGlyph cx={CXL} cy={MIDY + R + 17} r={9} serverNo={serverNo} />}
+        {serving === 'left' && <PickleballGlyph cx={serverCourt ? BALL_X_LEFT : CXL} cy={ballCy} r={9} serverNo={serverNo} />}
         {flash?.side === 'left' && (
           <circle key={`flash-left-${flash.key}`} cx={CXL} cy={MIDY} r={R + 10}
-            fill="none" stroke="#ffffff" strokeWidth="5">
-            <animate attributeName="opacity" values="0.9;0" dur="0.35s" fill="freeze" />
-            <animate attributeName="r" values={`${R};${R + 16}`} dur="0.35s" fill="freeze" />
+            fill="none" stroke="#c6ff3d" strokeWidth="6" filter="url(#neonGlow)">
+            <animate attributeName="opacity" values="1;0" dur="0.4s" fill="freeze" />
+            <animate attributeName="r" values={`${R};${R + 22}`} dur="0.4s" fill="freeze" />
           </circle>
         )}
 
@@ -197,12 +226,12 @@ export default function Court({
               fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />
           </>
         )}
-        {serving === 'right' && <PickleballGlyph cx={CXR} cy={MIDY + R + 17} r={9} serverNo={serverNo} />}
+        {serving === 'right' && <PickleballGlyph cx={serverCourt ? BALL_X_RIGHT : CXR} cy={ballCy} r={9} serverNo={serverNo} />}
         {flash?.side === 'right' && (
           <circle key={`flash-right-${flash.key}`} cx={CXR} cy={MIDY} r={R + 10}
-            fill="none" stroke="#ffffff" strokeWidth="5">
-            <animate attributeName="opacity" values="0.9;0" dur="0.35s" fill="freeze" />
-            <animate attributeName="r" values={`${R};${R + 16}`} dur="0.35s" fill="freeze" />
+            fill="none" stroke="#22d3ee" strokeWidth="6" filter="url(#neonGlow)">
+            <animate attributeName="opacity" values="1;0" dur="0.4s" fill="freeze" />
+            <animate attributeName="r" values={`${R};${R + 22}`} dur="0.4s" fill="freeze" />
           </circle>
         )}
 
@@ -217,14 +246,17 @@ export default function Court({
           </text>
         )}
 
-        {/* team names on the baselines */}
-        <text x="10" y="20" fill="#c6ff3d" fontSize="17" fontWeight="700"
+        {/* team names — mounted vertically on the outer sideline, clear of
+            both serve-ball corners (top ~52 and bottom ~188) and the flag */}
+        <text x="14" y={MIDY} textAnchor="middle" transform={`rotate(-90 14 ${MIDY})`}
+          fill="#c6ff3d" fontSize="15" fontWeight="700"
           fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
-          {clip(leftName)}
+          {clip(leftName, 12)}
         </text>
-        <text x="470" y="20" textAnchor="end" fill="#22d3ee" fontSize="17" fontWeight="700"
+        <text x="466" y={MIDY} textAnchor="middle" transform={`rotate(90 466 ${MIDY})`}
+          fill="#22d3ee" fontSize="15" fontWeight="700"
           fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
-          {clip(rightName)}
+          {clip(rightName, 12)}
         </text>
       </svg>
     </div>

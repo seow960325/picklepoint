@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useCompetition, teamName, liveOnCourt, eventOf } from '../lib/store'
-import { applyPoint, applyUndo, displayScores, isGameOver, rulesOf, servingSide, type UndoState } from '../lib/scoring'
+import { applyPoint, applyUndo, displayScores, isGameOver, rulesOf, servingSide, serverCourt as serverCourtOf, type UndoState } from '../lib/scoring'
 import type { Match } from '../lib/types'
 import * as api from '../lib/api'
 import { enqueue, flush, pending, stalledCount, retryStalled, lastQueueError } from '../lib/queue'
@@ -215,6 +215,9 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
   const rules = useMemo(() => rulesOf(eventOf(bundle, match)), [bundle, match.event_id])
   const [m, setM] = useState<Match>(match)
   const [showSwitch, setShowSwitch] = useState(false)
+  // First-serve picker: pops up before the court is usable, once per match —
+  // dismissed the moment a side is chosen (score staying 0-0 doesn't reopen it).
+  const [serverPicked, setServerPicked] = useState(false)
   const [offline, setOffline] = useState(pending() > 0)
   const [stuck, setStuck] = useState(stalledCount() > 0)
   const [errMsg, setErrMsg] = useState(lastQueueError())
@@ -299,6 +302,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
   }
 
   const pickFirstServer = async (side: 'left' | 'right') => {
+    setServerPicked(true)
     if (m.score_a !== 0 || m.score_b !== 0) return   // only before the match has started
     try { setM(await api.setFirstServer(m.id, side, token)) } catch { /* best-effort */ }
   }
@@ -348,6 +352,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
   const done = m.status === 'awaiting_confirm' || isGameOver(m.score_a, m.score_b, rules)
   const serving = done ? null : servingSide(m, rules.serve_mode)
   const serverNo = rules.serve_mode === 'alternate' && !done ? (m.server_no ?? 1) : null
+  const courtSide = done ? null : serverCourtOf(m, rules.serve_mode)
   const notStarted = !done && m.score_a === 0 && m.score_b === 0
   const hi = Math.max(m.score_a, m.score_b), lo = Math.min(m.score_a, m.score_b)
   const matchPoint = !done && hi >= rules.target_score - 1 && hi - lo >= rules.win_by - 1
@@ -409,22 +414,6 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
           </div>
         )}
 
-        {notStarted && (
-          <div className="flex shrink-0 items-center justify-center gap-2 border-b border-line bg-surface/60 px-3 py-1.5 text-xs">
-            <span className="text-fg-subtle">First serve:</span>
-            <button type="button" onClick={() => pickFirstServer('left')}
-              className={`rounded-lg px-2.5 py-1 font-display font-bold ${
-                serving === 'left' ? 'bg-brand text-brand-fg' : 'border border-line text-fg-muted active:bg-surface-2'}`}>
-              {leftName}
-            </button>
-            <button type="button" onClick={() => pickFirstServer('right')}
-              className={`rounded-lg px-2.5 py-1 font-display font-bold ${
-                serving === 'right' ? 'bg-brand text-brand-fg' : 'border border-line text-fg-muted active:bg-surface-2'}`}>
-              {rightName}
-            </button>
-          </div>
-        )}
-
         {/* court area — portrait: constrained 2:1 centred; landscape: fills available space */}
         <div className={isPortrait
           ? 'relative flex min-h-0 flex-1 items-center justify-center px-3'
@@ -439,6 +428,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 label={m.bracket_key ? (m.round ?? undefined) : undefined}
                 serving={serving}
                 serverNo={serverNo}
+                serverCourt={courtSide}
                 onTap={score} disabled={done}
               />
               <button onClick={swap}
@@ -456,6 +446,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 label={m.bracket_key ? (m.round ?? undefined) : undefined}
                 serving={serving}
                 serverNo={serverNo}
+                serverCourt={courtSide}
                 onTap={score} disabled={done}
               />
               <button onClick={swap}
@@ -513,6 +504,25 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
           <span className="font-display text-xs font-bold tracking-wide">LOG</span>
         </Link>
       </div>
+
+      {notStarted && !serverPicked && (
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-6 bg-canvas px-8">
+          <div className="text-center">
+            <div className="font-display text-3xl font-bold tracking-wide">WHO SERVES FIRST?</div>
+            <div className="mt-1 text-sm text-fg-muted">Referee picks before the game starts.</div>
+          </div>
+          <div className="flex w-full max-w-sm gap-3">
+            <button type="button" onClick={() => pickFirstServer('left')}
+              className="flex-1 rounded-2xl bg-brand py-6 font-display text-xl font-bold text-brand-fg active:scale-[0.98]">
+              {leftName}
+            </button>
+            <button type="button" onClick={() => pickFirstServer('right')}
+              className="flex-1 rounded-2xl bg-brand py-6 font-display text-xl font-bold text-brand-fg active:scale-[0.98]">
+              {rightName}
+            </button>
+          </div>
+        </div>
+      )}
 
       {showSwitch && (
         <button onClick={() => setShowSwitch(false)}
