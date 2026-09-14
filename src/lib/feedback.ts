@@ -23,6 +23,10 @@ function tone(freq: number, ms: number, gain = 0.06) {
 }
 
 export const tapPoint = () => { navigator.vibrate?.(12); tone(880, 40) }
+// A tap that registered but didn't add a point (side-out mode: the receiving
+// team, or a serving-team loss that only passes serve) — distinct low double
+// buzz/tone so the ref can tell "counted, no score" apart from "no reaction".
+export const tapFault = () => { navigator.vibrate?.([10, 30, 10]); tone(220, 55) }
 export const tapUndo  = () => { navigator.vibrate?.([8, 40, 8]); tone(330, 60) }
 export const hornEnd  = () => { navigator.vibrate?.([120, 60, 120]); tone(520, 220, 0.09); setTimeout(() => tone(392, 320, 0.09), 240) }
 export const chimeSwitch = () => { navigator.vibrate?.([40, 60, 40]); tone(660, 120); setTimeout(() => tone(990, 160), 140) }
