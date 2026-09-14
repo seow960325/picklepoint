@@ -10,8 +10,9 @@ export interface EventCfg {
   id: string; competition_id: string; name: string; format: string
   target_score: number; win_by: number; cap: number; switch_at: number
   sort_order: number
-  // 'winner' = team that won the last point serves next (default).
-  // 'alternate' = serve swaps sides every 2 points, regardless of who scores.
+  // 'winner' = team that won the last point serves next (default, pure
+  // rally scoring — every rally scores). 'alternate' = "Serve": real
+  // doubles side-out scoring — only the serving team can score.
   serve_mode?: ServeMode
   // only set when format === 'duel' — two-side team battle (e.g. country vs country)
   side_a_name?: string | null
@@ -39,6 +40,14 @@ export interface Match {
   a_on_left: boolean; sides_switched: boolean
   // which team won the most recent point — drives 'winner' serve mode
   last_scorer?: 'a' | 'b' | null
+  // referee's pick of who serves first, made before any point is played —
+  // seeds the display in 'winner' mode and the real first-service-of-the-
+  // game exception (one server instead of two) in 'alternate' mode
+  initial_server?: 'a' | 'b' | null
+  // 'alternate' ("Serve") mode only: who currently holds serve, and
+  // whether they're on their first or second server turn (side-out scoring)
+  serving_team?: 'a' | 'b' | null
+  server_no?: 1 | 2 | null
   status: MatchStatus; winner_id: string | null
   next_match_id: string | null; next_slot: 'a' | 'b' | null
   // only set on groups_ko knockout slots — null for every group, round-robin
@@ -52,6 +61,10 @@ export interface Match {
 export interface PointEvent {
   id: string; match_id: string; team_id: string | null
   score_a_after: number; score_b_after: number; created_at: string
+  // 'alternate' ("Serve") mode only — the resulting serve state right
+  // after this rally, so undo can restore it exactly
+  serving_team_after?: 'a' | 'b' | null
+  server_no_after?: 1 | 2 | null
 }
 export interface Bundle {
   competition: Competition

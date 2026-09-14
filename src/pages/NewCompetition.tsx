@@ -327,8 +327,8 @@ export default function NewCompetition() {
               </Field>
               <p className="text-xs text-fg-subtle leading-relaxed">
                 {serveMode === 'winner'
-                  ? 'Winner — whichever team wins the point serves next.'
-                  : 'Serve — service swaps sides every 2 points, no matter who scores.'}
+                  ? 'Winner — every rally scores a point, for whoever wins it.'
+                  : 'Serve — real doubles side-out scoring: only the serving team can score. Losing a rally while serving passes serve to your partner, then to the other team.'}
               </p>
             </div>
           </div>

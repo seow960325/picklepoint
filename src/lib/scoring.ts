@@ -1,7 +1,21 @@
 import type { EventCfg, Match, ServeMode } from './types'
 
 /** Pure scoring rules. Mirrored by score_point() in SQL so the optimistic
- *  client update and the server agree. Unit-tested in tests/scoring.test.mjs. */
+ *  client update and the server agree. Unit-tested in tests/scoring.test.mjs.
+ *
+ *  Two serve modes:
+ *   - 'winner' (default): rally scoring — whoever wins the rally scores a
+ *     point, every time. The "server" is purely a display indicator: the
+ *     team that won the last point is shown serving next.
+ *   - 'alternate' ("Serve"): real side-out doubles scoring, per USA
+ *     Pickleball's official rule — only the serving team can score. Losing
+ *     a rally while serving is a "fault": the first fault passes serve to
+ *     your partner (server #2, same team, no side change); the second
+ *     fault is a side-out and the OTHER team starts serving. The very
+ *     first service of the game is a documented exception — that side only
+ *     gets one server, not two (officially scored "0-0-2") — so a fresh
+ *     match starts at server_no = 2 unless the referee has picked a first
+ *     server, in which case that pick seeds the same exception. */
 
 export interface Rules {
   target_score: number
@@ -26,35 +40,76 @@ export function teamForSide(m: Match, side: 'left' | 'right'): 'a' | 'b' {
   return (side === 'left') === m.a_on_left ? 'a' : 'b'
 }
 
-/** Apply one point to a physical side. Returns the next match state. */
-export function applyPoint(m: Match, side: 'left' | 'right', r: Rules): Match {
-  const who = teamForSide(m, side)
-  const score_a = m.score_a + (who === 'a' ? 1 : 0)
-  const score_b = m.score_b + (who === 'b' ? 1 : 0)
+const other = (t: 'a' | 'b'): 'a' | 'b' => (t === 'a' ? 'b' : 'a')
+
+function withSwitchAndStatus(m: Match, score_a: number, score_b: number, r: Rules) {
   const hi = Math.max(score_a, score_b)
-
-  // Ends are switched exactly once, the first time the leader reaches switch_at.
-  // switch_at <= 0 means the organizer turned end-switching off entirely.
   const doSwitch = r.switch_at > 0 && !m.sides_switched && hi >= r.switch_at
-
   return {
-    ...m,
-    score_a, score_b,
     a_on_left: doSwitch ? !m.a_on_left : m.a_on_left,
     sides_switched: doSwitch || m.sides_switched,
-    // the team that just won this point serves next under 'winner' mode
-    last_scorer: who,
-    status: isGameOver(score_a, score_b, r) ? 'awaiting_confirm' : 'live',
+    status: (isGameOver(score_a, score_b, r) ? 'awaiting_confirm' : 'live') as Match['status'],
   }
 }
 
-/** Roll back to a known previous score (from the point-event log).
- *  prevScorer is the team that won the point BEFORE the one being undone
- *  (null if undoing the very first point) — pass it when known so the
- *  serve indicator rolls back accurately; omit it for a purely optimistic
- *  local update that a server round-trip will immediately correct. */
+/** Rally scoring ('winner' mode) — every rally scores, winner serves next. */
+function applyRallyPoint(m: Match, who: 'a' | 'b', r: Rules): Match {
+  const score_a = m.score_a + (who === 'a' ? 1 : 0)
+  const score_b = m.score_b + (who === 'b' ? 1 : 0)
+  return {
+    ...m, score_a, score_b,
+    last_scorer: who,
+    ...withSwitchAndStatus(m, score_a, score_b, r),
+  }
+}
+
+/** Real doubles side-out scoring ('alternate'/"Serve" mode). `winner` is
+ *  whichever side won the rally — the referee always taps the winning side,
+ *  same gesture as rally scoring, but a point only lands if that side was
+ *  serving. */
+function applySideOutPoint(m: Match, winner: 'a' | 'b', r: Rules): Match {
+  const serving = m.serving_team ?? m.initial_server ?? 'a'
+  // official first-service-of-the-game exception: only one server, not two
+  const serverNo = m.server_no ?? 2
+
+  if (winner === serving) {
+    const score_a = m.score_a + (winner === 'a' ? 1 : 0)
+    const score_b = m.score_b + (winner === 'b' ? 1 : 0)
+    return {
+      ...m, score_a, score_b,
+      serving_team: serving, server_no: serverNo,
+      ...withSwitchAndStatus(m, score_a, score_b, r),
+    }
+  }
+
+  // serving side lost the rally — no point scored (side-out scoring).
+  if (serverNo === 1) {
+    // first fault: serve passes to the partner, same team, second server up
+    return { ...m, serving_team: serving, server_no: 2 }
+  }
+  // second fault: side-out — the other team takes serve, starting at server 1
+  return { ...m, serving_team: other(serving), server_no: 1 }
+}
+
+/** Apply one point/rally to a physical side. Returns the next match state. */
+export function applyPoint(m: Match, side: 'left' | 'right', r: Rules): Match {
+  const who = teamForSide(m, side)
+  return r.serve_mode === 'alternate' ? applySideOutPoint(m, who, r) : applyRallyPoint(m, who, r)
+}
+
+export interface UndoState {
+  last_scorer?: 'a' | 'b' | null
+  serving_team?: 'a' | 'b' | null
+  server_no?: 1 | 2 | null
+}
+
+/** Roll back to a known previous score (from the point-event log). `prev`
+ *  carries whichever serve-tracking fields applied under the active mode,
+ *  read from the point-events row before the one being undone (or omitted
+ *  entirely when undoing the very first rally, or for a purely optimistic
+ *  local update that a server round-trip will immediately correct). */
 export function applyUndo(
-  m: Match, prevA: number, prevB: number, r: Rules, prevScorer: 'a' | 'b' | null = null,
+  m: Match, prevA: number, prevB: number, r: Rules, prev: UndoState = {},
 ): Match {
   const hi = Math.max(prevA, prevB)
   const unSwitch = r.switch_at > 0 && m.sides_switched && hi < r.switch_at
@@ -63,19 +118,24 @@ export function applyUndo(
     score_a: prevA, score_b: prevB,
     a_on_left: unSwitch ? !m.a_on_left : m.a_on_left,
     sides_switched: m.sides_switched && r.switch_at > 0 && hi >= r.switch_at,
-    last_scorer: prevScorer,
+    last_scorer: prev.last_scorer ?? null,
+    serving_team: prev.serving_team ?? null,
+    server_no: prev.server_no ?? null,
     status: 'live',
   }
 }
 
+/** Referee's pick of who serves first — only meaningful before any point
+ *  has been played. Feeds both modes: seeds the display in 'winner' mode,
+ *  and seeds the real first-service-of-the-game exception in 'alternate'. */
+export function setFirstServer(m: Match, team: 'a' | 'b'): Match {
+  return { ...m, initial_server: team }
+}
+
 /** Which team serves next, given the configured serve mode. */
 export function serverTeam(m: Match, mode: ServeMode): 'a' | 'b' {
-  if (mode === 'alternate') {
-    // service swaps sides every 2 total points, regardless of who scores
-    const total = m.score_a + m.score_b
-    return Math.floor(total / 2) % 2 === 0 ? 'a' : 'b'
-  }
-  return m.last_scorer ?? 'a'
+  if (mode === 'alternate') return m.serving_team ?? m.initial_server ?? 'a'
+  return m.last_scorer ?? m.initial_server ?? 'a'
 }
 
 /** Which physical side (left/right) serves next. */

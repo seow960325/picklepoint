@@ -3,7 +3,7 @@
  *  open tab, so the live board in one tab and six "court devices" in others
  *  behave exactly like separate phones. */
 import type { Bundle, Match, PointEvent, Team } from './types'
-import { applyPoint, applyUndo, rulesOf } from './scoring'
+import { applyPoint, applyUndo, rulesOf, setFirstServer, teamForSide } from './scoring'
 import type { DraftKoMatch, DraftMatch, DraftTeam } from './draw'
 
 const KEY = 'pp.demo.v2'
@@ -356,10 +356,15 @@ export const demo = {
     const next = applyPoint(
       { ...m, started_at: m.started_at ?? new Date().toISOString() }, side, rulesOf(ev))
     s.bundle.matches[i] = next
+    // team_id is the RALLY WINNER (not necessarily who scored — under
+    // side-out scoring the receiving side can win the rally with no point).
+    const winner = teamForSide(m, side)
     s.events.push({
       id: uid(), match_id: matchId,
-      team_id: next.score_a > m.score_a ? m.team_a_id : m.team_b_id,
+      team_id: winner === 'a' ? m.team_a_id : m.team_b_id,
       score_a_after: next.score_a, score_b_after: next.score_b,
+      serving_team_after: next.serving_team ?? null,
+      server_no_after: next.server_no ?? null,
       created_at: new Date().toISOString(),
       ...({ client_event_id: clientEventId } as any),
     })
@@ -377,9 +382,24 @@ export const demo = {
     const rest = s.events.filter(e => e.match_id === matchId)
     const prev = rest[rest.length - 1]
     const ev = s.bundle.events.find(e => e.id === m.event_id)!
-    const prevScorer: 'a' | 'b' | null = !prev ? null
+    const prevWinner: 'a' | 'b' | null = !prev ? null
       : prev.team_id === m.team_a_id ? 'a' : prev.team_id === m.team_b_id ? 'b' : null
-    const next = applyUndo(m, prev?.score_a_after ?? 0, prev?.score_b_after ?? 0, rulesOf(ev), prevScorer)
+    const next = applyUndo(m, prev?.score_a_after ?? 0, prev?.score_b_after ?? 0, rulesOf(ev), {
+      last_scorer: prevWinner,
+      serving_team: prev?.serving_team_after ?? null,
+      server_no: prev?.server_no_after ?? null,
+    })
+    s.bundle.matches[i] = next
+    save(s)
+    return next
+  },
+
+  setFirstServer(matchId: string, side: 'left' | 'right'): Match {
+    const s = load()
+    const i = s.bundle.matches.findIndex(m => m.id === matchId)
+    const m = s.bundle.matches[i]
+    if (m.score_a !== 0 || m.score_b !== 0) return m   // match already started
+    const next = setFirstServer(m, teamForSide(m, side))
     s.bundle.matches[i] = next
     save(s)
     return next
@@ -494,7 +514,8 @@ export const demo = {
       if (x.id !== m.id && x.court_id === m.court_id && x.status === 'live') x.status = 'scheduled'
     })
     const next: Match = {
-      ...m, score_a: 0, score_b: 0, a_on_left: true, sides_switched: false, last_scorer: null,
+      ...m, score_a: 0, score_b: 0, a_on_left: true, sides_switched: false,
+      last_scorer: null, initial_server: null, serving_team: null, server_no: null,
       status: 'live', winner_id: null, started_at: null, finished_at: null, duration_seconds: null,
     }
     s.bundle.matches[i] = next

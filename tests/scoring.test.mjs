@@ -9,38 +9,65 @@ const isGameOver = (a, b, r) => {
   return (hi >= r.target_score && hi - lo >= r.win_by) || hi >= r.cap
 }
 const teamForSide = (m, side) => ((side === 'left') === m.a_on_left ? 'a' : 'b')
-const applyPoint = (m, side, r) => {
-  const who = teamForSide(m, side)
-  const score_a = m.score_a + (who === 'a' ? 1 : 0)
-  const score_b = m.score_b + (who === 'b' ? 1 : 0)
+const other = t => (t === 'a' ? 'b' : 'a')
+
+const withSwitchAndStatus = (m, score_a, score_b, r) => {
   const hi = Math.max(score_a, score_b)
-  // switch_at <= 0 means end-switching is turned off entirely.
   const doSwitch = r.switch_at > 0 && !m.sides_switched && hi >= r.switch_at
   return {
-    ...m, score_a, score_b,
     a_on_left: doSwitch ? !m.a_on_left : m.a_on_left,
     sides_switched: doSwitch || m.sides_switched,
-    last_scorer: who,
     status: isGameOver(score_a, score_b, r) ? 'awaiting_confirm' : 'live',
   }
 }
-const applyUndo = (m, prevA, prevB, r, prevScorer = null) => {
+
+const applyRallyPoint = (m, who, r) => {
+  const score_a = m.score_a + (who === 'a' ? 1 : 0)
+  const score_b = m.score_b + (who === 'b' ? 1 : 0)
+  return { ...m, score_a, score_b, last_scorer: who, ...withSwitchAndStatus(m, score_a, score_b, r) }
+}
+
+// Real doubles side-out scoring ('alternate'/"Serve" mode). `winner` is
+// whichever side won the rally — only a point if that side was serving.
+const applySideOutPoint = (m, winner, r) => {
+  const serving = m.serving_team ?? m.initial_server ?? 'a'
+  const serverNo = m.server_no ?? 2   // first-service-of-the-game exception
+  if (winner === serving) {
+    const score_a = m.score_a + (winner === 'a' ? 1 : 0)
+    const score_b = m.score_b + (winner === 'b' ? 1 : 0)
+    return {
+      ...m, score_a, score_b, serving_team: serving, server_no: serverNo,
+      ...withSwitchAndStatus(m, score_a, score_b, r),
+    }
+  }
+  if (serverNo === 1) return { ...m, serving_team: serving, server_no: 2 }
+  return { ...m, serving_team: other(serving), server_no: 1 }
+}
+
+const applyPoint = (m, side, r) => {
+  const who = teamForSide(m, side)
+  return r.serve_mode === 'alternate' ? applySideOutPoint(m, who, r) : applyRallyPoint(m, who, r)
+}
+
+const applyUndo = (m, prevA, prevB, r, prev = {}) => {
   const hi = Math.max(prevA, prevB)
   const unSwitch = r.switch_at > 0 && m.sides_switched && hi < r.switch_at
   return {
     ...m, score_a: prevA, score_b: prevB,
     a_on_left: unSwitch ? !m.a_on_left : m.a_on_left,
     sides_switched: m.sides_switched && r.switch_at > 0 && hi >= r.switch_at,
-    last_scorer: prevScorer,
+    last_scorer: prev.last_scorer ?? null,
+    serving_team: prev.serving_team ?? null,
+    server_no: prev.server_no ?? null,
     status: 'live',
   }
 }
+
+const setFirstServer = (m, team) => ({ ...m, initial_server: team })
+
 const serverTeam = (m, mode) => {
-  if (mode === 'alternate') {
-    const total = m.score_a + m.score_b
-    return Math.floor(total / 2) % 2 === 0 ? 'a' : 'b'
-  }
-  return m.last_scorer ?? 'a'
+  if (mode === 'alternate') return m.serving_team ?? m.initial_server ?? 'a'
+  return m.last_scorer ?? m.initial_server ?? 'a'
 }
 const servingSide = (m, mode) => ((serverTeam(m, mode) === 'a') === m.a_on_left ? 'left' : 'right')
 
@@ -157,7 +184,7 @@ test('switch_at = 0 means end-switching is off — sides never flip', () => {
   assert.equal(m.sides_switched, false)
 })
 
-// -------------------------------------------------------- serve mode
+// ---------------------------------------------------- serve mode: winner
 
 test('winner mode: whoever wins the point serves next', () => {
   let m = fresh()
@@ -175,23 +202,73 @@ test('winner mode follows the team across a switched end', () => {
   assert.equal(servingSide(m, 'winner'), 'right', 'server (team A) followed to the right')
 })
 
-test('alternate mode swaps serve every 2 total points, ignoring the winner', () => {
-  let m = fresh()
-  assert.equal(serverTeam(m, 'alternate'), 'a', '0 total points — team A serves')
-  m = tapRight(m)                       // team B scores, total = 1
-  assert.equal(serverTeam(m, 'alternate'), 'a', 'still team A until 2 total points')
-  m = tapRight(m)                       // total = 2
-  assert.equal(serverTeam(m, 'alternate'), 'b', 'swapped to team B at 2 total points')
-  m = tapLeft(m)                        // team A scores, total = 3 — irrelevant to alternate mode
-  assert.equal(serverTeam(m, 'alternate'), 'b', 'winner of the point does not matter in alternate mode')
-  m = tapLeft(m)                        // total = 4
-  assert.equal(serverTeam(m, 'alternate'), 'a', 'swapped back at 4 total points')
-})
-
 test('undo restores the previous server in winner mode', () => {
   let m = tapLeft(fresh())              // A serves next
   m = tapRight(m)                       // B serves next
   assert.equal(servingSide(m, 'winner'), 'right')
-  m = applyUndo(m, 1, 0, R, 'a')        // back to after the first point (A scored)
+  m = applyUndo(m, 1, 0, R, { last_scorer: 'a' })   // back to after the first point (A scored)
   assert.equal(servingSide(m, 'winner'), 'left', 'server rolled back to A')
+})
+
+// ----------------------------------------- serve mode: real side-out rules
+
+test('side-out: the very first service of the game only gets ONE server', () => {
+  const ALT = { ...R, serve_mode: 'alternate' }
+  let m = fresh()                       // team A serves first by default, server_no defaults to 2
+  assert.equal(serverTeam(m, 'alternate'), 'a')
+  m = applyPoint(m, 'right', ALT)        // team B wins the rally (a fault for A)
+  assert.deepEqual([m.score_a, m.score_b], [0, 0], 'no point — the receiving side never scores')
+  assert.equal(m.serving_team, 'b', 'a single fault on the opening serve is already a side-out')
+  assert.equal(m.server_no, 1)
+})
+
+test('side-out: every other service turn gets TWO servers before side-out', () => {
+  const ALT = { ...R, serve_mode: 'alternate' }
+  let m = { ...fresh(), serving_team: 'a', server_no: 1 }   // team A's turn, first server up
+  m = applyPoint(m, 'right', ALT)        // team B wins — 1st fault, partner's turn, still team A
+  assert.equal(m.serving_team, 'a')
+  assert.equal(m.server_no, 2)
+  assert.deepEqual([m.score_a, m.score_b], [0, 0])
+
+  m = applyPoint(m, 'right', ALT)        // team B wins again — 2nd fault, side-out to B
+  assert.equal(m.serving_team, 'b')
+  assert.equal(m.server_no, 1)
+  assert.deepEqual([m.score_a, m.score_b], [0, 0], 'still no score — side-out scores nothing')
+})
+
+test('side-out: the serving team scores every rally it wins and keeps serving', () => {
+  const ALT = { ...R, serve_mode: 'alternate' }
+  let m = { ...fresh(), serving_team: 'a', server_no: 1 }
+  m = applyPoint(m, 'left', ALT)         // team A (serving) wins
+  m = applyPoint(m, 'left', ALT)
+  m = applyPoint(m, 'left', ALT)
+  assert.deepEqual([m.score_a, m.score_b], [3, 0])
+  assert.equal(m.serving_team, 'a', 'still serving — winning while serving never passes the serve')
+  assert.equal(m.server_no, 1)
+})
+
+test('side-out: the receiving team never scores, no matter who the referee taps', () => {
+  const ALT = { ...R, serve_mode: 'alternate' }
+  let m = { ...fresh(), serving_team: 'b', server_no: 2 }   // B serving, on their 2nd server
+  m = applyPoint(m, 'left', ALT)         // team A (receiving) wins the rally
+  assert.deepEqual([m.score_a, m.score_b], [0, 0], 'A won the rally but was not serving — no point')
+  assert.equal(m.serving_team, 'a', 'side-out: B had already used both servers')
+  assert.equal(m.server_no, 1)
+})
+
+test('side-out: referee picks who serves first, seeding the opening exception', () => {
+  let m = setFirstServer(fresh(), 'b')
+  assert.equal(serverTeam(m, 'alternate'), 'b')
+  assert.equal(serverTeam(m, 'winner'), 'b', 'also seeds the display in winner mode')
+})
+
+test('side-out: undo restores the exact prior server state', () => {
+  const ALT = { ...R, serve_mode: 'alternate' }
+  let m = { ...fresh(), serving_team: 'a', server_no: 1 }
+  const beforeFault = { last_scorer: null, serving_team: 'a', server_no: 1 }
+  m = applyPoint(m, 'right', ALT)        // fault — team A now on server 2
+  assert.equal(m.server_no, 2)
+  m = applyUndo(m, 0, 0, R, beforeFault)
+  assert.equal(m.serving_team, 'a')
+  assert.equal(m.server_no, 1, 'server count rolled back too, not just the score')
 })

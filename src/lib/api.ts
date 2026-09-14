@@ -87,6 +87,15 @@ export async function flipSides(matchId: string, token: string): Promise<Match> 
   return rpc<Match>('flip_sides', { p_match_id: matchId, p_token: token })
 }
 
+/** Referee picks who serves first — only takes effect before any point has
+ *  been played on the match; a no-op once the score has moved off 0-0. */
+export async function setFirstServer(
+  matchId: string, side: 'left' | 'right', token: string,
+): Promise<Match> {
+  if (IS_DEMO) return demo.setFirstServer(matchId, side)
+  return rpc<Match>('set_first_server', { p_match_id: matchId, p_side: side, p_token: token })
+}
+
 export async function callTimeout(
   matchId: string, side: 'left' | 'right', token: string,
 ): Promise<void> {
