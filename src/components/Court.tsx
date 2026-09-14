@@ -17,6 +17,9 @@ export interface CourtProps {
   onTap: (side: 'left' | 'right') => void
   disabled?: boolean
   serving?: 'left' | 'right' | null
+  /** Which server (1st or 2nd) is up, for side-out/"Serve" mode only —
+   *  pass null/undefined in Winner mode where it has no meaning. */
+  serverNo?: 1 | 2 | null
   leftFlag?: string | null
   rightFlag?: string | null
   leftLogo?: string | null
@@ -30,7 +33,7 @@ const clip = (n: string, max = 17) =>
 /** Small pickleball glyph — a ball with holes — marking who serves next.
  *  Neon green, with a pulsing/growing ring so it reads at a glance from
  *  across the court. */
-function PickleballGlyph({ cx, cy, r = 9 }: { cx: number; cy: number; r?: number }) {
+function PickleballGlyph({ cx, cy, r = 9, serverNo }: { cx: number; cy: number; r?: number; serverNo?: 1 | 2 | null }) {
   const BALL = '#c6ff3d' // neon green — swap to '#f7d774' for gold instead
   const holes = [
     [-0.32, -0.55], [0.48, -0.35], [-0.58, 0.15],
@@ -48,22 +51,40 @@ function PickleballGlyph({ cx, cy, r = 9 }: { cx: number; cy: number; r?: number
       {holes.map(([dx, dy], i) => (
         <circle key={i} cx={cx + dx * r} cy={cy + dy * r} r={r * 0.16} fill="#0a0e17" opacity="0.6" />
       ))}
+      {/* server number (side-out mode only) — small badge to the right of the ball */}
+      {(serverNo === 1 || serverNo === 2) && (
+        <g>
+          <circle cx={cx + r + 8} cy={cy} r={7} fill="#0a0e17" stroke={BALL} strokeWidth="1.5" />
+          <text x={cx + r + 8} y={cy} textAnchor="middle" dominantBaseline="central"
+            fill={BALL} fontSize="10" fontWeight="700" fontFamily="'Barlow Condensed', Impact, sans-serif">
+            {serverNo}
+          </text>
+        </g>
+      )}
     </g>
   )
 }
 
 export default function Court({
-  leftName, rightName, leftScore, rightScore, onTap, disabled, serving,
+  leftName, rightName, leftScore, rightScore, onTap, disabled, serving, serverNo,
   leftFlag, rightFlag, leftLogo, rightLogo, label,
 }: CourtProps) {
   const [down, setDown] = useState<'left' | 'right' | null>(null)
+  // Tap acknowledgement — flashes the tapped half on every tap, even when the
+  // score doesn't move (side-out mode: a fault or the receiving team getting
+  // tapped by mistake), so the ref always sees "that tap counted".
+  const [flash, setFlash] = useState<{ side: 'left' | 'right'; key: number } | null>(null)
 
   const half = (side: 'left' | 'right') => ({
     onPointerDown: () => !disabled && setDown(side),
     onPointerUp: () => setDown(null),
     onPointerLeave: () => setDown(null),
     onPointerCancel: () => setDown(null),
-    onClick: () => !disabled && onTap(side),
+    onClick: () => {
+      if (disabled) return
+      setFlash(f => ({ side, key: (f?.key ?? 0) + 1 }))
+      onTap(side)
+    },
     style: { cursor: disabled ? 'default' : 'pointer' } as const,
   })
 
@@ -137,7 +158,14 @@ export default function Court({
               fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />
           </>
         )}
-        {serving === 'left' && <PickleballGlyph cx={CXL} cy={MIDY + R + 17} r={9} />}
+        {serving === 'left' && <PickleballGlyph cx={CXL} cy={MIDY + R + 17} r={9} serverNo={serverNo} />}
+        {flash?.side === 'left' && (
+          <circle key={`flash-left-${flash.key}`} cx={CXL} cy={MIDY} r={R + 10}
+            fill="none" stroke="#ffffff" strokeWidth="5">
+            <animate attributeName="opacity" values="0.9;0" dur="0.35s" fill="freeze" />
+            <animate attributeName="r" values={`${R};${R + 16}`} dur="0.35s" fill="freeze" />
+          </circle>
+        )}
 
         {/* tap zone — only the number circle (plus a bit of padding) counts */}
         <circle {...half('left')} cx={CXL} cy={MIDY} r={R + 24} fill="transparent"
@@ -169,7 +197,14 @@ export default function Court({
               fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />
           </>
         )}
-        {serving === 'right' && <PickleballGlyph cx={CXR} cy={MIDY + R + 17} r={9} />}
+        {serving === 'right' && <PickleballGlyph cx={CXR} cy={MIDY + R + 17} r={9} serverNo={serverNo} />}
+        {flash?.side === 'right' && (
+          <circle key={`flash-right-${flash.key}`} cx={CXR} cy={MIDY} r={R + 10}
+            fill="none" stroke="#ffffff" strokeWidth="5">
+            <animate attributeName="opacity" values="0.9;0" dur="0.35s" fill="freeze" />
+            <animate attributeName="r" values={`${R};${R + 16}`} dur="0.35s" fill="freeze" />
+          </circle>
+        )}
 
         {/* tap zone — only the number circle (plus a bit of padding) counts */}
         <circle {...half('right')} cx={CXR} cy={MIDY} r={R + 24} fill="transparent"

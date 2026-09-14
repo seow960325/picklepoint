@@ -14,7 +14,7 @@ import {
 } from '../lib/scoring'
 import { defaultSwitchAt, validateRules } from '../lib/draw'
 import type { Match, ServeMode } from '../lib/types'
-import { tapPoint, tapUndo, hornEnd, chimeSwitch, isSoundOn, setSoundOn } from '../lib/feedback'
+import { tapPoint, tapFault, tapUndo, hornEnd, chimeSwitch, isSoundOn, setSoundOn } from '../lib/feedback'
 import { useWakeLockEffect } from '../lib/wakelock'
 import { useLandscape } from '../lib/orientation'
 
@@ -150,7 +150,8 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
       server_no: before.server_no ?? null,
     }])
     setM(next)
-    tapPoint()
+    const scored = next.score_a !== before.score_a || next.score_b !== before.score_b
+    scored ? tapPoint() : tapFault()
     if (next.sides_switched && !before.sides_switched) { setShowSwitch(true); chimeSwitch() }
     if (next.status === 'awaiting_confirm') hornEnd()
   }
@@ -193,6 +194,7 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
 
   const done = m.status === 'awaiting_confirm' || isGameOver(m.score_a, m.score_b, rules)
   const serving = done ? null : servingSide(m, rules.serve_mode)
+  const serverNo = rules.serve_mode === 'alternate' && !done ? (m.server_no ?? 1) : null
   const notStarted = !done && m.score_a === 0 && m.score_b === 0
   const hi = Math.max(m.score_a, m.score_b), lo = Math.min(m.score_a, m.score_b)
   const matchPoint = !done && hi >= rules.target_score - 1 && hi - lo >= rules.win_by - 1
@@ -263,7 +265,7 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
           {isPortrait ? (
             <div className="relative w-full" style={{ maxHeight: '100%', aspectRatio: '2' }}>
               <Court leftName={leftName} rightName={rightName} leftScore={s.left} rightScore={s.right}
-                serving={serving} onTap={score} disabled={done} />
+                serving={serving} serverNo={serverNo} onTap={score} disabled={done} />
               <button onClick={swap}
                 className="absolute left-1/2 -bottom-7 -translate-x-1/2 rounded-lg border border-line bg-surface/90 px-3 py-1 font-display text-xs font-bold tracking-wide text-fg-muted active:scale-95">
                 ⇄ SWAP
@@ -272,7 +274,7 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
           ) : (
             <>
               <Court leftName={leftName} rightName={rightName} leftScore={s.left} rightScore={s.right}
-                serving={serving} onTap={score} disabled={done} />
+                serving={serving} serverNo={serverNo} onTap={score} disabled={done} />
               <button onClick={swap}
                 className="absolute left-1/2 top-0.5 -translate-x-1/2 rounded-lg border border-line bg-surface/90 px-3 py-1 font-display text-xs font-bold tracking-wide text-fg-muted active:scale-95">
                 ⇄ SWAP

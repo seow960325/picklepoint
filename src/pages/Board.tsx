@@ -289,7 +289,9 @@ function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
   }
   const leftTeamId = m.a_on_left ? m.team_a_id : m.team_b_id
   const rightTeamId = m.a_on_left ? m.team_b_id : m.team_a_id
-  const serving = m.status === 'live' ? servingSide(m, rulesOf(ev).serve_mode) : null
+  const rules = rulesOf(ev)
+  const serving = m.status === 'live' ? servingSide(m, rules.serve_mode) : null
+  const serverNo = rules.serve_mode === 'alternate' && m.status === 'live' ? (m.server_no ?? 1) : null
   return (
     <div className="aspect-[2/1] lg:aspect-[7/4]">
       <Court
@@ -300,6 +302,7 @@ function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
         leftLogo={teamLogo(b, leftTeamId)} rightLogo={teamLogo(b, rightTeamId)}
         label={m.bracket_key ? (m.round ?? undefined) : undefined}
         serving={serving}
+        serverNo={serverNo}
         onTap={() => {}} disabled
       />
     </div>

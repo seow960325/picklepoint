@@ -7,7 +7,7 @@ import * as api from '../lib/api'
 import { enqueue, flush, pending, stalledCount, retryStalled, lastQueueError } from '../lib/queue'
 import { useWakeLockEffect } from '../lib/wakelock'
 import { useLandscape } from '../lib/orientation'
-import { tapPoint, tapUndo, hornEnd, chimeSwitch, isSoundOn, setSoundOn } from '../lib/feedback'
+import { tapPoint, tapFault, tapUndo, hornEnd, chimeSwitch, isSoundOn, setSoundOn } from '../lib/feedback'
 import { Screen, Spinner, FullscreenButton, Flag, Emblem } from '../components/ui'
 import Court from '../components/Court'
 
@@ -266,7 +266,8 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
       server_no: before.server_no ?? null,
     }])
     setM(next)
-    tapPoint()
+    const scored = next.score_a !== before.score_a || next.score_b !== before.score_b
+    scored ? tapPoint() : tapFault()
     if (next.sides_switched && !before.sides_switched) { setShowSwitch(true); chimeSwitch() }
     if (next.status === 'awaiting_confirm') hornEnd()
 
@@ -346,6 +347,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
     .findIndex((x: typeof bundle.matches[number]) => x.id === m.id) + 1
   const done = m.status === 'awaiting_confirm' || isGameOver(m.score_a, m.score_b, rules)
   const serving = done ? null : servingSide(m, rules.serve_mode)
+  const serverNo = rules.serve_mode === 'alternate' && !done ? (m.server_no ?? 1) : null
   const notStarted = !done && m.score_a === 0 && m.score_b === 0
   const hi = Math.max(m.score_a, m.score_b), lo = Math.min(m.score_a, m.score_b)
   const matchPoint = !done && hi >= rules.target_score - 1 && hi - lo >= rules.win_by - 1
@@ -436,6 +438,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 leftLogo={teamLogoOf(leftTeamId)} rightLogo={teamLogoOf(rightTeamId)}
                 label={m.bracket_key ? (m.round ?? undefined) : undefined}
                 serving={serving}
+                serverNo={serverNo}
                 onTap={score} disabled={done}
               />
               <button onClick={swap}
@@ -452,6 +455,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 leftLogo={teamLogoOf(leftTeamId)} rightLogo={teamLogoOf(rightTeamId)}
                 label={m.bracket_key ? (m.round ?? undefined) : undefined}
                 serving={serving}
+                serverNo={serverNo}
                 onTap={score} disabled={done}
               />
               <button onClick={swap}
