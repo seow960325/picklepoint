@@ -27,18 +27,26 @@ export interface CourtProps {
 const clip = (n: string, max = 17) =>
   (n.length > max ? n.slice(0, max - 1).trimEnd() + '…' : n).toUpperCase()
 
-/** Small pickleball glyph — a ball with holes — marking who serves next. */
+/** Small pickleball glyph — a ball with holes — marking who serves next.
+ *  Neon green, with a pulsing/growing ring so it reads at a glance from
+ *  across the court. */
 function PickleballGlyph({ cx, cy, r = 9 }: { cx: number; cy: number; r?: number }) {
+  const BALL = '#c6ff3d' // neon green — swap to '#f7d774' for gold instead
   const holes = [
     [-0.32, -0.55], [0.48, -0.35], [-0.58, 0.15],
     [0.1, 0.6], [0.55, 0.2], [-0.05, -0.05],
   ]
   return (
     <g>
-      <circle cx={cx} cy={cy} r={r + 2} fill="#0a0e17" opacity="0.35" />
-      <circle cx={cx} cy={cy} r={r} fill="#f5f8ff" stroke="#0a0e17" strokeWidth="1.2" />
+      {/* growing pulse ring */}
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={BALL} strokeWidth="2.5">
+        <animate attributeName="r" values={`${r};${r * 2.4};${r}`} dur="1.3s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.85;0;0.85" dur="1.3s" repeatCount="indefinite" />
+      </circle>
+      <circle cx={cx} cy={cy} r={r + 2} fill="#0a0e17" opacity="0.4" />
+      <circle cx={cx} cy={cy} r={r} fill={BALL} stroke="#0a0e17" strokeWidth="1.2" />
       {holes.map(([dx, dy], i) => (
-        <circle key={i} cx={cx + dx * r} cy={cy + dy * r} r={r * 0.16} fill="#0a0e17" opacity="0.55" />
+        <circle key={i} cx={cx + dx * r} cy={cy + dy * r} r={r * 0.16} fill="#0a0e17" opacity="0.6" />
       ))}
     </g>
   )
