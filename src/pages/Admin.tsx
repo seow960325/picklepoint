@@ -301,7 +301,7 @@ function ScoringTab({ ev, token, run }: any) {
       {bad && <Warn>{bad}</Warn>}
       <Field label="Serve mode">
         <Choice value={serveMode} onChange={setServeMode}
-          options={[{ label: 'Winner', value: 'winner' }, { label: 'Serve', value: 'alternate' }]} />
+          options={[{ label: 'Serve', value: 'alternate' }, { label: 'Winner', value: 'winner' }]} />
       </Field>
       <p className="text-xs text-fg-subtle leading-relaxed">
         {serveMode === 'winner'
