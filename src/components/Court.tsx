@@ -30,6 +30,10 @@ export interface CourtProps {
   leftLogo?: string | null
   rightLogo?: string | null
   label?: string | null
+  /** Official "serving-receiving-server#" call (Serve/alternate mode only) —
+   *  the exact string a referee would call out loud. Null/undefined hides it
+   *  (Winner mode, or game over). */
+  callScore?: string | null
 }
 
 const clip = (n: string, max = 17) =>
@@ -79,7 +83,7 @@ const BALL_Y_RIGHT_COURT = 52, BALL_Y_LEFT_COURT = 188 // 'right'/'left' per the
 
 export default function Court({
   leftName, rightName, leftScore, rightScore, onTap, disabled, serving, serverNo, serverCourt,
-  leftFlag, rightFlag, leftLogo, rightLogo, label,
+  leftFlag, rightFlag, leftLogo, rightLogo, label, callScore,
 }: CourtProps) {
   const [down, setDown] = useState<'left' | 'right' | null>(null)
   const ballCy = serverCourt === 'right' ? BALL_Y_RIGHT_COURT
@@ -241,6 +245,19 @@ export default function Court({
             fontFamily="'Barlow Condensed', sans-serif" letterSpacing="2.5">
             {label.toUpperCase()}
           </text>
+        )}
+
+        {/* official score call, e.g. "3-0-2" — bottom center, Serve mode only */}
+        {callScore && (
+          <g>
+            <rect x="196" y="216" width="88" height="20" rx="10" fill="#0a0e17" opacity="0.55" />
+            <text x="240" y="227" textAnchor="middle" dominantBaseline="central"
+              fill="#c6ff3d" fontSize="15" fontWeight="700"
+              fontFamily="'Barlow Condensed', Impact, sans-serif" letterSpacing="1"
+              style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {callScore}
+            </text>
+          </g>
         )}
 
         {/* team names — mounted vertically on the outer sideline, clear of

@@ -10,7 +10,7 @@ import { Screen, FullscreenButton } from '../components/ui'
 import Court from '../components/Court'
 import {
   applyPoint, applyUndo, displayScores, isGameOver, servingSide, serverCourt as serverCourtOf,
-  setFirstServer as setFirstServerPure, type Rules, type UndoState,
+  setFirstServer as setFirstServerPure, scoreCall, type Rules, type UndoState,
 } from '../lib/scoring'
 import { defaultSwitchAt, validateRules } from '../lib/draw'
 import type { Match, ServeMode } from '../lib/types'
@@ -235,6 +235,7 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
   const serving = done ? null : servingSide(m, rules.serve_mode)
   const serverNo = rules.serve_mode === 'alternate' && !done ? (m.server_no ?? 1) : null
   const courtSide = done ? null : serverCourtOf(m, rules.serve_mode)
+  const call = done ? null : scoreCall(m, rules.serve_mode)
   const notStarted = !done && m.score_a === 0 && m.score_b === 0
   const hi = Math.max(m.score_a, m.score_b), lo = Math.min(m.score_a, m.score_b)
   const matchPoint = !done && hi >= rules.target_score - 1 && hi - lo >= rules.win_by - 1
@@ -289,7 +290,7 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
           {isPortrait ? (
             <div className="relative w-full" style={{ maxHeight: '100%', aspectRatio: '2' }}>
               <Court leftName={leftName} rightName={rightName} leftScore={s.left} rightScore={s.right}
-                serving={serving} serverNo={serverNo} serverCourt={courtSide} onTap={score} disabled={done} />
+                serving={serving} serverNo={serverNo} serverCourt={courtSide} callScore={call} onTap={score} disabled={done} />
               <button onClick={swap}
                 className="absolute left-1/2 -bottom-7 -translate-x-1/2 rounded-lg border border-line bg-surface/90 px-3 py-1 font-display text-xs font-bold tracking-wide text-fg-muted active:scale-95">
                 ⇄ SWAP
@@ -298,7 +299,7 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
           ) : (
             <>
               <Court leftName={leftName} rightName={rightName} leftScore={s.left} rightScore={s.right}
-                serving={serving} serverNo={serverNo} serverCourt={courtSide} onTap={score} disabled={done} />
+                serving={serving} serverNo={serverNo} serverCourt={courtSide} callScore={call} onTap={score} disabled={done} />
               <button onClick={swap}
                 className="absolute left-1/2 top-0.5 -translate-x-1/2 rounded-lg border border-line bg-surface/90 px-3 py-1 font-display text-xs font-bold tracking-wide text-fg-muted active:scale-95">
                 ⇄ SWAP

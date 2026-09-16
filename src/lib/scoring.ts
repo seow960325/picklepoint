@@ -155,6 +155,19 @@ export function serverCourt(m: Match, mode: ServeMode): 'right' | 'left' {
   return score % 2 === 0 ? 'right' : 'left'
 }
 
+/** Official score call — "serving score - receiving score - server #",
+ *  the exact three numbers the server states aloud before each serve under
+ *  USA Pickleball's doubles rule. Only meaningful in 'alternate' (Serve)
+ *  mode; null in 'winner' mode where there's no side-out server to call. */
+export function scoreCall(m: Match, mode: ServeMode): string | null {
+  if (mode !== 'alternate') return null
+  const serving = m.serving_team ?? m.initial_server ?? 'a'
+  const servingScore = serving === 'a' ? m.score_a : m.score_b
+  const receivingScore = serving === 'a' ? m.score_b : m.score_a
+  const serverNo = m.server_no ?? 2
+  return `${servingScore}-${receivingScore}-${serverNo}`
+}
+
 /** "9 - 7", always from the left-hand team's point of view. */
 export function displayScores(m: Match): { left: number; right: number } {
   return m.a_on_left

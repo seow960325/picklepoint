@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useCompetition, teamName, liveOnCourt, eventOf } from '../lib/store'
-import { applyPoint, applyUndo, displayScores, isGameOver, rulesOf, servingSide, serverCourt as serverCourtOf, type UndoState } from '../lib/scoring'
+import { applyPoint, applyUndo, displayScores, isGameOver, rulesOf, servingSide, serverCourt as serverCourtOf, scoreCall, type UndoState } from '../lib/scoring'
 import type { Match } from '../lib/types'
 import * as api from '../lib/api'
 import { enqueue, flush, pending, stalledCount, retryStalled, lastQueueError } from '../lib/queue'
@@ -353,6 +353,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
   const serving = done ? null : servingSide(m, rules.serve_mode)
   const serverNo = rules.serve_mode === 'alternate' && !done ? (m.server_no ?? 1) : null
   const courtSide = done ? null : serverCourtOf(m, rules.serve_mode)
+  const call = done ? null : scoreCall(m, rules.serve_mode)
   const notStarted = !done && m.score_a === 0 && m.score_b === 0
   const hi = Math.max(m.score_a, m.score_b), lo = Math.min(m.score_a, m.score_b)
   const matchPoint = !done && hi >= rules.target_score - 1 && hi - lo >= rules.win_by - 1
@@ -429,6 +430,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 serving={serving}
                 serverNo={serverNo}
                 serverCourt={courtSide}
+                callScore={call}
                 onTap={score} disabled={done}
               />
               <button onClick={swap}
@@ -447,6 +449,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 serving={serving}
                 serverNo={serverNo}
                 serverCourt={courtSide}
+                callScore={call}
                 onTap={score} disabled={done}
               />
               <button onClick={swap}
