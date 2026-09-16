@@ -7,3 +7,10 @@ tsconfig.app.tsbuildinfo
 
 vite.config.ts.timestamp-*.mjs
 dist_verify/
+dist_v*/
+dist_verify*/
+_to_delete/
+push.bat
+*.tmp
+*.bin
+Claude outputs/
