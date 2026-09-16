@@ -79,16 +79,29 @@ function PickleballGlyph({ cx, cy, r = 9, serverNo }: { cx: number; cy: number; 
 // corner of each service court — well clear of the (now sideline-mounted,
 // vertical) team name and the top flag/logo badge.
 const BALL_X_LEFT = 30, BALL_X_RIGHT = 450
-const BALL_Y_RIGHT_COURT = 52, BALL_Y_LEFT_COURT = 188 // 'right'/'left' per the serve rule, not screen side
+const BALL_Y_TOP = 52, BALL_Y_BOTTOM = 188
+
+/** serverCourt() gives 'right'/'left' from the SERVER'S OWN baseline
+ *  perspective (per USA Pickleball: right court on even score, left on
+ *  odd) — and that flips which physical screen corner it means depending
+ *  on which baseline is serving, exactly like real service courts mirror
+ *  across the net. A team on the screen-left baseline faces right (toward
+ *  the net); their own right hand points to the bottom corner. A team on
+ *  the screen-right baseline faces left; their own right hand points to
+ *  the top corner. So the same 'right' court is the BOTTOM corner for the
+ *  left-side team but the TOP corner for the right-side team. */
+function ballY(court: 'right' | 'left' | null | undefined, servingSide: 'left' | 'right' | null | undefined) {
+  if (!court) return null
+  const rightIsTop = servingSide === 'right'
+  return court === 'right' ? (rightIsTop ? BALL_Y_TOP : BALL_Y_BOTTOM) : (rightIsTop ? BALL_Y_BOTTOM : BALL_Y_TOP)
+}
 
 export default function Court({
   leftName, rightName, leftScore, rightScore, onTap, disabled, serving, serverNo, serverCourt,
   leftFlag, rightFlag, leftLogo, rightLogo, label, callScore,
 }: CourtProps) {
   const [down, setDown] = useState<'left' | 'right' | null>(null)
-  const ballCy = serverCourt === 'right' ? BALL_Y_RIGHT_COURT
-    : serverCourt === 'left' ? BALL_Y_LEFT_COURT
-    : MIDY + R + 17 // no active server (game over) — old fixed spot below the circle
+  const ballCy = ballY(serverCourt, serving) ?? MIDY + R + 17 // no active server (game over) — old fixed spot below the circle
   // Tap acknowledgement — flashes the tapped half on every tap, even when the
   // score doesn't move (side-out mode: a fault or the receiving team getting
   // tapped by mistake), so the ref always sees "that tap counted".
