@@ -70,7 +70,7 @@ function applyRallyPoint(m: Match, who: 'a' | 'b', r: Rules): Match {
 function applySideOutPoint(m: Match, winner: 'a' | 'b', r: Rules): Match {
   const serving = m.serving_team ?? m.initial_server ?? 'a'
   // official first-service-of-the-game exception: only one server, not two
-  const serverNo = m.server_no ?? 2
+  const serverNo = activeServerNo(m)
 
   if (winner === serving) {
     const score_a = m.score_a + (winner === 'a' ? 1 : 0)
@@ -155,6 +155,15 @@ export function serverCourt(m: Match, mode: ServeMode): 'right' | 'left' {
   return score % 2 === 0 ? 'right' : 'left'
 }
 
+/** The server number (1 or 2) currently up, accounting for the
+ *  game-opening exception — a fresh match (or one just reset) has no
+ *  server_no recorded yet, and that means the opening server, who only
+ *  gets one fault before a side-out. Single source of truth so the score
+ *  call text and the on-court server badge never disagree. */
+export function activeServerNo(m: Match): 1 | 2 {
+  return m.server_no ?? 2
+}
+
 /** Official score call — "serving score - receiving score - server #",
  *  the exact three numbers the server states aloud before each serve under
  *  USA Pickleball's doubles rule. Only meaningful in 'alternate' (Serve)
@@ -164,8 +173,7 @@ export function scoreCall(m: Match, mode: ServeMode): string | null {
   const serving = m.serving_team ?? m.initial_server ?? 'a'
   const servingScore = serving === 'a' ? m.score_a : m.score_b
   const receivingScore = serving === 'a' ? m.score_b : m.score_a
-  const serverNo = m.server_no ?? 2
-  return `${servingScore}-${receivingScore}-${serverNo}`
+  return `${servingScore}-${receivingScore}-${activeServerNo(m)}`
 }
 
 /** "9 - 7", always from the left-hand team's point of view. */

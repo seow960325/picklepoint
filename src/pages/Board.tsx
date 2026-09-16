@@ -4,7 +4,7 @@ import {
   useCompetition, teamName, teamSideName, teamLogo, liveOnCourt, nextOnCourt, onDeck, results, standings,
   eventOf, duelTally, duelPods, groupStandings, bracketRounds, bracketSeeded, isKoMatch,
 } from '../lib/store'
-import { displayScores, rulesOf, servingSide, serverCourt as serverCourtOf, scoreCall } from '../lib/scoring'
+import { displayScores, rulesOf, servingSide, serverCourt as serverCourtOf, scoreCall, activeServerNo } from '../lib/scoring'
 import type { Bundle, EventCfg, Match } from '../lib/types'
 import { Screen, Pill, Spinner, FullscreenButton, Flag, Emblem, ThemeToggle } from '../components/ui'
 import Court from '../components/Court'
@@ -291,7 +291,7 @@ function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
   const rightTeamId = m.a_on_left ? m.team_b_id : m.team_a_id
   const rules = rulesOf(ev)
   const serving = m.status === 'live' ? servingSide(m, rules.serve_mode) : null
-  const serverNo = rules.serve_mode === 'alternate' && m.status === 'live' ? (m.server_no ?? 1) : null
+  const serverNo = rules.serve_mode === 'alternate' && m.status === 'live' ? activeServerNo(m) : null
   const courtSide = m.status === 'live' ? serverCourtOf(m, rules.serve_mode) : null
   const call = m.status === 'live' ? scoreCall(m, rules.serve_mode) : null
   return (
