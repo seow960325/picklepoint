@@ -322,7 +322,8 @@ export default function NewCompetition() {
                   : ' End-switching is off — teams stay on the same side for the whole game.'}
               </p>
               <Field label="Serve mode">
-                <Choice value={serveMode} onChange={setServeMode}
+                <Choice value={serveMode}
+                  onChange={v => { setServeMode(v); if (v === 'alternate') applyPreset(11) }}
                   options={[{ label: 'Winner', value: 'winner' }, { label: 'Serve', value: 'alternate' }]} />
               </Field>
               <p className="text-xs text-fg-subtle leading-relaxed">

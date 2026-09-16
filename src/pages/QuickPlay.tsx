@@ -126,7 +126,8 @@ export default function QuickPlay() {
             {ruleError && <Warn>{ruleError}</Warn>}
 
             <Field label="Serve mode">
-              <Choice value={serveMode} onChange={setServeMode}
+              <Choice value={serveMode}
+                onChange={v => { setServeMode(v); if (v === 'alternate') applyPreset(11) }}
                 options={[{ label: 'Serve', value: 'alternate' }, { label: 'Winner', value: 'winner' }]} />
             </Field>
             <p className="text-xs text-fg-subtle leading-relaxed">
