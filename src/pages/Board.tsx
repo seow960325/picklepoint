@@ -239,6 +239,7 @@ function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
               <div className="mb-1.5 flex items-center justify-between lg:mb-2">
                 <span className="font-display text-sm font-bold tracking-widest text-fg-muted lg:text-base">
                   {b.competition.multi_sport && ct.label ? ct.label.toUpperCase() : `COURT ${ct.number}`}
+                  {b.competition.multi_sport && ct.game_group ? ` · ${ct.game_group}` : ''}
                 </span>
                 {m ? <Pill tone="live">● live</Pill> : <Pill>open</Pill>}
               </div>

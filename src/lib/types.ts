@@ -27,7 +27,9 @@ export interface EventCfg {
   third_place?: boolean | null
   bracket_seeded_at?: string | null
 }
-export interface Court { id: string; number: number; label: string | null; sport?: 'pickleball' | 'badminton' }
+export interface Court { id: string; number: number; label: string | null; sport?: 'pickleball' | 'badminton'
+  // multi-sport only: which game type (MD1 / MD2 / XD) this court hosts; null = any
+  game_group?: string | null }
 export interface Team {
   id: string; event_id: string; name: string
   player1: string | null; player2: string | null; pool: string | null

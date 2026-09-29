@@ -159,7 +159,7 @@ export function TieScheduleTab({ bundle, ev, token, run }: any) {
   const preview = teams.length >= 2 && courts.length >= 1
     ? buildTieDraw(
         teams.map((t: any) => ({ name: t.name, pool: t.pool ?? 'A', roster: t.roster ?? 6 })),
-        courts.length)
+        courts.map((c: any) => c.game_group ?? null))
     : []
   const ties = new Set(preview.map(p => p.tie)).size
 
@@ -223,6 +223,62 @@ export function TieScheduleTab({ bundle, ev, token, run }: any) {
           )
         })}
       </div>
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------ courts
+const GROUPS = ['MD1', 'MD2', 'XD'] as const
+const GROUP_HINT: Record<string, string> = {
+  MD1: 'Men\'s doubles 1 (also the single MD of a 4-player tie)',
+  MD2: 'Men\'s doubles 2',
+  XD: 'Mixed doubles',
+}
+
+/** How many courts each game type gets, per sport. Multi-sport competitions only. */
+export function SportCourts({ bundle, token, run, sport, onApplied }: any) {
+  const mine = bundle.courts.filter((c: any) => sportOf(c) === sport)
+  const initial = () => {
+    const tagged = GROUPS.map(g => mine.filter((c: any) => c.game_group === g).length)
+    if (tagged.some(n => n > 0)) return tagged
+    // untagged courts: spread them evenly over the three game types
+    const base = Math.floor(mine.length / 3), extra = mine.length % 3
+    return GROUPS.map((_, i) => base + (i < extra ? 1 : 0))
+  }
+  const [plan, setPlan] = useState<number[]>(initial)
+  const total = plan.reduce((a, b) => a + b, 0)
+  const played = bundle.matches.some((m: any) =>
+    bundle.events.some((e: any) => e.id === m.event_id && sportOf(e) === sport) &&
+    (m.status === 'finished' || m.score_a > 0 || m.score_b > 0))
+
+  return (
+    <div className="space-y-3 rounded-xl border border-line bg-surface p-4">
+      <div className="font-display text-lg font-bold tracking-wide">
+        {SPORT_ICON[sport as Sport]} {SPORT_LABEL[sport as Sport]} — courts per game
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {GROUPS.map((g, i) => (
+          <Field key={g} label={g}>
+            <Stepper value={plan[i]} min={0} max={12}
+              onChange={v => setPlan(p => p.map((x, j) => (j === i ? v : x)))} />
+            <div className="mt-1 text-[11px] leading-snug text-fg-subtle">{GROUP_HINT[g]}</div>
+          </Field>
+        ))}
+      </div>
+      <div className="text-xs text-fg-muted">
+        Total {total} court{total === 1 ? '' : 's'} (currently {mine.length}).
+        Applying clears this sport's unplayed schedule — press Regenerate schedule afterwards.
+      </div>
+      {played && <Warn>Games have already been played, so the courts are locked.</Warn>}
+      <button disabled={total < 1 || played}
+        onClick={() => run(async () => {
+          await api.adminSetSportCourts(token, sport,
+            { MD1: plan[0], MD2: plan[1], XD: plan[2] })
+          onApplied?.()
+        }, `${SPORT_LABEL[sport as Sport]} courts updated — now regenerate its schedule`)}
+        className="rounded-xl bg-brand px-6 py-2.5 font-display font-bold text-brand-fg disabled:opacity-30">
+        APPLY COURTS
+      </button>
     </div>
   )
 }

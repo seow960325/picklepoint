@@ -14,7 +14,8 @@ import { Screen, Spinner, ThemeToggle, Emblem } from '../components/ui'
 import { Flag } from '../components/ui'
 import { Field, Stepper, Choice, Warn, input, inputFull } from '../components/form'
 import { resizeImage } from '../lib/image'
-import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle } from './MultiSportAdmin'
+import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts } from './MultiSportAdmin'
+import { sportsPresent } from '../lib/multisport'
 
 const TOKEN_TTL_MS = 4 * 60 * 60 * 1000
 const tokKey = (code: string) => `pp.admin.${code}`
@@ -484,9 +485,13 @@ function CourtsTab({ bundle, token, run, secrets, refreshSecrets }: any) {
   return (
     <div className="max-w-xl space-y-4">
       <H>Courts</H>
+      {bundle.competition.multi_sport && sportsPresent(bundle).map(s => (
+        <SportCourts key={`${s}-${bundle.courts.filter((c: any) => (c.sport ?? 'pickleball') === s).map((c: any) => c.id + c.game_group).join()}`}
+          bundle={bundle} token={token} run={run} sport={s} />
+      ))}
       <div className="space-y-2">
         {bundle.courts.map((c: any) => (
-          <CourtRow key={c.id} c={c} token={token} run={run}
+          <CourtRow key={c.id} c={c} token={token} run={run} multi={!!bundle.competition.multi_sport}
             pin={secrets?.courts.find((x: any) => x.id === c.id)?.scorer_pin ?? ''}
             after={refreshSecrets} />
         ))}
@@ -499,12 +504,15 @@ function CourtsTab({ bundle, token, run, secrets, refreshSecrets }: any) {
   )
 }
 
-function CourtRow({ c, token, run, pin, after }: any) {
+function CourtRow({ c, token, run, pin, after, multi }: any) {
   const [v, setV] = useState(pin)
   useEffect(() => setV(pin), [pin])
   return (
     <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3">
-      <div className="w-24 font-display text-lg font-bold text-fg-muted">COURT {c.number}</div>
+      <div className="w-24 font-display text-lg font-bold text-fg-muted">
+        {multi && c.label ? c.label.toUpperCase() : `COURT ${c.number}`}
+        {multi && c.game_group && <div className="text-[11px] font-semibold tracking-wider text-accent">{c.game_group}</div>}
+      </div>
       <input className={`${input} tabular w-24 text-center`} value={v} maxLength={4} inputMode="numeric"
         onChange={e => setV(e.target.value.replace(/\D/g, '').slice(0, 4))} />
       <button disabled={v === pin || v.length !== 4}

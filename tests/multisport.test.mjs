@@ -78,3 +78,27 @@ test('table order: points, then tie wins, then game diff', () => {
   const order = tieStandings(bundle(teams, ms), 'e').A.map(r => r.team.id)
   assert.deepEqual(order, ['a', 'b', 'c'])
 })
+
+test('court groups: each game type stays on its own courts', () => {
+  const teams = [
+    { name: 'A', pool: 'A', roster: 6 }, { name: 'B', pool: 'A', roster: 6 },
+    { name: 'C', pool: 'A', roster: 6 }, { name: 'D', pool: 'A', roster: 6 },
+  ]
+  // courts: 0,1 = MD1, 2 = MD2, 3 = XD
+  const d = buildTieDraw(teams, ['MD1', 'MD1', 'MD2', 'XD'])
+  for (const g of d) {
+    const want = { MD1: [0, 1], MD2: [2], XD: [3] }[g.game]
+    assert.ok(want.includes(g.courtIdx), `${g.game} on court ${g.courtIdx}`)
+  }
+  // both MD1 courts get used
+  assert.deepEqual([...new Set(d.filter(g => g.game === 'MD1').map(g => g.courtIdx))].sort(), [0, 1])
+})
+
+test('court groups: a 4-player tie MD uses the MD1 courts; untagged courts fall back to all', () => {
+  const teams = [{ name: 'A', pool: 'A', roster: 4 }, { name: 'B', pool: 'A', roster: 4 }]
+  const d = buildTieDraw(teams, ['MD1', 'MD2', 'XD'])
+  assert.equal(d.find(g => g.game === 'MD').courtIdx, 0)
+  assert.equal(d.find(g => g.game === 'XD').courtIdx, 2)
+  const any = buildTieDraw(teams, [null, null])
+  assert.ok(any.every(g => g.courtIdx === 0 || g.courtIdx === 1))
+})

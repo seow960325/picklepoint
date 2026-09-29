@@ -52,19 +52,36 @@ export const tieGames = (a?: Team | null, b?: Team | null): string[] =>
 export interface TieDraftMatch extends DraftMatch { tie: string; game: string }
 export interface TieDraftTeam extends DraftTeam { roster: number }
 
-/** Round robin per pool, every fixture expanded into its games. */
-export function buildTieDraw(teams: TieDraftTeam[], courtCount: number): TieDraftMatch[] {
-  if (courtCount < 1) return []
-  const fixtures = buildDraw(teams, courtCount)
+/** Court group a game is played on: a 4-player tie's single MD uses the MD1 courts. */
+export const gameGroup = (game: string): string => (game === 'MD' ? 'MD1' : game)
+
+/** Round robin per pool, every fixture expanded into its games.
+ *  `courts` is one entry per court (in courtIds order): the game group that
+ *  court hosts (MD1 / MD2 / XD) or null for "any game". A game is placed only
+ *  on courts of its own group; if no court carries that group it falls back to
+ *  every court. A plain number means that many untagged courts. */
+export function buildTieDraw(
+  teams: TieDraftTeam[], courts: number | Array<string | null>,
+): TieDraftMatch[] {
+  const groups = typeof courts === 'number' ? Array<string | null>(courts).fill(null) : courts
+  if (groups.length < 1) return []
+  const fixtures = buildDraw(teams, groups.length)
+  const all = groups.map((_, i) => i)
+  const next: Record<string, number> = {}
   const out: TieDraftMatch[] = []
-  let seq = 1, court = 0
+  let seq = 1
   fixtures.forEach((f, i) => {
     const games = tieGames(
       { roster: teams[f.aIdx].roster } as Team, { roster: teams[f.bIdx].roster } as Team)
     games.forEach(g => {
+      const key = gameGroup(g)
+      const mine = all.filter(ci => groups[ci] === key)
+      const pool = mine.length ? mine : all
+      const n = next[key] ?? 0
+      next[key] = n + 1
       out.push({
         ...f, tie: String(i + 1), game: g,
-        courtIdx: court++ % courtCount, sequence: seq++,
+        courtIdx: pool[n % pool.length], sequence: seq++,
         label: `${f.pool} · R${f.round} · ${g}`,
       })
     })
