@@ -59,7 +59,7 @@ export const Choice = ({ options, value, onChange }: {
   <div className="flex flex-wrap gap-1.5">
     {options.map(o => (
       <button key={String(o.value)} type="button" onClick={() => onChange(o.value)}
-        className={`rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${
+        className={`max-w-[min(180px,100%)] overflow-hidden text-ellipsis whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${
           value === o.value ? 'bg-brand text-brand-fg' : 'border border-line bg-surface text-fg-muted'}`}>
         {o.label}
       </button>

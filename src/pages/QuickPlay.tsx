@@ -340,12 +340,12 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
           </div>
           <div className="flex w-full max-w-sm gap-3">
             <button type="button" onClick={() => pickFirstServer('left')}
-              className="flex-1 rounded-2xl bg-brand py-6 font-display text-xl font-bold text-brand-fg active:scale-[0.98]">
-              {leftName}
+              className="flex-1 overflow-hidden rounded-2xl bg-brand py-6 font-display text-xl font-bold text-brand-fg active:scale-[0.98]">
+              <span className="block truncate px-2">{leftName}</span>
             </button>
             <button type="button" onClick={() => pickFirstServer('right')}
-              className="flex-1 rounded-2xl bg-brand py-6 font-display text-xl font-bold text-brand-fg active:scale-[0.98]">
-              {rightName}
+              className="flex-1 overflow-hidden rounded-2xl bg-brand py-6 font-display text-xl font-bold text-brand-fg active:scale-[0.98]">
+              <span className="block truncate px-2">{rightName}</span>
             </button>
           </div>
         </div>

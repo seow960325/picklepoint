@@ -421,29 +421,33 @@ function TeamRow({ t, ev, token, run, isDuel }: any) {
   const [side, setSide] = useState<'A' | 'B'>(t.side ?? 'A')
   const dirty = isDuel ? (name !== t.name || side !== (t.side ?? 'A')) : (name !== t.name || pool !== (t.pool ?? 'A'))
   return (
-    <div className="flex items-center gap-2 p-2.5">
-      <LogoControl t={t} token={token} run={run} />
-      <input className={`${input} min-w-0 flex-1`} value={name} onChange={e => setName(e.target.value)} />
-      {isDuel ? (
-        <button onClick={() => setSide(side === 'A' ? 'B' : 'A')}
-          className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-center text-xs font-bold ${
-            side === 'A' ? 'border-brand-ink/40 text-brand-ink' : 'border-accent/40 text-accent'}`}>
-          <Flag name={side === 'A' ? ev.side_a_name : ev.side_b_name} className="h-3.5 w-auto rounded-[1px]" />
-          {side === 'A' ? (ev.side_a_name || 'A') : (ev.side_b_name || 'B')}
+    <div className="p-2.5">
+      <div className="flex items-center gap-2">
+        <LogoControl t={t} token={token} run={run} />
+        <input className={`${input} min-w-0 flex-1`} value={name} onChange={e => setName(e.target.value)} />
+      </div>
+      <div className="ml-11 mt-1.5 flex items-center gap-1.5">
+        {isDuel ? (
+          <button onClick={() => setSide(side === 'A' ? 'B' : 'A')}
+            className={`flex max-w-[120px] shrink-0 items-center gap-1 overflow-hidden rounded-lg border px-2 py-1 text-xs font-bold ${
+              side === 'A' ? 'border-brand-ink/40 text-brand-ink' : 'border-accent/40 text-accent'}`}>
+            <Flag name={side === 'A' ? ev.side_a_name : ev.side_b_name} className="h-3.5 w-auto shrink-0 rounded-[2px]" />
+            <span className="truncate">{side === 'A' ? (ev.side_a_name || 'A') : (ev.side_b_name || 'B')}</span>
+          </button>
+        ) : (
+          <input className={`${input} w-16 text-center uppercase`} value={pool} maxLength={2}
+            onChange={e => setPool(e.target.value.toUpperCase())} />
+        )}
+        <button disabled={!dirty}
+          onClick={() => run(() => api.adminUpsertTeam(token, ev.id, t.id, name, pool, isDuel ? side : undefined), 'Team saved')}
+          className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-brand-fg disabled:opacity-20">
+          SAVE
         </button>
-      ) : (
-        <input className={`${input} w-16 text-center uppercase`} value={pool} maxLength={2}
-          onChange={e => setPool(e.target.value.toUpperCase())} />
-      )}
-      <button disabled={!dirty}
-        onClick={() => run(() => api.adminUpsertTeam(token, ev.id, t.id, name, pool, isDuel ? side : undefined), 'Team saved')}
-        className="shrink-0 rounded-lg bg-brand px-3 py-2 text-xs font-bold text-brand-fg disabled:opacity-20">
-        SAVE
-      </button>
-      <button onClick={() => run(() => api.adminDeleteTeam(token, t.id), 'Team removed')}
-        className="shrink-0 rounded-lg border border-line px-3 py-2 text-xs text-fg-muted hover:text-red-400">
-        ✕
-      </button>
+        <button onClick={() => run(() => api.adminDeleteTeam(token, t.id), 'Team removed')}
+          className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-xs text-fg-muted hover:text-red-400">
+          ✕
+        </button>
+      </div>
     </div>
   )
 }
@@ -710,7 +714,7 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
                     <span className="truncate">{teamName(bundle, m.team_b_id)}</span>
                   </span>
                 </span>
-                <span className="tabular w-16 shrink-0 text-right text-xs text-fg-muted">
+                <span className="tabular shrink-0 whitespace-nowrap text-right text-xs text-fg-muted">
                   {m.status === 'scheduled' ? (m.round ?? '').replace(/pod/i, 'Court') : `${m.score_a}–${m.score_b}`}
                 </span>
                 <span className="flex shrink-0 items-center gap-1">
