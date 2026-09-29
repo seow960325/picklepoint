@@ -320,3 +320,40 @@ export async function ownerSetFrozen(token: string, frozen: boolean): Promise<vo
 }
 
 export { demo }
+
+// ---------------------------------------------------- multi-sport (opt-in)
+export async function adminAddSportEvent(token: string, p: {
+  name: string; sport: string; target_score: number; win_by: number; cap: number
+  switch_at: number; serve_mode: string
+  courts: Array<{ label: string; scorer_pin: string }>
+  teams: Array<{ name: string; pool: string; roster: number }>
+}): Promise<void> {
+  if (IS_DEMO) throw new Error('Multi-sport needs the live database')
+  await rpc('admin_add_sport_event', {
+    p_token: token, p_name: p.name, p_sport: p.sport,
+    p_target: p.target_score, p_win_by: p.win_by, p_cap: p.cap,
+    p_switch_at: p.switch_at, p_serve_mode: p.serve_mode,
+    p_courts: p.courts, p_teams: p.teams,
+  })
+}
+
+export async function adminSetTeamRoster(token: string, teamId: string, roster: number): Promise<void> {
+  if (IS_DEMO) throw new Error('Multi-sport needs the live database')
+  await rpc('admin_set_team_roster', { p_token: token, p_team_id: teamId, p_roster: roster })
+}
+
+export async function adminReplaceTieSchedule(
+  token: string, eventId: string,
+  draft: Array<{ aIdx: number; bIdx: number; courtIdx: number; sequence: number; round: number; label?: string; tie: string; game: string }>,
+  teamIds: string[], courtIds: string[],
+): Promise<void> {
+  if (IS_DEMO) throw new Error('Multi-sport needs the live database')
+  await rpc('admin_replace_tie_schedule', {
+    p_token: token, p_event_id: eventId,
+    p_matches: draft.map(m => ({
+      a: m.aIdx, b: m.bIdx, court: m.courtIdx, sequence: m.sequence,
+      round: m.label ?? `Round ${m.round}`, tie: m.tie, game: m.game,
+    })),
+    p_team_ids: teamIds, p_court_ids: courtIds,
+  })
+}

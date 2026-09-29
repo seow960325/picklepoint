@@ -10,6 +10,8 @@ import { Screen, Pill, Spinner, FullscreenButton, Flag, Emblem, ThemeToggle } fr
 import Court from '../components/Court'
 import { IS_DEMO, demo } from '../lib/api'
 import { fullscreenSupported } from '../lib/fullscreen'
+import TieStandings from '../components/TieStandings'
+import { isMultiSport, sportBundle, sportsPresent, SPORT_ICON, SPORT_LABEL } from '../lib/multisport'
 
 type Tab = 'live' | 'standings' | 'bracket' | 'matches'
 
@@ -91,7 +93,7 @@ export default function Board() {
           : (
             <div className="shrink-0 px-4 sm:px-8">
               <div className="mx-auto w-full max-w-[1600px]">
-                <LiveGrid b={bundle} code={code!} tv />
+                <LiveSections b={bundle} code={code!} tv />
               </div>
             </div>
           )}
@@ -132,9 +134,10 @@ export default function Board() {
         </div>
 
         <div className="mt-3 flex gap-1 overflow-x-auto lg:mt-4 lg:gap-2">
-          {((bundle.events.some(e => e.format === 'groups_ko')
+          {([...(bundle.events.some(e => e.format === 'groups_ko')
               ? ['live', 'matches', 'bracket']
-              : ['live', 'matches']) as Tab[]).map(t => (
+              : ['live', 'matches']),
+             ...(isMultiSport(bundle) ? ['standings'] : [])] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider lg:px-4 lg:py-2 lg:text-sm ${
                 tab === t ? 'bg-brand text-brand-fg' : 'text-fg-muted'}`}>
@@ -144,7 +147,8 @@ export default function Board() {
         </div>
       </div>
 
-      {tab === 'live' && <LiveGrid b={bundle} code={code!} tv={false} />}
+      {tab === 'live' && <LiveSections b={bundle} code={code!} tv={false} />}
+      {tab === 'standings' && isMultiSport(bundle) && <TieStandings b={bundle} />}
       {tab === 'bracket' && <PosterBracket b={bundle} />}
       {tab === 'matches' && <Matches b={bundle} code={code!} />}
 
@@ -190,6 +194,32 @@ function TvIdle({ b }: { b: Bundle }) {
   )
 }
 
+/** Multi-sport competitions show one section per sport (its own courts, games
+ *  and up-next queue) on the same board / TV screen. Every other competition
+ *  goes straight to LiveGrid exactly as before. */
+function LiveSections({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
+  if (!isMultiSport(b)) return <LiveGrid b={b} code={code} tv={tv} />
+  const sports = sportsPresent(b)
+  const subs = sports.map(s => ({ s, sb: sportBundle(b, s) }))
+  const visible = tv
+    ? subs.filter(x => x.sb.courts.some(ct => liveOnCourt(x.sb, ct.id)))
+    : subs
+  if (tv && visible.length === 0) return <TvIdle b={b} />
+  return (
+    <div className="space-y-6">
+      {visible.map(({ s, sb }) => (
+        <section key={s}>
+          <div className={`mb-2 flex items-center gap-2 font-display font-bold uppercase tracking-widest text-accent ${
+            tv ? 'px-1 text-2xl' : 'px-4 text-sm lg:px-6'}`}>
+            <span>{SPORT_ICON[s]}</span><span>{SPORT_LABEL[s]}</span>
+          </div>
+          <LiveGrid b={sb} code={code} tv={tv} />
+        </section>
+      ))}
+    </div>
+  )
+}
+
 function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
   const shownCourts = tv ? b.courts.filter(ct => liveOnCourt(b, ct.id)) : b.courts
   if (tv && shownCourts.length === 0) return <TvIdle b={b} />
@@ -208,7 +238,7 @@ function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
           const cardBody = <>
               <div className="mb-1.5 flex items-center justify-between lg:mb-2">
                 <span className="font-display text-sm font-bold tracking-widest text-fg-muted lg:text-base">
-                  COURT {ct.number}
+                  {b.competition.multi_sport && ct.label ? ct.label.toUpperCase() : `COURT ${ct.number}`}
                 </span>
                 {m ? <Pill tone="live">● live</Pill> : <Pill>open</Pill>}
               </div>
@@ -247,7 +277,7 @@ function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
               return (
                 <div key={ct.id} className="rounded-2xl border border-line bg-surface p-3">
                   <div className="mb-1.5 font-display text-xs font-bold uppercase tracking-widest text-fg-muted">
-                    Court {ct.number}
+                    {b.competition.multi_sport && ct.label ? ct.label : `Court ${ct.number}`}
                   </div>
                   {ups.length === 0 ? (
                     <div className="py-1.5 text-xs text-fg-subtle">No upcoming matches</div>
@@ -302,7 +332,7 @@ function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
         leftScore={s.left} rightScore={s.right}
         leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
         leftLogo={teamLogo(b, leftTeamId)} rightLogo={teamLogo(b, rightTeamId)}
-        label={m.bracket_key ? (m.round ?? undefined) : undefined}
+        label={m.bracket_key ? (m.round ?? undefined) : (m.game_label ?? undefined)}
         serving={serving}
         serverNo={serverNo}
         serverCourt={courtSide}
@@ -341,7 +371,7 @@ function Schedule({ b }: { b: Bundle }) {
                 </span>
               </span>
             </div>
-            <div className="mt-1 text-[11px] tracking-wide text-fg-subtle">{(m.round ?? '').replace(/pod/i, 'Court')} · #{m.sequence}</div>
+            <div className="mt-1 text-[11px] tracking-wide text-fg-subtle">{(m.round ?? '').replace(/pod/i, 'Court')} · #{m.sequence}{m.game_label ? ` · ${m.game_label}` : ''}</div>
           </div>
           {m.status === 'live'
             ? <Pill tone="live">live</Pill>

@@ -14,6 +14,7 @@ import { Screen, Spinner, ThemeToggle, Emblem } from '../components/ui'
 import { Flag } from '../components/ui'
 import { Field, Stepper, Choice, Warn, input, inputFull } from '../components/form'
 import { resizeImage } from '../lib/image'
+import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle } from './MultiSportAdmin'
 
 const TOKEN_TTL_MS = 4 * 60 * 60 * 1000
 const tokKey = (code: string) => `pp.admin.${code}`
@@ -29,7 +30,7 @@ function readToken(code: string): string | null {
 function writeToken(code: string, t: string) {
   localStorage.setItem(tokKey(code), JSON.stringify({ t, exp: Date.now() + TOKEN_TTL_MS }))
 }
-type Tab = 'competition' | 'scoring' | 'teams' | 'courts' | 'schedule' | 'bracket'
+type Tab = 'competition' | 'scoring' | 'teams' | 'courts' | 'schedule' | 'bracket' | 'sports'
 
 export default function Admin() {
   const { code } = useParams()
@@ -109,9 +110,14 @@ function Panel({ bundle, token, code, reload, onLogout }: {
     catch (e: any) { setErr(readable(e.message)) }
   }
 
-  const ev = bundle.events[0]
+  // multi-sport competitions (opt-in flag) can switch between their sports'
+  // events; every other competition keeps editing its single event as before
+  const multi = !!bundle.competition.multi_sport
+  const [evId, setEvId] = useState<string | null>(null)
+  const ev = (multi && bundle.events.find((e: any) => e.id === evId)) || bundle.events[0]
   const tabs: Tab[] = ['competition', 'scoring', 'teams', 'courts', 'schedule',
-    ...(ev?.format === 'groups_ko' ? ['bracket' as Tab] : [])]
+    ...(ev?.format === 'groups_ko' ? ['bracket' as Tab] : []),
+    ...(multi ? ['sports' as Tab] : [])]
 
   return (
     <div className="flex min-h-screen bg-canvas">
@@ -147,6 +153,9 @@ function Panel({ bundle, token, code, reload, onLogout }: {
           ))}
         </div>
 
+        {multi && ['scoring', 'teams', 'schedule'].includes(tab) &&
+          <EventSwitcher events={bundle.events} value={ev.id} onChange={setEvId} />}
+
         {msg && <div className="mb-4 rounded-lg border border-brand-ink/40 bg-brand/10 px-3 py-2 text-sm text-brand-ink">{msg}</div>}
         {err && <Warn>{err}</Warn>}
 
@@ -156,7 +165,10 @@ function Panel({ bundle, token, code, reload, onLogout }: {
         {tab === 'teams' && <TeamsTab bundle={bundle} ev={ev} token={token} run={run} />}
         {tab === 'courts' && <CourtsTab bundle={bundle} token={token} run={run} secrets={secrets}
           refreshSecrets={() => api.adminBundle(token).then(setSecrets)} />}
-        {tab === 'schedule' && <ScheduleTab bundle={bundle} ev={ev} token={token} run={run} />}
+        {tab === 'schedule' && (multi
+          ? <TieScheduleTab bundle={bundle} ev={ev} token={token} run={run} />
+          : <ScheduleTab bundle={bundle} ev={ev} token={token} run={run} />)}
+        {tab === 'sports' && multi && <SportsTab bundle={bundle} token={token} run={run} onAdded={reload} />}
         {tab === 'bracket' && <BracketTab bundle={bundle} ev={ev} token={token} run={run} />}
       </div>
     </div>
@@ -362,7 +374,7 @@ function TeamsTab({ bundle, ev, token, run }: any) {
         </div>
       ) : (
         <div className="divide-y divide-line rounded-xl border border-line">
-          {teams.map((t: any) => <TeamRow key={t.id} t={t} ev={ev} token={token} run={run} />)}
+          {teams.map((t: any) => <TeamRow key={t.id} t={t} ev={ev} token={token} run={run} multi={!!bundle.competition.multi_sport} />)}
           {!teams.length && <div className="p-4 text-sm text-fg-subtle">No teams yet.</div>}
         </div>
       )}
@@ -415,7 +427,7 @@ function LogoControl({ t, token, run }: any) {
   )
 }
 
-function TeamRow({ t, ev, token, run, isDuel }: any) {
+function TeamRow({ t, ev, token, run, isDuel, multi }: any) {
   const [name, setName] = useState(t.name)
   const [pool, setPool] = useState(t.pool ?? 'A')
   const [side, setSide] = useState<'A' | 'B'>(t.side ?? 'A')
@@ -438,6 +450,7 @@ function TeamRow({ t, ev, token, run, isDuel }: any) {
           <input className={`${input} w-16 text-center uppercase`} value={pool} maxLength={2}
             onChange={e => setPool(e.target.value.toUpperCase())} />
         )}
+        {multi && <RosterToggle t={t} token={token} run={run} />}
         <button disabled={!dirty}
           onClick={() => run(() => api.adminUpsertTeam(token, ev.id, t.id, name, pool, isDuel ? side : undefined), 'Team saved')}
           className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-brand-fg disabled:opacity-20">

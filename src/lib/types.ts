@@ -4,12 +4,16 @@ export type MatchStatus =
 export interface Competition {
   id: string; code: string; name: string
   venue: string | null; event_date: string; status: string
+  // opt-in per competition (migration 0023) — enables the multi-sport UI
+  multi_sport?: boolean
 }
 export type ServeMode = 'winner' | 'alternate'
 export interface EventCfg {
   id: string; competition_id: string; name: string; format: string
   target_score: number; win_by: number; cap: number; switch_at: number
   sort_order: number
+  // multi-sport competitions only; absent/'pickleball' everywhere else
+  sport?: 'pickleball' | 'badminton'
   // 'winner' = team that won the last point serves next (default, pure
   // rally scoring — every rally scores). 'alternate' = "Serve": real
   // doubles side-out scoring — only the serving team can score.
@@ -23,7 +27,7 @@ export interface EventCfg {
   third_place?: boolean | null
   bracket_seeded_at?: string | null
 }
-export interface Court { id: string; number: number; label: string | null }
+export interface Court { id: string; number: number; label: string | null; sport?: 'pickleball' | 'badminton' }
 export interface Team {
   id: string; event_id: string; name: string
   player1: string | null; player2: string | null; pool: string | null
@@ -31,6 +35,8 @@ export interface Team {
   side?: 'A' | 'B' | null
   // optional uploaded emblem (base64 data URL); null = show name/flag only
   logo?: string | null
+  // multi-sport only: 6 = MD+MD+XD tie, 4 = MD+XD tie
+  roster?: number | null
 }
 export interface Match {
   id: string; event_id: string; court_id: string | null
@@ -53,6 +59,9 @@ export interface Match {
   // only set on groups_ko knockout slots — null for every group, round-robin
   // and duel match, which is what keeps the two formats from ever interacting
   bracket_key?: string | null
+  // multi-sport only: games of one team-vs-team tie share tie_id
+  tie_id?: string | null
+  game_label?: string | null
   loser_match_id?: string | null
   loser_slot?: 'a' | 'b' | null
   started_at: string | null; finished_at: string | null
