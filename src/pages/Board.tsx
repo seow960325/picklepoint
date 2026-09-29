@@ -333,6 +333,7 @@ function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
         leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
         leftLogo={teamLogo(b, leftTeamId)} rightLogo={teamLogo(b, rightTeamId)}
         label={m.bracket_key ? (m.round ?? undefined) : (m.game_label ?? undefined)}
+        sport={ev.sport}
         serving={serving}
         serverNo={serverNo}
         serverCourt={courtSide}

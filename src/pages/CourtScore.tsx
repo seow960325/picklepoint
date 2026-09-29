@@ -426,7 +426,8 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 leftScore={s.left} rightScore={s.right}
                 leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
                 leftLogo={teamLogoOf(leftTeamId)} rightLogo={teamLogoOf(rightTeamId)}
-                label={m.bracket_key ? (m.round ?? undefined) : undefined}
+                label={m.bracket_key ? (m.round ?? undefined) : (m.game_label ?? undefined)}
+                sport={eventOf(bundle, match).sport}
                 serving={serving}
                 serverNo={serverNo}
                 serverCourt={courtSide}
@@ -445,7 +446,8 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 leftScore={s.left} rightScore={s.right}
                 leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
                 leftLogo={teamLogoOf(leftTeamId)} rightLogo={teamLogoOf(rightTeamId)}
-                label={m.bracket_key ? (m.round ?? undefined) : undefined}
+                label={m.bracket_key ? (m.round ?? undefined) : (m.game_label ?? undefined)}
+                sport={eventOf(bundle, match).sport}
                 serving={serving}
                 serverNo={serverNo}
                 serverCourt={courtSide}

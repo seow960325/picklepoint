@@ -1,4 +1,4 @@
-/** Top-down pickleball court. The two halves ARE the score buttons —
+/** Top-down pickleball court (or badminton court when sport="badminton"). The two halves ARE the score buttons —
  *  the referee taps the side the point was won on. The court surface is
  *  drawn full-bleed (fills all available space) with a separate, aspect-
  *  correct overlay for the round score circles so they never distort. */
@@ -30,6 +30,9 @@ export interface CourtProps {
   leftLogo?: string | null
   rightLogo?: string | null
   label?: string | null
+  /** 'badminton' swaps the court markings and the serve ball for a shuttlecock.
+   *  Omitted / 'pickleball' = the original look, unchanged. */
+  sport?: 'pickleball' | 'badminton'
   /** Official "serving-receiving-server#" call (Serve/alternate mode only) —
    *  the exact string a referee would call out loud. Null/undefined hides it
    *  (Winner mode, or game over). */
@@ -75,6 +78,31 @@ function PickleballGlyph({ cx, cy, r = 9, serverNo }: { cx: number; cy: number; 
   )
 }
 
+/** Shuttlecock — marks who serves next in badminton. Cork faces the net. */
+function ShuttleGlyph({ cx, cy, r = 9, dir }: { cx: number; cy: number; r?: number; dir: 'left' | 'right' }) {
+  const C = '#ffe45c'
+  const s = (r / 9) * 1.35
+  return (
+    <g transform={`translate(${cx} ${cy}) scale(${dir === 'left' ? 1 : -1} 1)`}>
+      <circle r={r} fill="none" stroke={C} strokeWidth="2.5">
+        <animate attributeName="r" values={`${r};${r * 2};${r}`} dur="1.4s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.85;0;0.85" dur="1.4s" repeatCount="indefinite" />
+      </circle>
+      <circle r={r + 3} fill="#0a0e17" opacity="0.45" />
+      <g transform={`scale(${s})`} filter="url(#neonGlow)">
+        {/* feather skirt, flaring away from the cork */}
+        <polygon points="6,-3.6 -8,-8 -8,8 6,3.6" fill="#f4f7ef" stroke="#0a0e17" strokeWidth="0.8" />
+        <line x1="6" y1="0" x2="-8" y2="0" stroke="#9aa5b8" strokeWidth="0.8" />
+        <line x1="6" y1="-1.8" x2="-8" y2="-4" stroke="#9aa5b8" strokeWidth="0.8" />
+        <line x1="6" y1="1.8" x2="-8" y2="4" stroke="#9aa5b8" strokeWidth="0.8" />
+        <line x1="-6" y1="-7.4" x2="-6" y2="7.4" stroke={C} strokeWidth="1.4" />
+        {/* cork */}
+        <circle cx="7.5" cy="0" r="4.4" fill={C} stroke="#0a0e17" strokeWidth="0.9" />
+      </g>
+    </g>
+  )
+}
+
 // Corner slots the serve ball can sit in, near the outer baseline+sideline
 // corner of each service court — well clear of the (now sideline-mounted,
 // vertical) team name and the top flag/logo badge.
@@ -98,8 +126,9 @@ function ballY(court: 'right' | 'left' | null | undefined, servingSide: 'left' |
 
 export default function Court({
   leftName, rightName, leftScore, rightScore, onTap, disabled, serving, serverNo, serverCourt,
-  leftFlag, rightFlag, leftLogo, rightLogo, label, callScore,
+  leftFlag, rightFlag, leftLogo, rightLogo, label, callScore, sport,
 }: CourtProps) {
+  const bad = sport === 'badminton'
   const [down, setDown] = useState<'left' | 'right' | null>(null)
   const ballCy = ballY(serverCourt, serving) ?? MIDY + R + 17 // no active server (game over) — old fixed spot below the circle
   // Tap acknowledgement — flashes the tapped half on every tap, even when the
@@ -130,23 +159,58 @@ export default function Court({
             <stop offset="0%" stopColor="#173a6b" />
             <stop offset="100%" stopColor="#122c53" />
           </linearGradient>
+          <linearGradient id="badSurface" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#0d4f3a" />
+            <stop offset="100%" stopColor="#0a3e2e" />
+          </linearGradient>
+          <linearGradient id="badInner" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#177a55" />
+            <stop offset="100%" stopColor="#12664a" />
+          </linearGradient>
           <linearGradient id="kitchen" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#22508f" />
             <stop offset="100%" stopColor="#1b4179" />
           </linearGradient>
         </defs>
 
-        <rect x="0" y="0" width="480" height="240" fill="url(#surface)" />
-        <rect x={NET - KIT} y="0" width={KIT * 2} height="240" fill="url(#kitchen)" />
+        {bad ? (
+          <>
+            <rect x="0" y="0" width="480" height="240" fill="url(#badSurface)" />
+            <rect x="3" y="3" width="474" height="234" fill="url(#badInner)" />
+            <g stroke="#ffffff" strokeOpacity="0.9" fill="none" strokeWidth="2.5"
+              vectorEffect="non-scaling-stroke">
+              {/* doubles boundary */}
+              <rect x="3" y="3" width="474" height="234" />
+              {/* singles side lines */}
+              <line x1="3" y1="17" x2="477" y2="17" />
+              <line x1="3" y1="223" x2="477" y2="223" />
+              {/* short service lines (1.98 m from the net) */}
+              <line x1={NET - 71} y1="3" x2={NET - 71} y2="237" />
+              <line x1={NET + 71} y1="3" x2={NET + 71} y2="237" />
+              {/* doubles long service lines (0.76 m inside the back line) */}
+              <line x1="30" y1="3" x2="30" y2="237" />
+              <line x1="450" y1="3" x2="450" y2="237" />
+              {/* centre lines, short service line to back line */}
+              <line x1="3" y1={MIDY} x2={NET - 71} y2={MIDY} />
+              <line x1={NET + 71} y1={MIDY} x2="477" y2={MIDY} />
+            </g>
+          </>
+        ) : (
+          <>
+          <rect x="0" y="0" width="480" height="240" fill="url(#surface)" />
+          <rect x={NET - KIT} y="0" width={KIT * 2} height="240" fill="url(#kitchen)" />
 
-        <g stroke="#ffffff" strokeOpacity="0.85" fill="none" strokeWidth="2.5"
-          vectorEffect="non-scaling-stroke">
-          <rect x="3" y="3" width="474" height="234" />
-          <line x1={NET - KIT} y1="0" x2={NET - KIT} y2="240" />
-          <line x1={NET + KIT} y1="0" x2={NET + KIT} y2="240" />
-          <line x1="3" y1={MIDY} x2={NET - KIT} y2={MIDY} />
-          <line x1={NET + KIT} y1={MIDY} x2="477" y2={MIDY} />
-        </g>
+          <g stroke="#ffffff" strokeOpacity="0.85" fill="none" strokeWidth="2.5"
+            vectorEffect="non-scaling-stroke">
+            <rect x="3" y="3" width="474" height="234" />
+            <line x1={NET - KIT} y1="0" x2={NET - KIT} y2="240" />
+            <line x1={NET + KIT} y1="0" x2={NET + KIT} y2="240" />
+            <line x1="3" y1={MIDY} x2={NET - KIT} y2={MIDY} />
+            <line x1={NET + KIT} y1={MIDY} x2="477" y2={MIDY} />
+          </g>
+
+          </>
+        )}
 
         <line x1={NET} y1="0" x2={NET} y2="240"
           stroke="#0a0e17" strokeWidth="7" strokeOpacity="0.85" vectorEffect="non-scaling-stroke" />
@@ -201,7 +265,9 @@ export default function Court({
               fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />
           </>
         )}
-        {serving === 'left' && <PickleballGlyph cx={serverCourt ? BALL_X_LEFT : CXL} cy={ballCy} r={9} serverNo={serverNo} />}
+        {serving === 'left' && (bad
+          ? <ShuttleGlyph cx={serverCourt ? 52 : CXL} cy={ballCy} r={9} dir="left" />
+          : <PickleballGlyph cx={serverCourt ? BALL_X_LEFT : CXL} cy={ballCy} r={9} serverNo={serverNo} />)}
         {flash?.side === 'left' && (
           <circle key={`flash-left-${flash.key}`} cx={CXL} cy={MIDY} r={R + 10}
             fill="none" stroke="#c6ff3d" strokeWidth="6" filter="url(#neonGlow)">
@@ -240,7 +306,9 @@ export default function Court({
               fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />
           </>
         )}
-        {serving === 'right' && <PickleballGlyph cx={serverCourt ? BALL_X_RIGHT : CXR} cy={ballCy} r={9} serverNo={serverNo} />}
+        {serving === 'right' && (bad
+          ? <ShuttleGlyph cx={serverCourt ? 428 : CXR} cy={ballCy} r={9} dir="right" />
+          : <PickleballGlyph cx={serverCourt ? BALL_X_RIGHT : CXR} cy={ballCy} r={9} serverNo={serverNo} />)}
         {flash?.side === 'right' && (
           <circle key={`flash-right-${flash.key}`} cx={CXR} cy={MIDY} r={R + 10}
             fill="none" stroke="#22d3ee" strokeWidth="6" filter="url(#neonGlow)">

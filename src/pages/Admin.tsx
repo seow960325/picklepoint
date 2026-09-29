@@ -279,6 +279,7 @@ function ScoringTab({ ev, token, run }: any) {
   const [serveMode, setServeMode] = useState<'winner' | 'alternate'>(ev.serve_mode ?? 'winner')
   const bad = validateRules({ target_score: t, win_by: w, cap, switch_at: sw })
   const isDuel = ev.format === 'duel'
+  const isBad = ev.sport === 'badminton'
 
   return (
     <div className="max-w-2xl space-y-5">
@@ -297,8 +298,13 @@ function ScoringTab({ ev, token, run }: any) {
         </div>
       )}
       <Field label="Preset">
-        <Choice value={t} onChange={(v: number) => { setT(v); setSw(defaultSwitchAt(v)); setCap(v + 2) }}
-          options={[{ label: 'to 11', value: 11 }, { label: 'to 15', value: 15 }, { label: 'to 21', value: 21 }]} />
+        <Choice value={t} onChange={(v: number) => {
+            setT(v); setSw(defaultSwitchAt(v))
+            setCap(isBad ? (v === 21 ? 30 : v === 15 ? 20 : v + 2) : v + 2)
+          }}
+          options={isBad
+            ? [{ label: 'to 15', value: 15 }, { label: 'to 21', value: 21 }]
+            : [{ label: 'to 11', value: 11 }, { label: 'to 15', value: 15 }, { label: 'to 21', value: 21 }]} />
       </Field>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Field label="Winning score">
@@ -311,15 +317,24 @@ function ScoringTab({ ev, token, run }: any) {
         </Field>
       </div>
       {bad && <Warn>{bad}</Warn>}
-      <Field label="Serve mode">
-        <Choice value={serveMode} onChange={setServeMode}
-          options={[{ label: 'Serve', value: 'alternate' }, { label: 'Winner', value: 'winner' }]} />
-      </Field>
-      <p className="text-xs text-fg-subtle leading-relaxed">
-        {serveMode === 'winner'
-          ? 'Winner — every rally scores a point, for whoever wins it.'
-          : 'Serve — real doubles side-out scoring: only the serving team can score. Losing a rally while serving passes serve to your partner, then to the other team.'}
-      </p>
+      {isBad ? (
+        <p className="text-xs leading-relaxed text-fg-subtle">
+          Badminton rally scoring — every rally scores a point. The side that wins the rally serves
+          next, from the right court when its score is even and the left court when odd.
+        </p>
+      ) : (
+        <>
+          <Field label="Serve mode">
+            <Choice value={serveMode} onChange={setServeMode}
+              options={[{ label: 'Serve', value: 'alternate' }, { label: 'Winner', value: 'winner' }]} />
+          </Field>
+          <p className="text-xs text-fg-subtle leading-relaxed">
+            {serveMode === 'winner'
+              ? 'Winner — every rally scores a point, for whoever wins it.'
+              : 'Serve — real doubles side-out scoring: only the serving team can score. Losing a rally while serving passes serve to your partner, then to the other team.'}
+          </p>
+        </>
+      )}
       <p className="text-xs text-fg-subtle">
         Changes apply to every match, including ones already in progress.
       </p>
