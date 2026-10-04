@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import {
   useCompetition, teamName, teamSideName, teamLogo, liveOnCourt, nextOnCourt, onDeck, results, standings,
   eventOf, duelTally, duelPods, groupStandings, bracketRounds, bracketSeeded, isKoMatch,
@@ -11,7 +11,11 @@ import Court from '../components/Court'
 import { IS_DEMO, demo } from '../lib/api'
 import { fullscreenSupported } from '../lib/fullscreen'
 import TieStandings from '../components/TieStandings'
-import { isMultiSport, sportBundle, sportsPresent, SPORT_ICON, SPORT_LABEL } from '../lib/multisport'
+import {
+  isMultiSport, sportBundle, sportsPresent, SPORT_ICON, SPORT_LABEL, SPORT_TONE,
+  parseSportView, readSportView, saveSportView, tiesOf, tieStage,
+  type Sport, type SportView, type Tie,
+} from '../lib/multisport'
 
 type Tab = 'live' | 'standings' | 'bracket' | 'matches'
 
@@ -21,6 +25,17 @@ export default function Board() {
   const [tab, setTab] = useState<Tab>('live')
   const [tv, setTv] = useState(false)
   const [tvView, setTvView] = useState<'live' | 'bracket'>('live')
+  // multi-sport codes only: which sport this viewer follows (URL ?s= wins, then this device's last pick)
+  const [params, setParams] = useSearchParams()
+  const [picked, setPicked] = useState<SportView | null>(() =>
+    parseSportView(params.get('s')) ?? (code ? readSportView(code) : null))
+  const pickSport = (v: SportView) => {
+    setPicked(v)
+    if (code) saveSportView(code, v)
+    const next = new URLSearchParams(params)
+    next.set('s', v)
+    setParams(next, { replace: true })
+  }
 
   if (loading) return <Screen><Spinner /></Screen>
   if (error || !bundle) return (
@@ -39,6 +54,18 @@ export default function Board() {
   const koEv = bundle.events.find(e => e.format === 'groups_ko')
   const koReady = !!koEv && bracketSeeded(bundle, koEv.id)
 
+  // multi-sport (opt-in per code): each viewer follows one sport, or both
+  const multi = isMultiSport(bundle)
+  const sports = multi ? sportsPresent(bundle) : []
+  const view: SportView | null = !multi ? 'all'
+    : sports.length < 2 ? (sports[0] ?? 'all')
+    : picked === 'all' || (picked != null && sports.includes(picked as Sport)) ? picked
+    : null
+  if (view === null) return <SportGate b={bundle} sports={sports} onPick={pickSport} />
+  const sv: SportView = view
+  const vb = multi && sv !== 'all' ? sportBundle(bundle, sv) : bundle
+  const activeTab = multi && sv !== 'all' ? SPORT_TONE[sv].solid : 'bg-brand text-brand-fg'
+
   // ---- TV mode: dedicated, centred fullscreen presentation ----
   if (tv) {
     return (
@@ -51,6 +78,7 @@ export default function Board() {
         }}>
         {/* discreet controls, top-right */}
         <div className="absolute right-4 top-4 z-10 flex items-center gap-2 opacity-30 transition-opacity hover:opacity-100">
+          {multi && sports.length > 1 && <SportSwitch sports={sports} view={sv} onPick={pickSport} size="sm" />}
           <button onClick={() => setTv(false)}
             className="rounded-lg border border-line bg-surface/70 px-3 py-1.5 text-xs text-fg-muted">
             exit TV
@@ -79,7 +107,9 @@ export default function Board() {
         )}
 
         {/* the bracket showcase, the podium ceremony, or the live courts */}
-        {tvView === 'bracket' && koReady
+        {multi
+          ? <TvSports b={bundle} view={sv} code={code!} />
+          : tvView === 'bracket' && koReady
           ? (
             <div className="min-h-0 flex-1 px-2 sm:px-6">
               <FitBox><PosterBracket b={bundle} broadcast /></FitBox>
@@ -93,7 +123,7 @@ export default function Board() {
           : (
             <div className="shrink-0 px-4 sm:px-8">
               <div className="mx-auto w-full max-w-[1600px]">
-                <LiveSections b={bundle} code={code!} tv />
+                <LiveGrid b={bundle} code={code!} tv />
               </div>
             </div>
           )}
@@ -104,6 +134,7 @@ export default function Board() {
   return (
     <Screen>
       {duelEvent && <DuelScoreboard b={bundle} ev={duelEvent} big={false} />}
+      {multi && <SportBar view={sv} sports={sports} />}
 
       <div className="border-b border-line px-4 py-3 lg:px-6 lg:py-4">
         <div className="flex items-center justify-between gap-3">
@@ -113,7 +144,7 @@ export default function Board() {
               ←<span className="hidden font-semibold sm:inline"> Lobby</span>
             </Link>
             <div className="min-w-0">
-              <div className="truncate font-display text-2xl font-bold tracking-wide lg:text-3xl">{c.name}</div>
+              <div className={`${multi ? 'line-clamp-2 leading-tight' : 'truncate'} font-display text-2xl font-bold tracking-wide lg:text-3xl`}>{c.name}</div>
               <div className="truncate text-xs text-fg-muted lg:text-sm">
                 {c.venue} · code <span className="font-bold text-brand-ink">{c.code}</span>
               </div>
@@ -122,16 +153,22 @@ export default function Board() {
           <div className="flex shrink-0 items-center gap-1.5 lg:gap-2">
             <Link to={`/c/${code}/admin`}
               className="flex h-8 items-center rounded-lg border border-line px-3 text-xs text-fg-muted active:bg-surface-2 lg:h-10 lg:px-4 lg:text-sm">
-              Settings
+              {multi ? <><span className="sm:hidden">⚙</span><span className="hidden sm:inline">Settings</span></> : 'Settings'}
             </Link>
             <button onClick={() => setTv(true)}
               className="flex h-8 items-center rounded-lg border border-line px-3 text-xs text-fg-muted active:bg-surface-2 lg:h-10 lg:px-4 lg:text-sm">
-              TV mode
+              {multi ? <><span className="sm:hidden">TV</span><span className="hidden sm:inline">TV mode</span></> : 'TV mode'}
             </button>
             <FullscreenButton className="grid h-8 w-8 place-items-center rounded-lg border border-line p-1.5 text-fg-muted active:bg-surface-2 lg:h-10 lg:w-10" />
             <ThemeToggle className="grid h-8 w-8 place-items-center rounded-lg border border-line text-fg-muted active:bg-surface-2 lg:h-10 lg:w-10" />
           </div>
         </div>
+
+        {multi && sports.length > 1 && (
+          <div className="mt-3 lg:mt-4">
+            <SportSwitch sports={sports} view={sv} onPick={pickSport} />
+          </div>
+        )}
 
         <div className="mt-3 flex gap-1 overflow-x-auto lg:mt-4 lg:gap-2">
           {([...(bundle.events.some(e => e.format === 'groups_ko')
@@ -140,17 +177,21 @@ export default function Board() {
              ...(isMultiSport(bundle) ? ['standings'] : [])] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider lg:px-4 lg:py-2 lg:text-sm ${
-                tab === t ? 'bg-brand text-brand-fg' : 'text-fg-muted'}`}>
+                tab === t ? activeTab : 'text-fg-muted'}`}>
               {t}
             </button>
           ))}
         </div>
       </div>
 
-      {tab === 'live' && <LiveSections b={bundle} code={code!} tv={false} />}
-      {tab === 'standings' && isMultiSport(bundle) && <TieStandings b={bundle} />}
+      {tab === 'live' && (multi
+        ? <MultiLive b={bundle} code={code!} view={sv} onPick={pickSport} />
+        : <LiveGrid b={bundle} code={code!} tv={false} />)}
+      {tab === 'standings' && multi && <TieStandings b={vb} />}
       {tab === 'bracket' && <PosterBracket b={bundle} />}
-      {tab === 'matches' && <Matches b={bundle} code={code!} />}
+      {tab === 'matches' && (multi
+        ? <TieMatches b={bundle} code={code!} view={sv} />
+        : <Matches b={bundle} code={code!} />)}
 
       {IS_DEMO && (
         <div className="px-4 py-8 text-center">
@@ -194,43 +235,326 @@ function TvIdle({ b }: { b: Bundle }) {
   )
 }
 
-/** Multi-sport competitions show one section per sport (its own courts, games
- *  and up-next queue) on the same board / TV screen. Every other competition
- *  goes straight to LiveGrid exactly as before. */
-function LiveSections({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
-  if (!isMultiSport(b)) return <LiveGrid b={b} code={code} tv={tv} />
-  const sports = sportsPresent(b)
-  const subs = sports.map(s => ({ s, sb: sportBundle(b, s) }))
-  const visible = tv
-    ? subs.filter(x => x.sb.courts.some(ct => liveOnCourt(x.sb, ct.id)))
-    : subs
-  if (tv && visible.length === 0) return <TvIdle b={b} />
+// ------------------------------------------------------- multi-sport board
+// Opt-in multi-sport codes only (e.g. pickleball + badminton on one code).
+// Each viewer picks the sport they follow; the pick sticks on that device and
+// can be deep-linked with ?s=pickleball / ?s=badminton / ?s=all (one QR per
+// hall). Each sport keeps its own colour (SPORT_TONE) on every screen.
+
+function SportGate({ b, sports, onPick }: { b: Bundle; sports: Sport[]; onPick: (v: SportView) => void }) {
+  const c = b.competition
   return (
-    <div className="space-y-6">
-      {visible.map(({ s, sb }) => (
-        <section key={s}>
-          <div className={`mb-2 flex items-center gap-2 font-display font-bold uppercase tracking-widest text-accent ${
-            tv ? 'px-1 text-2xl' : 'px-4 text-sm lg:px-6'}`}>
-            <span>{SPORT_ICON[s]}</span><span>{SPORT_LABEL[s]}</span>
+    <Screen className="flex flex-col items-center justify-center px-5 py-10">
+      <div className="w-full max-w-md">
+        <div className="text-center font-display text-3xl font-bold tracking-wide sm:text-4xl">{c.name}</div>
+        <div className="mt-1 text-center text-xs text-fg-subtle">
+          {c.venue ? `${c.venue} · ` : ''}code <span className="font-bold text-brand-ink">{c.code}</span>
+        </div>
+        <div className="mt-8 text-center text-sm font-semibold text-fg-muted">Which sport are you following?</div>
+        <div className="mt-3 grid gap-3">
+          {sports.map(s => {
+            const sb = sportBundle(b, s)
+            const t = SPORT_TONE[s]
+            const live = sb.courts.filter(ct => liveOnCourt(sb, ct.id)).length
+            return (
+              <button key={s} onClick={() => onPick(s)}
+                className={`flex items-center gap-4 rounded-2xl border-2 px-5 py-5 text-left active:scale-[0.99] ${t.border} ${t.soft}`}>
+                <span className="text-4xl leading-none">{SPORT_ICON[s]}</span>
+                <span className="min-w-0 flex-1">
+                  <span className={`block font-display text-3xl font-bold uppercase tracking-wide ${t.text}`}>{SPORT_LABEL[s]}</span>
+                  <span className="block text-xs text-fg-muted">
+                    {sb.courts.length} court{sb.courts.length === 1 ? '' : 's'} · {sb.teams.length} teams
+                    {live > 0 && <span className="font-bold text-fg"> · {live} live now</span>}
+                  </span>
+                </span>
+                <span className={`font-display text-3xl ${t.text}`}>›</span>
+              </button>
+            )
+          })}
+        </div>
+        <button onClick={() => onPick('all')}
+          className="mt-3 w-full rounded-2xl border border-line py-3 font-display text-base font-bold uppercase tracking-wider text-fg-muted active:bg-surface-2">
+          Show both sports
+        </button>
+        <div className="mt-6 text-center text-xs text-fg-subtle">You can switch any time at the top of the board.</div>
+        <div className="mt-4 text-center">
+          <Link to="/" className="text-xs text-fg-subtle underline underline-offset-4">← Lobby</Link>
+        </div>
+      </div>
+    </Screen>
+  )
+}
+
+function SportSwitch({ sports, view, onPick, size = 'md' }: {
+  sports: Sport[]; view: SportView; onPick: (v: SportView) => void; size?: 'md' | 'sm'
+}) {
+  const opts: SportView[] = [...sports, 'all']
+  return (
+    <div className="grid gap-1 rounded-xl border border-line bg-surface p-1"
+      style={{ gridTemplateColumns: `repeat(${sports.length}, minmax(0, 1fr)) auto` }}>
+      {opts.map(o => {
+        const on = o === view
+        const tone = o === 'all' ? 'bg-fg text-canvas' : SPORT_TONE[o].solid
+        return (
+          <button key={o} onClick={() => onPick(o)}
+            className={`flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-display font-bold uppercase tracking-wider ${
+              size === 'md' ? 'px-2 py-2 text-[13px] tracking-wide sm:px-3 sm:text-sm sm:tracking-wider lg:text-base' : 'px-2.5 py-1 text-xs'} ${
+              on ? tone : 'text-fg-muted active:bg-surface-2'}`}>
+            {o === 'all' ? 'Both' : <><span>{SPORT_ICON[o]}</span><span className="truncate">{SPORT_LABEL[o]}</span></>}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Thin colour strip on top of the board: one sport's colour, or both halves. */
+function SportBar({ view, sports }: { view: SportView; sports: Sport[] }) {
+  const show = view === 'all' ? sports : [view]
+  return (
+    <div className="flex h-1.5">
+      {show.map(s => <div key={s} className={`flex-1 ${SPORT_TONE[s].bar}`} />)}
+    </div>
+  )
+}
+
+function SportBanner({ sport, b, big = false, onOpen }: {
+  sport: Sport; b: Bundle; big?: boolean; onOpen?: () => void
+}) {
+  const t = SPORT_TONE[sport]
+  const live = b.courts.filter(ct => liveOnCourt(b, ct.id)).length
+  return (
+    <div className={`mb-2 flex items-center gap-2 rounded-xl border ${t.border} ${t.soft} ${big ? 'mb-3 px-4 py-2' : 'px-3 py-1.5'}`}>
+      <span className={big ? 'text-3xl leading-none' : 'text-lg leading-none'}>{SPORT_ICON[sport]}</span>
+      <span className={`font-display font-bold uppercase tracking-widest ${t.text} ${big ? 'text-3xl' : 'text-base'}`}>
+        {SPORT_LABEL[sport]}
+      </span>
+      <span className="ml-auto flex items-center gap-2">
+        {live > 0
+          ? <Pill tone="live">● {live} live</Pill>
+          : <span className="text-[11px] text-fg-subtle">{b.courts.length} court{b.courts.length === 1 ? '' : 's'}</span>}
+        {onOpen && (
+          <button onClick={onOpen}
+            className={`rounded-lg border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${t.border} ${t.text}`}>
+            Only {SPORT_LABEL[sport]} ›
+          </button>
+        )}
+      </span>
+    </div>
+  )
+}
+
+function MultiLive({ b, code, view, onPick }: {
+  b: Bundle; code: string; view: SportView; onPick: (v: SportView) => void
+}) {
+  if (view !== 'all') {
+    const sb = sportBundle(b, view)
+    return <>
+      <LiveGrid b={sb} code={code} tv={false} hideDeck />
+      <div className="px-3 pb-4 lg:px-5"><NextTies b={sb} /></div>
+    </>
+  }
+  return (
+    <div className="grid gap-6 p-3 lg:grid-cols-2 lg:p-5">
+      {sportsPresent(b).map(s => {
+        const sb = sportBundle(b, s)
+        return (
+          <section key={s} className="min-w-0">
+            <SportBanner sport={s} b={sb} onOpen={() => onPick(s)} />
+            <LiveGrid b={sb} code={code} tv={false} compact hideDeck />
+            <NextTies b={sb} />
+          </section>
+        )
+      })}
+    </div>
+  )
+}
+
+/** The next few ties that haven't started (one row per team-vs-team meeting). */
+function NextTies({ b, n = 4 }: { b: Bundle; n?: number }) {
+  const ties = b.events.flatMap(e => tiesOf(b, e.id))
+    .filter(t => t.games.every(g => g.status === 'scheduled' || g.status === 'on_deck'))
+    .slice(0, n)
+  if (!ties.length) return null
+  const fl = 'h-4 w-4 shrink-0 rounded-[2px] object-contain'
+  return (
+    <div className="mt-4">
+      <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-accent">Next ties</div>
+      <div className="divide-y divide-line/60 rounded-2xl border border-line bg-surface">
+        {ties.map((t, i) => (
+          <div key={t.id} className="px-3 py-2">
+            <div className="grid grid-cols-[1.1rem_1fr_1.75rem_1fr] items-center gap-1.5 text-sm">
+              <span className="text-center font-display text-xs font-bold text-fg-subtle">{i + 1}</span>
+              <span className="flex min-w-0 items-center justify-end gap-1.5">
+                <span className="truncate text-right">{teamName(b, t.a)}</span>
+                <Emblem logo={teamLogo(b, t.a)} flagName={teamSideName(b, t.a)} className={fl} />
+              </span>
+              <span className="text-center text-xs text-fg-subtle">vs</span>
+              <span className="flex min-w-0 items-center gap-1.5">
+                <Emblem logo={teamLogo(b, t.b)} flagName={teamSideName(b, t.b)} className={fl} />
+                <span className="truncate">{teamName(b, t.b)}</span>
+              </span>
+            </div>
+            <div className="mt-0.5 text-center text-[10px] uppercase tracking-wider text-fg-subtle">
+              {tieStage(t.games[0]?.round)} · {t.games.map(g => g.game_label).join(' · ')}
+            </div>
           </div>
-          <LiveGrid b={sb} code={code} tv={tv} />
-        </section>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** TV: one sport full-screen, or both sports split left | right. */
+function TvSports({ b, view, code }: { b: Bundle; view: SportView; code: string }) {
+  const sports = view === 'all' ? sportsPresent(b) : [view]
+  const split = sports.length > 1
+  return (
+    <div className="shrink-0 px-4 sm:px-8">
+      <div className={`mx-auto grid w-full gap-6 ${split ? 'max-w-[1800px] lg:grid-cols-2 lg:gap-8' : 'max-w-[1600px]'}`}>
+        {sports.map(s => {
+          const sb = sportBundle(b, s)
+          return (
+            <section key={s} className="min-w-0">
+              <SportBanner sport={s} b={sb} big />
+              <LiveGrid b={sb} code={code} tv split={split} />
+            </section>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** Matches tab: team-vs-team ties with their games underneath, per sport. */
+function TieMatches({ b, code, view }: { b: Bundle; code: string; view: SportView }) {
+  const sports = view === 'all' ? sportsPresent(b) : [view]
+  const both = sports.length > 1
+  return (
+    <div className={`p-3 lg:p-5 ${both ? 'grid gap-6 lg:grid-cols-2' : ''}`}>
+      {sports.map(s => (
+        <SportTies key={s} b={sportBundle(b, s)} sport={s} code={code} banner={both} wide={!both} />
       ))}
     </div>
   )
 }
 
-function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
+function SportTies({ b, sport, code, banner, wide }: {
+  b: Bundle; sport: Sport; code: string; banner: boolean; wide: boolean
+}) {
+  const ties = b.events.flatMap(e => tiesOf(b, e.id))
+  const isLive = (t: Tie) => t.games.some(g => g.status === 'live')
+  const upcoming = ties.filter(t => !t.done).sort((x, y) => Number(isLive(y)) - Number(isLive(x)))
+  const done = ties.filter(t => t.done).reverse()
+  const grid = `grid gap-2 ${wide ? 'sm:grid-cols-2 xl:grid-cols-3' : ''}`
+  const head = (txt: string) => (
+    <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">{txt}</div>
+  )
+  const empty = (txt: string) => (
+    <div className="rounded-xl border border-line p-4 text-sm text-fg-subtle">{txt}</div>
+  )
+  return (
+    <section className="min-w-0">
+      {banner && <SportBanner sport={sport} b={b} />}
+      {ties.length === 0 ? empty('Schedule not drawn yet.') : (
+        <div className="space-y-5">
+          <div>
+            {head('Up next')}
+            {upcoming.length
+              ? <div className={grid}>{upcoming.map(t => <TieCard key={t.id} b={b} t={t} code={code} sport={sport} />)}</div>
+              : empty('Every tie has been played.')}
+          </div>
+          {done.length > 0 && (
+            <div>
+              {head('Results')}
+              <div className={grid}>{done.map(t => <TieCard key={t.id} b={b} t={t} code={code} sport={sport} />)}</div>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function TieCard({ b, t, code, sport }: { b: Bundle; t: Tie; code: string; sport: Sport }) {
+  const tone = SPORT_TONE[sport]
+  const live = t.games.some(g => g.status === 'live')
+  const started = live || t.games.some(g => g.status === 'finished')
+  const aWin = t.done && t.aPts > t.bPts
+  const bWin = t.done && t.bPts > t.aPts
+  const sweep = t.done && (t.aGames === t.games.length || t.bGames === t.games.length)
+  const court = (id: string | null) => {
+    const ct = b.courts.find(c => c.id === id)
+    return ct ? (ct.label || `Court ${ct.number}`) : '—'
+  }
+  const side = (id: string | null, win: boolean, right: boolean) => (
+    <span className={`flex min-w-0 items-center gap-1.5 ${right ? 'justify-end' : ''} ${
+      win ? 'font-bold text-fg' : t.done ? 'text-fg-muted' : 'text-fg'}`}>
+      {right && <span className="truncate text-right">{teamName(b, id)}</span>}
+      <Emblem logo={teamLogo(b, id)} flagName={teamSideName(b, id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
+      {!right && <span className="truncate">{teamName(b, id)}</span>}
+    </span>
+  )
+  return (
+    <div className={`overflow-hidden rounded-xl border bg-surface ${live ? tone.border : 'border-line'}`}>
+      <div className="flex items-center justify-between gap-2 px-3 pt-2 text-[10px] font-bold uppercase tracking-widest text-fg-subtle">
+        <span className="truncate">{tieStage(t.games[0]?.round)}</span>
+        {live ? <Pill tone="live">● live</Pill> : t.done ? <Pill tone="done">final</Pill> : null}
+      </div>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 py-2 text-sm">
+        {side(t.a, aWin, true)}
+        <span className={`tabular font-display text-lg font-bold ${started ? tone.text : 'text-fg-subtle'}`}>
+          {started ? `${t.aGames}–${t.bGames}` : 'vs'}
+        </span>
+        {side(t.b, bWin, false)}
+      </div>
+      {!started ? (
+        <div className="flex flex-wrap justify-center gap-x-3 gap-y-0.5 border-t border-line/60 px-3 py-1.5 text-[11px] text-fg-subtle">
+          {t.games.map(g => (
+            <span key={g.id} className="whitespace-nowrap">
+              <span className={`font-display font-bold ${tone.text}`}>{g.game_label}</span> {court(g.court_id)}
+            </span>
+          ))}
+        </div>
+      ) : (
+      <div className="divide-y divide-line/60 border-t border-line/60">
+        {t.games.map(g => {
+          const played = g.status === 'live' || g.status === 'finished'
+          return (
+            <Link key={g.id} to={`/c/${code}/match/${g.id}`}
+              className={`grid grid-cols-[2.75rem_1fr_auto] items-center gap-2 px-3 py-1.5 text-xs active:bg-surface-2 ${
+                g.status === 'live' ? tone.soft : ''}`}>
+              <span className={`font-display text-sm font-bold ${tone.text}`}>{g.game_label}</span>
+              <span className="truncate text-fg-subtle">{court(g.court_id)}</span>
+              <span className={`tabular font-bold ${played ? 'text-fg' : 'text-fg-subtle'}`}>
+                {played ? `${g.score_a}–${g.score_b}` : g.status === 'on_deck' ? 'on deck' : '—'}
+              </span>
+            </Link>
+          )
+        })}
+      </div>
+      )}
+      {sweep && <div className="px-3 pb-2 pt-1 text-[11px] font-bold text-gold">Sweep · +1 bonus</div>}
+    </div>
+  )
+}
+
+function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck = false }: {
+  b: Bundle; code: string; tv: boolean
+  split?: boolean    // TV half-screen (multi-sport "both")
+  compact?: boolean  // board half-width column (multi-sport "both")
+  hideDeck?: boolean // multi-sport: per-court lists replaced by "Next ties"
+}) {
   const shownCourts = tv ? b.courts.filter(ct => liveOnCourt(b, ct.id)) : b.courts
   if (tv && shownCourts.length === 0) return <TvIdle b={b} />
   const cols = !tv
-    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+    ? (compact ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4')
     : shownCourts.length <= 1 ? 'grid-cols-1'
-    : shownCourts.length === 2 ? 'grid-cols-1 sm:grid-cols-2'
+    : shownCourts.length === 2 || split ? 'grid-cols-1 sm:grid-cols-2'
     : 'grid-cols-1 sm:grid-cols-3'
-  const wrap = tv && shownCourts.length === 1 ? 'mx-auto w-full max-w-[1100px] ' : ''
+  const wrap = tv && !split && shownCourts.length === 1 ? 'mx-auto w-full max-w-[1100px] ' : ''
   return (
-    <div className={tv ? '' : 'p-3 lg:p-5'}>
+    <div className={tv || compact ? '' : 'p-3 lg:p-5'}>
       <div className={`${wrap}grid gap-2 lg:gap-3 ${cols}`}>
         {shownCourts.map(ct => {
           const m = liveOnCourt(b, ct.id)
@@ -265,12 +589,12 @@ function LiveGrid({ b, code, tv }: { b: Bundle; code: string; tv: boolean }) {
         })}
       </div>
 
-      {!tv && (
+      {!tv && !hideDeck && (
         <div className="mt-4">
           <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-accent">
             On deck
           </div>
-          <div className={`grid gap-3 ${tv ? 'grid-cols-3' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+          <div className={`grid gap-3 ${compact ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
             {b.courts.map(ct => {
               const ups = b.matches
                 .filter(mm => mm.court_id === ct.id && (mm.status === 'scheduled' || mm.status === 'on_deck'))

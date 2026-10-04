@@ -171,4 +171,54 @@ export function tieStandings(b: Bundle, eventId: string): Record<string, TieRow[
   return byPool
 }
 
+// ------------------------------------------------------ board presentation
+/** Which slice of a multi-sport board a viewer is following. */
+export type SportView = Sport | 'all'
+
+/** Each sport keeps one colour everywhere on the board, matching its court
+ *  art (blue = pickleball court, green = badminton court), so the two crowds
+ *  sharing one code can tell at a glance whose courts they are looking at. */
+export const SPORT_TONE: Record<Sport, {
+  solid: string; text: string; border: string; soft: string; bar: string
+}> = {
+  pickleball: {
+    solid: 'bg-[#5aa9ff] text-[#0a0e17]',
+    text: 'text-[#1d5fbf] dark:text-[#7cbcff]',
+    border: 'border-[#3b8ff0] dark:border-[#5aa9ff]',
+    soft: 'bg-[#5aa9ff]/[0.08]',
+    bar: 'bg-[#5aa9ff]',
+  },
+  badminton: {
+    solid: 'bg-[#34d399] text-[#0a0e17]',
+    text: 'text-[#047857] dark:text-[#4ee0a8]',
+    border: 'border-[#10b981] dark:border-[#34d399]',
+    soft: 'bg-[#34d399]/[0.08]',
+    bar: 'bg-[#34d399]',
+  },
+}
+
+const ALIAS: Record<string, SportView> = {
+  pickleball: 'pickleball', pickle: 'pickleball', pb: 'pickleball',
+  badminton: 'badminton', bm: 'badminton', bd: 'badminton',
+  all: 'all', both: 'all',
+}
+/** `?s=badminton` / `?s=pb` / `?s=all` deep links (one QR per hall). */
+export const parseSportView = (v?: string | null): SportView | null =>
+  (v && ALIAS[v.trim().toLowerCase()]) || null
+
+const viewKey = (code: string) => `pp.sport.${code.toUpperCase()}`
+export function readSportView(code: string): SportView | null {
+  try { return parseSportView(localStorage.getItem(viewKey(code))) } catch { return null }
+}
+export function saveSportView(code: string, v: SportView) {
+  try { localStorage.setItem(viewKey(code), v) } catch { /* private mode */ }
+}
+
+/** "A · R1 · MD1" -> "Group A · Round 1" */
+export function tieStage(round?: string | null): string {
+  const p = (round ?? '').split(' · ')
+  if (p.length >= 2 && /^R\d+$/.test(p[1])) return `Group ${p[0]} · Round ${p[1].slice(1)}`
+  return round ?? ''
+}
+
 export type { EventCfg }
