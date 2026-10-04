@@ -14,7 +14,7 @@ import { Screen, Spinner, ThemeToggle, Emblem } from '../components/ui'
 import { Flag } from '../components/ui'
 import { Field, Stepper, Choice, Warn, input, inputFull } from '../components/form'
 import { resizeImage } from '../lib/image'
-import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts } from './MultiSportAdmin'
+import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts, KnockoutTab } from './MultiSportAdmin'
 import { sportsPresent } from '../lib/multisport'
 
 const TOKEN_TTL_MS = 4 * 60 * 60 * 1000
@@ -31,7 +31,7 @@ function readToken(code: string): string | null {
 function writeToken(code: string, t: string) {
   localStorage.setItem(tokKey(code), JSON.stringify({ t, exp: Date.now() + TOKEN_TTL_MS }))
 }
-type Tab = 'competition' | 'scoring' | 'teams' | 'courts' | 'schedule' | 'bracket' | 'sports'
+type Tab = 'competition' | 'scoring' | 'teams' | 'courts' | 'schedule' | 'bracket' | 'sports' | 'knockout'
 
 export default function Admin() {
   const { code } = useParams()
@@ -115,10 +115,13 @@ function Panel({ bundle, token, code, reload, onLogout }: {
   // events; every other competition keeps editing its single event as before
   const multi = !!bundle.competition.multi_sport
   const [evId, setEvId] = useState<string | null>(null)
-  const ev = (multi && bundle.events.find((e: any) => e.id === evId)) || bundle.events[0]
+  // the Final's rules-only event (multi-sport, migration 0025) is editable in
+  // Scoring only — it has no teams or schedule of its own
+  const evList = multi && tab !== 'scoring' ? bundle.events.filter((e: any) => !e.stage) : bundle.events
+  const ev = (multi && evList.find((e: any) => e.id === evId)) || evList[0]
   const tabs: Tab[] = ['competition', 'scoring', 'teams', 'courts', 'schedule',
     ...(ev?.format === 'groups_ko' ? ['bracket' as Tab] : []),
-    ...(multi ? ['sports' as Tab] : [])]
+    ...(multi ? ['knockout' as Tab, 'sports' as Tab] : [])]
 
   return (
     <div className="flex min-h-screen bg-canvas">
@@ -155,7 +158,7 @@ function Panel({ bundle, token, code, reload, onLogout }: {
         </div>
 
         {multi && ['scoring', 'teams', 'schedule'].includes(tab) &&
-          <EventSwitcher events={bundle.events} value={ev.id} onChange={setEvId} />}
+          <EventSwitcher events={evList} value={ev.id} onChange={setEvId} />}
 
         {msg && <div className="mb-4 rounded-lg border border-brand-ink/40 bg-brand/10 px-3 py-2 text-sm text-brand-ink">{msg}</div>}
         {err && <Warn>{err}</Warn>}
@@ -169,6 +172,7 @@ function Panel({ bundle, token, code, reload, onLogout }: {
         {tab === 'schedule' && (multi
           ? <TieScheduleTab bundle={bundle} ev={ev} token={token} run={run} />
           : <ScheduleTab bundle={bundle} ev={ev} token={token} run={run} />)}
+        {tab === 'knockout' && multi && <KnockoutTab bundle={bundle} token={token} run={run} />}
         {tab === 'sports' && multi && <SportsTab bundle={bundle} token={token} run={run} onAdded={reload} />}
         {tab === 'bracket' && <BracketTab bundle={bundle} ev={ev} token={token} run={run} />}
       </div>
@@ -844,4 +848,8 @@ const readable = (m: string) => ({
   LOGO_TOO_LARGE: 'That logo is too large to save.',
   BAD_IMAGE: 'That file could not be read as an image.',
   NO_TEAM: 'That team no longer exists.',
+  STAGE_EXISTS: 'That knockout stage already exists — undo it first.',
+  STAGE_STARTED: 'That stage has already started, so it can\'t be undone.',
+  WRONG_TEAM: 'A team in that tie belongs to another sport.',
+  BAD_RULES: 'Those scoring rules are not valid.',
 }[m] ?? m)

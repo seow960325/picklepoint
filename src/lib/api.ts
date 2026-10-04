@@ -364,3 +364,28 @@ export async function adminSetSportCourts(
   if (IS_DEMO) throw new Error('Multi-sport needs the live database')
   await rpc('admin_set_sport_courts', { p_token: token, p_sport: sport, p_plan: plan })
 }
+
+// --------------------------------------------- multi-sport knockout (0025)
+export async function adminTieFinalEvent(token: string, groupEventId: string, r: {
+  target_score: number; win_by: number; cap: number; switch_at: number; serve_mode: string
+}): Promise<string> {
+  if (IS_DEMO) throw new Error('Multi-sport needs the live database')
+  return rpc<string>('admin_tie_final_event', {
+    p_token: token, p_group_event: groupEventId,
+    p_target: r.target_score, p_win_by: r.win_by, p_cap: r.cap,
+    p_switch_at: r.switch_at, p_serve_mode: r.serve_mode,
+  })
+}
+
+export async function adminAddTieStage(
+  token: string, eventId: string, stage: string,
+  games: Array<{ a: string; b: string; court: string; seq: number; game: string; set: number | null; round: string }>,
+): Promise<void> {
+  if (IS_DEMO) throw new Error('Multi-sport needs the live database')
+  await rpc('admin_add_tie_stage', { p_token: token, p_event_id: eventId, p_stage: stage, p_games: games })
+}
+
+export async function adminClearTieStage(token: string, eventId: string, stage: string): Promise<void> {
+  if (IS_DEMO) throw new Error('Multi-sport needs the live database')
+  await rpc('admin_clear_tie_stage', { p_token: token, p_event_id: eventId, p_stage: stage })
+}

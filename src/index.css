@@ -65,3 +65,10 @@ body {
 @keyframes pp-live{0%,100%{box-shadow:0 0 0 0 rgba(198,255,61,0)}50%{box-shadow:0 0 14px 1px rgba(198,255,61,.65)}}
 .pp-live{animation:pp-live 1.6s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){.pp-grow,.pp-rise,.pp-pop,.pp-champ-ring,.pp-live{animation:none !important}}
+
+/* multi-sport champions ceremony */
+@keyframes pp-confetti{0%{transform:translate3d(0,-20px,0) rotate(0);opacity:0}8%{opacity:1}100%{transform:translate3d(var(--pp-drift,0),110vh,0) rotate(720deg);opacity:0}}
+.pp-confetti{opacity:0;animation-name:pp-confetti;animation-timing-function:cubic-bezier(.25,.6,.4,1);animation-fill-mode:both}
+@keyframes pp-beam{0%,100%{opacity:.75}50%{opacity:1}}
+.pp-beam{animation:pp-beam 6s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.pp-confetti{display:none}.pp-beam{animation:none !important}}

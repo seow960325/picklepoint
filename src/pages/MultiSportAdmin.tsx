@@ -6,7 +6,9 @@ import { teamName } from '../lib/store'
 import { validateRules } from '../lib/draw'
 import { Field, Stepper, Choice, Warn, inputFull } from '../components/form'
 import {
-  SPORTS, SPORT_LABEL, SPORT_PRESETS, SPORT_ICON, sportOf, buildTieDraw, type Sport,
+  SPORTS, SPORT_LABEL, SPORT_PRESETS, SPORT_ICON, SPORT_TONE, FINAL_PRESETS, sportOf, buildTieDraw,
+  sportBundle, sportsPresent, groupEvents, finalEventOf, koState, semiPlan, finalsPlan, koGames,
+  type Sport, type KoGame,
 } from '../lib/multisport'
 
 const H = ({ children }: any) =>
@@ -295,3 +297,206 @@ export function RosterToggle({ t, token, run }: any) {
   )
 }
 
+
+// ---------------------------------------------------------------- knockout
+/** Semi-finals -> 3rd place + Final, per sport. Each step is one tap once the
+ *  previous stage is decided; an unplayed stage can be undone. */
+export function KnockoutTab({ bundle, token, run }: any) {
+  const sports = sportsPresent(bundle)
+  return (
+    <div className="max-w-3xl space-y-6">
+      <H>Knockout</H>
+      <p className="text-sm text-fg-muted">
+        Group A / B winners and runners-up cross into the semi-finals (A1 v B2, B1 v A2).
+        Semi-final winners play the Final, losers play for 3rd place. Knockout ties never
+        change the group tables.
+      </p>
+      {sports.map(s => <SportKnockout key={s} bundle={bundle} sport={s} token={token} run={run} />)}
+    </div>
+  )
+}
+
+/** Pretend the games about to be created are already queued, so the next
+ *  stage's court choice sees the load. */
+const withPending = (sb: any, games: KoGame[]) => ({
+  ...sb,
+  matches: [...sb.matches, ...games.map((g, i) => ({ id: `pending${i}`, court_id: g.court, status: 'scheduled' }))],
+})
+
+function SportKnockout({ bundle, sport, token, run }: any) {
+  const sb = sportBundle(bundle, sport)
+  const gev = groupEvents(sb)[0]
+  const fev = finalEventOf(sb, sport)
+  const k = koState(sb)
+  const plan = gev ? semiPlan(sb, gev.id) : { supported: false, ready: false, sf: [] as any[] }
+  const fp = finalsPlan(sb)
+  const team = (id: string | null) => sb.teams.find((t: any) => t.id === id)!
+  const name = (id: string | null) => teamName(bundle, id)
+  const [rules, setRules] = useState(() => fev
+    ? { target_score: fev.target_score, win_by: fev.win_by, cap: fev.cap, switch_at: fev.switch_at, serve_mode: fev.serve_mode ?? 'winner' }
+    : FINAL_PRESETS[sport as Sport])
+  const [bo3, setBo3] = useState(true)
+  const bad = validateRules(rules)
+  const started = (t?: any) => !!t && t.games.some((g: any) => g.status === 'finished' || g.score_a > 0 || g.score_b > 0)
+  const tone = SPORT_TONE[sport as Sport]
+
+  if (!gev) return null
+
+  const drawSemis = () => run(async () => {
+    let pending: KoGame[] = []
+    for (const s of plan.sf) {
+      if ((s.stage === 'SF1' && k.sf1) || (s.stage === 'SF2' && k.sf2)) continue
+      const games = koGames(withPending(sb, pending), s.stage, s.a.team, s.b.team)
+      await api.adminAddTieStage(token, gev.id, s.stage, games)
+      pending = pending.concat(games)
+    }
+  }, `${SPORT_LABEL[sport as Sport]} semi-finals drawn`)
+
+  const createFinals = () => run(async () => {
+    const finalEv = await api.adminTieFinalEvent(token, gev.id, rules)
+    const third = fp.third && !k.third ? koGames(sb, '3P', team(fp.third[0]), team(fp.third[1])) : []
+    if (third.length) await api.adminAddTieStage(token, gev.id, '3P', third)
+    if (!k.final) {
+      const fin = koGames(withPending(sb, third), 'F', team(fp.final![0]), team(fp.final![1]), { bestOf3: bo3 })
+      await api.adminAddTieStage(token, finalEv, 'F', fin)
+    }
+  }, `${SPORT_LABEL[sport as Sport]} Final and 3rd place created`)
+
+  const row = (label: string, a: string, b: string, sub?: string) => (
+    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2 py-1.5 text-sm">
+      <span className="text-[11px] font-bold uppercase tracking-wider text-fg-subtle">{label}</span>
+      <span className="min-w-0 truncate">{a} <span className="text-fg-subtle">v</span> {b}
+        {sub && <span className="ml-2 text-xs text-fg-subtle">{sub}</span>}</span>
+    </div>
+  )
+
+  return (
+    <section className={`space-y-4 rounded-xl border bg-surface p-4 ${tone.border}`}>
+      <div className={`font-display text-xl font-bold uppercase tracking-widest ${tone.text}`}>
+        {SPORT_ICON[sport as Sport]} {SPORT_LABEL[sport as Sport]}
+        <span className="ml-2 text-xs font-semibold normal-case tracking-normal text-fg-subtle">
+          {k.phase === 'groups' ? 'group stage' : k.phase === 'semis' ? 'semi-finals' : k.phase === 'finals' ? 'finals' : 'complete'}
+        </span>
+      </div>
+
+      {/* 1 — semis */}
+      <div>
+        <div className="mb-1 text-xs font-bold uppercase tracking-widest text-fg-muted">1 · Semi-finals</div>
+        {k.sf1 || k.sf2 ? (
+          <>
+            {k.sf1 && row('Semi-final 1', name(k.sf1.a), name(k.sf1.b), `${k.sf1.aGames}–${k.sf1.bGames}`)}
+            {k.sf2 && row('Semi-final 2', name(k.sf2.a), name(k.sf2.b), `${k.sf2.aGames}–${k.sf2.bGames}`)}
+            {(!k.sf1 || !k.sf2) && plan.supported && (
+              <button onClick={drawSemis}
+                className="mt-2 block rounded-xl bg-brand px-5 py-2.5 font-display font-bold text-brand-fg">
+                DRAW THE MISSING SEMI-FINAL
+              </button>
+            )}
+            {!k.third && !k.final && !started(k.sf1) && !started(k.sf2) && (
+              <button onClick={() => run(() => Promise.all([
+                api.adminClearTieStage(token, gev.id, 'SF1'), api.adminClearTieStage(token, gev.id, 'SF2'),
+              ]), 'Semi-finals removed')}
+                className="mt-1 text-xs text-fg-subtle underline underline-offset-4">undo semi-finals</button>
+            )}
+          </>
+        ) : !plan.supported ? (
+          <Warn>Semi-finals need two groups with at least two teams each (or one group of four or more).</Warn>
+        ) : (
+          <>
+            {plan.sf.map((s: any) => row(s.stage === 'SF1' ? 'Semi-final 1' : 'Semi-final 2',
+              `${s.a.seed} ${s.a.team?.name ?? '—'}`, `${s.b.seed} ${s.b.team?.name ?? '—'}`))}
+            {!plan.ready && <div className="mt-1 text-xs text-amber-400">Group stage not finished — these are the current leaders.</div>}
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button disabled={!plan.ready} onClick={drawSemis}
+                className="rounded-xl bg-brand px-5 py-2.5 font-display font-bold text-brand-fg disabled:opacity-30">
+                DRAW SEMI-FINALS
+              </button>
+              {!plan.ready && (
+                <button onClick={drawSemis} className="text-xs text-fg-subtle underline underline-offset-4">
+                  draw now with current standings
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* 2 — final + third */}
+      <div className="border-t border-line pt-4">
+        <div className="mb-1 text-xs font-bold uppercase tracking-widest text-fg-muted">2 · Final &amp; 3rd place</div>
+        {k.final || k.third ? (
+          <>
+            {k.third && row('3rd place', name(k.third.a), name(k.third.b), `${k.third.aGames}–${k.third.bGames}`)}
+            {k.final && row('Final', name(k.final.a), name(k.final.b), `${k.final.aGames}–${k.final.bGames}`)}
+            {!started(k.final) && !started(k.third) && (
+              <button onClick={() => run(async () => {
+                await api.adminClearTieStage(token, gev.id, '3P')
+                await api.adminClearTieStage(token, gev.id, 'F')
+              }, 'Final and 3rd place removed')}
+                className="mt-1 text-xs text-fg-subtle underline underline-offset-4">undo final &amp; 3rd place</button>
+            )}
+          </>
+        ) : fp.ready ? (
+          <>
+            {row('Final', name(fp.final![0]), name(fp.final![1]))}
+            {row('3rd place', name(fp.third![0]), name(fp.third![1]))}
+          </>
+        ) : (
+          <div className="text-sm text-fg-subtle">Waiting for both semi-finals to be decided.</div>
+        )}
+
+        <div className="mt-3 rounded-lg border border-line p-3">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-fg-muted">Final scoring</div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Field label="Winning score">
+              <Stepper value={rules.target_score} min={1} max={99} onChange={v => setRules({ ...rules, target_score: v })} />
+            </Field>
+            <Field label="Win by">
+              <Stepper value={rules.win_by} min={1} max={5} onChange={v => setRules({ ...rules, win_by: v })} />
+            </Field>
+            <Field label="Hard cap">
+              <Stepper value={rules.cap} min={1} max={120} onChange={v => setRules({ ...rules, cap: v })} />
+            </Field>
+            <Field label="Switch ends at">
+              <Stepper value={rules.switch_at} min={0} max={rules.target_score}
+                onChange={v => setRules({ ...rules, switch_at: v })} format={v => v === 0 ? 'OFF' : String(v)} />
+            </Field>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <Field label="Serve">
+              <Choice value={rules.serve_mode} onChange={v => setRules({ ...rules, serve_mode: v })}
+                options={[{ label: 'Rally', value: 'winner' }, { label: 'Side-out', value: 'alternate' }]} />
+            </Field>
+            {!k.final && (
+              <Field label="Each discipline">
+                <Choice value={bo3 ? 'bo3' : 'one'} onChange={v => setBo3(v === 'bo3')}
+                  options={[{ label: 'Best of 3', value: 'bo3' }, { label: 'One game', value: 'one' }]} />
+              </Field>
+            )}
+          </div>
+          {bad && <Warn>{bad}</Warn>}
+          {k.final && (
+            <button disabled={!!bad} onClick={() => run(() => api.adminTieFinalEvent(token, gev.id, rules), 'Final scoring saved')}
+              className="mt-3 rounded-lg border border-line px-4 py-2 text-xs font-bold uppercase tracking-wider text-fg-muted disabled:opacity-30">
+              Save final scoring
+            </button>
+          )}
+        </div>
+
+        {(!k.final || !k.third) && fp.ready && (
+          <button disabled={!!bad} onClick={createFinals}
+            className="mt-3 rounded-xl bg-brand px-5 py-2.5 font-display font-bold text-brand-fg disabled:opacity-30">
+            CREATE FINAL &amp; 3RD PLACE
+          </button>
+        )}
+      </div>
+
+      {k.phase === 'done' && (
+        <div className="border-t border-line pt-4 text-sm">
+          <span className="font-bold text-gold">🏆 {name(k.champion)}</span>
+          <span className="text-fg-muted"> · runner-up {name(k.runnerUp)}{k.thirdPlace ? ` · 3rd ${name(k.thirdPlace)}` : ''}</span>
+        </div>
+      )}
+    </section>
+  )
+}

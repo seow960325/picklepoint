@@ -10,6 +10,7 @@ import { useLandscape } from '../lib/orientation'
 import { tapPoint, tapFault, tapUndo, hornEnd, chimeSwitch, isSoundOn, setSoundOn } from '../lib/feedback'
 import { Screen, Spinner, FullscreenButton, Flag, Emblem } from '../components/ui'
 import Court from '../components/Court'
+import { koCourtLabel } from '../lib/multisport'
 
 export default function CourtScore() {
   const { code, number } = useParams()
@@ -426,7 +427,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 leftScore={s.left} rightScore={s.right}
                 leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
                 leftLogo={teamLogoOf(leftTeamId)} rightLogo={teamLogoOf(rightTeamId)}
-                label={m.bracket_key ? (m.round ?? undefined) : (m.game_label ?? undefined)}
+                label={koCourtLabel(m) ?? (m.bracket_key ? (m.round ?? undefined) : (m.game_label ?? undefined))}
                 sport={eventOf(bundle, match).sport}
                 serving={serving}
                 serverNo={serverNo}
@@ -446,7 +447,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 leftScore={s.left} rightScore={s.right}
                 leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
                 leftLogo={teamLogoOf(leftTeamId)} rightLogo={teamLogoOf(rightTeamId)}
-                label={m.bracket_key ? (m.round ?? undefined) : (m.game_label ?? undefined)}
+                label={koCourtLabel(m) ?? (m.bracket_key ? (m.round ?? undefined) : (m.game_label ?? undefined))}
                 sport={eventOf(bundle, match).sport}
                 serving={serving}
                 serverNo={serverNo}

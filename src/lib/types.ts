@@ -26,6 +26,8 @@ export interface EventCfg {
   advance_per_group?: number | null
   third_place?: boolean | null
   bracket_seeded_at?: string | null
+  // multi-sport only (migration 0025): 'final' = rules-only event the Final is scored with
+  stage?: string | null
 }
 export interface Court { id: string; number: number; label: string | null; sport?: 'pickleball' | 'badminton'
   // multi-sport only: which game type (MD1 / MD2 / XD) this court hosts; null = any
@@ -64,6 +66,10 @@ export interface Match {
   // multi-sport only: games of one team-vs-team tie share tie_id
   tie_id?: string | null
   game_label?: string | null
+  // multi-sport knockout only (migration 0025): null = group tie
+  tie_stage?: 'SF1' | 'SF2' | '3P' | 'F' | null
+  // multi-sport Final only: game 1/2/3 of a best-of-3 discipline
+  set_no?: number | null
   loser_match_id?: string | null
   loser_slot?: 'a' | 'b' | null
   started_at: string | null; finished_at: string | null
