@@ -12,8 +12,9 @@ import {
 } from '../lib/draw'
 import { Screen, Spinner, ThemeToggle, Emblem } from '../components/ui'
 import { Flag } from '../components/ui'
-import { Field, Stepper, Choice, Warn, input, inputFull } from '../components/form'
+import { Field, Stepper, Choice, Warn, GrowInput, input, inputFull } from '../components/form'
 import { resizeImage } from '../lib/image'
+import { ScheduleRow, scheduleStatus } from '../components/ScheduleRow'
 import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts, KnockoutTab } from './MultiSportAdmin'
 import { sportsPresent } from '../lib/multisport'
 
@@ -152,7 +153,7 @@ function Panel({ bundle, token, code, reload, onLogout }: {
         <div className="mb-4 flex gap-1 overflow-x-auto md:hidden">
           {tabs.map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold uppercase ${
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold uppercase ${
                 tab === t ? 'bg-brand text-brand-fg' : 'text-fg-muted'}`}>{t}</button>
           ))}
         </div>
@@ -311,7 +312,7 @@ function ScoringTab({ ev, token, run }: any) {
             ? [{ label: 'to 15', value: 15 }, { label: 'to 21', value: 21 }]
             : [{ label: 'to 11', value: 11 }, { label: 'to 15', value: 15 }, { label: 'to 21', value: 21 }]} />
       </Field>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-4">
         <Field label="Winning score">
           <Stepper value={t} min={1} max={99} onChange={v => { setT(v); setSw((s: number) => s > 0 ? defaultSwitchAt(v) : 0) }} />
         </Field>
@@ -456,7 +457,7 @@ function TeamRow({ t, ev, token, run, isDuel, multi }: any) {
     <div className="p-2.5">
       <div className="flex items-center gap-2">
         <LogoControl t={t} token={token} run={run} />
-        <input className={`${input} min-w-0 flex-1`} value={name} onChange={e => setName(e.target.value)} />
+        <GrowInput className={`${input} min-w-0 flex-1 leading-snug`} value={name} onChange={setName} />
       </div>
       <div className="ml-11 mt-1.5 flex items-center gap-1.5">
         {isDuel ? (
@@ -513,15 +514,15 @@ function CourtRow({ c, token, run, pin, after, multi }: any) {
   useEffect(() => setV(pin), [pin])
   return (
     <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3">
-      <div className="w-24 font-display text-lg font-bold text-fg-muted">
-        {multi && c.label ? c.label.toUpperCase() : `COURT ${c.number}`}
+      <div className="min-w-0 flex-1 font-display text-lg font-bold text-fg-muted">
+        <div className="truncate whitespace-nowrap">{multi && c.label ? c.label.toUpperCase() : `COURT ${c.number}`}</div>
         {multi && c.game_group && <div className="text-[11px] font-semibold tracking-wider text-accent">{c.game_group}</div>}
       </div>
-      <input className={`${input} tabular w-24 text-center`} value={v} maxLength={4} inputMode="numeric"
+      <input className={`${input} tabular w-20 shrink-0 text-center`} value={v} maxLength={4} inputMode="numeric"
         onChange={e => setV(e.target.value.replace(/\D/g, '').slice(0, 4))} />
       <button disabled={v === pin || v.length !== 4}
         onClick={() => run(async () => { await api.adminSetCourtPin(token, c.id, v); await after?.() }, `Court ${c.number} PIN changed`)}
-        className="rounded-lg bg-brand px-4 py-2 text-xs font-bold text-brand-fg disabled:opacity-20">
+        className="shrink-0 rounded-lg bg-brand px-4 py-2 text-xs font-bold text-brand-fg disabled:opacity-20">
         SAVE
       </button>
     </div>
@@ -606,7 +607,7 @@ function BracketTab({ bundle, ev, token, run }: any) {
           </div>
           <ul className="space-y-1 text-sm">
             {pairs.map((pr, i) => (
-              <li key={i} className="grid grid-cols-[1fr_2.75rem_1fr] items-center gap-2 border-b border-line/60 pb-1">
+              <li key={i} className="grid grid-cols-[minmax(0,1fr)_2.75rem_minmax(0,1fr)] items-center gap-2 border-b border-line/60 pb-1">
                 <span className="flex min-w-0 items-center justify-end gap-1.5 truncate text-right">
                   <span className="truncate">{nm(pr[0]) ?? '—'}</span>
                   {pr[0] && <Emblem logo={teamLogo(bundle, pr[0])} flagName={teamSideName(bundle, pr[0])} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />}
@@ -645,7 +646,7 @@ function BracketTab({ bundle, ev, token, run }: any) {
               </div>
               <ul className="space-y-1 text-sm">
                 {r.matches.map((m: any) => (
-                  <li key={m.id} className="grid grid-cols-[1fr_4rem_1fr] items-center gap-2">
+                  <li key={m.id} className="grid grid-cols-[minmax(0,1fr)_4rem_minmax(0,1fr)] items-center gap-2">
                     <span className={`flex min-w-0 items-center justify-end gap-1.5 ${m.winner_id === m.team_a_id ? 'font-semibold' : ''}`}>
                       <span className="truncate text-right">{nm(m.team_a_id) ?? '—'}</span>
                       {m.team_a_id && <Emblem logo={teamLogo(bundle, m.team_a_id)} flagName={teamSideName(bundle, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />}
@@ -737,35 +738,14 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
             const i = sibs.findIndex((x: any) => x.id === m.id)
             const canUp = m.status === 'scheduled' && i > 0
             const canDown = m.status === 'scheduled' && i >= 0 && i < sibs.length - 1
-            const fl = "mr-1 inline-block h-3 w-auto shrink-0 rounded-[1px] align-[-2px]"
+            const st = scheduleStatus(m, (m.round ?? '').replace(/pod/i, 'Court'))
             return (
-              <div key={m.id} className="flex items-center gap-2 px-3 py-2">
-                <span className="w-6 text-center text-xs text-fg-subtle">
-                  {bundle.courts.find((c: any) => c.id === m.court_id)?.number ?? '–'}
-                </span>
-                <span className="grid min-w-0 flex-1 grid-cols-[1fr_1.75rem_1fr] items-center gap-1">
-                  <span className="flex min-w-0 items-center justify-end gap-1.5">
-                    <span className="truncate text-right">{teamName(bundle, m.team_a_id)}</span>
-                    <Emblem logo={teamLogo(bundle, m.team_a_id)} flagName={teamSideName(bundle, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-                  </span>
-                  <span className="text-center text-xs text-fg-subtle">vs</span>
-                  <span className="flex min-w-0 items-center gap-1.5">
-                    <Emblem logo={teamLogo(bundle, m.team_b_id)} flagName={teamSideName(bundle, m.team_b_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-                    <span className="truncate">{teamName(bundle, m.team_b_id)}</span>
-                  </span>
-                </span>
-                <span className="tabular shrink-0 whitespace-nowrap text-right text-xs text-fg-muted">
-                  {m.status === 'scheduled' ? (m.round ?? '').replace(/pod/i, 'Court') : `${m.score_a}–${m.score_b}`}
-                </span>
-                <span className="flex shrink-0 items-center gap-1">
-                  <button disabled={!canUp}
-                    onClick={() => run(() => api.adminMoveMatch(token, m.id, 'up'), 'Match moved up')}
-                    className="grid h-7 w-7 place-items-center rounded-lg border border-line text-fg-muted active:bg-surface-2 disabled:opacity-20">▲</button>
-                  <button disabled={!canDown}
-                    onClick={() => run(() => api.adminMoveMatch(token, m.id, 'down'), 'Match moved down')}
-                    className="grid h-7 w-7 place-items-center rounded-lg border border-line text-fg-muted active:bg-surface-2 disabled:opacity-20">▼</button>
-                </span>
-              </div>
+              <ScheduleRow key={m.id} bundle={bundle} a={m.team_a_id} b={m.team_b_id}
+                meta={<span className="font-display text-sm font-bold">{bundle.courts.find((c: any) => c.id === m.court_id)?.number ?? '–'}</span>}
+                status={st.text} live={st.live}
+                canUp={canUp} canDown={canDown}
+                onUp={() => run(() => api.adminMoveMatch(token, m.id, 'up'), 'Match moved up')}
+                onDown={() => run(() => api.adminMoveMatch(token, m.id, 'down'), 'Match moved down')} />
             )
           })}
       </div>
@@ -788,9 +768,9 @@ const Save = (
 )
 
 const Row = ({ k, v, accent }: { k: string; v: string; accent: 'brand' | 'accent' }) => (
-  <div className="flex items-center justify-between border-t border-line/60 py-2 text-sm first:border-0">
-    <span className="text-fg-muted">{k}</span>
-    <span className={`tabular font-display text-xl font-bold ${accent === 'brand' ? 'text-brand-ink' : 'text-accent'}`}>
+  <div className="flex items-center justify-between gap-2 border-t border-line/60 py-2 text-sm first:border-0">
+    <span className="min-w-0 flex-1 truncate text-fg-muted">{k}</span>
+    <span className={`tabular shrink-0 font-display text-xl font-bold ${accent === 'brand' ? 'text-brand-ink' : 'text-accent'}`}>
       {v}
     </span>
   </div>
@@ -803,11 +783,11 @@ function AdminPinRow({ token, pin, run, after }: any) {
 
   if (!editing) {
     return (
-      <div className="flex items-center justify-between border-t border-line/60 py-2 text-sm">
-        <span className="text-fg-muted">Admin PIN (keep private)</span>
-        <span className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2 border-t border-line/60 py-2 text-sm">
+        <span className="min-w-0 flex-1 truncate text-fg-muted">Admin PIN (keep private)</span>
+        <span className="flex shrink-0 items-center gap-2">
           <button onClick={() => setEditing(true)}
-            className="rounded-lg border border-line px-2.5 py-1 text-xs font-semibold text-fg-muted active:bg-surface-2">
+            className="shrink-0 whitespace-nowrap rounded-lg border border-line px-2.5 py-1 text-xs font-semibold text-fg-muted active:bg-surface-2">
             Change
           </button>
           <span className="tabular font-display text-xl font-bold text-accent">{pin}</span>
@@ -817,8 +797,8 @@ function AdminPinRow({ token, pin, run, after }: any) {
   }
   return (
     <div className="flex items-center justify-between gap-3 border-t border-line/60 py-2 text-sm">
-      <span className="text-fg-muted">Admin PIN (keep private)</span>
-      <span className="flex items-center gap-2">
+      <span className="min-w-0 flex-1 truncate text-fg-muted">Admin PIN (keep private)</span>
+      <span className="flex shrink-0 items-center gap-2">
         <input className={`${input} tabular w-24 text-center`} value={v} maxLength={4} inputMode="numeric"
           onChange={e => setV(e.target.value.replace(/\D/g, '').slice(0, 4))} />
         <button disabled={v.length !== 4}

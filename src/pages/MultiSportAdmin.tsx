@@ -5,9 +5,10 @@ import * as api from '../lib/api'
 import { teamName } from '../lib/store'
 import { validateRules } from '../lib/draw'
 import { Field, Stepper, Choice, Warn, inputFull } from '../components/form'
+import { ScheduleRow, scheduleStatus } from '../components/ScheduleRow'
 import {
   SPORTS, SPORT_LABEL, SPORT_PRESETS, SPORT_ICON, SPORT_TONE, FINAL_PRESETS, sportOf, buildTieDraw,
-  sportBundle, sportsPresent, groupEvents, finalEventOf, koState, semiPlan, finalsPlan, koGames,
+  sportBundle, sportsPresent, groupEvents, finalEventOf, koState, semiPlan, finalsPlan, koGames, koCourtLabel,
   type Sport, type KoGame,
 } from '../lib/multisport'
 
@@ -26,7 +27,7 @@ export function EventSwitcher({ events, value, onChange }: {
     <div className="mb-4 flex flex-wrap gap-2">
       {events.map(e => (
         <button key={e.id} onClick={() => onChange(e.id)}
-          className={`rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${
+          className={`whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-wider ${
             e.id === value ? 'border-brand bg-brand text-brand-fg' : 'border-line text-fg-muted'}`}>
           {SPORT_ICON[sportOf(e)]} {e.name}
         </button>
@@ -91,7 +92,7 @@ export function SportsTab({ bundle, token, run, onAdded }: any) {
         <Field label="Event name">
           <input className={`${inputFull} max-w-sm`} value={name} onChange={e => setName(e.target.value)} />
         </Field>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-4">
           <Field label="Winning score">
             <Stepper value={rules.target_score} min={1} max={99}
               onChange={v => setRules({ ...rules, target_score: v })} />
@@ -199,29 +200,19 @@ export function TieScheduleTab({ bundle, ev, token, run }: any) {
           const i = sibs.findIndex((x: any) => x.id === m.id)
           const canUp = m.status === 'scheduled' && i > 0
           const canDown = m.status === 'scheduled' && i >= 0 && i < sibs.length - 1
+          // "A · R1" for group games, "SF1" / "FINAL · G2" for knockout games
+          const st = scheduleStatus(m, koCourtLabel(m)?.replace(/ · (MD1|MD2|MD|XD)\b/, '') ??
+            (m.round ?? '').split(' · ').slice(0, 2).join(' · '))
           return (
-            <div key={m.id} className="flex items-center gap-2 px-3 py-2">
-              <span className="w-8 shrink-0 text-center text-xs text-fg-subtle">
-                {bundle.courts.find((c: any) => c.id === m.court_id)?.number ?? '–'}
-              </span>
-              <span className="w-10 shrink-0 text-xs font-bold text-accent">{m.game_label}</span>
-              <span className="grid min-w-0 flex-1 grid-cols-[1fr_1.5rem_1fr] items-center gap-1">
-                <span className="truncate text-right">{teamName(bundle, m.team_a_id)}</span>
-                <span className="text-center text-xs text-fg-subtle">vs</span>
-                <span className="truncate">{teamName(bundle, m.team_b_id)}</span>
-              </span>
-              <span className="tabular shrink-0 whitespace-nowrap text-right text-xs text-fg-muted">
-                {m.status === 'scheduled' ? (m.round ?? '') : `${m.score_a}–${m.score_b}`}
-              </span>
-              <span className="flex shrink-0 items-center gap-1">
-                <button disabled={!canUp}
-                  onClick={() => run(() => api.adminMoveMatch(token, m.id, 'up'), 'Game moved up')}
-                  className="grid h-7 w-7 place-items-center rounded-lg border border-line text-fg-muted disabled:opacity-20">▲</button>
-                <button disabled={!canDown}
-                  onClick={() => run(() => api.adminMoveMatch(token, m.id, 'down'), 'Game moved down')}
-                  className="grid h-7 w-7 place-items-center rounded-lg border border-line text-fg-muted disabled:opacity-20">▼</button>
-              </span>
-            </div>
+            <ScheduleRow key={m.id} bundle={bundle} a={m.team_a_id} b={m.team_b_id}
+              meta={<>
+                <span className="block font-display text-sm font-bold text-accent">{m.game_label}{m.set_no ? ` G${m.set_no}` : ''}</span>
+                <span className="block">Ct {bundle.courts.find((c: any) => c.id === m.court_id)?.number ?? '–'}</span>
+              </>}
+              status={st.text} live={st.live}
+              canUp={canUp} canDown={canDown}
+              onUp={() => run(() => api.adminMoveMatch(token, m.id, 'up'), 'Game moved up')}
+              onDown={() => run(() => api.adminMoveMatch(token, m.id, 'down'), 'Game moved down')} />
           )
         })}
       </div>
@@ -255,8 +246,9 @@ export function SportCourts({ bundle, token, run, sport, onApplied }: any) {
 
   return (
     <div className="space-y-3 rounded-xl border border-line bg-surface p-4">
-      <div className="font-display text-lg font-bold tracking-wide">
-        {SPORT_ICON[sport as Sport]} {SPORT_LABEL[sport as Sport]} — courts per game
+      <div>
+        <div className="font-display text-lg font-bold tracking-wide">{SPORT_ICON[sport as Sport]} {SPORT_LABEL[sport as Sport]}</div>
+        <div className="text-xs text-fg-subtle">Courts per game</div>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {GROUPS.map((g, i) => (
@@ -363,7 +355,7 @@ function SportKnockout({ bundle, sport, token, run }: any) {
   }, `${SPORT_LABEL[sport as Sport]} Final and 3rd place created`)
 
   const row = (label: string, a: string, b: string, sub?: string) => (
-    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2 py-1.5 text-sm">
+    <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-2 py-1.5 text-sm">
       <span className="text-[11px] font-bold uppercase tracking-wider text-fg-subtle">{label}</span>
       <span className="min-w-0 truncate">{a} <span className="text-fg-subtle">v</span> {b}
         {sub && <span className="ml-2 text-xs text-fg-subtle">{sub}</span>}</span>
@@ -447,7 +439,7 @@ function SportKnockout({ bundle, sport, token, run }: any) {
 
         <div className="mt-3 rounded-lg border border-line p-3">
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-fg-muted">Final scoring</div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-4">
             <Field label="Winning score">
               <Stepper value={rules.target_score} min={1} max={99} onChange={v => setRules({ ...rules, target_score: v })} />
             </Field>
@@ -493,8 +485,14 @@ function SportKnockout({ bundle, sport, token, run }: any) {
 
       {k.phase === 'done' && (
         <div className="border-t border-line pt-4 text-sm">
-          <span className="font-bold text-gold">🏆 {name(k.champion)}</span>
-          <span className="text-fg-muted"> · runner-up {name(k.runnerUp)}{k.thirdPlace ? ` · 3rd ${name(k.thirdPlace)}` : ''}</span>
+          {[['Champion', k.champion, 'font-bold text-gold'], ['Runner-up', k.runnerUp, 'text-fg'], ['3rd place', k.thirdPlace, 'text-fg']]
+            .filter(([, id]) => id)
+            .map(([label, id, cls]) => (
+              <div key={label as string} className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-2 py-0.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-fg-subtle">{label}</span>
+                <span className={`truncate ${cls}`}>{name(id as string)}</span>
+              </div>
+            ))}
         </div>
       )}
     </section>

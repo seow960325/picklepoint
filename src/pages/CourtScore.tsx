@@ -393,7 +393,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
           </div>
           <div className="flex shrink-0 items-center gap-2.5 text-[11px]">
             <SoundToggle portrait={isPortrait} />
-            {!isPortrait && <FullscreenButton className="h-5 w-5 shrink-0 text-fg-muted active:text-fg-muted" />}
+            {!isPortrait && <FullscreenButton className="-my-1.5 h-8 w-8 shrink-0 p-1.5 text-fg-muted active:text-fg-muted" />}
             {recentDone && (
               <Link to={`/c/${code}/match/${recentDone.id}`} className="text-fg-muted underline underline-offset-2">
                 PREV
@@ -456,7 +456,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 onTap={score} disabled={done}
               />
               <button onClick={swap}
-                className="absolute left-1/2 top-0.5 -translate-x-1/2 rounded-lg border border-line bg-surface/90 px-3 py-1 font-display text-xs font-bold tracking-wide text-fg-muted active:scale-95">
+                className="absolute left-1/2 top-0.5 min-h-[30px] -translate-x-1/2 whitespace-nowrap rounded-lg border border-line bg-surface/90 px-3 py-1 font-display text-xs font-bold tracking-wide text-fg-muted active:scale-95">
                 ⇄ SWAP
               </button>
             </>
@@ -616,7 +616,7 @@ function RotatePrompt({ onIgnore }: { onIgnore: () => void }) {
         <path d="M100 6 l7 7 -8 6" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       <div className="text-center">
-        <div className="font-display text-3xl font-bold tracking-wide">ROTATE YOUR PHONE</div>
+        <div className="whitespace-nowrap font-display text-2xl font-bold tracking-wide sm:text-3xl">ROTATE YOUR PHONE</div>
         <div className="mt-1 text-sm text-fg-muted">
           The court view needs landscape so both halves stay big enough to tap.
         </div>

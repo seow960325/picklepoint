@@ -38,23 +38,23 @@ const NavButtons = ({ step, setStep, canNext, onSubmit, busy }: {
   <div className="flex items-center justify-between gap-3 px-1 pt-4">
     {step > 1 ? (
       <button type="button" onClick={() => setStep(step - 1)}
-        className="rounded-xl border border-line bg-surface px-6 py-3 font-display text-sm font-bold uppercase tracking-wider text-fg-muted active:bg-surface-2">
+        className="shrink-0 whitespace-nowrap rounded-xl border border-line bg-surface px-5 py-3 font-display text-sm font-bold uppercase tracking-wider text-fg-muted active:bg-surface-2">
         ← Back
       </button>
     ) : (
       <Link to="/"
-        className="rounded-xl border border-line bg-surface px-6 py-3 font-display text-sm font-bold uppercase tracking-wider text-fg-muted active:bg-surface-2 text-center">
+        className="shrink-0 whitespace-nowrap rounded-xl border border-line bg-surface px-5 py-3 text-center font-display text-sm font-bold uppercase tracking-wider text-fg-muted active:bg-surface-2">
         Cancel
       </Link>
     )}
     {step < TOTAL_STEPS ? (
       <button type="button" onClick={() => setStep(step + 1)} disabled={!canNext}
-        className="rounded-xl bg-brand px-8 py-3 font-display text-sm font-bold uppercase tracking-wider text-brand-fg disabled:opacity-30">
+        className="min-w-0 whitespace-nowrap rounded-xl bg-brand px-6 py-3 font-display text-sm font-bold uppercase tracking-wider text-brand-fg disabled:opacity-30 max-sm:flex-1">
         Next →
       </button>
     ) : (
       <button type="button" onClick={onSubmit} disabled={!canNext || busy}
-        className="rounded-xl bg-brand px-8 py-3 font-display text-sm font-bold uppercase tracking-wider text-brand-fg disabled:opacity-30">
+        className="min-w-0 truncate whitespace-nowrap rounded-xl bg-brand px-6 py-3 font-display text-sm font-bold uppercase tracking-wider text-brand-fg disabled:opacity-30 max-sm:flex-1">
         {busy ? 'Creating…' : 'Create Competition'}
       </button>
     )}

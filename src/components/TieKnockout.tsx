@@ -256,7 +256,7 @@ function TieNode({ b, sport, title, tie, slots, metal, big }: {
   const border = metal === 'gold' ? 'border-[#c99a3c]' : metal === 'bronze' ? 'border-[#9c6522]/70' : live ? tone.border : 'border-line'
   const glow = metal === 'gold' ? { boxShadow: '0 0 40px -16px rgba(244,205,106,.7)' } : undefined
   const row = (s: Slot, games: number | null, win: boolean, lose: boolean) => (
-    <div className={`grid grid-cols-[1.9rem_1.4rem_1fr_auto] items-center gap-2 px-3 ${big ? 'py-2 text-lg' : 'py-1.5 text-sm'}`}>
+    <div className={`grid grid-cols-[1.9rem_1.4rem_minmax(0,1fr)_auto] items-center gap-2 px-3 ${big ? 'py-2 text-lg' : 'py-1.5 text-sm'}`}>
       <span className={`text-[10px] font-bold tracking-wider ${s.seed ? tone.text : 'text-fg-subtle'}`}>{s.seed ?? ''}</span>
       <span className={`grid place-items-center overflow-hidden rounded-full bg-surface-2 ${big ? 'h-6 w-6' : 'h-5 w-5'}`}>
         {s.id && <Mark b={b} id={s.id} px={big ? 24 : 20} />}
@@ -352,7 +352,7 @@ export function FinalBanner({ b, t, big = false }: { b: Bundle; t: Tie; big?: bo
     <div className="mb-3 overflow-hidden rounded-2xl border border-[#c99a3c]/70 px-4 py-3 text-center"
       style={{ background: 'radial-gradient(70% 120% at 50% 0%, rgba(244,205,106,.18), transparent 70%), rgb(var(--surface))' }}>
       <div className={`font-cer font-bold tracking-[0.3em] text-gold ${big ? 'text-base' : 'text-xs'}`}>THE FINAL</div>
-      <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+      <div className="mt-1 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
         <span className={`truncate text-right font-display font-bold ${big ? 'text-3xl' : 'text-lg'}`}>{name(t.a)}</span>
         <span className={`tabular font-display font-bold text-gold ${big ? 'text-6xl' : 'text-4xl'}`}>{t.aGames}–{t.bGames}</span>
         <span className={`truncate text-left font-display font-bold ${big ? 'text-3xl' : 'text-lg'}`}>{name(t.b)}</span>

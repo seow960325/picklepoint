@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 
 export const Section = ({ n, title, hint, children }: {
   n: number; title: string; hint?: string; children: ReactNode
@@ -93,3 +93,28 @@ export const Warn = ({ children }: { children: ReactNode }) =>
   <div className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
     {children}
   </div>
+
+/** A one-line text value that WRAPS instead of hiding a long name (team names
+ *  can be 40+ characters, Chinese or English). Enter finishes editing. */
+export function GrowInput({ value, onChange, className = '', placeholder }: {
+  value: string; onChange: (v: string) => void; className?: string; placeholder?: string
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  useLayoutEffect(() => {
+    const fit = () => {
+      const el = ref.current
+      if (!el) return
+      el.style.height = 'auto'
+      el.style.height = `${el.scrollHeight + 2}px`
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [value])
+  return (
+    <textarea ref={ref} rows={1} value={value} placeholder={placeholder}
+      className={`${className} block resize-none overflow-hidden`}
+      onChange={e => onChange(e.target.value.replace(/\n/g, ''))}
+      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }} />
+  )
+}

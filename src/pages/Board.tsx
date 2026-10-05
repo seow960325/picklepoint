@@ -197,7 +197,7 @@ export default function Board() {
               : ['live', 'matches']),
              ...(isMultiSport(bundle) ? ['standings', 'knockout'] : [])] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider lg:px-4 lg:py-2 lg:text-sm ${
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider lg:px-4 lg:text-sm ${
                 tab === t ? activeTab : 'text-fg-muted'}`}>
               {t}
             </button>
@@ -239,7 +239,7 @@ function TvIdle({ b }: { b: Bundle }) {
         <div className="mx-auto mt-6 max-w-lg space-y-2">
           <div className="text-xs font-bold uppercase tracking-widest text-accent">Up next</div>
           {ups.map(m => (
-            <div key={m.id} className="grid grid-cols-[1fr_2rem_1fr] items-center gap-2 text-base sm:text-lg">
+            <div key={m.id} className="grid grid-cols-[minmax(0,1fr)_2rem_minmax(0,1fr)] items-center gap-2 text-base sm:text-lg">
               <span className="flex min-w-0 items-center justify-end gap-2">
                 <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
                 <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-4 w-auto shrink-0 rounded-[1px]" />
@@ -415,7 +415,7 @@ function NextTies({ b, n = 4 }: { b: Bundle; n?: number }) {
       <div className="divide-y divide-line/60 rounded-2xl border border-line bg-surface">
         {ties.map((t, i) => (
           <div key={t.id} className="px-3 py-2">
-            <div className="grid grid-cols-[1.1rem_1fr_1.75rem_1fr] items-center gap-1.5 text-sm">
+            <div className="grid grid-cols-[1.1rem_minmax(0,1fr)_1.75rem_minmax(0,1fr)] items-center gap-1.5 text-sm">
               <span className="text-center font-display text-xs font-bold text-fg-subtle">{i + 1}</span>
               <span className="flex min-w-0 items-center justify-end gap-1.5">
                 <span className="truncate text-right">{teamName(b, t.a)}</span>
@@ -580,7 +580,7 @@ function TieCard({ b, t, code, sport }: { b: Bundle; t: Tie; code: string; sport
         <span className="truncate">{tieTitle(t)}</span>
         {live ? <Pill tone="live">● live</Pill> : t.done ? <Pill tone="done">final</Pill> : null}
       </div>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 py-2 text-sm">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 py-2 text-sm">
         {side(t.a, aWin, true)}
         <span className={`tabular font-display text-lg font-bold ${started ? tone.text : 'text-fg-subtle'}`}>
           {started ? `${t.aGames}–${t.bGames}` : 'vs'}
@@ -601,7 +601,7 @@ function TieCard({ b, t, code, sport }: { b: Bundle; t: Tie; code: string; sport
           const played = g.status === 'live' || g.status === 'finished'
           return (
             <Link key={g.id} to={`/c/${code}/match/${g.id}`}
-              className={`grid grid-cols-[2.75rem_1fr_auto] items-center gap-2 px-3 py-1.5 text-xs active:bg-surface-2 ${
+              className={`grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5 text-xs active:bg-surface-2 ${
                 g.status === 'live' ? tone.soft : ''}`}>
               <span className={`font-display text-sm font-bold ${tone.text}`}>{g.game_label}{g.set_no ? <span className="text-[10px] text-fg-subtle"> G{g.set_no}</span> : null}</span>
               <span className="truncate text-fg-subtle">{court(g.court_id)}</span>
@@ -639,8 +639,8 @@ function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck = fals
           const m = liveOnCourt(b, ct.id)
           const up = nextOnCourt(b, ct.id)
           const cardBody = <>
-              <div className="mb-1.5 flex items-center justify-between lg:mb-2">
-                <span className="font-display text-sm font-bold tracking-widest text-fg-muted lg:text-base">
+              <div className="mb-1.5 flex items-center justify-between gap-2 lg:mb-2">
+                <span className="min-w-0 truncate whitespace-nowrap font-display text-sm font-bold tracking-widest text-fg-muted lg:text-base">
                   {b.competition.multi_sport && ct.label ? ct.label.toUpperCase() : `COURT ${ct.number}`}
                   {b.competition.multi_sport && ct.game_group ? ` · ${ct.game_group}` : ''}
                 </span>
@@ -688,7 +688,7 @@ function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck = fals
                   ) : (
                     <div className="divide-y divide-line/60">
                       {ups.map((mm, i) => (
-                        <div key={mm.id} className="grid grid-cols-[1.1rem_1fr_1.75rem_1fr] items-center gap-1.5 py-1.5 text-sm">
+                        <div key={mm.id} className="grid grid-cols-[1.1rem_minmax(0,1fr)_1.75rem_minmax(0,1fr)] items-center gap-1.5 py-1.5 text-sm">
                           <span className="text-center font-display text-xs font-bold text-fg-subtle">{i + 1}</span>
                           <span className="flex items-center justify-end gap-1.5 text-fg-muted">
                             <span className="max-w-[4.5rem] truncate text-right sm:max-w-[5rem]">{teamName(b, mm.team_a_id)}</span>
@@ -764,7 +764,7 @@ function Schedule({ b }: { b: Bundle }) {
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm leading-relaxed">
-              <span className="grid grid-cols-[1fr_1.75rem_1fr] items-center gap-1">
+              <span className="grid grid-cols-[minmax(0,1fr)_1.75rem_minmax(0,1fr)] items-center gap-1">
                 <span className="flex min-w-0 items-center justify-end gap-1">
                   <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
                   <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={fl} />
@@ -1415,7 +1415,7 @@ function Matches({ b, code }: { b: Bundle; code: string }) {
                     return (
                     <li key={m.id}>
                       <Link to={`/c/${code}/match/${m.id}`}
-                        className={`grid grid-cols-[1fr_4rem_1fr] items-center gap-2 rounded-lg px-1 py-1.5 active:bg-surface-2 ${live ? 'bg-brand/[0.06]' : ''}`}>
+                        className={`grid grid-cols-[minmax(0,1fr)_4rem_minmax(0,1fr)] items-center gap-2 rounded-lg px-1 py-1.5 active:bg-surface-2 ${live ? 'bg-brand/[0.06]' : ''}`}>
                         <span className={`flex min-w-0 items-center justify-end gap-1.5 truncate text-sm ${nameCls(aWin)}`}>
                           <span className="truncate">{teamName(b, m.team_a_id)}</span>
                           <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
@@ -1493,7 +1493,7 @@ function GroupCard({ b, code, g, rows, advance, matches }: {
             const scoreCls = (win: boolean) => win ? 'text-gold' : 'text-fg-subtle'
             return (
               <Link key={m.id} to={`/c/${code}/match/${m.id}`}
-                className={`grid grid-cols-[1fr_3.5rem_1fr] items-center gap-2 border-b border-line/60 px-3 py-2 text-xs last:border-0 active:bg-surface-2 ${live ? 'bg-brand/[0.06]' : ''}`}>
+                className={`grid grid-cols-[minmax(0,1fr)_3.5rem_minmax(0,1fr)] items-center gap-2 border-b border-line/60 px-3 py-2 text-xs last:border-0 active:bg-surface-2 ${live ? 'bg-brand/[0.06]' : ''}`}>
                 <span className={`flex min-w-0 items-center justify-end gap-1 truncate ${nameCls(aWin)}`}>
                   <span className="truncate">{teamName(b, m.team_a_id)}</span>
                   <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
@@ -1552,7 +1552,7 @@ function FlatMatches({ b, code }: { b: Bundle; code: string }) {
         : <Pill>{m.status.replace('_', ' ')}</Pill>
 
   const Header = () => (
-    <div className="hidden grid-cols-[3rem_1fr_7rem_1fr] items-center gap-3 px-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-fg-subtle sm:grid">
+    <div className="hidden grid-cols-[3rem_minmax(0,1fr)_7rem_minmax(0,1fr)] items-center gap-3 px-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-fg-subtle sm:grid">
       <div className="text-center">Court</div>
       <div>Team</div>
       <div className="text-center">Status</div>
@@ -1573,7 +1573,7 @@ function FlatMatches({ b, code }: { b: Bundle; code: string }) {
       <Link key={m.id} to={`/c/${code}/match/${m.id}`}
         className={`block px-4 py-3 active:bg-surface-2 ${live ? 'bg-brand/[0.06]' : ''}`}>
         {/* wide: teams pushed to the edges, status centered */}
-        <div className="hidden grid-cols-[3rem_1fr_7rem_1fr] items-center gap-3 sm:grid">
+        <div className="hidden grid-cols-[3rem_minmax(0,1fr)_7rem_minmax(0,1fr)] items-center gap-3 sm:grid">
           <div className="text-center font-display text-base font-bold text-fg-subtle">{court}</div>
           <div className="flex min-w-0 items-center gap-2">
             <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={flag} />

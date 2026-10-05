@@ -30,9 +30,9 @@ export default function TieStandings({ b, big = false }: { b: Bundle; big?: bool
             <div className={`grid gap-3 ${both ? '' : 'lg:grid-cols-2'}`}>
               {Object.keys(pools).sort().map(pool => (
                 <div key={pool} className="overflow-hidden rounded-xl border border-line">
-                  <div className={`flex items-center justify-between px-3 py-1.5 text-xs font-bold uppercase tracking-widest ${tone.soft}`}>
-                    <span className={tone.text}>Group {pool}</span>
-                    <span className="text-[10px] font-semibold normal-case tracking-normal text-fg-subtle">
+                  <div className={`flex items-center justify-between gap-2 px-3 py-1.5 text-xs font-bold uppercase tracking-widest ${tone.soft}`}>
+                    <span className={`shrink-0 ${tone.text}`}>Group {pool}</span>
+                    <span className="min-w-0 truncate whitespace-nowrap text-[10px] font-semibold normal-case tracking-normal text-fg-subtle">
                       {qual ? (done ? 'semi-finalists decided' : `top ${qual} reach the semi-finals`) : 'win a game +1 · sweep +1'}
                     </span>
                   </div>
@@ -55,10 +55,10 @@ export default function TieStandings({ b, big = false }: { b: Bundle; big?: bool
                             {i < qual && nPools === 2 ? `${pool}${i + 1}` : i + 1}
                           </td>
                           <td className={`px-1 ${cell}`}>
-                            <span className="flex min-w-0 items-center gap-1.5">
-                              <Emblem logo={teamLogo(b, r.team.id)} flagName={teamSideName(b, r.team.id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-                              <span className={`truncate ${i < qual ? 'font-semibold' : ''}`}>{r.team.name}</span>
-                              {done && i < qual && <span className={`shrink-0 rounded px-1 text-[9px] font-bold ${tone.solid}`}>SF</span>}
+                            <span className="flex min-w-0 items-start gap-1.5">
+                              <Emblem logo={teamLogo(b, r.team.id)} flagName={teamSideName(b, r.team.id)} className={`mt-0.5 h-4 w-4 shrink-0 rounded-[2px] object-contain`} />
+                              <span className={`min-w-0 ${big ? 'line-clamp-2 break-words leading-tight' : 'truncate'} ${i < qual ? 'font-semibold' : ''}`}>{r.team.name}</span>
+                              {done && i < qual && <span className={`mt-0.5 shrink-0 rounded px-1 text-[9px] font-bold ${tone.solid}`}>SF</span>}
                             </span>
                           </td>
                           <td className={`tabular px-1 ${cell} text-right text-fg-muted`}>{r.ties}</td>
