@@ -370,9 +370,11 @@ export function stageLabel(b: Bundle, m: Match): { text: string; kind: 'group' |
   if (m.bracket_key != null) {
     if (m.round === 'Final') return { text: 'FINAL', kind: 'final' }
     if (m.round === 'Third place') return { text: '3RD PLACE', kind: 'ko' }
-    return { text: koShort(b, m).replace(/(\D+)(\d+)/, '$1 $2'), kind: 'ko' }   // "QF 4", "SF 1"
+    if (m.round === 'Semi-final') return { text: 'SEMI FINAL', kind: 'ko' }
+    return { text: koShort(b, m).replace(/(\D+)(\d+)/, '$1 $2'), kind: 'ko' }   // "QF 4"
   }
-  // "Group B · Leg 2" -> "B · LEG 2" (the word Group is implied)
-  const r = (m.round ?? '').replace(/\s+/g, ' ').replace(/^group\s+/i, '').trim()
-  return { text: (r || 'GROUP').toUpperCase(), kind: 'group' }
+  // "Group B · Leg 2" -> "LEG 2" (group name is on the game row, not the header)
+  const r = (m.round ?? '').replace(/\s+/g, ' ').trim()
+  const leg = /leg\s*(\d+)/i.exec(r)
+  return { text: leg ? `LEG ${leg[1]}` : (r.replace(/^group\s+/i, '') || 'GROUP').toUpperCase(), kind: 'group' }
 }

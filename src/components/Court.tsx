@@ -348,13 +348,13 @@ export default function Court({
 
         {/* team names — mounted vertically on the outer sideline, clear of
             both serve-ball corners (top ~52 and bottom ~188) and the flag */}
-        <text x="14" y={MIDY} textAnchor="middle" transform={`rotate(-90 14 ${MIDY})`}
+        <text x={nameHalo ? 22 : 14} y={MIDY} textAnchor="middle" transform={`rotate(-90 ${nameHalo ? 22 : 14} ${MIDY})`}
           {...(nameHalo ? HALO : {})}
           fill="#c6ff3d" fontSize={nameSize} fontWeight="700"
           fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
           {clip(leftName, 12)}
         </text>
-        <text x="466" y={MIDY} textAnchor="middle" transform={`rotate(90 466 ${MIDY})`}
+        <text x={nameHalo ? 458 : 466} y={MIDY} textAnchor="middle" transform={`rotate(90 ${nameHalo ? 458 : 466} ${MIDY})`}
           {...(nameHalo ? HALO : {})}
           fill="#22d3ee" fontSize={nameSize} fontWeight="700"
           fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
