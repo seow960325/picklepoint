@@ -18,7 +18,7 @@ import {
 } from '../lib/multisport'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide } from '../components/TieKnockout'
 import { CourtQueues, GroupCardPro, PlayClock, UpNextQueue } from '../components/GroupsKo'
-import { isPoolDispatch, koSlotLabel } from '../lib/pool'
+import { isPoolDispatch, koSlotLabel, stageLabel } from '../lib/pool'
 
 type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
 
@@ -625,6 +625,12 @@ function TieCard({ b, t, code, sport }: { b: Bundle; t: Tie; code: string; sport
   )
 }
 
+/** neon glow for the court status line: green = group, cyan = knockout, gold = final */
+const neon = (kind: 'group' | 'ko' | 'final'): React.CSSProperties => {
+  const c = kind === 'final' ? '#ffd23d' : kind === 'ko' ? '#22d3ee' : '#c6ff3d'
+  return { color: c, textShadow: `0 0 4px ${c}, 0 0 12px ${c}99, 0 0 26px ${c}55` }
+}
+
 export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck = false }: {
   b: Bundle; code: string; tv: boolean
   split?: boolean    // TV half-screen (multi-sport "both")
@@ -654,15 +660,21 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
           const up = nextOnCourt(b, ct.id)
           const cardBody = <>
               <div className="mb-1.5 flex items-center justify-between gap-2 lg:mb-2">
-                <span className={`min-w-0 truncate whitespace-nowrap font-display font-bold tracking-widest text-fg-muted ${tvBig ? 'text-2xl' : 'text-sm lg:text-base'}`}>
+                <span className={`min-w-0 shrink-0 truncate whitespace-nowrap font-display font-bold tracking-widest text-fg-muted ${tvBig ? 'text-3xl' : 'text-sm lg:text-base'}`}>
                   {b.competition.multi_sport && ct.label ? ct.label.toUpperCase() : `COURT ${ct.number}`}
                   {b.competition.multi_sport && ct.game_group ? ` · ${ct.game_group}` : ''}
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
-                  {m && eventOf(b, m).play_clock && <PlayClock m={m} className={tvBig ? 'text-xl text-fg-muted' : 'text-xs text-fg-muted lg:text-sm'} />}
+                  {m && eventOf(b, m).play_clock && <PlayClock m={m} className={tvBig ? 'text-2xl text-fg-muted' : 'text-xs text-fg-muted lg:text-sm'} />}
                   {m ? <Pill tone="live" big={tvBig}>● live</Pill> : <Pill big={tvBig}>open</Pill>}
                 </span>
               </div>
+              {poolEv && m && (
+                <div className={`mb-1.5 truncate whitespace-nowrap text-center font-display font-bold uppercase lg:mb-2 ${tvBig ? 'text-4xl tracking-[0.2em]' : 'text-sm tracking-[0.16em] lg:text-lg'}`}
+                  style={neon(stageLabel(b, m).kind)}>
+                  {stageLabel(b, m).text}
+                </div>
+              )}
               {m ? <CourtScoreRow b={b} m={m} tv={tv} /> : (
                 <div className="py-6 text-center text-sm text-fg-subtle lg:py-10">No match running</div>
               )}
@@ -763,7 +775,7 @@ function CourtScoreRow({ b, m, tv }: { b: Bundle; m: Match; tv: boolean }) {
         leftScore={s.left} rightScore={s.right}
         leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
         leftLogo={teamLogo(b, leftTeamId)} rightLogo={teamLogo(b, rightTeamId)}
-        label={koCourtLabel(m) ?? (m.bracket_key ? (m.round ?? undefined) : (m.game_label ?? undefined))}
+        label={ev.court_dispatch === 'pool' ? undefined : (koCourtLabel(m) ?? (m.bracket_key ? (m.round ?? undefined) : (m.game_label ?? undefined)))}
         sport={ev.sport}
         serving={serving}
         serverNo={serverNo}
