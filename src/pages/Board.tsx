@@ -635,8 +635,12 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
   // shared-queue events keep every court on the TV (an empty one says "open")
   const shownCourts = tv && !poolEv ? b.courts.filter(ct => liveOnCourt(b, ct.id)) : b.courts
   if (tv && shownCourts.length === 0) return <TvIdle b={b} />
+  // court cards and the "on deck" lists share ONE column rule so they line up
+  const boardCols = compact ? 'grid-cols-1 sm:grid-cols-2'
+    : b.courts.length > 3 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
   const cols = !tv
-    ? (compact ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4')
+    ? boardCols
     : shownCourts.length <= 1 ? 'grid-cols-1'
     : shownCourts.length === 2 || split ? 'grid-cols-1 sm:grid-cols-2'
     : 'grid-cols-1 sm:grid-cols-3'
@@ -691,7 +695,7 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
           <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-accent">
             On deck
           </div>
-          <div className={`grid gap-3 ${compact ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+          <div className={`grid gap-3 ${boardCols}`}>
             {b.courts.map(ct => {
               const ups = b.matches
                 .filter(mm => mm.court_id === ct.id && (mm.status === 'scheduled' || mm.status === 'on_deck'))
