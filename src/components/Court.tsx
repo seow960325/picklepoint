@@ -42,6 +42,9 @@ export interface CourtProps {
    *  the exact string a referee would call out loud. Null/undefined hides it
    *  (Winner mode, or game over). */
   callScore?: string | null
+  /** MCMD/MCXD (pool events) only: team emblem 1.5x the flag size, no frame
+   *  or shadow. Omitted = the original 54x38 framed badge, unchanged. */
+  bigEmblem?: boolean
 }
 
 const clip = (n: string, max = 17) =>
@@ -131,11 +134,30 @@ function ballY(court: 'right' | 'left' | null | undefined, servingSide: 'left' |
 
 export default function Court({
   leftName, rightName, nameSize = 15, nameHalo = false, leftScore, rightScore, onTap, disabled, serving, serverNo, serverCourt,
-  leftFlag, rightFlag, leftLogo, rightLogo, label, callScore, sport,
+  leftFlag, rightFlag, leftLogo, rightLogo, label, callScore, sport, bigEmblem = false,
 }: CourtProps) {
   const bad = sport === 'badminton'
   const [down, setDown] = useState<'left' | 'right' | null>(null)
   const ballCy = ballY(serverCourt, serving) ?? MIDY + R + 17 // no active server (game over) — old fixed spot below the circle
+  // Team flag/logo badge above each score circle. bigEmblem grows it 1.5x
+  // upward (bottom edge stays near the old one so the score is never covered)
+  // and drops the frame + shadow; the default path renders exactly as before.
+  const EW = bigEmblem ? 81 : 54, EH = bigEmblem ? 57 : 38, EY = bigEmblem ? 10 : 30
+  const badge = (cx: number, logo?: string | null, flag?: string | null) => (logo || flag) ? (
+    <>
+      {!bigEmblem && <rect x={cx - 27} y="31" width="54" height="38" rx="5"
+        fill="#0a0e17" opacity="0.45" filter="url(#soft)" />}
+      {logo
+        ? <image href={logo} x={cx - EW / 2} y={EY} width={EW} height={EH}
+            preserveAspectRatio="xMidYMid slice" />
+        : <svg x={cx - EW / 2} y={EY} width={EW} height={EH}
+            viewBox="0 0 28 20" preserveAspectRatio="xMidYMid slice">
+            <FlagGlyph name={flag} />
+          </svg>}
+      {!bigEmblem && <rect x={cx - 27} y="30" width="54" height="38" rx="5"
+        fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />}
+    </>
+  ) : null
   // Tap acknowledgement — flashes the tapped half on every tap, even when the
   // score doesn't move (side-out mode: a fault or the receiving team getting
   // tapped by mistake), so the ref always sees "that tap counted".
@@ -255,21 +277,7 @@ export default function Court({
           style={{ fontVariantNumeric: 'tabular-nums' }}>
           {leftScore}
         </text>
-        {(leftLogo || leftFlag) && (
-          <>
-            <rect x={CXL - 27} y="31" width="54" height="38" rx="5"
-              fill="#0a0e17" opacity="0.45" filter="url(#soft)" />
-            {leftLogo
-              ? <image href={leftLogo} x={CXL - 27} y="30" width="54" height="38"
-                  preserveAspectRatio="xMidYMid slice" />
-              : <svg x={CXL - 27} y="30" width="54" height="38"
-                  viewBox="0 0 28 20" preserveAspectRatio="xMidYMid slice">
-                  <FlagGlyph name={leftFlag} />
-                </svg>}
-            <rect x={CXL - 27} y="30" width="54" height="38" rx="5"
-              fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />
-          </>
-        )}
+        {badge(CXL, leftLogo, leftFlag)}
         {serving === 'left' && (bad
           ? <ShuttleGlyph cx={serverCourt ? 52 : CXL} cy={ballCy} r={9} dir="left" />
           : <PickleballGlyph cx={serverCourt ? BALL_X_LEFT : CXL} cy={ballCy} r={9} serverNo={serverNo} />)}
@@ -296,21 +304,7 @@ export default function Court({
           style={{ fontVariantNumeric: 'tabular-nums' }}>
           {rightScore}
         </text>
-        {(rightLogo || rightFlag) && (
-          <>
-            <rect x={CXR - 27} y="31" width="54" height="38" rx="5"
-              fill="#0a0e17" opacity="0.45" filter="url(#soft)" />
-            {rightLogo
-              ? <image href={rightLogo} x={CXR - 27} y="30" width="54" height="38"
-                  preserveAspectRatio="xMidYMid slice" />
-              : <svg x={CXR - 27} y="30" width="54" height="38"
-                  viewBox="0 0 28 20" preserveAspectRatio="xMidYMid slice">
-                  <FlagGlyph name={rightFlag} />
-                </svg>}
-            <rect x={CXR - 27} y="30" width="54" height="38" rx="5"
-              fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />
-          </>
-        )}
+        {badge(CXR, rightLogo, rightFlag)}
         {serving === 'right' && (bad
           ? <ShuttleGlyph cx={serverCourt ? 428 : CXR} cy={ballCy} r={9} dir="right" />
           : <PickleballGlyph cx={serverCourt ? BALL_X_RIGHT : CXR} cy={ballCy} r={9} serverNo={serverNo} />)}

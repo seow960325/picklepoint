@@ -771,6 +771,7 @@ function CourtScoreRow({ b, m, tv }: { b: Bundle; m: Match; tv: boolean }) {
       <Court
         leftName={teamName(b, leftTeamId)}
         nameHalo={ev.court_dispatch === 'pool'}
+        bigEmblem={ev.court_dispatch === 'pool'}
         rightName={teamName(b, rightTeamId)}
         leftScore={s.left} rightScore={s.right}
         leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
