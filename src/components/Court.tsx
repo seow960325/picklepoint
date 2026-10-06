@@ -139,31 +139,27 @@ export default function Court({
   const bad = sport === 'badminton'
   const [down, setDown] = useState<'left' | 'right' | null>(null)
   const ballCy = ballY(serverCourt, serving) ?? MIDY + R + 17 // no active server (game over) — old fixed spot below the circle
-  // Team flag/logo badge above each score circle. bigEmblem grows it 1.5x
-  // upward (bottom edge stays near the old one so the score is never covered).
-  // Flags (no logo, or an SVG flag logo) keep the frame + shadow; an uploaded
-  // picture logo (character heads) drops them. Default path renders as before.
-  const EW = bigEmblem ? 81 : 54, EH = bigEmblem ? 57 : 38, EY = bigEmblem ? 10 : 30
-  const ERX = bigEmblem ? 7 : 5, ESW = bigEmblem ? 2.5 : 2
+  // Team flag/logo badge above each score circle. Flags (and SVG flag logos)
+  // render exactly as originally: 54x38 with shadow + frame. Only an uploaded
+  // picture logo on a pool event (MCMD/MCXD, bigEmblem) gets the larger,
+  // uncropped, frameless character treatment.
   const badge = (cx: number, logo?: string | null, flag?: string | null) => {
     if (!logo && !flag) return null
-    const framed = !bigEmblem || !logo || logo.startsWith('data:image/svg')
-    // character picture: larger box, whole picture shown (never cropped), no frame
-    if (!framed) return <image href={logo!} x={cx - 48} y="2" width="96" height="74"
-      preserveAspectRatio="xMidYMax meet" />
+    if (bigEmblem && logo && !logo.startsWith('data:image/svg'))
+      return <image href={logo} x={cx - 48} y="2" width="96" height="74" preserveAspectRatio="xMidYMax meet" />
     return (
       <>
-        {framed && <rect x={cx - EW / 2} y={EY + 1} width={EW} height={EH} rx={ERX}
-          fill="#0a0e17" opacity="0.45" filter="url(#soft)" />}
+        <rect x={cx - 27} y="31" width="54" height="38" rx="5"
+          fill="#0a0e17" opacity="0.45" filter="url(#soft)" />
         {logo
-          ? <image href={logo} x={cx - EW / 2} y={EY} width={EW} height={EH}
+          ? <image href={logo} x={cx - 27} y="30" width="54" height="38"
               preserveAspectRatio="xMidYMid slice" />
-          : <svg x={cx - EW / 2} y={EY} width={EW} height={EH}
+          : <svg x={cx - 27} y="30" width="54" height="38"
               viewBox="0 0 28 20" preserveAspectRatio="xMidYMid slice">
               <FlagGlyph name={flag} />
             </svg>}
-        {framed && <rect x={cx - EW / 2} y={EY} width={EW} height={EH} rx={ERX}
-          fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth={ESW} />}
+        <rect x={cx - 27} y="30" width="54" height="38" rx="5"
+          fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />
       </>
     )
   }
