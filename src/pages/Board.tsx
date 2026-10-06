@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   useCompetition, teamName, teamSideName, teamLogo, liveOnCourt, nextOnCourt, onDeck, results, standings,
   eventOf, duelTally, duelPods, groupStandings, bracketRounds, bracketSeeded, isKoMatch,
@@ -17,12 +17,15 @@ import {
   type Sport, type SportView, type Tie,
 } from '../lib/multisport'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide } from '../components/TieKnockout'
+import { GroupCardPro, PlayClock, UpNextQueue } from '../components/GroupsKo'
+import { isPoolDispatch, koSlotLabel } from '../lib/pool'
 
 type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
 
 export default function Board() {
   const { code } = useParams()
   const { bundle, error, loading, reload } = useCompetition(code)
+  const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('live')
   const [tv, setTv] = useState(false)
   const [tvView, setTvView] = useState<'live' | 'bracket'>('live')
@@ -63,6 +66,8 @@ export default function Board() {
   const duelWin = !podium && duelEvent ? duelWinner(bundle, duelEvent) : null
   const koEv = bundle.events.find(e => e.format === 'groups_ko')
   const koReady = !!koEv && bracketSeeded(bundle, koEv.id)
+  // sister-category codes (MCMD / MCXD): long titles, compact phone header
+  const twoCat = !!koEv?.tv_partner
 
   // multi-sport (opt-in per code): each viewer follows one sport, or both
   const multi = isMultiSport(bundle)
@@ -165,20 +170,22 @@ export default function Board() {
               ←<span className="hidden font-semibold sm:inline"> Lobby</span>
             </Link>
             <div className="min-w-0">
-              <div className={`${multi ? 'line-clamp-2 leading-tight' : 'truncate'} font-display text-2xl font-bold tracking-wide lg:text-3xl`}>{c.name}</div>
+              <div className={`${multi || twoCat ? 'line-clamp-2 leading-tight' : 'truncate'} font-display text-2xl font-bold tracking-wide lg:text-3xl`}>{c.name}</div>
               <div className="truncate text-xs text-fg-muted lg:text-sm">
-                {c.venue} · code <span className="font-bold text-brand-ink">{c.code}</span>
+                {twoCat ? koEv!.name : c.venue} · code <span className="font-bold text-brand-ink">{c.code}</span>
               </div>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 lg:gap-2">
             <Link to={`/c/${code}/admin`}
               className="flex h-8 items-center rounded-lg border border-line px-3 text-xs text-fg-muted active:bg-surface-2 lg:h-10 lg:px-4 lg:text-sm">
-              {multi ? <><span className="sm:hidden">⚙</span><span className="hidden sm:inline">Settings</span></> : 'Settings'}
+              {multi || twoCat ? <><span className="sm:hidden">⚙</span><span className="hidden sm:inline">Settings</span></> : 'Settings'}
             </Link>
-            <button onClick={() => setTv(true)}
+            <button onClick={() => koEv?.tv_partner
+                ? navigate(`/tv/${c.code}+${koEv.tv_partner}`)
+                : setTv(true)}
               className="flex h-8 items-center rounded-lg border border-line px-3 text-xs text-fg-muted active:bg-surface-2 lg:h-10 lg:px-4 lg:text-sm">
-              {multi ? <><span className="sm:hidden">TV</span><span className="hidden sm:inline">TV mode</span></> : 'TV mode'}
+              {multi || twoCat ? <><span className="sm:hidden">TV</span><span className="hidden sm:inline">TV mode</span></> : 'TV mode'}
             </button>
             <FullscreenButton className="grid h-8 w-8 place-items-center rounded-lg border border-line p-1.5 text-fg-muted active:bg-surface-2 lg:h-10 lg:w-10" />
             <ThemeToggle className="grid h-8 w-8 place-items-center rounded-lg border border-line text-fg-muted active:bg-surface-2 lg:h-10 lg:w-10" />
@@ -618,13 +625,15 @@ function TieCard({ b, t, code, sport }: { b: Bundle; t: Tie; code: string; sport
   )
 }
 
-function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck = false }: {
+export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck = false }: {
   b: Bundle; code: string; tv: boolean
   split?: boolean    // TV half-screen (multi-sport "both")
   compact?: boolean  // board half-width column (multi-sport "both")
   hideDeck?: boolean // multi-sport: per-court lists replaced by "Next ties"
 }) {
-  const shownCourts = tv ? b.courts.filter(ct => liveOnCourt(b, ct.id)) : b.courts
+  const poolEv = b.events.find(e => e.format === 'groups_ko' && isPoolDispatch(e))
+  // shared-queue events keep every court on the TV (an empty one says "open")
+  const shownCourts = tv && !poolEv ? b.courts.filter(ct => liveOnCourt(b, ct.id)) : b.courts
   if (tv && shownCourts.length === 0) return <TvIdle b={b} />
   const cols = !tv
     ? (compact ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4')
@@ -644,7 +653,10 @@ function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck = fals
                   {b.competition.multi_sport && ct.label ? ct.label.toUpperCase() : `COURT ${ct.number}`}
                   {b.competition.multi_sport && ct.game_group ? ` · ${ct.game_group}` : ''}
                 </span>
-                {m ? <Pill tone="live">● live</Pill> : <Pill>open</Pill>}
+                <span className="flex shrink-0 items-center gap-2">
+                  {m && eventOf(b, m).play_clock && <PlayClock m={m} className="text-xs text-fg-muted lg:text-sm" />}
+                  {m ? <Pill tone="live">● live</Pill> : <Pill>open</Pill>}
+                </span>
               </div>
               {m ? <CourtScoreRow b={b} m={m} tv={tv} /> : (
                 <div className="py-6 text-center text-sm text-fg-subtle lg:py-10">No match running</div>
@@ -668,7 +680,13 @@ function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck = fals
         })}
       </div>
 
-      {!tv && !hideDeck && (
+      {!tv && !hideDeck && poolEv && (
+        <div className="mt-4"><UpNextQueue b={b} ev={poolEv} n={8} /></div>
+      )}
+      {tv && poolEv && split && (
+        <div className="mt-2 lg:mt-3"><UpNextQueue b={b} ev={poolEv} n={4} big /></div>
+      )}
+      {!tv && !hideDeck && !poolEv && (
         <div className="mt-4">
           <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-accent">
             On deck
@@ -723,7 +741,7 @@ function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
   }
   const leftTeamId = m.a_on_left ? m.team_a_id : m.team_b_id
   const rightTeamId = m.a_on_left ? m.team_b_id : m.team_a_id
-  const rules = rulesOf(ev)
+  const rules = rulesOf(ev, m)
   const serving = m.status === 'live' ? servingSide(m, rules.serve_mode) : null
   const serverNo = rules.serve_mode === 'alternate' && m.status === 'live' ? activeServerNo(m) : null
   const courtSide = m.status === 'live' ? serverCourtOf(m, rules.serve_mode) : null
@@ -788,7 +806,7 @@ function Schedule({ b }: { b: Bundle }) {
 }
 
 // -------------------------------------------------------------- duel mode
-function FitBox({ children }: { children: any }) {
+export function FitBox({ children }: { children: any }) {
   const outer = useRef<HTMLDivElement>(null)
   const inner = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
@@ -841,10 +859,10 @@ function FitBox({ children }: { children: any }) {
   )
 }
 
-function PosterBracket({ b, broadcast = false }: { b: Bundle; broadcast?: boolean }) {
+export function PosterBracket({ b, broadcast = false }: { b: Bundle; broadcast?: boolean }) {
   const ev = b.events.find(e => e.format === 'groups_ko')
   if (!ev) return null
-  if (!bracketSeeded(b, ev.id)) {
+  if (!bracketSeeded(b, ev.id) && !ev.bracket_preview) {
     return <div className="p-6 text-center text-sm text-fg-muted">The bracket hasn’t been drawn yet.</div>
   }
   const rounds = bracketRounds(b, ev.id)
@@ -928,7 +946,11 @@ function PConnector({ count, side }: { count: number; side: 'left' | 'right' }) 
 
 function PMatch({ b, m, medalOf }: { b: Bundle; m?: Match; medalOf?: (id: string | null) => 'gold' | 'silver' | 'bronze' | null }) {
   if (!m) return <div className="rounded-md border border-dashed border-line/60 bg-surface/30 px-2 py-3 text-center text-[10px] text-fg-subtle">TBD</div>
-  const bye = m.team_b_id == null && m.team_a_id != null
+  // a real bye is written finished at once; a half-filled later round is not a bye
+  const bye = m.team_b_id == null && m.team_a_id != null && m.status === 'finished'
+  // fixed bracket shown before the teams are known (bracket_preview events)
+  const ev = eventOf(b, m)
+  const slot = (s: 'a' | 'b') => ev?.bracket_preview ? koSlotLabel(b, ev, m, s) : undefined
   const decided = m.status === 'finished'
   const live = m.status === 'live'
   return (
@@ -939,17 +961,25 @@ function PMatch({ b, m, medalOf }: { b: Bundle; m?: Match; medalOf?: (id: string
         </div>
       )}
       <div className={`overflow-hidden rounded-md border ${live ? 'border-brand pp-live' : 'border-line'} bg-surface`}>
-        <PTeam b={b} teamId={m.team_a_id} score={m.score_a} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} medal={medalOf?.(m.team_a_id) ?? null} />
+        <PTeam b={b} teamId={m.team_a_id} score={m.score_a} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} medal={medalOf?.(m.team_a_id) ?? null} placeholder={slot('a')} />
         <div className="h-px bg-line" />
         {bye
           ? <div className="px-2.5 py-1.5 text-[11px] italic text-fg-subtle">bye</div>
-          : <PTeam b={b} teamId={m.team_b_id} score={m.score_b} win={decided && m.winner_id === m.team_b_id} lose={decided && m.winner_id !== m.team_b_id} finished={decided} medal={medalOf?.(m.team_b_id) ?? null} />}
+          : <PTeam b={b} teamId={m.team_b_id} score={m.score_b} win={decided && m.winner_id === m.team_b_id} lose={decided && m.winner_id !== m.team_b_id} finished={decided} medal={medalOf?.(m.team_b_id) ?? null} placeholder={slot('b')} />}
       </div>
     </div>
   )
 }
 
-function PTeam({ b, teamId, score, win, lose, finished, medal }: { b: Bundle; teamId: string | null; score: number; win: boolean; lose: boolean; finished: boolean; medal?: 'gold' | 'silver' | 'bronze' | null }) {
+function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder }: { b: Bundle; teamId: string | null; score: number; win: boolean; lose: boolean; finished: boolean; medal?: 'gold' | 'silver' | 'bronze' | null; placeholder?: string }) {
+  if (teamId == null && placeholder) {
+    return (
+      <div className="flex items-center gap-2 border-l-2 border-transparent px-2.5 py-1.5">
+        <span className="h-4 w-4 shrink-0 rounded-[2px] border border-dashed border-line-strong" />
+        <span className="min-w-0 flex-1 truncate text-xs italic text-fg-subtle">{placeholder}</span>
+      </div>
+    )
+  }
   return (
     <div className={`flex items-center gap-2 border-l-2 px-2.5 py-1.5 ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
       <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
@@ -1011,7 +1041,7 @@ function Trophy({ lit }: { lit?: boolean }) {
   )
 }
 
-function koPodium(b: Bundle): { champion: string; runnerUp: string | null; third: string | null } | null {
+export function koPodium(b: Bundle): { champion: string; runnerUp: string | null; third: string | null } | null {
   const ev = b.events.find(e => e.format === 'groups_ko')
   if (!ev) return null
   const finalM = b.matches.find(m => m.event_id === ev.id && m.bracket_key != null && m.round === 'Final')
@@ -1023,7 +1053,7 @@ function koPodium(b: Bundle): { champion: string; runnerUp: string | null; third
   return { champion, runnerUp, third }
 }
 
-function Podium({ b, champion, runnerUp, third, title }: {
+export function Podium({ b, champion, runnerUp, third, title }: {
   b: Bundle; champion: string; runnerUp: string | null; third: string | null; title: string
 }) {
   return (
@@ -1449,7 +1479,12 @@ function Matches({ b, code }: { b: Bundle; code: string }) {
         <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">Groups</div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {Object.keys(tables).sort().map(g => (
-            <GroupCard key={g} b={b} code={code} g={g} rows={tables[g]} advance={advance}
+            koEv.tiebreak === 'diff'
+              ? <GroupCardPro key={g} b={b} code={code} g={g} rows={tables[g]} advance={advance}
+                  matches={b.matches
+                    .filter(m => m.event_id === koEv.id && !isKoMatch(m) && poolOf(m.team_a_id) === g)
+                    .sort((x, y) => x.sequence - y.sequence)} />
+              : <GroupCard key={g} b={b} code={code} g={g} rows={tables[g]} advance={advance}
               matches={b.matches
                 .filter(m => m.event_id === koEv.id && !isKoMatch(m) && poolOf(m.team_a_id) === g)
                 .sort((x, y) => x.sequence - y.sequence)} />

@@ -25,10 +25,21 @@ export interface Rules {
   serve_mode: ServeMode
 }
 
-export const rulesOf = (e: EventCfg): Rules => ({
-  target_score: e.target_score, win_by: e.win_by, cap: e.cap, switch_at: e.switch_at,
-  serve_mode: e.serve_mode ?? 'winner',
-})
+export const rulesOf = (e: EventCfg, m?: Pick<Match, 'bracket_key'> | null): Rules =>
+  // knockout games of an event with its own knockout rules (migration 0026);
+  // ko_target_score is null on every other event, so they never get here
+  m?.bracket_key != null && e.ko_target_score != null
+    ? {
+        target_score: e.ko_target_score,
+        win_by: e.ko_win_by ?? e.win_by,
+        cap: e.ko_cap ?? e.ko_target_score,
+        switch_at: e.ko_switch_at ?? e.switch_at,
+        serve_mode: e.serve_mode ?? 'winner',
+      }
+    : {
+        target_score: e.target_score, win_by: e.win_by, cap: e.cap, switch_at: e.switch_at,
+        serve_mode: e.serve_mode ?? 'winner',
+      }
 
 export function isGameOver(a: number, b: number, r: Rules): boolean {
   const hi = Math.max(a, b), lo = Math.min(a, b)

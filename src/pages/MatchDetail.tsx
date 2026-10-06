@@ -4,6 +4,7 @@ import { useCompetition, teamName } from '../lib/store'
 import * as api from '../lib/api'
 import type { PointEvent } from '../lib/types'
 import { Screen, TopBar, Spinner } from '../components/ui'
+import { PlayClock } from '../components/GroupsKo'
 
 const tokenKey = (courtId: string) => `pp.token.${courtId}`
 const adminTokKey = (code: string) => `pp.admin.${code}`
@@ -63,6 +64,12 @@ export default function MatchDetail() {
         <div className="text-2xl text-fg-subtle">–</div>
         <div className="tabular font-display text-6xl font-bold">{m.score_b}</div>
       </div>
+      {bundle.events.find(e => e.id === m.event_id)?.play_clock && m.started_at && (
+        <div className="flex items-center justify-center gap-2 border-b border-line py-2 text-sm text-fg-muted">
+          <span className="whitespace-nowrap">{m.status === 'finished' ? 'Game time' : 'Playing for'}</span>
+          <PlayClock m={m} className="font-display text-base font-bold text-fg" />
+        </div>
+      )}
 
       {canReset && (
         <div className="border-b border-line px-4 py-4">

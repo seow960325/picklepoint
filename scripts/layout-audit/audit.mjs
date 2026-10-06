@@ -102,6 +102,25 @@ const SCENARIOS = [
   S('yc-admin-schedule-bm', '/c/YC2626/admin', seq(tab('schedule'), btn('Badminton')), { ls: ycAdmin('YC2626') }),
   S('sf-admin-knockout', '/c/YCSF/admin', tab('knockout'), { ls: ycAdmin('YCSF') }),
   S('win-admin-knockout', '/c/YCWIN/admin', tab('knockout'), { ls: ycAdmin('YCWIN') }),
+  // MCMD / MCXD (migration 0026 groups_ko opt-ins) — sandbox fixtures in mockmc.ts
+  S('mc-live', '/c/MCMD'),
+  S('mc-matches', '/c/MCMD', tab('matches')),
+  S('mc-matches-open', '/c/MCMD', seq(tab('matches'), btn(/show games/))),
+  S('mc-bracket-preview', '/c/MCMD', tab('bracket')),
+  S('mc-match', '/c/MCMD', seq(tab('matches'), btn(/show games/), async p => { await p.locator('a[href*="/match/"]:visible').first().click(); await p.waitForTimeout(400) })),
+  S('mc-ko-live', '/c/MCKO'),
+  S('mc-ko-bracket', '/c/MCKO', tab('bracket')),
+  S('mc-ko-matches', '/c/MCKO', tab('matches')),
+  S('mc-tv-live', '/tv/MCMD+MCXD', btn(/^live$/), { tvOnly: true }),
+  S('mc-tv-groups', '/tv/MCMD+MCXD', btn(/^groups$/), { tvOnly: true }),
+  S('mc-tv-bracket-pre', '/tv/MCMD+MCXD', btn(/^bracket$/), { tvOnly: true }),
+  S('mc-tv-ko', '/tv/MCKO+MCKX', btn(/^bracket$/), { tvOnly: true }),
+  S('mc-tv-ko-live', '/tv/MCKO+MCKX', btn(/^live$/), { tvOnly: true }),
+  S('mc-tv-win', '/tv/MCWIN+MCKX', btn(/^bracket$/), { tvOnly: true }),
+  ...['scoring', 'teams', 'schedule', 'bracket'].map(t =>
+    S(`mc-admin-${t}`, '/c/MCMD/admin', tab(t), { ls: ycAdmin('MCMD') })),
+  S('mc-admin-toss', '/c/MCTIE/admin', tab('bracket'), { ls: ycAdmin('MCTIE') }),
+  S('mc-admin-draw', '/c/MCNEW/admin', seq(tab('teams'), btn(/GENERATE RANDOM GROUPS/)), { ls: ycAdmin('MCNEW') }),
 ]
 
 // ------------------------------------------------------------ in-page audit

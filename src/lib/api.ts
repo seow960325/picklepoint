@@ -389,3 +389,25 @@ export async function adminClearTieStage(token: string, eventId: string, stage: 
   if (IS_DEMO) throw new Error('Multi-sport needs the live database')
   await rpc('admin_clear_tie_stage', { p_token: token, p_event_id: eventId, p_stage: stage })
 }
+
+// ------------------------------------------- migration 0026 opt-ins
+/** Fresh random group draw (team details move between slots; fixtures stay).
+ *  Refused once anything in the event has been scored. */
+export async function adminShuffleGroups(
+  token: string, eventId: string, map: Array<{ slot: string; src: string }>,
+): Promise<void> {
+  if (IS_DEMO) return demo.shuffleGroups(eventId, map)
+  await rpc('admin_shuffle_groups', { p_token: token, p_event_id: eventId, p_map: map })
+}
+
+/** Knockout-only scoring rules (events that opted in with ko_target_score). */
+export async function adminSetKoRules(
+  token: string, eventId: string,
+  r: { target_score: number; win_by: number; cap: number; switch_at: number },
+): Promise<void> {
+  if (IS_DEMO) return demo.setKoRules(eventId, r)
+  await rpc('admin_set_ko_rules', {
+    p_token: token, p_event_id: eventId,
+    p_target: r.target_score, p_win_by: r.win_by, p_cap: r.cap, p_switch_at: r.switch_at,
+  })
+}

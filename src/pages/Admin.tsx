@@ -17,6 +17,8 @@ import { resizeImage } from '../lib/image'
 import { ScheduleRow, scheduleStatus } from '../components/ScheduleRow'
 import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts, KnockoutTab } from './MultiSportAdmin'
 import { sportsPresent } from '../lib/multisport'
+import { isPoolDispatch, shuffleMap, eventUntouched } from '../lib/pool'
+import { GroupTable } from '../components/GroupsKo'
 
 const TOKEN_TTL_MS = 4 * 60 * 60 * 1000
 const tokKey = (code: string) => `pp.admin.${code}`
@@ -348,6 +350,41 @@ function ScoringTab({ ev, token, run }: any) {
         onClick={() => run(() => api.adminUpdateEvent(token, ev.id, name,
           { target_score: t, win_by: w, cap, switch_at: sw, side_a_name: aName, side_b_name: bName, serve_mode: serveMode }),
           'Scoring updated')} />
+      {ev.ko_target_score != null && <KoRules ev={ev} token={token} run={run} />}
+    </div>
+  )
+}
+
+/** Events with their own knockout rules (migration 0026): the settings above
+ *  are the group stage; these apply to quarter-finals onward. */
+function KoRules({ ev, token, run }: any) {
+  const [t, setT] = useState<number>(ev.ko_target_score)
+  const [w, setW] = useState<number>(ev.ko_win_by ?? ev.win_by)
+  const [cap, setCap] = useState<number>(ev.ko_cap ?? ev.ko_target_score)
+  const [sw, setSw] = useState<number>(ev.ko_switch_at ?? ev.switch_at)
+  const bad = validateRules({ target_score: t, win_by: w, cap, switch_at: sw })
+  return (
+    <div className="mt-8 space-y-4 rounded-xl border border-line bg-surface p-4">
+      <div>
+        <div className="font-display text-lg font-bold tracking-wide">Knockout scoring</div>
+        <p className="text-xs text-fg-subtle">Quarter-finals, semi-finals, 3rd place and Final. The rules above are the group stage.</p>
+      </div>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-4">
+        <Field label="Winning score">
+          <Stepper value={t} min={1} max={99} onChange={v => { setT(v); if (cap < v) setCap(v); if (sw > v) setSw(0) }} />
+        </Field>
+        <Field label="Win by"><Stepper value={w} min={1} max={5} onChange={setW} /></Field>
+        <Field label="Hard cap"><Stepper value={cap} min={1} max={120} onChange={setCap} /></Field>
+        <Field label="Switch ends at">
+          <Stepper value={sw} min={0} max={t} onChange={setSw} format={v => v === 0 ? 'OFF' : String(v)} />
+        </Field>
+      </div>
+      {bad && <Warn>{bad}</Warn>}
+      <p className="text-xs text-fg-subtle">
+        {w === 1 && cap === t ? `Sudden death — first to ${t} wins, no deuce.` : `First to ${t}, win by ${w}, capped at ${cap}.`}
+      </p>
+      <Save disabled={!!bad} label="SAVE KNOCKOUT RULES"
+        onClick={() => run(() => api.adminSetKoRules(token, ev.id, { target_score: t, win_by: w, cap, switch_at: sw }), 'Knockout scoring updated')} />
     </div>
   )
 }
@@ -371,6 +408,9 @@ function TeamsTab({ bundle, ev, token, run }: any) {
   return (
     <div className="max-w-5xl space-y-4">
       <H>Teams</H>
+      {ev.format === 'groups_ko' && (isPoolDispatch(ev) || ev.legs === 2) && (
+        <RandomGroups bundle={bundle} ev={ev} token={token} run={run} />
+      )}
 
       {isDuel ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -417,6 +457,60 @@ function TeamsTab({ bundle, ev, token, run }: any) {
         Renaming is safe at any time — the schedule follows the team, not the name.
         A team that has already finished a match cannot be deleted.
         {isDuel && ' Both sides need equal, even squad sizes before you can regenerate the schedule.'}
+      </p>
+    </div>
+  )
+}
+
+/** Fresh random group draw (migration 0026): team names, players and logos
+ *  are dealt into new group slots; every group keeps exactly its size and the
+ *  fixtures stay. Only before the first point of the event. */
+function RandomGroups({ bundle, ev, token, run }: any) {
+  const [sure, setSure] = useState(false)
+  const teams = bundle.teams.filter((t: any) => t.event_id === ev.id)
+  const pools = [...new Set<string>(teams.map((t: any) => t.pool ?? 'A'))].sort()
+  const open = eventUntouched(bundle, ev.id)
+  const draw = () => {
+    setSure(false)
+    run(() => api.adminShuffleGroups(token, ev.id, shuffleMap(teams.map((t: any) => t.id))), 'New random groups drawn')
+  }
+  return (
+    <div className="space-y-3 rounded-xl border border-line bg-surface p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-display text-lg font-bold tracking-wide">Groups</div>
+          <div className="text-xs text-fg-subtle">{pools.length} groups of {Math.round(teams.length / Math.max(pools.length, 1))} · teams never move to another group's games</div>
+        </div>
+        {open ? (
+          <div className="flex shrink-0 items-center gap-2">
+            {sure && (
+              <button onClick={() => setSure(false)}
+                className="shrink-0 whitespace-nowrap rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-fg-muted">Cancel</button>
+            )}
+            <button onClick={() => sure ? draw() : setSure(true)}
+              className={`shrink-0 whitespace-nowrap rounded-xl px-5 py-2.5 font-display font-bold ${sure ? 'bg-accent text-canvas' : 'bg-brand text-brand-fg'}`}>
+              {sure ? 'YES, DRAW AGAIN' : '🎲 GENERATE RANDOM GROUPS'}
+            </button>
+          </div>
+        ) : (
+          <span className="shrink-0 whitespace-nowrap text-xs text-fg-subtle">Locked — games have started</span>
+        )}
+      </div>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-2">
+        {pools.map(p => (
+          <div key={p} className="min-w-0 rounded-lg border border-line px-2.5 py-2">
+            <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">Group {p}</div>
+            {teams.filter((t: any) => (t.pool ?? 'A') === p).map((t: any) => (
+              <div key={t.id} className="flex min-w-0 items-center gap-1.5 py-0.5 text-sm">
+                <Emblem logo={t.logo} flagName={null} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
+                <span className="truncate">{t.name}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-fg-subtle">
+        Type the real team names above first, then generate. Drawing again is allowed until the first point is scored.
       </p>
     </div>
   )
@@ -540,8 +634,25 @@ function BracketTab({ bundle, ev, token, run }: any) {
   const seeded = bracketSeeded(bundle, ev.id)
   const tables = groupStandings(bundle, ev.id)
   const rounds = bracketRounds(bundle, ev.id)
+  // tiebreak 'diff': teams still level after head-to-head on the qualifying
+  // line are settled by a coin toss — the admin records the toss winner here
+  const [picks, setPicks] = useState<Record<string, string>>({})
+  const diffMode = ev.tiebreak === 'diff'
+  const tosses = diffMode ? coinTosses(tables, advance) : {}
+  const openTosses = Object.keys(tosses).filter(g => !tosses[g].some((r: any) => r.team.id === picks[g]))
 
-  const groupIds = qualifiers(bundle, ev.id, advance)
+  const groupIds = diffMode
+    ? Object.keys(tables).sort().map(g => {
+        const rows = tables[g].slice()
+        const pick = picks[g]
+        if (tosses[g] && pick) {
+          const i = rows.findIndex((r: any) => r.team.id === pick)
+          const first = rows.findIndex((r: any) => r.tieGroup === rows[i].tieGroup)
+          rows.splice(first, 0, rows.splice(i, 1)[0])
+        }
+        return rows.slice(0, advance).map((r: any) => r.team.id)
+      })
+    : qualifiers(bundle, ev.id, advance)
   const flat = groupIds.flat()
   const size = nextPowerOfTwo(flat.length)
   const pairs = seedBracket(groupIds, size)
@@ -572,6 +683,30 @@ function BracketTab({ bundle, ev, token, run }: any) {
       )}
 
       {/* group tables */}
+      {diffMode ? (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-3">
+          {Object.keys(tables).sort().map(g => (
+            <div key={g} className="rounded-xl border border-line bg-surface p-2">
+              <GroupTable b={bundle} g={g} rows={tables[g]} advance={advance} />
+              {tosses[g] && complete && !seeded && (
+                <div className="mt-2 border-t border-line pt-2">
+                  <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-gold">Coin toss — who goes through?</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {tosses[g].map((r: any) => (
+                      <button key={r.team.id} onClick={() => setPicks(p => ({ ...p, [g]: r.team.id }))}
+                        className={`flex min-h-[32px] max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold ${
+                          picks[g] === r.team.id ? 'border-gold bg-gold/20 text-fg' : 'border-line text-fg-muted'}`}>
+                        <Emblem logo={teamLogo(bundle, r.team.id)} flagName={teamSideName(bundle, r.team.id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
+                        <span className="truncate">{r.team.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {Object.keys(tables).sort().map(g => (
           <div key={g} className="rounded-xl border border-line bg-surface p-3">
@@ -598,11 +733,12 @@ function BracketTab({ bundle, ev, token, run }: any) {
           </div>
         ))}
       </div>
+      )}
 
       {/* the draw that will be written */}
       {complete && !seeded && firstRound && (
         <div className="rounded-xl border border-line bg-surface p-4">
-          <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
+          <div className="mb-2 truncate whitespace-nowrap text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
             {firstRound.round} — this is what will be written
           </div>
           <ul className="space-y-1 text-sm">
@@ -627,7 +763,10 @@ function BracketTab({ bundle, ev, token, run }: any) {
             and cannot meet a team from their own group in round one. Byes go to the
             highest seeds. Nothing is written until you press the button.
           </p>
-          <Save label="LOCK GROUPS & DRAW BRACKET" onClick={lock} />
+          {openTosses.length > 0 && (
+            <Warn>Coin toss needed in Group {openTosses.join(', ')} — tap the toss winner on that group above.</Warn>
+          )}
+          <Save label="LOCK & DRAW BRACKET" onClick={lock} disabled={openTosses.length > 0} />
         </div>
       )}
 
@@ -679,6 +818,20 @@ function BracketTab({ bundle, ev, token, run }: any) {
 }
 
 
+/** Groups whose qualifying line runs through a tie that head-to-head could
+ *  not break: group -> the level teams. */
+function coinTosses(tables: Record<string, any[]>, advance: number): Record<string, any[]> {
+  const out: Record<string, any[]> = {}
+  for (const g of Object.keys(tables)) {
+    const rows = tables[g]
+    const edge = rows[advance - 1]
+    if (!edge || edge.tieGroup == null) continue
+    const level = rows.filter((r: any) => r.tieGroup === edge.tieGroup)
+    if (rows.findIndex((r: any) => r.tieGroup === edge.tieGroup) + level.length > advance) out[g] = level
+  }
+  return out
+}
+
 function ScheduleTab({ bundle, ev, token, run }: any) {
   const isDuel = ev.format === 'duel'
   const teams = bundle.teams.filter((t: any) => t.event_id === ev.id)
@@ -712,7 +865,13 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
         </div>
       </div>
       {isDuel && duelError && <Warn>{duelError}</Warn>}
-      {started ? (
+      {isPoolDispatch(ev) ? (
+        <div className="rounded-xl border border-line bg-surface p-4 text-sm text-fg-muted">
+          Shared court queue: group games wait in one list and the first free court takes the next
+          game whose two teams are both free, so every team's rest stays about the same.
+          To change who is in which group, use Teams → Generate random groups.
+        </div>
+      ) : started ? (
         <Warn>
           Matches have already been played, so the schedule is locked. Regenerating
           would throw away results.

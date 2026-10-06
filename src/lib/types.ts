@@ -28,6 +28,17 @@ export interface EventCfg {
   bracket_seeded_at?: string | null
   // multi-sport only (migration 0025): 'final' = rules-only event the Final is scored with
   stage?: string | null
+  // groups_ko opt-ins (migration 0026) — unset everywhere else; see lib/pool.ts
+  legs?: number | null
+  tiebreak?: 'h2h' | 'diff' | null
+  ko_target_score?: number | null
+  ko_win_by?: number | null
+  ko_cap?: number | null
+  ko_switch_at?: number | null
+  play_clock?: boolean | null
+  court_dispatch?: 'fixed' | 'pool' | null
+  bracket_preview?: boolean | null
+  tv_partner?: string | null
 }
 export interface Court { id: string; number: number; label: string | null; sport?: 'pickleball' | 'badminton'
   // multi-sport only: which game type (MD1 / MD2 / XD) this court hosts; null = any

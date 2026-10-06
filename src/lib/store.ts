@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Bundle, EventCfg, Match, Team } from './types'
 import type { DuelTally } from './draw'
 import * as api from './api'
+import { rankByDiff } from './pool'
 
 const CODE_KEY = 'pp.code'
 export const rememberCode = (c: string) => localStorage.setItem(CODE_KEY, c.toUpperCase())
@@ -106,6 +107,8 @@ export const results = (b: Bundle): Match[] =>
 export interface Standing {
   team: Team; played: number; won: number; lost: number
   pf: number; pa: number; diff: number
+  // tiebreak 'diff' only: rows sharing a number are level after head-to-head
+  tieGroup?: number | null
 }
 
 /** Pool standings. Tiebreak: wins, then head-to-head, then diff, then points for. */
@@ -140,12 +143,15 @@ export function standings(b: Bundle, eventId: string): Record<string, Standing[]
     const p = r.team.pool ?? '—'
     ;(byPool[p] ||= []).push(r)
   }
+  const ev = b.events.find(e => e.id === eventId)
   for (const p of Object.keys(byPool)) {
-    byPool[p].sort((a, z) =>
+    if (ev?.tiebreak === 'diff') byPool[p] = rankByDiff(byPool[p], done)
+    else byPool[p].sort((a, z) =>
       z.won - a.won || h2h(a.team.id, z.team.id) || z.diff - a.diff || z.pf - a.pf)
   }
   return byPool
 }
+
 
 // --------------------------------------------------------- groups_ko format
 /** A knockout slot is any match carrying a bracket_key. Group matches, and

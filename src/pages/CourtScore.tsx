@@ -10,6 +10,7 @@ import { useLandscape } from '../lib/orientation'
 import { tapPoint, tapFault, tapUndo, hornEnd, chimeSwitch, isSoundOn, setSoundOn } from '../lib/feedback'
 import { Screen, Spinner, FullscreenButton, Flag, Emblem } from '../components/ui'
 import Court from '../components/Court'
+import { PlayClock } from '../components/GroupsKo'
 import { koCourtLabel } from '../lib/multisport'
 
 export default function CourtScore() {
@@ -213,7 +214,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
   bundle: any; match: Match; token: string; courtNo: number; code: string; reload: () => void
   onRelogin: () => void
 }) {
-  const rules = useMemo(() => rulesOf(eventOf(bundle, match)), [bundle, match.event_id])
+  const rules = useMemo(() => rulesOf(eventOf(bundle, match), match), [bundle, match.event_id, match.bracket_key])
   const [m, setM] = useState<Match>(match)
   const [showSwitch, setShowSwitch] = useState(false)
   // First-serve picker: pops up before the court is usable, once per match —
@@ -390,6 +391,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
             isPortrait ? 'text-sm' : ''}`}>
             <span className={isPortrait ? 'text-sm' : 'text-base sm:text-lg'}>CT{courtNo} · M{matchNo}</span>
             {matchPoint && <span className="shrink-0 animate-pulse text-sm text-brand-ink">MATCH PT</span>}
+            {ev.play_clock && <PlayClock m={m} className="text-xs font-semibold tracking-normal text-fg-subtle" />}
           </div>
           <div className="flex shrink-0 items-center gap-2.5 text-[11px]">
             <SoundToggle portrait={isPortrait} />

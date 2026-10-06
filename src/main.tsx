@@ -10,6 +10,7 @@ import NewCompetition from './pages/NewCompetition'
 import Admin from './pages/Admin'
 import Owner from './pages/Owner'
 import QuickPlay from './pages/QuickPlay'
+import CombinedTv from './pages/CombinedTv'
 
 const router = createBrowserRouter([
   { path: '/', element: <Join /> },
@@ -20,6 +21,7 @@ const router = createBrowserRouter([
   { path: '/c/:code/match/:id', element: <MatchDetail /> },
   { path: '/c/:code/admin', element: <Admin /> },
   { path: '/owner', element: <Owner /> },
+  { path: '/tv/:codes', element: <CombinedTv /> },
 ])
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

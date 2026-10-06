@@ -5,6 +5,7 @@
 import type { Bundle, Match, PointEvent, Team } from './types'
 import { applyPoint, applyUndo, rulesOf, setFirstServer, teamForSide } from './scoring'
 import type { DraftKoMatch, DraftMatch, DraftTeam } from './draw'
+import { poolDispatch, isPoolDispatch } from './pool'
 
 const KEY = 'pp.demo.v2'
 const chan = 'BroadcastChannel' in globalThis ? new BroadcastChannel('pp.demo') : null
@@ -26,7 +27,9 @@ export interface CreatePayload {
     format?: string; side_a_name?: string; side_b_name?: string
     group_size?: number; advance_per_group?: number; third_place?: boolean
     serve_mode?: 'winner' | 'alternate'
-  }
+  } & Partial<Pick<Bundle['events'][number],
+    'legs' | 'tiebreak' | 'ko_target_score' | 'ko_win_by' | 'ko_cap' | 'ko_switch_at'
+    | 'play_clock' | 'court_dispatch' | 'bracket_preview' | 'tv_partner'>>
   courts: Array<{ number: number; label: string; scorer_pin: string }>
   teams: Array<{ name: string; pool?: string; side?: 'A' | 'B' }>
   matches: DraftMatch[]
@@ -178,7 +181,7 @@ export const demo = {
       pool: t.pool ?? null, side: t.side ?? null,
     }))
     const matches: Match[] = p.matches.map(m => ({
-      id: uid(), event_id: ev.id, court_id: courts[m.courtIdx].id,
+      id: uid(), event_id: ev.id, court_id: m.courtIdx >= 0 ? courts[m.courtIdx].id : null,
       round: m.label ?? `Round ${m.round}`, sequence: m.sequence,
       team_a_id: teams[m.aIdx].id, team_b_id: teams[m.bIdx].id,
       score_a: 0, score_b: 0, a_on_left: true, sides_switched: false,
@@ -354,7 +357,7 @@ export const demo = {
     const m = s.bundle.matches[i]
     const ev = s.bundle.events.find(e => e.id === m.event_id)!
     const next = applyPoint(
-      { ...m, started_at: m.started_at ?? new Date().toISOString() }, side, rulesOf(ev))
+      { ...m, started_at: m.started_at ?? new Date().toISOString() }, side, rulesOf(ev, m))
     s.bundle.matches[i] = next
     // team_id is the RALLY WINNER (not necessarily who scored — under
     // side-out scoring the receiving side can win the rally with no point).
@@ -384,7 +387,7 @@ export const demo = {
     const ev = s.bundle.events.find(e => e.id === m.event_id)!
     const prevWinner: 'a' | 'b' | null = !prev ? null
       : prev.team_id === m.team_a_id ? 'a' : prev.team_id === m.team_b_id ? 'b' : null
-    const next = applyUndo(m, prev?.score_a_after ?? 0, prev?.score_b_after ?? 0, rulesOf(ev), {
+    const next = applyUndo(m, prev?.score_a_after ?? 0, prev?.score_b_after ?? 0, rulesOf(ev, m), {
       last_scorer: prevWinner,
       serving_team: prev?.serving_team_after ?? null,
       server_no: prev?.server_no_after ?? null,
@@ -409,10 +412,20 @@ export const demo = {
     const s = load()
     const i = s.bundle.matches.findIndex(m => m.id === matchId)
     const m = s.bundle.matches[i]
+    const ev = s.bundle.events.find(e => e.id === m.event_id)
+    const pts = s.events.filter(e => e.match_id === matchId)
+    // play clock (migration 0026 twin): first point -> last point
+    const clock = ev?.play_clock && pts.length
+      ? {
+          started_at: pts[0].created_at,
+          duration_seconds: Math.round((Date.parse(pts[pts.length - 1].created_at) - Date.parse(pts[0].created_at)) / 1000),
+        }
+      : {}
     const next: Match = {
       ...m, status: 'finished',
       winner_id: m.score_a > m.score_b ? m.team_a_id : m.team_b_id,
       finished_at: new Date().toISOString(),
+      ...clock,
     }
     s.bundle.matches[i] = next
     koFlow(s.bundle, next)
@@ -420,8 +433,33 @@ export const demo = {
       .filter(x => x.court_id === m.court_id && x.status === 'scheduled')
       .sort((a, b) => a.sequence - b.sequence)[0]
     if (up) up.status = 'live'
+    if (isPoolDispatch(ev)) poolDispatch(s.bundle, m.event_id)
     save(s)
     return next
+  },
+
+  // ------------------------------------------- migration 0026 opt-ins
+  /** Fresh random group draw: team details move between slots, fixtures stay. */
+  shuffleGroups(eventId: string, map: Array<{ slot: string; src: string }>) {
+    const s = load()
+    if (s.bundle.matches.some(m => m.event_id === eventId && (m.status === 'finished' || m.score_a > 0 || m.score_b > 0))) {
+      throw new Error('SCHEDULE_IN_PROGRESS')
+    }
+    const snap = new Map(s.bundle.teams.map(t => [t.id, { ...t }]))
+    for (const { slot, src } of map) {
+      const t = s.bundle.teams.find(x => x.id === slot && x.event_id === eventId)
+      const from = snap.get(src)
+      if (!t || !from || from.event_id !== eventId) throw new Error('BAD_TEAM')
+      t.name = from.name; t.player1 = from.player1; t.player2 = from.player2; t.logo = from.logo ?? null
+    }
+    save(s)
+  },
+
+  setKoRules(eventId: string, r: { target_score: number; win_by: number; cap: number; switch_at: number }) {
+    const s = load()
+    const e = s.bundle.events.find(x => x.id === eventId)
+    if (e) Object.assign(e, { ko_target_score: r.target_score, ko_win_by: r.win_by, ko_cap: r.cap, ko_switch_at: r.switch_at })
+    save(s)
   },
 
   // ------------------------------------------------- groups_ko bracket
