@@ -63,6 +63,12 @@ export const retryStalled = () => {
   write(read().map(o => ({ ...o, tries: 0 })))
 }
 
+/** Server answers that can never succeed on retry (the match is already
+ *  confirmed / finished / gone). Replaying such an op only blocks every op
+ *  behind it, so it is dropped instead of being kept as "stuck". */
+export const isPermanentError = (message?: string) =>
+  !!message && /not.?awaiting.?confirm|match.?finished|no.?match\b/i.test(message)
+
 /** Run `send` over every queued op, oldest first, stopping at the first
  *  failure so ops for the same match always apply in order. Nothing is
  *  ever dropped on failure — see STALL_THRESHOLD above. */
@@ -72,6 +78,7 @@ export async function flush(send: (op: QueuedOp) => Promise<void>) {
     catch (e: any) {
       const message = e?.message ? String(e.message) : String(e)
       console.error('[PicklePoint] queued op failed to sync:', op, message)
+      if (isPermanentError(message)) { drop(op.id); continue }   // can never apply; don't block the queue
       if (typeof navigator !== 'undefined' && navigator.onLine) bump(op.id, message)
       return
     }

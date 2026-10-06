@@ -4,7 +4,7 @@ import { useCompetition, teamName, liveOnCourt, eventOf } from '../lib/store'
 import { applyPoint, applyUndo, displayScores, isGameOver, rulesOf, servingSide, serverCourt as serverCourtOf, scoreCall, activeServerNo, type UndoState } from '../lib/scoring'
 import type { Match } from '../lib/types'
 import * as api from '../lib/api'
-import { enqueue, flush, pending, stalledCount, retryStalled, lastQueueError } from '../lib/queue'
+import { enqueue, flush, pending, stalledCount, retryStalled, lastQueueError, isPermanentError } from '../lib/queue'
 import { useWakeLockEffect } from '../lib/wakelock'
 import { useLandscape } from '../lib/orientation'
 import { tapPoint, tapFault, tapUndo, hornEnd, chimeSwitch, isSoundOn, setSoundOn } from '../lib/feedback'
@@ -281,6 +281,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
       setM(await api.scorePoint(m.id, side, token, evId))
       setOffline(pending() > 0)
     } catch (e: any) {
+      if (isPermanentError(String(e?.message ?? e))) { history.current.pop(); setM(before); reload(); return }   // match already finished/confirmed
       enqueue({ id: evId, kind: 'score', matchId: m.id, side, at: Date.now() })
       setOffline(true)
       setStuck(stalledCount() > 0)
@@ -311,7 +312,11 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
 
   const confirm = async () => {
     try { await api.confirmMatch(m.id, token); reload() }
-    catch { enqueue({ id: crypto.randomUUID(), kind: 'confirm', matchId: m.id, at: Date.now() }); setOffline(true); reload() }
+    catch (e: any) {
+      // server said "already confirmed" -> nothing to retry; only queue real network failures
+      if (!isPermanentError(String(e?.message ?? e))) { enqueue({ id: crypto.randomUUID(), kind: 'confirm', matchId: m.id, at: Date.now() }); setOffline(true) }
+      reload()
+    }
   }
 
   const [confirmingReset, setConfirmingReset] = useState(false)
