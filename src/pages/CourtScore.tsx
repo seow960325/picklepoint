@@ -258,7 +258,9 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
   useEffect(() => {
     window.addEventListener('online', sync)
     const t = setInterval(() => { if (pending()) sync() }, 5000)
-    return () => { window.removeEventListener('online', sync); clearInterval(t) }
+    // every 2 min give stalled ops a fresh start so nothing stays "stuck" for the referee
+    const r = setInterval(() => { if (pending()) { retryStalled(); sync() } }, 120000)
+    return () => { window.removeEventListener('online', sync); clearInterval(t); clearInterval(r) }
   }, [])
 
   const score = async (side: 'left' | 'right') => {
@@ -406,22 +408,13 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
                 PREV
               </Link>
             )}
-            <button type="button" onClick={stuck && !looksLikeAuth ? retrySync : undefined} disabled={!stuck || looksLikeAuth}
-                title={stuck
-                  ? `Some points keep failing to reach the server${errMsg ? `: "${errMsg}"` : ''} — tap to retry now`
-                  : offline ? 'Points saved on this device, waiting to reach the server' : 'All points saved to the server'}
-                className={stuck && !looksLikeAuth ? 'animate-pulse font-bold text-red-400 underline underline-offset-2'
-                  : offline ? 'text-amber-400' : 'text-fg-subtle'}>
-                {stuck && !looksLikeAuth ? `⚠ ${pending()} STUCK` : offline ? `⚠ ${pending()} to sync` : '● synced'}
-              </button>
+            <span title={errMsg ? `Syncing in background: ${errMsg}` : pending() > 0 ? 'Points saved on this device, syncing in background' : 'All points saved to the server'}
+                className={pending() > 0 ? 'text-fg-muted' : 'text-fg-subtle'}>
+                {pending() > 0 ? '● syncing…' : '● synced'}
+              </span>
           </div>
         </div>
 
-        {stuck && !looksLikeAuth && errMsg && (
-          <div className="shrink-0 truncate border-b border-red-500/30 bg-red-500/10 px-3 py-1 text-[11px] text-red-400">
-            Save failed: {errMsg}
-          </div>
-        )}
 
         {/* court area — portrait: constrained 2:1 centred; landscape: fills available space */}
         <div className={isPortrait
