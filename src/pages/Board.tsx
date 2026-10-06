@@ -701,7 +701,7 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
         <div className="mt-4"><CourtQueues b={b} ev={poolEv} cols={cols} n={99} /></div>
       )}
       {tv && poolEv && !split && (
-        <div className="mt-2 lg:mt-3"><CourtQueues b={b} ev={poolEv} cols={cols} n={3} /></div>
+        <div className="mt-2 lg:mt-3"><CourtQueues b={b} ev={poolEv} cols={cols} n={3} big /></div>
       )}
       {tv && poolEv && split && (
         <div className="mt-2 lg:mt-3"><UpNextQueue b={b} ev={poolEv} n={4} big /></div>
@@ -770,7 +770,7 @@ function CourtScoreRow({ b, m, tv }: { b: Bundle; m: Match; tv: boolean }) {
     <div className="aspect-[2/1] lg:aspect-[7/4]">
       <Court
         leftName={teamName(b, leftTeamId)}
-        nameSize={tv && ev.court_dispatch === 'pool' ? 21 : undefined}
+        nameHalo={ev.court_dispatch === 'pool'}
         rightName={teamName(b, rightTeamId)}
         leftScore={s.left} rightScore={s.right}
         leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}

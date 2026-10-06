@@ -204,7 +204,7 @@ export function UpNextQueue({ b, ev, n = 6, big = false }: { b: Bundle; ev: Even
 /** One "up next" list under each court (same column rule as the court cards
  *  above, so list and court line up): that court's home-group games in queue
  *  order. A game whose team is still on court is dimmed. */
-export function CourtQueues({ b, ev, cols, n = 6 }: { b: Bundle; ev: EventCfg; cols: string; n?: number }) {
+export function CourtQueues({ b, ev, cols, n = 6, big = false }: { b: Bundle; ev: EventCfg; cols: string; n?: number; big?: boolean }) {
   const queue = poolQueue(b, ev.id)
   const poolOf = (id: string | null) => b.teams.find(t => t.id === id)?.pool ?? '–'
   return (
@@ -214,8 +214,8 @@ export function CourtQueues({ b, ev, cols, n = 6 }: { b: Bundle; ev: EventCfg; c
         return (
           <div key={ct.id} className="min-w-0 rounded-2xl border border-line bg-surface p-3">
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <span className="min-w-0 truncate whitespace-nowrap font-display text-xs font-bold uppercase tracking-widest text-fg-muted">Court {ct.number} · up next</span>
-              <span className="shrink-0 whitespace-nowrap text-[10px] text-fg-subtle">{queue.filter(m => m.home_court === ct.id).length} left</span>
+              <span className={`min-w-0 truncate whitespace-nowrap font-display font-bold uppercase tracking-widest text-fg-muted ${big ? 'text-xl' : 'text-xs'}`}>Court {ct.number} · up next</span>
+              <span className={`shrink-0 whitespace-nowrap text-fg-subtle ${big ? 'text-base' : 'text-[10px]'}`}>{queue.filter(m => m.home_court === ct.id).length} left</span>
             </div>
             {mine.length === 0 ? (
               <div className="py-1.5 text-xs text-fg-subtle">No group games waiting.</div>
@@ -223,16 +223,16 @@ export function CourtQueues({ b, ev, cols, n = 6 }: { b: Bundle; ev: EventCfg; c
               <div className="divide-y divide-line/60">
                 {mine.map((m, i) => (
                   <div key={m.id}
-                    className={`grid grid-cols-[1.1rem_1.1rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] items-center gap-1.5 py-1.5 text-sm ${teamsBusy(b, m) ? 'opacity-60' : ''}`}>
-                    <span className="text-center font-display text-xs font-bold text-fg-subtle">{i + 1}</span>
-                    <span className="text-center text-[10px] font-bold text-fg-subtle">{poolOf(m.team_a_id)}</span>
+                    className={`grid ${big ? 'grid-cols-[1.6rem_1.6rem_minmax(0,1fr)_2.2rem_minmax(0,1fr)] gap-2 py-2.5 text-2xl' : 'grid-cols-[1.1rem_1.1rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-1.5 py-1.5 text-sm'} grid items-center ${teamsBusy(b, m) ? 'opacity-60' : ''}`}>
+                    <span className={`text-center font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>{i + 1}</span>
+                    <span className={`text-center font-bold text-fg-subtle ${big ? 'text-base' : 'text-[10px]'}`}>{poolOf(m.team_a_id)}</span>
                     <span className="flex min-w-0 items-center justify-end gap-1.5 text-fg-muted">
                       <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
-                      <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-3.5 w-3.5 shrink-0 rounded-[1px] object-contain" />
+                      <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={`shrink-0 rounded-[2px] object-contain ${big ? 'h-6 w-6' : 'h-3.5 w-3.5'}`} />
                     </span>
-                    <span className="text-center text-xs text-fg-subtle">vs</span>
+                    <span className={`text-center text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>vs</span>
                     <span className="flex min-w-0 items-center gap-1.5 text-fg-muted">
-                      <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-3.5 w-3.5 shrink-0 rounded-[1px] object-contain" />
+                      <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={`shrink-0 rounded-[2px] object-contain ${big ? 'h-6 w-6' : 'h-3.5 w-3.5'}`} />
                       <span className="truncate">{teamName(b, m.team_b_id)}</span>
                     </span>
                   </div>

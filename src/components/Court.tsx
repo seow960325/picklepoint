@@ -7,12 +7,15 @@ import { FlagGlyph } from './ui'
 
 // layout constants for the aspect-correct overlay (480 x 240)
 const NET = 240, KIT = 70, MIDY = 120
+const HALO = { stroke: '#0b2145', strokeWidth: 6, strokeLinejoin: 'round' as const, paintOrder: 'stroke' as const }
 const CXL = 120, CXR = 360, R = 72
 
 export interface CourtProps {
   leftName: string
   /** font size of the sideline team names (SVG units); TV screens ask for bigger */
   nameSize?: number
+  /** dark halo behind the sideline names so court lines never run through the letters */
+  nameHalo?: boolean
   rightName: string
   leftScore: number
   rightScore: number
@@ -127,7 +130,7 @@ function ballY(court: 'right' | 'left' | null | undefined, servingSide: 'left' |
 }
 
 export default function Court({
-  leftName, rightName, nameSize = 15, leftScore, rightScore, onTap, disabled, serving, serverNo, serverCourt,
+  leftName, rightName, nameSize = 15, nameHalo = false, leftScore, rightScore, onTap, disabled, serving, serverNo, serverCourt,
   leftFlag, rightFlag, leftLogo, rightLogo, label, callScore, sport,
 }: CourtProps) {
   const bad = sport === 'badminton'
@@ -346,11 +349,13 @@ export default function Court({
         {/* team names — mounted vertically on the outer sideline, clear of
             both serve-ball corners (top ~52 and bottom ~188) and the flag */}
         <text x="14" y={MIDY} textAnchor="middle" transform={`rotate(-90 14 ${MIDY})`}
+          {...(nameHalo ? HALO : {})}
           fill="#c6ff3d" fontSize={nameSize} fontWeight="700"
           fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
           {clip(leftName, 12)}
         </text>
         <text x="466" y={MIDY} textAnchor="middle" transform={`rotate(90 466 ${MIDY})`}
+          {...(nameHalo ? HALO : {})}
           fill="#22d3ee" fontSize={nameSize} fontWeight="700"
           fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
           {clip(rightName, 12)}
