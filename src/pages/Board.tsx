@@ -17,7 +17,7 @@ import {
   type Sport, type SportView, type Tie,
 } from '../lib/multisport'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide } from '../components/TieKnockout'
-import { GroupCardPro, PlayClock, UpNextQueue } from '../components/GroupsKo'
+import { CourtQueues, GroupCardPro, PlayClock, UpNextQueue } from '../components/GroupsKo'
 import { isPoolDispatch, koSlotLabel } from '../lib/pool'
 
 type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
@@ -685,7 +685,10 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
       </div>
 
       {!tv && !hideDeck && poolEv && (
-        <div className="mt-4"><UpNextQueue b={b} ev={poolEv} n={8} /></div>
+        <div className="mt-4"><CourtQueues b={b} ev={poolEv} cols={cols} n={8} /></div>
+      )}
+      {tv && poolEv && !split && (
+        <div className="mt-2 lg:mt-3"><CourtQueues b={b} ev={poolEv} cols={cols} n={3} /></div>
       )}
       {tv && poolEv && split && (
         <div className="mt-2 lg:mt-3"><UpNextQueue b={b} ev={poolEv} n={4} big /></div>

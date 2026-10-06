@@ -170,21 +170,6 @@ function LiveRow({ b, tone }: { b: Bundle; tone: typeof TONES[number] }) {
           ? <Fit><div className="w-[1800px]"><LiveGrid b={b} code={b.competition.code} tv /></div></Fit>
           : <div className="grid h-full place-items-center text-lg text-fg-subtle">No game on court right now</div>}
       </div>
-      {next.length > 0 && (
-        <div className="mt-1.5 hidden shrink-0 items-center gap-3 overflow-hidden whitespace-nowrap text-sm text-fg-muted lg:flex lg:text-base">
-          <span className="shrink-0 font-display font-bold uppercase tracking-widest text-accent">Next</span>
-          {next.map(({ m, waiting }, k) => (
-            <span key={m.id} className={`flex min-w-0 shrink-0 items-center gap-1.5 ${waiting ? 'opacity-60' : ''}`}>
-              {k > 0 && <span className="mr-1.5 shrink-0 text-fg-subtle">·</span>}
-              <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-              <span className="max-w-[11rem] truncate">{teamName(b, m.team_a_id)}</span>
-              <span className="shrink-0 text-fg-subtle">v</span>
-              <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-              <span className="max-w-[11rem] truncate">{teamName(b, m.team_b_id)}</span>
-            </span>
-          ))}
-        </div>
-      )}
     </section>
   )
 }

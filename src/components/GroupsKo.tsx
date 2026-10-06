@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom'
 import type { Bundle, EventCfg, Match } from '../lib/types'
 import type { Standing } from '../lib/store'
 import { teamName, teamLogo, teamSideName } from '../lib/store'
-import { upNext, fmtClock } from '../lib/pool'
+import { upNext, fmtClock, poolQueue, teamsBusy } from '../lib/pool'
 import { Emblem, Pill } from './ui'
 
 // ------------------------------------------------------------------ clock
@@ -197,6 +197,51 @@ export function UpNextQueue({ b, ev, n = 6, big = false }: { b: Bundle; ev: Even
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+/** One "up next" list under each court (same column rule as the court cards
+ *  above, so list and court line up): that court's home-group games in queue
+ *  order. A game whose team is still on court is dimmed. */
+export function CourtQueues({ b, ev, cols, n = 6 }: { b: Bundle; ev: EventCfg; cols: string; n?: number }) {
+  const queue = poolQueue(b, ev.id)
+  const poolOf = (id: string | null) => b.teams.find(t => t.id === id)?.pool ?? '–'
+  return (
+    <div className={`grid gap-2 lg:gap-3 ${cols}`}>
+      {b.courts.map(ct => {
+        const mine = queue.filter(m => m.home_court === ct.id).slice(0, n)
+        return (
+          <div key={ct.id} className="min-w-0 rounded-2xl border border-line bg-surface p-3">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <span className="min-w-0 truncate whitespace-nowrap font-display text-xs font-bold uppercase tracking-widest text-fg-muted">Court {ct.number} · up next</span>
+              <span className="shrink-0 whitespace-nowrap text-[10px] text-fg-subtle">{queue.filter(m => m.home_court === ct.id).length} left</span>
+            </div>
+            {mine.length === 0 ? (
+              <div className="py-1.5 text-xs text-fg-subtle">No group games waiting.</div>
+            ) : (
+              <div className="divide-y divide-line/60">
+                {mine.map((m, i) => (
+                  <div key={m.id}
+                    className={`grid grid-cols-[1.1rem_1.1rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] items-center gap-1.5 py-1.5 text-sm ${teamsBusy(b, m) ? 'opacity-60' : ''}`}>
+                    <span className="text-center font-display text-xs font-bold text-fg-subtle">{i + 1}</span>
+                    <span className="text-center text-[10px] font-bold text-fg-subtle">{poolOf(m.team_a_id)}</span>
+                    <span className="flex min-w-0 items-center justify-end gap-1.5 text-fg-muted">
+                      <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
+                      <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-3.5 w-3.5 shrink-0 rounded-[1px] object-contain" />
+                    </span>
+                    <span className="text-center text-xs text-fg-subtle">vs</span>
+                    <span className="flex min-w-0 items-center gap-1.5 text-fg-muted">
+                      <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-3.5 w-3.5 shrink-0 rounded-[1px] object-contain" />
+                      <span className="truncate">{teamName(b, m.team_b_id)}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
