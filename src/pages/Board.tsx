@@ -685,7 +685,7 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
       </div>
 
       {!tv && !hideDeck && poolEv && (
-        <div className="mt-4"><CourtQueues b={b} ev={poolEv} cols={cols} n={8} /></div>
+        <div className="mt-4"><CourtQueues b={b} ev={poolEv} cols={cols} n={99} /></div>
       )}
       {tv && poolEv && !split && (
         <div className="mt-2 lg:mt-3"><CourtQueues b={b} ev={poolEv} cols={cols} n={3} /></div>
