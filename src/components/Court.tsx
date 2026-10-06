@@ -140,24 +140,30 @@ export default function Court({
   const [down, setDown] = useState<'left' | 'right' | null>(null)
   const ballCy = ballY(serverCourt, serving) ?? MIDY + R + 17 // no active server (game over) — old fixed spot below the circle
   // Team flag/logo badge above each score circle. bigEmblem grows it 1.5x
-  // upward (bottom edge stays near the old one so the score is never covered)
-  // and drops the frame + shadow; the default path renders exactly as before.
+  // upward (bottom edge stays near the old one so the score is never covered).
+  // Flags (no logo, or an SVG flag logo) keep the frame + shadow; an uploaded
+  // picture logo (character heads) drops them. Default path renders as before.
   const EW = bigEmblem ? 81 : 54, EH = bigEmblem ? 57 : 38, EY = bigEmblem ? 10 : 30
-  const badge = (cx: number, logo?: string | null, flag?: string | null) => (logo || flag) ? (
-    <>
-      {!bigEmblem && <rect x={cx - 27} y="31" width="54" height="38" rx="5"
-        fill="#0a0e17" opacity="0.45" filter="url(#soft)" />}
-      {logo
-        ? <image href={logo} x={cx - EW / 2} y={EY} width={EW} height={EH}
-            preserveAspectRatio="xMidYMid slice" />
-        : <svg x={cx - EW / 2} y={EY} width={EW} height={EH}
-            viewBox="0 0 28 20" preserveAspectRatio="xMidYMid slice">
-            <FlagGlyph name={flag} />
-          </svg>}
-      {!bigEmblem && <rect x={cx - 27} y="30" width="54" height="38" rx="5"
-        fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />}
-    </>
-  ) : null
+  const ERX = bigEmblem ? 7 : 5, ESW = bigEmblem ? 2.5 : 2
+  const badge = (cx: number, logo?: string | null, flag?: string | null) => {
+    if (!logo && !flag) return null
+    const framed = !bigEmblem || !logo || logo.startsWith('data:image/svg')
+    return (
+      <>
+        {framed && <rect x={cx - EW / 2} y={EY + 1} width={EW} height={EH} rx={ERX}
+          fill="#0a0e17" opacity="0.45" filter="url(#soft)" />}
+        {logo
+          ? <image href={logo} x={cx - EW / 2} y={EY} width={EW} height={EH}
+              preserveAspectRatio="xMidYMid slice" />
+          : <svg x={cx - EW / 2} y={EY} width={EW} height={EH}
+              viewBox="0 0 28 20" preserveAspectRatio="xMidYMid slice">
+              <FlagGlyph name={flag} />
+            </svg>}
+        {framed && <rect x={cx - EW / 2} y={EY} width={EW} height={EH} rx={ERX}
+          fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth={ESW} />}
+      </>
+    )
+  }
   // Tap acknowledgement — flashes the tapped half on every tap, even when the
   // score doesn't move (side-out mode: a fault or the receiving team getting
   // tapped by mistake), so the ref always sees "that tap counted".
