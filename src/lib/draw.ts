@@ -11,6 +11,7 @@ export interface DraftMatch {
   sequence: number
   pool: string
   label?: string        // display override, e.g. "Pod 1" instead of "Round 1"
+  homeCourt?: number    // shared-queue events: the only court this game may use
 }
 
 /** Circle method. Returns rounds of index pairs; a BYE is dropped. */

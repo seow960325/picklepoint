@@ -867,8 +867,9 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
       {isDuel && duelError && <Warn>{duelError}</Warn>}
       {isPoolDispatch(ev) ? (
         <div className="rounded-xl border border-line bg-surface p-4 text-sm text-fg-muted">
-          Shared court queue: group games wait in one list and the first free court takes the next
-          game whose two teams are both free, so every team's rest stays about the same.
+          Home courts: each group plays on its own court (a group shared by two courts moves
+          once), and a free court takes its next game whose two teams are both free and rested,
+          so every team's rest stays about the same.
           To change who is in which group, use Teams → Generate random groups.
         </div>
       ) : started ? (

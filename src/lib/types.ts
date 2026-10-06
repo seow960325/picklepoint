@@ -81,6 +81,8 @@ export interface Match {
   tie_stage?: 'SF1' | 'SF2' | '3P' | 'F' | null
   // multi-sport Final only: game 1/2/3 of a best-of-3 discipline
   set_no?: number | null
+  // shared-queue events (migration 0026): the court this queued game waits for
+  home_court?: string | null
   loser_match_id?: string | null
   loser_slot?: 'a' | 'b' | null
   started_at: string | null; finished_at: string | null

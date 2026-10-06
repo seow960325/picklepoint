@@ -18,7 +18,7 @@ const EV = {
   id: 'ev', competition_id: 'c', name: "Men's Doubles", format: 'groups_ko',
   target_score: 15, win_by: 1, cap: 15, switch_at: 0, sort_order: 0, serve_mode: 'winner',
   group_size: 4, advance_per_group: 1, third_place: true,
-  legs: 2, tiebreak: 'diff', ko_target_score: 21, ko_win_by: 1, ko_cap: 21, ko_switch_at: 11,
+  legs: 2, tiebreak: 'diff', ko_target_score: 21, ko_win_by: 1, ko_cap: 21, ko_switch_at: 0,
   play_clock: true, court_dispatch: 'pool', bracket_preview: true,
 }
 
@@ -33,7 +33,7 @@ function makeBundle(seed = 1) {
   const matches = fixtures.map((f, i) => ({
     ...blank, id: `g${i}`, event_id: 'ev', court_id: f.courtIdx >= 0 ? courts[f.courtIdx].id : null,
     round: f.label, sequence: f.sequence, team_a_id: T[f.aIdx].id, team_b_id: T[f.bIdx].id,
-    status: 'scheduled', bracket_key: null,
+    status: 'scheduled', bracket_key: null, home_court: courts[f.homeCourt].id,
   }))
   const sk = buildBracketSkeleton(8, 3, fixtures.length + 1, true)
   const id = k => `k:${k}`
@@ -80,8 +80,8 @@ test('play order: never back-to-back, second leg only after the first, even spac
       const mine = g.filter(m => m.team_a_id === t.id || m.team_b_id === t.id)
       const slots = mine.map(slotOf)
       for (let i = 1; i < slots.length; i++) {
-        assert.ok(slots[i] - slots[i - 1] >= 2, `${t.name} back-to-back (seed ${seed})`)
-        assert.ok(slots[i] - slots[i - 1] <= 9, `${t.name} waits too long: ${slots[i] - slots[i - 1]} (seed ${seed})`)
+        assert.ok(slots[i] - slots[i - 1] >= 3, `${t.name} rests under 2 games (seed ${seed})`)
+        assert.ok(slots[i] - slots[i - 1] <= 7, `${t.name} waits too long: ${slots[i] - slots[i - 1]} (seed ${seed})`)
       }
       assert.ok(mine.slice(0, 3).every(m => m.round.endsWith('Leg 1')), 'first three games are leg 1')
     }
@@ -117,7 +117,8 @@ function simulate(seed) {
     const aWins = R() < 0.5
     m.score_a = aWins ? 15 : Math.floor(R() * 15); m.score_b = aWins ? Math.floor(R() * 15) : 15
     m.status = 'finished'; m.winner_id = aWins ? m.team_a_id : m.team_b_id
-    poolDispatch(b, 'ev')
+    m.finished_at = new Date((now.t - 1) * 60000).toISOString()
+    poolDispatch(b, 'ev', now.t * 60000)
     startLive()
   }
   return { b, start, end, total: now.t }
@@ -139,8 +140,17 @@ test('shared queue: all 96 games played, nobody on two courts, waits even', () =
       }
     }
     worst.push({ seed, hours: +(total / 60).toFixed(1), maxWait: Math.round(maxWait), minRest: Math.round(minGap) })
-    assert.ok(minGap >= 1, 'every team gets at least the changeover between games')
-    assert.ok(maxWait < 150, `a team waited ${Math.round(maxWait)} min (seed ${seed})`)
+    assert.ok(minGap >= 10, `a team rested only ${Math.round(minGap)} min (seed ${seed})`)
+    assert.ok(maxWait < 120, `a team waited ${Math.round(maxWait)} min (seed ${seed})`)
+    // court movement: a team plays on one court, or moves once to a second
+    for (const t of b.teams) {
+      const mine = g.filter(m => m.team_a_id === t.id || m.team_b_id === t.id)
+        .sort((x, y) => start.get(x.id) - start.get(y.id)).map(m => m.court_id)
+      assert.ok(new Set(mine).size <= 2, `${t.name} used 3 courts`)
+      assert.ok(mine.filter((c, i) => i && c !== mine[i - 1]).length <= 1, `${t.name} moved more than once`)
+    }
+    const oneCourt = b.teams.filter(t => new Set(g.filter(m => m.team_a_id === t.id || m.team_b_id === t.id).map(m => m.court_id)).size === 1).length
+    assert.equal(oneCourt, 24, '6 of 8 groups never leave their court')
   }
   console.log('# group stage sims (min):', JSON.stringify(worst))
 })
@@ -233,7 +243,7 @@ test('sudden death: groups to 15, knockout to 21, no win-by-2', () => {
   const g = rulesOf(EV, { bracket_key: null })
   const k = rulesOf(EV, { bracket_key: 'KO-8-0' })
   assert.deepEqual([g.target_score, g.win_by, g.cap, g.switch_at], [15, 1, 15, 0])
-  assert.deepEqual([k.target_score, k.win_by, k.cap, k.switch_at], [21, 1, 21, 11])
+  assert.deepEqual([k.target_score, k.win_by, k.cap, k.switch_at], [21, 1, 21, 0])
   assert.equal(isGameOver(14, 14, g), false)
   assert.equal(isGameOver(15, 14, g), true)
   assert.equal(isGameOver(16, 14, g), true)

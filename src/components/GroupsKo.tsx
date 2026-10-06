@@ -166,11 +166,12 @@ export function GameRow({ b, code, m, tag }: { b: Bundle; code: string; m: Match
 export function UpNextQueue({ b, ev, n = 6, big = false }: { b: Bundle; ev: EventCfg; n?: number; big?: boolean }) {
   const list = upNext(b, ev.id, n)
   const poolOf = (id: string | null) => b.teams.find(t => t.id === id)?.pool ?? '–'
+  const courtNo = (id?: string | null) => b.courts.find(c => c.id === id)?.number
   return (
     <div className="rounded-2xl border border-line bg-surface p-3">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span className={`min-w-0 truncate whitespace-nowrap font-display font-bold uppercase tracking-widest text-accent ${big ? 'text-base' : 'text-sm'}`}>Up next</span>
-        <span className="shrink-0 whitespace-nowrap text-[10px] text-fg-subtle">first free court takes the next game</span>
+        <span className="shrink-0 whitespace-nowrap text-[10px] text-fg-subtle">each group plays on its home court</span>
       </div>
       {list.length === 0 ? (
         <div className="py-1.5 text-xs text-fg-subtle">No group games waiting.</div>
@@ -178,9 +179,11 @@ export function UpNextQueue({ b, ev, n = 6, big = false }: { b: Bundle; ev: Even
         <div className="divide-y divide-line/60">
           {list.map(({ m, waiting }, i) => (
             <div key={m.id}
-              className={`grid grid-cols-[1.25rem_2rem_minmax(0,1fr)_1.75rem_minmax(0,1fr)] items-center gap-1.5 py-1.5 ${big ? 'text-base' : 'text-sm'} ${waiting ? 'opacity-60' : ''}`}>
+              className={`grid grid-cols-[1.25rem_3.25rem_minmax(0,1fr)_1.75rem_minmax(0,1fr)] items-center gap-1.5 py-1.5 ${big ? 'text-base' : 'text-sm'} ${waiting ? 'opacity-60' : ''}`}>
               <span className="text-center font-display text-xs font-bold text-fg-subtle">{i + 1}</span>
-              <span className="whitespace-nowrap text-center text-[10px] font-bold text-fg-subtle">GRP {poolOf(m.team_a_id)}</span>
+              <span className="whitespace-nowrap text-center text-[10px] font-bold text-fg-subtle">
+                {courtNo(m.home_court) ? `CT${courtNo(m.home_court)} · ` : ''}{poolOf(m.team_a_id)}
+              </span>
               <span className="flex min-w-0 items-center justify-end gap-1.5 text-fg-muted">
                 <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
                 <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-3.5 w-3.5 shrink-0 rounded-[1px] object-contain" />

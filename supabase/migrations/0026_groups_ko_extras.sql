@@ -32,6 +32,9 @@ alter table events add column if not exists court_dispatch  text not null defaul
 alter table events add column if not exists bracket_preview boolean not null default false;
 alter table events add column if not exists tv_partner      text;
 
+-- shared-queue events: the only court a queued group game may go to
+alter table matches add column if not exists home_court uuid references courts(id) on delete set null;
+
 alter table events drop constraint if exists events_tiebreak_check;
 alter table events add constraint events_tiebreak_check check (tiebreak in ('h2h','diff'));
 alter table events drop constraint if exists events_court_dispatch_check;
@@ -194,11 +197,13 @@ begin
 end $$;
 
 -- ------------------------------------------------- 3. shared court queue
--- court_dispatch = 'pool' only. Fills every idle court of the competition
--- with the next queued group match (lowest sequence) whose two teams are not
--- on a court. A court is idle when it has nothing live, awaiting confirm or
--- queued on it. Serialised per event so two courts finishing at the same
--- moment can never grab the same match.
+-- court_dispatch = 'pool' only. Every idle court of the competition takes
+-- its next queued group game: only games whose home court is this court (or
+-- with no home court), whose two teams are both off court, preferring in
+-- queue order one whose teams have rested 15 minutes, else the most-rested.
+-- A court is idle when it has nothing live, awaiting confirm or queued on
+-- it. Serialised per event so two courts finishing together can never grab
+-- the same game. Twin of poolDispatch() in src/lib/pool.ts.
 create or replace function _pool_dispatch(p_event uuid) returns void
 language plpgsql security definer set search_path = public as $fn$
 declare e events; ct record; v_next uuid; v_tries int;
@@ -218,17 +223,28 @@ begin
     v_tries := 0;
     loop
       v_tries := v_tries + 1;
-      select m.id into v_next from matches m
-       where m.event_id = p_event and m.court_id is null and m.bracket_key is null
-         and m.status = 'scheduled'
-         and not exists (
-           select 1 from matches x
-            where x.event_id = p_event and x.status in ('live','awaiting_confirm')
-              and (x.team_a_id in (m.team_a_id, m.team_b_id)
-                   or x.team_b_id in (m.team_a_id, m.team_b_id)))
-       order by m.sequence
-       limit 1;
-      if v_next is null then return; end if;   -- nothing playable for any court
+      select q.id into v_next from (
+        select m.id, m.sequence,
+               coalesce(extract(epoch from now() - (
+                 select max(f.finished_at) from matches f
+                  where f.event_id = p_event and f.status = 'finished'
+                    and (f.team_a_id in (m.team_a_id, m.team_b_id)
+                         or f.team_b_id in (m.team_a_id, m.team_b_id)))), 1e9) as rest
+          from matches m
+         where m.event_id = p_event and m.court_id is null and m.bracket_key is null
+           and m.status = 'scheduled'
+           and (m.home_court is null or m.home_court = ct.id)
+           and not exists (
+             select 1 from matches x
+              where x.event_id = p_event and x.status in ('live','awaiting_confirm')
+                and (x.team_a_id in (m.team_a_id, m.team_b_id)
+                     or x.team_b_id in (m.team_a_id, m.team_b_id)))
+      ) q
+      order by (q.rest >= 900) desc,
+               case when q.rest >= 900 then q.sequence end,
+               q.rest desc
+      limit 1;
+      exit when v_next is null;               -- nothing playable on this court now
       update matches set court_id = ct.id, status = 'live'
        where id = v_next and court_id is null and status = 'scheduled';
       exit when found or v_tries >= 5;

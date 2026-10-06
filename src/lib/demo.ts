@@ -182,6 +182,7 @@ export const demo = {
     }))
     const matches: Match[] = p.matches.map(m => ({
       id: uid(), event_id: ev.id, court_id: m.courtIdx >= 0 ? courts[m.courtIdx].id : null,
+      home_court: m.homeCourt != null ? courts[m.homeCourt].id : null,
       round: m.label ?? `Round ${m.round}`, sequence: m.sequence,
       team_a_id: teams[m.aIdx].id, team_b_id: teams[m.bIdx].id,
       score_a: 0, score_b: 0, a_on_left: true, sides_switched: false,

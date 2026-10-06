@@ -72,9 +72,11 @@ if (COUNTRIES.length !== 32) throw new Error(`need 32 flags, have ${COUNTRIES.le
 
 // ------------------------------------------------------------ payloads
 const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10)
+const homes = {}
 function payload(code, category) {
   const teams = drawGroups(COUNTRIES, 4)
   const games = buildPoolSchedule(teams, 3, 2)
+  homes[code] = games.map(g => [g.sequence, g.homeCourt + 1])
   const bracket = buildBracketSkeleton(8, 3, games.length + 1, true)
   return {
     code, name: `MC Pickleball Championship · ${category}`, venue: '', event_date: today, admin_pin: '0000',
@@ -93,12 +95,21 @@ function payload(code, category) {
   }
 }
 const q = s => `'${s.replace(/'/g, "''")}'`
-const opts = partner => `legs = 2, tiebreak = 'diff', ko_target_score = 21, ko_win_by = 1, ko_cap = 21, ko_switch_at = 11, play_clock = true, court_dispatch = 'pool', bracket_preview = true, tv_partner = '${partner}'`
+const opts = partner => `legs = 2, tiebreak = 'diff', ko_target_score = 21, ko_win_by = 1, ko_cap = 21, ko_switch_at = 0, play_clock = true, court_dispatch = 'pool', bracket_preview = true, tv_partner = '${partner}'`
 const evOf = code => `(select e.id from events e join competitions c on c.id = e.competition_id where c.code = '${code}')`
+
+const homeSql = code => `update matches m set home_court = c.id
+from (values ${homes[code].map(([q, n]) => `(${q}, ${n})`).join(', ')}) as v(seq, n)
+join courts c on c.number = v.n and c.competition_id = (select id from competitions where code = '${code}')
+where m.event_id = ${evOf(code)} and m.sequence = v.seq;`
 
 const sql = `-- MCMD (Men's Doubles) + MCXD (Mixed Doubles). Run AFTER migration 0026.
 -- Admin PIN 0000 · court PINs 0001 / 0002 / 0003 (both codes).
 -- 32 placeholder country teams each, random groups of 4, double round robin.
+-- Each group has a home court; a team uses at most 2 courts all day.
+-- Safe to re-run: it first removes any earlier MCMD / MCXD (test data only).
+
+delete from competitions where code in ('MCMD', 'MCXD');
 
 select create_competition_v3(${q(JSON.stringify(payload('MCMD', "Men's Doubles")))}::jsonb) ->> 'code' as created;
 
@@ -107,6 +118,10 @@ select create_competition_v3(${q(JSON.stringify(payload('MCXD', 'Mixed Doubles')
 update events set ${opts('MCXD')} where id = ${evOf('MCMD')};
 
 update events set ${opts('MCMD')} where id = ${evOf('MCXD')};
+
+${homeSql('MCMD')}
+
+${homeSql('MCXD')}
 
 update teams t set logo = v.logo
 from (values
@@ -118,7 +133,8 @@ select c.code, e.name, e.legs, e.tiebreak, e.court_dispatch, e.ko_target_score,
        (select count(*) from teams t where t.event_id = e.id) as teams,
        (select count(*) from teams t where t.event_id = e.id and t.logo is not null) as logos,
        (select count(*) from matches m where m.event_id = e.id and m.bracket_key is null) as group_games,
-       (select count(*) from matches m where m.event_id = e.id and m.status = 'live') as live_now
+       (select count(*) from matches m where m.event_id = e.id and m.status = 'live') as live_now,
+       (select count(*) from matches m where m.event_id = e.id and m.home_court is not null) as with_home_court
 from competitions c join events e on e.competition_id = c.id
 where c.code in ('MCMD', 'MCXD') order by c.code;
 `
