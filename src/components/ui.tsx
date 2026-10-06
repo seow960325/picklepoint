@@ -26,7 +26,7 @@ export const Pill = ({ children, tone = 'idle', big = false }: { children: React
   const c = tone === 'live' ? 'bg-brand/15 text-brand-ink border-brand-ink/30'
     : tone === 'done' ? 'bg-surface-2 text-fg-subtle border-line-strong'
     : 'bg-accent/10 text-accent border-accent/25'
-  return <span className={`shrink-0 whitespace-nowrap rounded-full border ${big ? 'px-4 py-1.5 text-xl' : 'px-2 py-0.5 text-[10px]'} font-semibold uppercase tracking-widest ${c}`}>{children}</span>
+  return <span className={`shrink-0 whitespace-nowrap rounded-full border ${big ? 'px-3 py-1 text-base' : 'px-2 py-0.5 text-[10px]'} font-semibold uppercase tracking-widest ${c}`}>{children}</span>
 }
 
 export const Spinner = () => (

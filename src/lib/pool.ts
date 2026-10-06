@@ -364,15 +364,15 @@ export function rankByDiff<S extends RankRow>(rows: S[], done: Match[]): S[] {
   return out
 }
 
-/** Status line for a court card: "GROUP D · LEG 1", "QUARTER-FINAL 2",
- *  "SEMI-FINAL 1", "3RD PLACE", "FINAL". `kind` picks the glow colour. */
+/** Status for a court card header: "D · LEG 1", "QF 2", "SF 1",
+ *  "3RD PLACE", "FINAL". `kind` picks the glow colour. */
 export function stageLabel(b: Bundle, m: Match): { text: string; kind: 'group' | 'ko' | 'final' } {
   if (m.bracket_key != null) {
     if (m.round === 'Final') return { text: 'FINAL', kind: 'final' }
     if (m.round === 'Third place') return { text: '3RD PLACE', kind: 'ko' }
-    const n = /\d+$/.exec(koShort(b, m))?.[0] ?? ''
-    return { text: `${(m.round ?? 'KNOCKOUT').toUpperCase()} ${n}`.trim(), kind: 'ko' }
+    return { text: koShort(b, m).replace(/(\D+)(\d+)/, '$1 $2'), kind: 'ko' }   // "QF 4", "SF 1"
   }
-  const r = (m.round ?? '').replace(/\s+/g, ' ').trim()
-  return { text: (r || 'GROUP STAGE').toUpperCase(), kind: 'group' }
+  // "Group B · Leg 2" -> "B · LEG 2" (the word Group is implied)
+  const r = (m.round ?? '').replace(/\s+/g, ' ').replace(/^group\s+/i, '').trim()
+  return { text: (r || 'GROUP').toUpperCase(), kind: 'group' }
 }

@@ -660,21 +660,21 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
           const up = nextOnCourt(b, ct.id)
           const cardBody = <>
               <div className="mb-1.5 flex items-center justify-between gap-2 lg:mb-2">
-                <span className={`min-w-0 shrink-0 truncate whitespace-nowrap font-display font-bold tracking-widest text-fg-muted ${tvBig ? 'text-3xl' : 'text-sm lg:text-base'}`}>
+                <span className={`min-w-0 shrink-0 truncate whitespace-nowrap font-display font-bold tracking-widest text-fg-muted ${tvBig ? 'text-2xl' : 'text-sm lg:text-base'}`}>
                   {b.competition.multi_sport && ct.label ? ct.label.toUpperCase() : `COURT ${ct.number}`}
                   {b.competition.multi_sport && ct.game_group ? ` · ${ct.game_group}` : ''}
                 </span>
+                {poolEv && (
+                  <span className={`min-w-0 flex-1 truncate whitespace-nowrap text-center font-display font-bold uppercase ${tvBig ? 'text-3xl tracking-[0.18em]' : 'text-xs tracking-[0.14em] lg:text-base'}`}
+                    style={m ? neon(stageLabel(b, m).kind) : undefined}>
+                    {m ? stageLabel(b, m).text : ''}
+                  </span>
+                )}
                 <span className="flex shrink-0 items-center gap-2">
-                  {m && eventOf(b, m).play_clock && <PlayClock m={m} className={tvBig ? 'text-2xl text-fg-muted' : 'text-xs text-fg-muted lg:text-sm'} />}
+                  {m && eventOf(b, m).play_clock && <PlayClock m={m} className={tvBig ? 'text-xl text-fg-muted' : 'text-xs text-fg-muted lg:text-sm'} />}
                   {m ? <Pill tone="live" big={tvBig}>● live</Pill> : <Pill big={tvBig}>open</Pill>}
                 </span>
               </div>
-              {poolEv && m && (
-                <div className={`mb-1.5 truncate whitespace-nowrap text-center font-display font-bold uppercase lg:mb-2 ${tvBig ? 'text-4xl tracking-[0.2em]' : 'text-sm tracking-[0.16em] lg:text-lg'}`}
-                  style={neon(stageLabel(b, m).kind)}>
-                  {stageLabel(b, m).text}
-                </div>
-              )}
               {m ? <CourtScoreRow b={b} m={m} tv={tv} /> : (
                 <div className="py-6 text-center text-sm text-fg-subtle lg:py-10">No match running</div>
               )}
