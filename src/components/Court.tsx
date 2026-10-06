@@ -148,6 +148,9 @@ export default function Court({
   const badge = (cx: number, logo?: string | null, flag?: string | null) => {
     if (!logo && !flag) return null
     const framed = !bigEmblem || !logo || logo.startsWith('data:image/svg')
+    // character picture: larger box, whole picture shown (never cropped), no frame
+    if (!framed) return <image href={logo!} x={cx - 48} y="2" width="96" height="74"
+      preserveAspectRatio="xMidYMax meet" />
     return (
       <>
         {framed && <rect x={cx - EW / 2} y={EY + 1} width={EW} height={EH} rx={ERX}
