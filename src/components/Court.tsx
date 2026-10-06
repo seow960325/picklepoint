@@ -11,6 +11,8 @@ const CXL = 120, CXR = 360, R = 72
 
 export interface CourtProps {
   leftName: string
+  /** font size of the sideline team names (SVG units); TV screens ask for bigger */
+  nameSize?: number
   rightName: string
   leftScore: number
   rightScore: number
@@ -125,7 +127,7 @@ function ballY(court: 'right' | 'left' | null | undefined, servingSide: 'left' |
 }
 
 export default function Court({
-  leftName, rightName, leftScore, rightScore, onTap, disabled, serving, serverNo, serverCourt,
+  leftName, rightName, nameSize = 15, leftScore, rightScore, onTap, disabled, serving, serverNo, serverCourt,
   leftFlag, rightFlag, leftLogo, rightLogo, label, callScore, sport,
 }: CourtProps) {
   const bad = sport === 'badminton'
@@ -344,12 +346,12 @@ export default function Court({
         {/* team names — mounted vertically on the outer sideline, clear of
             both serve-ball corners (top ~52 and bottom ~188) and the flag */}
         <text x="14" y={MIDY} textAnchor="middle" transform={`rotate(-90 14 ${MIDY})`}
-          fill="#c6ff3d" fontSize="15" fontWeight="700"
+          fill="#c6ff3d" fontSize={nameSize} fontWeight="700"
           fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
           {clip(leftName, 12)}
         </text>
         <text x="466" y={MIDY} textAnchor="middle" transform={`rotate(90 466 ${MIDY})`}
-          fill="#22d3ee" fontSize="15" fontWeight="700"
+          fill="#22d3ee" fontSize={nameSize} fontWeight="700"
           fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
           {clip(rightName, 12)}
         </text>

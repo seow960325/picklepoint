@@ -644,6 +644,7 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
     : shownCourts.length <= 1 ? 'grid-cols-1'
     : shownCourts.length === 2 || split ? 'grid-cols-1 sm:grid-cols-2'
     : 'grid-cols-1 sm:grid-cols-3'
+  const tvBig = tv && !!poolEv && !split   // MC combined TV: larger wording
   const wrap = tv && !split && shownCourts.length === 1 ? 'mx-auto w-full max-w-[1100px] ' : ''
   return (
     <div className={tv || compact ? '' : 'p-3 lg:p-5'}>
@@ -653,20 +654,20 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
           const up = nextOnCourt(b, ct.id)
           const cardBody = <>
               <div className="mb-1.5 flex items-center justify-between gap-2 lg:mb-2">
-                <span className="min-w-0 truncate whitespace-nowrap font-display text-sm font-bold tracking-widest text-fg-muted lg:text-base">
+                <span className={`min-w-0 truncate whitespace-nowrap font-display font-bold tracking-widest text-fg-muted ${tvBig ? 'text-2xl' : 'text-sm lg:text-base'}`}>
                   {b.competition.multi_sport && ct.label ? ct.label.toUpperCase() : `COURT ${ct.number}`}
                   {b.competition.multi_sport && ct.game_group ? ` · ${ct.game_group}` : ''}
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
-                  {m && eventOf(b, m).play_clock && <PlayClock m={m} className="text-xs text-fg-muted lg:text-sm" />}
-                  {m ? <Pill tone="live">● live</Pill> : <Pill>open</Pill>}
+                  {m && eventOf(b, m).play_clock && <PlayClock m={m} className={tvBig ? 'text-xl text-fg-muted' : 'text-xs text-fg-muted lg:text-sm'} />}
+                  {m ? <Pill tone="live" big={tvBig}>● live</Pill> : <Pill big={tvBig}>open</Pill>}
                 </span>
               </div>
               {m ? <CourtScoreRow b={b} m={m} tv={tv} /> : (
                 <div className="py-6 text-center text-sm text-fg-subtle lg:py-10">No match running</div>
               )}
               {up && (
-                <div className="mt-3 border-t border-line pt-2 text-[11px] text-fg-muted lg:mt-4 lg:pt-3 lg:text-sm">
+                <div className={`mt-3 border-t border-line pt-2 text-fg-muted lg:mt-4 lg:pt-3 ${tvBig ? 'text-xl' : 'text-[11px] lg:text-sm'}`}>
                   Next: <span className="truncate">{teamName(b, up.team_a_id)}</span> vs <span className="truncate">{teamName(b, up.team_b_id)}</span>
                 </div>
               )}
@@ -738,7 +739,7 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
   )
 }
 
-function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
+function CourtScoreRow({ b, m, tv }: { b: Bundle; m: Match; tv: boolean }) {
   const s = displayScores(m)
   const ev = eventOf(b, m)
   const sideName = (teamId: string | null): string | null => {
@@ -757,6 +758,7 @@ function CourtScoreRow({ b, m }: { b: Bundle; m: Match; tv: boolean }) {
     <div className="aspect-[2/1] lg:aspect-[7/4]">
       <Court
         leftName={teamName(b, leftTeamId)}
+        nameSize={tv && ev.court_dispatch === 'pool' ? 21 : undefined}
         rightName={teamName(b, rightTeamId)}
         leftScore={s.left} rightScore={s.right}
         leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
