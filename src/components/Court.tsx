@@ -146,7 +146,7 @@ export default function Court({
   const badge = (cx: number, logo?: string | null, flag?: string | null) => {
     if (!logo && !flag) return null
     if (bigEmblem && logo && !logo.startsWith('data:image/svg'))
-      return <image href={logo} x={cx - 48} y="2" width="96" height="74" preserveAspectRatio="xMidYMax meet" />
+      return <image href={logo} x={cx - 56} y="0" width="112" height="84" preserveAspectRatio="xMidYMax meet" />
     return (
       <>
         <rect x={cx - 27} y="31" width="54" height="38" rx="5"

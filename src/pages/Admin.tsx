@@ -13,7 +13,7 @@ import {
 import { Screen, Spinner, ThemeToggle, Emblem } from '../components/ui'
 import { Flag } from '../components/ui'
 import { Field, Stepper, Choice, Warn, GrowInput, input, inputFull } from '../components/form'
-import { resizeImage } from '../lib/image'
+import { resizeImage, resizeLogoTight } from '../lib/image'
 import { ScheduleRow, scheduleStatus } from '../components/ScheduleRow'
 import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts, KnockoutTab } from './MultiSportAdmin'
 import { sportsPresent } from '../lib/multisport'
@@ -516,13 +516,14 @@ function RandomGroups({ bundle, ev, token, run }: any) {
   )
 }
 
-function LogoControl({ t, token, run }: any) {
+function LogoControl({ t, token, run, tight }: any) {
   const onFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
     run(async () => {
-      const data = await resizeImage(file, 256)
+      // pool events (MCMD/MCXD): clean + tight-trim so every character photo is standard
+      const data = tight ? await resizeLogoTight(file, 400) : await resizeImage(file, 256)
       await api.adminSetTeamLogo(token, t.id, data)
     }, 'Logo updated')
   }
@@ -550,7 +551,7 @@ function TeamRow({ t, ev, token, run, isDuel, multi }: any) {
   return (
     <div className="p-2.5">
       <div className="flex items-center gap-2">
-        <LogoControl t={t} token={token} run={run} />
+        <LogoControl t={t} token={token} run={run} tight={ev?.court_dispatch === 'pool'} />
         <GrowInput className={`${input} min-w-0 flex-1 leading-snug`} value={name} onChange={setName} />
       </div>
       <div className="ml-11 mt-1.5 flex items-center gap-1.5">
