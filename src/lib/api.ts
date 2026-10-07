@@ -413,7 +413,13 @@ export async function adminSetKoRules(
 }
 
 /** Public self-registration (MCMD/MCXD): no admin PIN. Needs migration 0028. */
-export async function registerTeam(code: string, p1: string, p2: string, logo: string): Promise<{ team_id: string; name: string }> {
+export async function registerTeam(code: string, p1: string, p2: string, logo: string, token: string): Promise<{ team_id: string; name: string; edited: boolean }> {
   if (IS_DEMO) throw new Error('REG_CLOSED')
-  return rpc<{ team_id: string; name: string }>('register_team', { p_code: code, p_p1: p1, p_p2: p2, p_logo: logo })
+  return rpc<{ team_id: string; name: string; edited: boolean }>('register_team', { p_code: code, p_p1: p1, p_p2: p2, p_logo: logo, p_token: token })
+}
+
+/** AI team-picture usage (migration 0029) */
+export async function adminAiUsage(token: string): Promise<{ today: number; today_code: number; total_code: number; cap: number } | null> {
+  if (IS_DEMO) return null
+  return rpc('admin_ai_usage', { p_token: token })
 }

@@ -409,6 +409,7 @@ function TeamsTab({ bundle, ev, token, run }: any) {
   return (
     <div className="max-w-5xl space-y-4">
       <H>Teams</H>
+      {isPoolDispatch(ev) && <RegisterStatus teams={teams} token={token} code={bundle.competition.code} />}
       {ev.format === 'groups_ko' && (isPoolDispatch(ev) || ev.legs === 2) && (
         <RandomGroups bundle={bundle} ev={ev} token={token} run={run} />
       )}
@@ -513,6 +514,25 @@ function RandomGroups({ bundle, ev, token, run }: any) {
       <p className="text-xs text-fg-subtle">
         Type the real team names above first, then generate. Drawing again is allowed until the first point is scored.
       </p>
+    </div>
+  )
+}
+
+/** MCMD/MCXD: self-registration progress + AI picture usage (migration 0029) */
+function RegisterStatus({ teams, token, code }: { teams: any[]; token: string; code: string }) {
+  const [u, setU] = useState<{ today: number; today_code: number; total_code: number; cap: number } | null>(null)
+  useEffect(() => { api.adminAiUsage(token).then(setU).catch(() => setU(null)) }, [token, teams.length])
+  const done = teams.filter(t => t.logo && !String(t.logo).startsWith('data:image/svg')).length
+  return (
+    <div className="rounded-xl border border-line bg-surface p-3 text-sm">
+      <div className="font-semibold">Registered {done} / {teams.length}
+        <span className="ml-2 font-normal text-fg-subtle">players sign up at /register/{code}</span></div>
+      {u && (
+        <div className="mt-1 text-xs text-fg-muted">
+          AI pictures today: {u.today} / {u.cap} (all codes) · {code} today {u.today_code} · {code} total {u.total_code}
+          <span className="text-fg-subtle"> ≈ US${(u.total_code * 0.07).toFixed(2)}</span>
+        </div>
+      )}
     </div>
   )
 }

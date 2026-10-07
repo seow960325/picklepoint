@@ -44,15 +44,19 @@ export default async function handler(req: any, res: any) {
     if (photos.length !== 2 || photos.some(p => typeof p !== 'string' || p.length < 1000 || p.length > 1_800_000))
       return res.status(400).json({ error: 'Send exactly 2 photos.' })
 
-    // only a real competition code may use the generator (no free image service for strangers)
+    // only a real competition code may use the generator, and never more than
+    // the daily cap (ai_gen_take, migration 0029) — protects the Gemini bill
     const url = process.env.VITE_SUPABASE_URL, anon = process.env.VITE_SUPABASE_ANON_KEY
-    if (url && anon) {
-      const v = await fetch(`${url}/rest/v1/rpc/join_competition`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: anon, Authorization: `Bearer ${anon}` },
-        body: JSON.stringify({ p_code: String(body.code || '').toUpperCase() }),
-      })
-      if (!v.ok) return res.status(403).json({ error: 'Unknown competition code.' })
+    if (!url || !anon) return res.status(500).json({ error: 'Server is missing the Supabase settings.' })
+    const v = await fetch(`${url}/rest/v1/rpc/ai_gen_take`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: anon, Authorization: `Bearer ${anon}` },
+      body: JSON.stringify({ p_code: String(body.code || '') }),
+    })
+    if (!v.ok) {
+      const t = await v.text()
+      if (t.includes('DAILY_LIMIT')) return res.status(429).json({ error: "Today's picture limit is reached — please try again tomorrow or ask the organiser." })
+      return res.status(403).json({ error: 'Registration is not open for this code.' })
     }
 
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {

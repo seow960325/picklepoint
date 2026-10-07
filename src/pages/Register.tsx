@@ -6,7 +6,23 @@ import { Screen } from '../components/ui'
 import type { Bundle } from '../lib/types'
 
 const CODES = ['MCMD', 'MCXD']
-const MAX_TRIES = 3
+const MAX_TRIES = 4 // AI pictures per phone (the server also has a hard daily cap)
+
+type Mine = { token: string; name: string }
+const regKey = (c: string) => `pp_reg_${c}`
+const triesKey = (c: string) => `pp_reg_tries_${c}`
+const readMine = (c: string): Mine | null => { try { return JSON.parse(localStorage.getItem(regKey(c)) || 'null') } catch { return null } }
+const writeMine = (c: string, m: Mine) => { try { localStorage.setItem(regKey(c), JSON.stringify(m)) } catch { /* ignore */ } }
+const readTries = (c: string) => { try { return Number(localStorage.getItem(triesKey(c)) || 0) } catch { return 0 } }
+const writeTries = (c: string, n: number) => { try { localStorage.setItem(triesKey(c), String(n)) } catch { /* ignore */ } }
+const newToken = () => {
+  try { return crypto.randomUUID() } catch { return Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('') }
+}
+const download = (dataUrl: string, name: string) => {
+  const a = document.createElement('a')
+  a.href = dataUrl; a.download = `${name.replace(/[^A-Za-z0-9]+/g, '_') || 'team'}.png`
+  document.body.appendChild(a); a.click(); a.remove()
+}
 
 const readable = (m: string) => ({
   REG_CLOSED: 'Registration is closed for this competition.',
@@ -14,7 +30,12 @@ const readable = (m: string) => ({
   NAME_TAKEN: 'A team with those names is already registered.',
   BAD_NAME: 'Enter one word for each player name.',
   BAD_LOGO: 'The team picture could not be saved — generate it again.',
+  ASK_ORGANISER: 'Groups are already drawn — please ask the organiser to change it.',
+  BAD_TOKEN: 'Please reload the page and try again.',
 }[m] ?? m)
+
+/** one word only: "Lei Siang" -> "Siang" (last word), keeps names short enough for the court */
+const oneWord = (v: string) => v.trim().split(/\s+/).pop() ?? ''
 
 /** downscale a photo to <=768px JPEG and return raw base64 */
 function photoB64(file: File): Promise<string> {
@@ -32,9 +53,6 @@ function photoB64(file: File): Promise<string> {
     img.src = url
   })
 }
-
-/** one word only: "Lei Siang" -> "Siang" (last word), keeps names short enough for the court */
-const oneWord = (v: string) => v.trim().split(/\s+/).pop() ?? ''
 
 const fieldCls = 'w-full rounded-xl border-2 border-line bg-surface px-3 py-3 text-lg font-semibold text-fg outline-none focus:border-brand-ink'
 
@@ -67,22 +85,29 @@ export default function Register() {
   const [p1, setP1] = useState(''); const [p2, setP2] = useState('')
   const [f1, setF1] = useState<File | null>(null); const [f2, setF2] = useState<File | null>(null)
   const [logo, setLogo] = useState<string | null>(null)
-  const [tries, setTries] = useState(0)
+  const [tries, setTries] = useState(() => readTries(code))
   const [busy, setBusy] = useState<null | 'gen' | 'save'>(null)
   const [err, setErr] = useState<string | null>(null)
-  const [done, setDone] = useState<string | null>(null)
+  const [mine, setMine] = useState<Mine | null>(() => readMine(code))
+  const [editing, setEditing] = useState(false)
 
-  useEffect(() => {
-    setBundle(null); setLoadErr(null)
+  const load = () => {
+    setLoadErr(null)
     if (!code) return
     join(code).then(setBundle).catch(() => setLoadErr('Competition not found.'))
-  }, [code])
+  }
+  useEffect(() => {
+    setBundle(null); setMine(readMine(code)); setTries(readTries(code)); setEditing(false); load()
+  }, [code]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const ev = bundle?.events.find((e: any) => e.court_dispatch === 'pool')
   const teams = bundle && ev ? bundle.teams.filter((t: any) => t.event_id === ev.id) : []
   const free = teams.filter((t: any) => !t.logo || t.logo.startsWith('data:image/svg')).length
   const started = !!bundle?.matches.some((m: any) => m.status === 'finished' || m.score_a > 0 || m.score_b > 0)
   const closed = !!bundle && (!ev || started || free === 0)
+  const myTeam: any = mine ? teams.find((t: any) => t.name === mine.name) ?? null : null
+  const canEdit = !!bundle && !!ev && !started
+  const showForm = !!bundle && ((!myTeam && !closed) || (!!myTeam && editing && canEdit))
 
   const generate = async () => {
     if (!f1 || !f2) return
@@ -99,7 +124,7 @@ export default function Register() {
       const bin = atob(j.png), u8 = new Uint8Array(bin.length)
       for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i)
       setLogo(await resizeLogoTight(new File([u8], 'team.png', { type: j.mime }), 400))
-      setTries(n => n + 1)
+      const n = tries + 1; writeTries(code, n); setTries(n)
     } catch (e: any) { setErr(e.message || 'Something went wrong.') }
     finally { setBusy(null) }
   }
@@ -108,13 +133,17 @@ export default function Register() {
     if (!logo) return
     setErr(null); setBusy('save')
     try {
-      const r = await registerTeam(code, oneWord(p1), oneWord(p2), logo)
-      setDone(r.name)
+      const token = mine?.token ?? newToken()
+      const r = await registerTeam(code, oneWord(p1), oneWord(p2), logo, token)
+      const m = { token, name: r.name }
+      writeMine(code, m); setMine(m); setEditing(false); setLogo(null); setF1(null); setF2(null)
+      load()
     } catch (e: any) { setErr(readable(e.message)) }
     finally { setBusy(null) }
   }
 
-  const ready = p1.trim() && p2.trim() && f1 && f2
+  const names = !!oneWord(p1) && !!oneWord(p2)
+  const ready = names && !!f1 && !!f2
 
   return (
     <Screen className="px-5 py-8">
@@ -136,34 +165,53 @@ export default function Register() {
         {code && loadErr && <div className="rounded-xl bg-red-500/10 p-4 text-center text-red-500">{loadErr}</div>}
         {code && !bundle && !loadErr && <div className="text-center text-fg-muted">Loading…</div>}
 
-        {bundle && closed && !done && (
+        {bundle && myTeam && !editing && (
+          <div className="rounded-2xl border border-brand-ink/40 bg-surface p-5 text-center">
+            {myTeam.logo && <img src={myTeam.logo} alt="" className="mx-auto mb-3 h-44 object-contain" />}
+            <div className="font-display text-3xl font-bold text-brand-ink">REGISTERED ✓</div>
+            <div className="mt-1 text-lg font-semibold">{myTeam.name}</div>
+            <div className="mt-2 text-sm text-fg-muted">See you on court. The organiser will announce your group.</div>
+            <div className="mt-4 grid gap-2">
+              {myTeam.logo && (
+                <button onClick={() => download(myTeam.logo, myTeam.name)}
+                  className="rounded-xl bg-brand py-3 font-display text-lg font-bold tracking-wide text-brand-fg active:scale-[0.99]">
+                  ⬇ DOWNLOAD PICTURE
+                </button>
+              )}
+              {canEdit && (
+                <button onClick={() => {
+                  const [a = '', b = ''] = String(myTeam.name).split(' & ')
+                  setP1(a); setP2(b); setLogo(myTeam.logo ?? null); setErr(null); setEditing(true)
+                }}
+                  className="rounded-xl border border-line py-3 font-display text-lg font-bold tracking-wide text-fg-muted active:bg-surface-2">
+                  ✎ CHANGE OUR REGISTRATION
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {bundle && !myTeam && closed && (
           <div className="rounded-xl border border-line bg-surface p-5 text-center text-fg-muted">
             {free === 0 && ev ? 'All team slots are taken.' : 'Registration is closed.'}
           </div>
         )}
 
-        {done && (
-          <div className="rounded-2xl border border-brand-ink/40 bg-surface p-5 text-center">
-            {logo && <img src={logo} alt="" className="mx-auto mb-3 h-40 object-contain" />}
-            <div className="font-display text-3xl font-bold text-brand-ink">REGISTERED ✓</div>
-            <div className="mt-1 text-lg font-semibold">{done}</div>
-            <div className="mt-2 text-sm text-fg-muted">See you on court. The organiser will announce your group.</div>
-          </div>
-        )}
-
-        {bundle && !closed && !done && (
+        {showForm && (
           <div className="grid gap-5">
             <div className="text-center text-xs font-semibold uppercase tracking-widest text-fg-subtle">
-              {ev?.name ?? code} · {free} slot{free === 1 ? '' : 's'} left
+              {editing ? `Changing ${myTeam?.name}` : `${ev?.name ?? code} · ${free} slot${free === 1 ? '' : 's'} left`}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
-                <input className={fieldCls} placeholder="Player 1 (one word)" maxLength={14} value={p1} onChange={e => setP1(e.target.value)} onBlur={() => setP1(oneWord(p1))} />
+                <input className={fieldCls} placeholder="Player 1 (one word)" maxLength={14} value={p1}
+                  onChange={e => setP1(e.target.value)} onBlur={() => setP1(oneWord(p1))} />
                 <PhotoPick label="Photo 1" file={f1} onFile={f => { setF1(f); setLogo(null) }} />
               </div>
               <div className="grid gap-2">
-                <input className={fieldCls} placeholder="Player 2 (one word)" maxLength={14} value={p2} onChange={e => setP2(e.target.value)} onBlur={() => setP2(oneWord(p2))} />
+                <input className={fieldCls} placeholder="Player 2 (one word)" maxLength={14} value={p2}
+                  onChange={e => setP2(e.target.value)} onBlur={() => setP2(oneWord(p2))} />
                 <PhotoPick label="Photo 2" file={f2} onFile={f => { setF2(f); setLogo(null) }} />
               </div>
             </div>
@@ -173,24 +221,35 @@ export default function Register() {
               <div className="rounded-2xl border border-line bg-surface p-3 text-center">
                 <img src={logo} alt="Team picture" className="mx-auto h-44 object-contain" />
                 <div className="mt-1 text-sm font-semibold">{oneWord(p1) || 'Player 1'} & {oneWord(p2) || 'Player 2'}</div>
+                <button onClick={() => download(logo, `${oneWord(p1)}_${oneWord(p2)}`)}
+                  className="mt-2 text-sm font-semibold text-brand-ink underline underline-offset-4">⬇ Download</button>
               </div>
             )}
 
             {err && <div className="rounded-xl bg-red-500/10 p-3 text-center text-sm text-red-500">{err}</div>}
 
-            {!logo || tries < MAX_TRIES ? (
+            {tries >= MAX_TRIES && !logo && (
+              <div className="rounded-xl bg-surface-2 p-3 text-center text-sm text-fg-muted">
+                Picture limit reached on this phone — please ask the organiser.
+              </div>
+            )}
+            {tries < MAX_TRIES && (
               <button disabled={!ready || !!busy} onClick={generate}
                 className={`rounded-2xl py-4 font-display text-xl font-bold tracking-wide active:scale-[0.99] disabled:opacity-30 ${
                   logo ? 'border border-line bg-surface text-fg-muted' : 'bg-brand text-brand-fg'}`}>
-                {busy === 'gen' ? 'DRAWING… (up to 30 s)' : logo ? `↻ TRY AGAIN (${MAX_TRIES - tries} left)` : '✨ MAKE OUR TEAM PICTURE'}
+                {busy === 'gen' ? 'DRAWING… (up to 30 s)' : logo ? `↻ NEW PICTURE (${MAX_TRIES - tries} left)` : '✨ MAKE OUR TEAM PICTURE'}
               </button>
-            ) : null}
+            )}
 
             {logo && (
-              <button disabled={!!busy || !ready} onClick={submit}
+              <button disabled={!!busy || !names} onClick={submit}
                 className="rounded-2xl bg-brand py-5 font-display text-2xl font-bold tracking-wide text-brand-fg active:scale-[0.99] disabled:opacity-30">
-                {busy === 'save' ? 'SAVING…' : 'REGISTER OUR TEAM'}
+                {busy === 'save' ? 'SAVING…' : editing ? 'SAVE CHANGES' : 'REGISTER OUR TEAM'}
               </button>
+            )}
+            {editing && (
+              <button onClick={() => { setEditing(false); setLogo(null); setErr(null) }}
+                className="text-sm text-fg-subtle underline underline-offset-4">Cancel</button>
             )}
           </div>
         )}
