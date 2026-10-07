@@ -25,7 +25,7 @@ export function resizeImage(file: File, max = 256): Promise<string> {
 }
 
 /** MCMD/MCXD character logos: strips any white sticker outline / white background
- *  connected to the edge (skipped when the upload is already transparent), trims transparent margins, and scales the picture to fit
+ *  connected to the edge, trims transparent margins, and scales the picture to fit
  *  max x max keeping its own aspect (not squared). Same result for every upload. */
 export function resizeLogoTight(file: File, max = 400, dropSpecks = false): Promise<string> {
   if (file.size > 8 * 1024 * 1024) return Promise.reject(new Error('IMAGE_TOO_LARGE'))
@@ -43,14 +43,9 @@ export function resizeLogoTight(file: File, max = 400, dropSpecks = false): Prom
         const id = x.getImageData(0, 0, W, H), d = id.data
         const A = (p: number) => d[p * 4 + 3]
         const light = (p: number) => d[p * 4] > 215 && d[p * 4 + 1] > 215 && d[p * 4 + 2] > 215
-        // already transparent (pre-cut PNG)? skip background removal so white shirts stay solid
-        let edge = 0, clear = 0
-        for (let i = 0; i < W; i++) { edge += 2; if (A(i) < 40) clear++; if (A((H - 1) * W + i) < 40) clear++ }
-        for (let j = 0; j < H; j++) { edge += 2; if (A(j * W) < 40) clear++; if (A(j * W + W - 1) < 40) clear++ }
-        const preCut = clear > edge * 0.5
         const seen = new Uint8Array(W * H), q: number[] = []
         const wall = new Uint8Array(W * H)
-        if (!preCut) {
+        {
           // seal open bottoms: a character whose outline doesn't close under the shirt would let the
           // white background flood in and erase a white shirt. Join each outline's lowest-left and
           // lowest-right points with a thin wall the flood fill can't cross.
@@ -98,7 +93,7 @@ export function resizeLogoTight(file: File, max = 400, dropSpecks = false): Prom
           if (px > 0) q.push(p - 1); if (px < W - 1) q.push(p + 1)
           if (py > 0) q.push(p - W); if (py < H - 1) q.push(p + W)
         }
-        for (let pass = 0; pass < (preCut ? 0 : 2); pass++) {
+        for (let pass = 0; pass < 2; pass++) {
           const kill: number[] = []
           for (let p = 0; p < W * H; p++) {
             if (A(p) < 40) continue
