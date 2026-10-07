@@ -14,7 +14,7 @@ import { Screen, Spinner, ThemeToggle, Emblem } from '../components/ui'
 import { Flag } from '../components/ui'
 import { Field, Stepper, Choice, Warn, GrowInput, input, inputFull } from '../components/form'
 import { resizeImage, resizeLogoTight } from '../lib/image'
-import { makeTeamCartoon, GEMINI_KEY_STORE } from '../lib/teamLogoAi'
+import { makeTeamCartoon } from '../lib/teamLogoAi'
 import { ScheduleRow, scheduleStatus } from '../components/ScheduleRow'
 import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts, KnockoutTab } from './MultiSportAdmin'
 import { sportsPresent } from '../lib/multisport'
@@ -437,7 +437,7 @@ function TeamsTab({ bundle, ev, token, run }: any) {
         </div>
       ) : (
         <div className="divide-y divide-line rounded-xl border border-line">
-          {teams.map((t: any) => <TeamRow key={t.id} t={t} ev={ev} token={token} run={run} multi={!!bundle.competition.multi_sport} />)}
+          {teams.map((t: any) => <TeamRow key={t.id} t={t} ev={ev} token={token} run={run} multi={!!bundle.competition.multi_sport} code={bundle.competition.code} />)}
           {!teams.length && <div className="p-4 text-sm text-fg-subtle">No teams yet.</div>}
         </div>
       )}
@@ -537,14 +537,14 @@ function RegisterStatus({ teams, token, code }: { teams: any[]; token: string; c
   )
 }
 
-function LogoControl({ t, token, run, tight }: any) {
+function LogoControl({ t, token, run, tight, code }: any) {
   const onFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
     run(async () => {
       // pool events (MCMD/MCXD): clean + tight-trim so every character photo is standard
-      const data = tight ? await resizeLogoTight(file, 400) : await resizeImage(file, 256)
+      const data = tight ? await resizeLogoTight(file, 400, true) : await resizeImage(file, 256)
       await api.adminSetTeamLogo(token, t.id, data)
     }, 'Logo updated')
   }
@@ -554,22 +554,15 @@ function LogoControl({ t, token, run, tight }: any) {
     e.target.value = ''
     if (!files.length) return
     if (files.length !== 2) { alert('Select exactly 2 photos (one per player) in the same pick.'); return }
-    let key = ''
-    try { key = localStorage.getItem(GEMINI_KEY_STORE) || '' } catch { /* ignore */ }
-    if (!key) {
-      key = (window.prompt('Gemini API key (saved on this device only)') || '').trim()
-      if (!key) return
-      try { localStorage.setItem(GEMINI_KEY_STORE, key) } catch { /* ignore */ }
-    }
     run(async () => {
-      const png = await makeTeamCartoon(key, files)
-      await api.adminSetTeamLogo(token, t.id, await resizeLogoTight(png, 400))
+      const png = await makeTeamCartoon(code, files)
+      await api.adminSetTeamLogo(token, t.id, await resizeLogoTight(png, 400, true))
     }, 'Team logo generated')
   }
   return (
     <div className="relative shrink-0">
       {tight && (
-        <label title="2 photos → team cartoon logo"
+        <label title="AI redo: pick the 2 player photos (costs ~US$0.03)"
           className="absolute -bottom-1 -right-1 z-10 grid h-5 w-5 cursor-pointer place-items-center rounded-full bg-brand text-[11px] leading-none text-brand-fg">
           <input type="file" accept="image/*" multiple className="hidden" onChange={onPair} />✨
         </label>
@@ -588,7 +581,7 @@ function LogoControl({ t, token, run, tight }: any) {
   )
 }
 
-function TeamRow({ t, ev, token, run, isDuel, multi }: any) {
+function TeamRow({ t, ev, token, run, isDuel, multi, code }: any) {
   const [name, setName] = useState(t.name)
   const [pool, setPool] = useState(t.pool ?? 'A')
   const [side, setSide] = useState<'A' | 'B'>(t.side ?? 'A')
@@ -596,7 +589,7 @@ function TeamRow({ t, ev, token, run, isDuel, multi }: any) {
   return (
     <div className="p-2.5">
       <div className="flex items-center gap-2">
-        <LogoControl t={t} token={token} run={run} tight={ev?.court_dispatch === 'pool'} />
+        <LogoControl t={t} token={token} run={run} tight={ev?.court_dispatch === 'pool'} code={code} />
         <GrowInput className={`${input} min-w-0 flex-1 leading-snug`} value={name} onChange={setName} />
       </div>
       <div className="ml-11 mt-1.5 flex items-center gap-1.5">

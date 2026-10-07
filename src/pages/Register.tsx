@@ -2,11 +2,17 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { IS_DEMO, join, registerTeam } from '../lib/api'
 import { resizeLogoTight } from '../lib/image'
+import { makeTeamCartoon } from '../lib/teamLogoAi'
+import { TEAM_PROMPT } from '../lib/teamPrompt'
 import { Screen } from '../components/ui'
 import type { Bundle } from '../lib/types'
 
 const CODES = ['MCMD', 'MCXD']
-const MAX_TRIES = 4 // AI pictures per phone (the server also has a hard daily cap)
+// Paid AI drawing on this page is OFF unless VITE_REGISTER_AI=1 is set in Vercel.
+// The free way (players use their own Gemini app) is always available.
+const AI_ON = import.meta.env.VITE_REGISTER_AI === '1'
+const MAX_TRIES = 1 // paid AI pictures per phone; redo is done by the organiser
+const GEMINI_APP = 'https://gemini.google.com/app'
 
 type Mine = { token: string; name: string }
 const regKey = (c: string) => `pp_reg_${c}`
@@ -23,6 +29,13 @@ const download = (dataUrl: string, name: string) => {
   a.href = dataUrl; a.download = `${name.replace(/[^A-Za-z0-9]+/g, '_') || 'team'}.png`
   document.body.appendChild(a); a.click(); a.remove()
 }
+async function copyText(t: string) {
+  try { await navigator.clipboard.writeText(t); return true } catch { /* fall back */ }
+  try {
+    const ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0'
+    document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); return ok
+  } catch { return false }
+}
 
 const readable = (m: string) => ({
   REG_CLOSED: 'Registration is closed for this competition.',
@@ -34,25 +47,8 @@ const readable = (m: string) => ({
   BAD_TOKEN: 'Please reload the page and try again.',
 }[m] ?? m)
 
-/** one word only: "Lei Siang" -> "Siang" (last word), keeps names short enough for the court */
+/** one word only: "Ling Xiang" -> "Xiang" (last word), keeps names short enough for the court */
 const oneWord = (v: string) => v.trim().split(/\s+/).pop() ?? ''
-
-/** downscale a photo to <=768px JPEG and return raw base64 */
-function photoB64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file), img = new Image()
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      const k = Math.min(1, 768 / Math.max(img.width, img.height))
-      const c = document.createElement('canvas')
-      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k)
-      c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height)
-      resolve(c.toDataURL('image/jpeg', 0.8).split(',')[1])
-    }
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file could not be read as an image.')) }
-    img.src = url
-  })
-}
 
 const fieldCls = 'w-full rounded-xl border-2 border-line bg-surface px-3 py-3 text-lg font-semibold text-fg outline-none focus:border-brand-ink'
 
@@ -90,6 +86,8 @@ export default function Register() {
   const [err, setErr] = useState<string | null>(null)
   const [mine, setMine] = useState<Mine | null>(() => readMine(code))
   const [editing, setEditing] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const ownRef = useRef<HTMLInputElement>(null)
 
   const load = () => {
     setLoadErr(null)
@@ -114,19 +112,19 @@ export default function Register() {
     setP1(oneWord(p1)); setP2(oneWord(p2))
     setErr(null); setBusy('gen')
     try {
-      const [a, b] = await Promise.all([photoB64(f1), photoB64(f2)])
-      const r = await fetch('/api/cartoonize', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, photos: [a, b] }),
-      })
-      const j = await r.json().catch(() => ({}))
-      if (!r.ok) throw new Error(j.error || `Server error ${r.status}`)
-      const bin = atob(j.png), u8 = new Uint8Array(bin.length)
-      for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i)
-      setLogo(await resizeLogoTight(new File([u8], 'team.png', { type: j.mime }), 400))
+      const png = await makeTeamCartoon(code, [f1, f2])
+      setLogo(await resizeLogoTight(png, 400, true))
       const n = tries + 1; writeTries(code, n); setTries(n)
     } catch (e: any) { setErr(e.message || 'Something went wrong.') }
     finally { setBusy(null) }
+  }
+
+  // the free way: the player made the picture in their own Gemini app
+  const onOwnPicture = async (file: File | undefined) => {
+    if (!file) return
+    setErr(null)
+    try { setLogo(await resizeLogoTight(file, 400, true)) }
+    catch { setErr('That picture could not be read — try another one.') }
   }
 
   const submit = async () => {
@@ -204,42 +202,66 @@ export default function Register() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2">
-                <input className={fieldCls} placeholder="Player 1 (one word)" maxLength={14} value={p1}
-                  onChange={e => setP1(e.target.value)} onBlur={() => setP1(oneWord(p1))} />
-                <PhotoPick label="Photo 1" file={f1} onFile={f => { setF1(f); setLogo(null) }} />
-              </div>
-              <div className="grid gap-2">
-                <input className={fieldCls} placeholder="Player 2 (one word)" maxLength={14} value={p2}
-                  onChange={e => setP2(e.target.value)} onBlur={() => setP2(oneWord(p2))} />
-                <PhotoPick label="Photo 2" file={f2} onFile={f => { setF2(f); setLogo(null) }} />
-              </div>
+              <input className={fieldCls} placeholder="Player 1" maxLength={14} value={p1}
+                onChange={e => setP1(e.target.value)} onBlur={() => setP1(oneWord(p1))} />
+              <input className={fieldCls} placeholder="Player 2" maxLength={14} value={p2}
+                onChange={e => setP2(e.target.value)} onBlur={() => setP2(oneWord(p2))} />
             </div>
-            <div className="text-center text-xs text-fg-subtle">One word per name (e.g. “Lei Siang” → Siang). One clear face photo each.</div>
+            <div className="-mt-3 text-center text-xs text-fg-subtle">One word per name (e.g. “Ling Xiang” → Xiang)</div>
 
-            {logo && (
+            <input ref={ownRef} type="file" accept="image/*" className="hidden"
+              onChange={e => { onOwnPicture(e.target.files?.[0]); e.target.value = '' }} />
+
+            {logo ? (
               <div className="rounded-2xl border border-line bg-surface p-3 text-center">
                 <img src={logo} alt="Team picture" className="mx-auto h-44 object-contain" />
                 <div className="mt-1 text-sm font-semibold">{oneWord(p1) || 'Player 1'} & {oneWord(p2) || 'Player 2'}</div>
-                <button onClick={() => download(logo, `${oneWord(p1)}_${oneWord(p2)}`)}
-                  className="mt-2 text-sm font-semibold text-brand-ink underline underline-offset-4">⬇ Download</button>
+                <div className="mt-2 flex justify-center gap-4 text-sm font-semibold">
+                  <button onClick={() => download(logo, `${oneWord(p1)}_${oneWord(p2)}`)}
+                    className="text-brand-ink underline underline-offset-4">⬇ Download</button>
+                  <button onClick={() => setLogo(null)} className="text-fg-muted underline underline-offset-4">Change picture</button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-3 rounded-2xl border border-line bg-surface p-4">
+                <div className="font-display text-lg font-bold tracking-wide">TEAM PICTURE · FREE</div>
+                <ol className="list-decimal space-y-1 pl-5 text-sm text-fg-muted">
+                  <li>Copy the prompt and open the Gemini app.</li>
+                  <li>Attach one photo of each player, paste the prompt, send.</li>
+                  <li>Save the picture Gemini makes, then upload it here.</li>
+                </ol>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={async () => { setCopied(await copyText(TEAM_PROMPT)) }}
+                    className="rounded-xl border border-line py-3 text-sm font-bold active:bg-surface-2">
+                    {copied ? '✓ COPIED' : '📋 COPY PROMPT'}
+                  </button>
+                  <a href={GEMINI_APP} target="_blank" rel="noreferrer"
+                    className="rounded-xl border border-line py-3 text-center text-sm font-bold active:bg-surface-2">
+                    OPEN GEMINI ↗
+                  </a>
+                </div>
+                <button onClick={() => ownRef.current?.click()}
+                  className="rounded-xl bg-brand py-3 font-display text-lg font-bold tracking-wide text-brand-fg active:scale-[0.99]">
+                  ⬆ UPLOAD THE PICTURE
+                </button>
+
+                {AI_ON && tries < MAX_TRIES && (
+                  <div className="mt-2 grid gap-2 border-t border-line pt-3">
+                    <div className="text-center text-xs text-fg-subtle">or let us draw it (one try per phone)</div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <PhotoPick label="Photo 1" file={f1} onFile={setF1} />
+                      <PhotoPick label="Photo 2" file={f2} onFile={setF2} />
+                    </div>
+                    <button disabled={!ready || !!busy} onClick={generate}
+                      className="rounded-xl border border-line py-3 font-display text-lg font-bold tracking-wide disabled:opacity-30">
+                      {busy === 'gen' ? 'DRAWING… (up to 30 s)' : '✨ DRAW IT FOR US'}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
             {err && <div className="rounded-xl bg-red-500/10 p-3 text-center text-sm text-red-500">{err}</div>}
-
-            {tries >= MAX_TRIES && !logo && (
-              <div className="rounded-xl bg-surface-2 p-3 text-center text-sm text-fg-muted">
-                Picture limit reached on this phone — please ask the organiser.
-              </div>
-            )}
-            {tries < MAX_TRIES && (
-              <button disabled={!ready || !!busy} onClick={generate}
-                className={`rounded-2xl py-4 font-display text-xl font-bold tracking-wide active:scale-[0.99] disabled:opacity-30 ${
-                  logo ? 'border border-line bg-surface text-fg-muted' : 'bg-brand text-brand-fg'}`}>
-                {busy === 'gen' ? 'DRAWING… (up to 30 s)' : logo ? `↻ NEW PICTURE (${MAX_TRIES - tries} left)` : '✨ MAKE OUR TEAM PICTURE'}
-              </button>
-            )}
 
             {logo && (
               <button disabled={!!busy || !names} onClick={submit}

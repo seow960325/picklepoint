@@ -27,7 +27,7 @@ export function resizeImage(file: File, max = 256): Promise<string> {
 /** MCMD/MCXD character logos: strips any white sticker outline / white background
  *  connected to the edge, trims transparent margins, and scales the picture to fit
  *  max x max keeping its own aspect (not squared). Same result for every upload. */
-export function resizeLogoTight(file: File, max = 400): Promise<string> {
+export function resizeLogoTight(file: File, max = 400, dropSpecks = false): Promise<string> {
   if (file.size > 8 * 1024 * 1024) return Promise.reject(new Error('IMAGE_TOO_LARGE'))
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file)
@@ -65,6 +65,25 @@ export function resizeLogoTight(file: File, max = 400): Promise<string> {
                 A(p - 1) < 40 || A(p + 1) < 40 || A(p - W) < 40 || A(p + W) < 40) kill.push(p)
           }
           kill.forEach(p => { d[p * 4 + 3] = 0 })
+        }
+        if (dropSpecks) {
+          // drop small separate blobs (e.g. an AI app's corner watermark): keep only
+          // pieces at least 1% the size of the biggest one (both players survive)
+          const lab = new Int32Array(W * H).fill(-1), sizes: number[] = []
+          for (let p0 = 0; p0 < W * H; p0++) {
+            if (lab[p0] !== -1 || A(p0) <= 30) continue
+            const id0 = sizes.length, st = [p0]; let n = 0
+            lab[p0] = id0
+            while (st.length) {
+              const p = st.pop()!; n++
+              const px = p % W, py = (p / W) | 0
+              const nb = [px > 0 ? p - 1 : -1, px < W - 1 ? p + 1 : -1, py > 0 ? p - W : -1, py < H - 1 ? p + W : -1]
+              for (const q of nb) if (q >= 0 && lab[q] === -1 && A(q) > 30) { lab[q] = id0; st.push(q) }
+            }
+            sizes.push(n)
+          }
+          const big = sizes.reduce((m, v) => (v > m ? v : m), 0)
+          for (let p = 0; p < W * H; p++) if (lab[p] >= 0 && sizes[lab[p]] < big * 0.01) d[p * 4 + 3] = 0
         }
         x.putImageData(id, 0, 0)
         let x0 = W, y0 = H, x1 = -1, y1 = -1

@@ -1,6 +1,6 @@
 // Vercel serverless function: 2 player photos -> chibi team picture (Gemini).
 // GEMINI_API_KEY lives only in the Vercel project env vars; the browser never sees it.
-const MODEL = 'gemini-3.1-flash-image'
+const MODEL = 'gemini-3.1-flash-lite-image' // cheapest image model (~US$0.034 per picture)
 
 const PROMPT = `Combine the TWO uploaded photos (one person each) into ONE CUTE CHIBI DOUBLES-TEAM STICKER ILLUSTRATION of the two pickleball players standing side by side, shoulder to shoulder, same scale.
 

@@ -2,7 +2,7 @@
 -- (works whether or not 0028 was run).
 --  * same-phone edit: each registration keeps a secret token in team_reg
 --    (separate table, no read policy, so the token never leaks via teams)
---  * AI picture usage log + hard daily cap (200 pictures per day, all codes)
+--  * AI picture usage log + hard daily cap (100 pictures per day, all codes)
 --  * admin_ai_usage: today / total pictures for the admin's competition
 
 create table if not exists team_reg (
@@ -33,7 +33,7 @@ declare v_n int; v_code text := upper(btrim(coalesce(p_code, ''))); begin
   perform pg_advisory_xact_lock(4242);
   select count(*) into v_n from ai_gen_log
    where (created_at at time zone 'Asia/Kuala_Lumpur')::date = (now() at time zone 'Asia/Kuala_Lumpur')::date;
-  if v_n >= 200 then raise exception 'DAILY_LIMIT'; end if;
+  if v_n >= 100 then raise exception 'DAILY_LIMIT'; end if;
   insert into ai_gen_log (code) values (v_code);
   return jsonb_build_object('today', v_n + 1);
 end $$;
@@ -50,7 +50,7 @@ declare c uuid; v_code text; begin
     'today_code', (select count(*) from ai_gen_log where code = v_code
                and (created_at at time zone 'Asia/Kuala_Lumpur')::date = (now() at time zone 'Asia/Kuala_Lumpur')::date),
     'total_code', (select count(*) from ai_gen_log where code = v_code),
-    'cap', 200);
+    'cap', 100);
 end $$;
 grant execute on function admin_ai_usage(text) to anon, authenticated;
 
