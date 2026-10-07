@@ -16,6 +16,8 @@ export interface CourtProps {
   nameSize?: number
   /** dark halo behind the sideline names so court lines never run through the letters */
   nameHalo?: boolean
+  /** MCMD/MCXD (pool events) only: show the full team name horizontally below each score circle instead of vertically on the sideline */
+  nameBelow?: boolean
   rightName: string
   leftScore: number
   rightScore: number
@@ -133,12 +135,12 @@ function ballY(court: 'right' | 'left' | null | undefined, servingSide: 'left' |
 }
 
 export default function Court({
-  leftName, rightName, nameSize = 15, nameHalo = false, leftScore, rightScore, onTap, disabled, serving, serverNo, serverCourt,
+  leftName, rightName, nameSize = 15, nameHalo = false, nameBelow = false, leftScore, rightScore, onTap, disabled, serving, serverNo, serverCourt,
   leftFlag, rightFlag, leftLogo, rightLogo, label, callScore, sport, bigEmblem = false,
 }: CourtProps) {
   const bad = sport === 'badminton'
   const [down, setDown] = useState<'left' | 'right' | null>(null)
-  const ballCy = ballY(serverCourt, serving) ?? MIDY + R + 17 // no active server (game over) — old fixed spot below the circle
+  const ballCy = ballY(serverCourt, serving) ?? (nameBelow ? MIDY + R + 8 : MIDY + R + 17) // no active server (game over) — old fixed spot below the circle
   // Team flag/logo badge above each score circle. Flags (and SVG flag logos)
   // render exactly as originally: 54x38 with shadow + frame. Only an uploaded
   // picture logo on a pool event (MCMD/MCXD, bigEmblem) gets the larger,
@@ -347,18 +349,29 @@ export default function Court({
 
         {/* team names — mounted vertically on the outer sideline, clear of
             both serve-ball corners (top ~52 and bottom ~188) and the flag */}
-        <text x={nameHalo ? 22 : 14} y={MIDY} textAnchor="middle" transform={`rotate(-90 ${nameHalo ? 22 : 14} ${MIDY})`}
+        {nameBelow && ([[CXL, leftName, '#c6ff3d'], [CXR, rightName, '#22d3ee']] as const).map(([cx, nm, col]) => {
+          const full = clip(nm, 30)
+          const fs = Math.max(12, Math.min(22, Math.floor((190 / Math.max(full.length, 1) - 1) / 0.45)))
+          return (
+            <text key={cx} x={cx} y="219" textAnchor="middle" dominantBaseline="central"
+              {...HALO} fill={col} fontSize={fs} fontWeight="700"
+              fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
+              {full}
+            </text>
+          )
+        })}
+        {!nameBelow && <text x={nameHalo ? 22 : 14} y={MIDY} textAnchor="middle" transform={`rotate(-90 ${nameHalo ? 22 : 14} ${MIDY})`}
           {...(nameHalo ? HALO : {})}
           fill="#c6ff3d" fontSize={nameSize} fontWeight="700"
           fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
           {clip(leftName, 12)}
-        </text>
-        <text x={nameHalo ? 458 : 466} y={MIDY} textAnchor="middle" transform={`rotate(90 ${nameHalo ? 458 : 466} ${MIDY})`}
+        </text>}
+        {!nameBelow && <text x={nameHalo ? 458 : 466} y={MIDY} textAnchor="middle" transform={`rotate(90 ${nameHalo ? 458 : 466} ${MIDY})`}
           {...(nameHalo ? HALO : {})}
           fill="#22d3ee" fontSize={nameSize} fontWeight="700"
           fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
           {clip(rightName, 12)}
-        </text>
+        </text>}
       </svg>
     </div>
   )
