@@ -49,13 +49,49 @@ export function resizeLogoTight(file: File, max = 400, dropSpecks = false): Prom
         for (let j = 0; j < H; j++) { edge += 2; if (A(j * W) < 40) clear++; if (A(j * W + W - 1) < 40) clear++ }
         const preCut = clear > edge * 0.5
         const seen = new Uint8Array(W * H), q: number[] = []
+        const wall = new Uint8Array(W * H)
         if (!preCut) {
+          // seal open bottoms: a character whose outline doesn't close under the shirt would let the
+          // white background flood in and erase a white shirt. Join each outline's lowest-left and
+          // lowest-right points with a thin wall the flood fill can't cross.
+          const dark = (p: number) => A(p) > 40 && (d[p * 4] + d[p * 4 + 1] + d[p * 4 + 2]) / 3 < 110
+          const lab = new Int32Array(W * H).fill(-1)
+          for (let p0 = 0; p0 < W * H; p0++) {
+            if (lab[p0] !== -1 || !dark(p0)) continue
+            const st = [p0], pts: number[] = []; lab[p0] = p0
+            while (st.length) {
+              const p = st.pop()!; pts.push(p)
+              const px = p % W, py = (p / W) | 0
+              for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                const nx = px + dx, ny = py + dy
+                if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue
+                const n = ny * W + nx
+                if (lab[n] === -1 && dark(n)) { lab[n] = p0; st.push(n) }
+              }
+            }
+            if (pts.length < 300) continue
+            let top = H, bot = -1
+            for (const p of pts) { const py = (p / W) | 0; if (py < top) top = py; if (py > bot) bot = py }
+            const band = bot - Math.max(4, Math.round((bot - top) * 0.06))
+            let lx = -1, ly = 0, rx = -1, ry = 0
+            for (const p of pts) {
+              const px = p % W, py = (p / W) | 0
+              if (py < band) continue
+              if (lx < 0 || px < lx) { lx = px; ly = py }
+              if (rx < 0 || px > rx) { rx = px; ry = py }
+            }
+            if (rx - lx < 20) continue
+            for (let xx = lx; xx <= rx; xx++) {
+              const yy = Math.round(ly + (ry - ly) * ((xx - lx) / (rx - lx)))
+              for (let t = 0; t < 3; t++) if (yy + t < H) wall[(yy + t) * W + xx] = 1
+            }
+          }
           for (let i = 0; i < W; i++) q.push(i, (H - 1) * W + i)
           for (let j = 0; j < H; j++) q.push(j * W, j * W + W - 1)
         }
         while (q.length) {
           const p = q.pop()!
-          if (seen[p]) continue
+          if (seen[p] || wall[p]) continue
           if (!(A(p) < 40 || light(p))) continue
           seen[p] = 1; if (A(p) >= 40) d[p * 4 + 3] = 0
           const px = p % W, py = (p / W) | 0
