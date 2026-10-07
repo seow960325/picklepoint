@@ -13,7 +13,7 @@ import {
 import { Screen, Spinner, ThemeToggle, Emblem } from '../components/ui'
 import { Flag } from '../components/ui'
 import { Field, Stepper, Choice, Warn, GrowInput, input, inputFull } from '../components/form'
-import { resizeImage, resizeLogoTight } from '../lib/image'
+import { resizeLogoTight } from '../lib/image'
 import { makeTeamCartoon } from '../lib/teamLogoAi'
 import { ScheduleRow, scheduleStatus } from '../components/ScheduleRow'
 import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts, KnockoutTab } from './MultiSportAdmin'
@@ -543,8 +543,8 @@ function LogoControl({ t, token, run, tight, code }: any) {
     e.target.value = ''
     if (!file) return
     run(async () => {
-      // pool events (MCMD/MCXD): clean + tight-trim so every character photo is standard
-      const data = tight ? await resizeLogoTight(file, 400, true) : await resizeImage(file, 256)
+      // every competition: white background -> transparent + tight-trim (already-transparent PNGs kept as is)
+      const data = await resizeLogoTight(file, 400, tight)
       await api.adminSetTeamLogo(token, t.id, data)
     }, 'Logo updated')
   }
