@@ -1,28 +1,31 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { IS_DEMO, join, registerTeam } from '../lib/api'
+import { IS_DEMO, join, registerCheck, registerTeam } from '../lib/api'
 import { resizeLogoTight } from '../lib/image'
-import { makeTeamCartoon } from '../lib/teamLogoAi'
-import { TEAM_PROMPT } from '../lib/teamPrompt'
+import { teamPrompt } from '../lib/teamPrompt'
 import { Screen } from '../components/ui'
 import type { Bundle } from '../lib/types'
 
 const CODES = ['MCMD', 'MCXD']
-// Paid AI drawing on this page is OFF unless VITE_REGISTER_AI=1 is set in Vercel.
-// The free way (players use their own Gemini app) is always available.
-const AI_ON = import.meta.env.VITE_REGISTER_AI === '1'
-const MAX_TRIES = 1 // paid AI pictures per phone; redo is done by the organiser
 const GEMINI_APP = 'https://gemini.google.com/app'
 
-type Mine = { token: string; name: string }
+type Mine = { token: string; name: string; pin?: string }
 const regKey = (c: string) => `pp_reg_${c}`
-const triesKey = (c: string) => `pp_reg_tries_${c}`
+const pinKey = (c: string) => `pp_pin_${c}`
+const tokKey = (c: string) => `pp_tok_${c}`
 const readMine = (c: string): Mine | null => { try { return JSON.parse(localStorage.getItem(regKey(c)) || 'null') } catch { return null } }
 const writeMine = (c: string, m: Mine) => { try { localStorage.setItem(regKey(c), JSON.stringify(m)) } catch { /* ignore */ } }
-const readTries = (c: string) => { try { return Number(localStorage.getItem(triesKey(c)) || 0) } catch { return 0 } }
-const writeTries = (c: string, n: number) => { try { localStorage.setItem(triesKey(c), String(n)) } catch { /* ignore */ } }
+const readPin = (c: string) => { try { return localStorage.getItem(pinKey(c)) || '' } catch { return '' } }
+const writePin = (c: string, p: string) => { try { p ? localStorage.setItem(pinKey(c), p) : localStorage.removeItem(pinKey(c)) } catch { /* ignore */ } }
 const newToken = () => {
   try { return crypto.randomUUID() } catch { return Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('') }
+}
+/** this phone's secret token for the competition (created once, reused by code check and register) */
+const phoneToken = (c: string) => {
+  try {
+    const t = localStorage.getItem(tokKey(c)) || readMine(c)?.token || newToken()
+    localStorage.setItem(tokKey(c), t); return t
+  } catch { return newToken() }
 }
 const download = (dataUrl: string, name: string) => {
   const a = document.createElement('a')
@@ -45,32 +48,14 @@ const readable = (m: string) => ({
   BAD_LOGO: 'The team picture could not be saved — generate it again.',
   ASK_ORGANISER: 'Groups are already drawn — please ask the organiser to change it.',
   BAD_TOKEN: 'Please reload the page and try again.',
+  BAD_PIN: 'That team code is not valid. Check it with the organiser.',
+  PIN_USED: 'That team code is already used by another phone.',
 }[m] ?? m)
 
 /** one word only: "Ling Xiang" -> "Xiang" (last word), keeps names short enough for the court */
 const oneWord = (v: string) => v.trim().split(/\s+/).pop() ?? ''
 
 const fieldCls = 'w-full rounded-xl border-2 border-line bg-surface px-3 py-3 text-lg font-semibold text-fg outline-none focus:border-brand-ink'
-
-function PhotoPick({ label, file, onFile }: { label: string; file: File | null; onFile: (f: File | null) => void }) {
-  const ref = useRef<HTMLInputElement>(null)
-  const [src, setSrc] = useState<string | null>(null)
-  useEffect(() => {
-    if (!file) { setSrc(null); return }
-    const u = URL.createObjectURL(file); setSrc(u)
-    return () => URL.revokeObjectURL(u)
-  }, [file])
-  return (
-    <button type="button" onClick={() => ref.current?.click()}
-      className="flex aspect-square w-full flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-line bg-surface text-fg-muted active:bg-surface-2">
-      <input ref={ref} type="file" accept="image/*" className="hidden"
-        onChange={e => { onFile(e.target.files?.[0] ?? null); e.target.value = '' }} />
-      {src
-        ? <img src={src} alt="" className="h-full w-full object-cover" />
-        : <><span className="text-4xl">📷</span><span className="mt-1 px-2 text-center text-sm font-semibold">{label}</span></>}
-    </button>
-  )
-}
 
 export default function Register() {
   const params = useParams()
@@ -79,10 +64,10 @@ export default function Register() {
   const [bundle, setBundle] = useState<Bundle | null>(null)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [p1, setP1] = useState(''); const [p2, setP2] = useState('')
-  const [f1, setF1] = useState<File | null>(null); const [f2, setF2] = useState<File | null>(null)
   const [logo, setLogo] = useState<string | null>(null)
-  const [tries, setTries] = useState(() => readTries(code))
-  const [busy, setBusy] = useState<null | 'gen' | 'save'>(null)
+  const [pin, setPin] = useState(() => readPin(code)) // verified team code
+  const [pinIn, setPinIn] = useState('')
+  const [busy, setBusy] = useState<null | 'pin' | 'save'>(null)
   const [err, setErr] = useState<string | null>(null)
   const [mine, setMine] = useState<Mine | null>(() => readMine(code))
   const [editing, setEditing] = useState(false)
@@ -95,7 +80,7 @@ export default function Register() {
     join(code).then(setBundle).catch(() => setLoadErr('Competition not found.'))
   }
   useEffect(() => {
-    setBundle(null); setMine(readMine(code)); setTries(readTries(code)); setEditing(false); load()
+    setBundle(null); setMine(readMine(code)); setPin(readPin(code)); setPinIn(''); setEditing(false); load()
   }, [code]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const ev = bundle?.events.find((e: any) => e.court_dispatch === 'pool')
@@ -105,17 +90,16 @@ export default function Register() {
   const closed = !!bundle && (!ev || started || free === 0)
   const myTeam: any = mine ? teams.find((t: any) => t.name === mine.name) ?? null : null
   const canEdit = !!bundle && !!ev && !started
-  const showForm = !!bundle && ((!myTeam && !closed) || (!!myTeam && editing && canEdit))
+  const myPin = mine?.pin || pin
+  const needPin = !!bundle && !myTeam && !closed && !pin
+  const showForm = !!bundle && ((!myTeam && !closed && !!pin) || (!!myTeam && editing && canEdit))
 
-  const generate = async () => {
-    if (!f1 || !f2) return
-    setP1(oneWord(p1)); setP2(oneWord(p2))
-    setErr(null); setBusy('gen')
+  const checkPin = async () => {
+    setErr(null); setBusy('pin')
     try {
-      const png = await makeTeamCartoon(code, [f1, f2])
-      setLogo(await resizeLogoTight(png, 400, true))
-      const n = tries + 1; writeTries(code, n); setTries(n)
-    } catch (e: any) { setErr(e.message || 'Something went wrong.') }
+      await registerCheck(code, pinIn.trim(), phoneToken(code))
+      writePin(code, pinIn.trim()); setPin(pinIn.trim())
+    } catch (e: any) { setErr(readable(e.message)) }
     finally { setBusy(null) }
   }
 
@@ -131,17 +115,19 @@ export default function Register() {
     if (!logo) return
     setErr(null); setBusy('save')
     try {
-      const token = mine?.token ?? newToken()
-      const r = await registerTeam(code, oneWord(p1), oneWord(p2), logo, token)
-      const m = { token, name: r.name }
-      writeMine(code, m); setMine(m); setEditing(false); setLogo(null); setF1(null); setF2(null)
+      const token = mine?.token ?? phoneToken(code)
+      const r = await registerTeam(code, oneWord(p1), oneWord(p2), logo, token, myPin)
+      const m = { token, name: r.name, pin: myPin }
+      writeMine(code, m); setMine(m); setEditing(false); setLogo(null)
       load()
-    } catch (e: any) { setErr(readable(e.message)) }
+    } catch (e: any) {
+      if (e.message === 'BAD_PIN' || e.message === 'PIN_USED') { writePin(code, ''); setPin(''); setPinIn('') }
+      setErr(readable(e.message))
+    }
     finally { setBusy(null) }
   }
 
   const names = !!oneWord(p1) && !!oneWord(p2)
-  const ready = names && !!f1 && !!f2
 
   return (
     <Screen className="px-5 py-8">
@@ -195,10 +181,26 @@ export default function Register() {
           </div>
         )}
 
+        {needPin && (
+          <div className="grid gap-4 rounded-2xl border border-line bg-surface p-5 text-center">
+            <div className="font-display text-xl font-bold tracking-wide">ENTER YOUR TEAM CODE</div>
+            <div className="text-sm text-fg-muted">4 digits, given to your team by the organiser.</div>
+            <input className={`${fieldCls} text-center font-display text-4xl tracking-[0.5em]`} inputMode="numeric" pattern="[0-9]*"
+              maxLength={4} placeholder="••••" value={pinIn} autoComplete="off"
+              onChange={e => setPinIn(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              onKeyDown={e => { if (e.key === 'Enter' && pinIn.length === 4) checkPin() }} />
+            {err && <div className="rounded-xl bg-red-500/10 p-3 text-sm text-red-500">{err}</div>}
+            <button disabled={pinIn.length !== 4 || busy === 'pin'} onClick={checkPin}
+              className="rounded-2xl bg-brand py-4 font-display text-2xl font-bold tracking-wide text-brand-fg active:scale-[0.99] disabled:opacity-30">
+              {busy === 'pin' ? 'CHECKING…' : 'CONTINUE'}
+            </button>
+          </div>
+        )}
+
         {showForm && (
           <div className="grid gap-5">
             <div className="text-center text-xs font-semibold uppercase tracking-widest text-fg-subtle">
-              {editing ? `Changing ${myTeam?.name}` : `${ev?.name ?? code} · ${free} slot${free === 1 ? '' : 's'} left`}
+              {editing ? `Changing ${myTeam?.name}` : `${ev?.name ?? code} · team code ${pin} ✓`}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -227,11 +229,11 @@ export default function Register() {
                 <div className="font-display text-lg font-bold tracking-wide">TEAM PICTURE · FREE</div>
                 <ol className="list-decimal space-y-1 pl-5 text-sm text-fg-muted">
                   <li>Copy the prompt and open the Gemini app.</li>
-                  <li>Attach one photo of each player, paste the prompt, send.</li>
+                  <li>Attach one photo of each player (Player 1 first{code === 'MCXD' ? ', then Player 2 the lady' : ''}), paste the prompt, send.</li>
                   <li>Save the picture Gemini makes, then upload it here.</li>
                 </ol>
                 <div className="grid grid-cols-2 gap-2">
-                  <button onClick={async () => { setCopied(await copyText(TEAM_PROMPT)) }}
+                  <button onClick={async () => { setCopied(await copyText(teamPrompt(code))) }}
                     className="rounded-xl border border-line py-3 text-sm font-bold active:bg-surface-2">
                     {copied ? '✓ COPIED' : '📋 COPY PROMPT'}
                   </button>
@@ -244,20 +246,6 @@ export default function Register() {
                   className="rounded-xl bg-brand py-3 font-display text-lg font-bold tracking-wide text-brand-fg active:scale-[0.99]">
                   ⬆ UPLOAD THE PICTURE
                 </button>
-
-                {AI_ON && tries < MAX_TRIES && (
-                  <div className="mt-2 grid gap-2 border-t border-line pt-3">
-                    <div className="text-center text-xs text-fg-subtle">or let us draw it (one try per phone)</div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <PhotoPick label="Photo 1" file={f1} onFile={setF1} />
-                      <PhotoPick label="Photo 2" file={f2} onFile={setF2} />
-                    </div>
-                    <button disabled={!ready || !!busy} onClick={generate}
-                      className="rounded-xl border border-line py-3 font-display text-lg font-bold tracking-wide disabled:opacity-30">
-                      {busy === 'gen' ? 'DRAWING… (up to 30 s)' : '✨ DRAW IT FOR US'}
-                    </button>
-                  </div>
-                )}
               </div>
             )}
 

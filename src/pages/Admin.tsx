@@ -14,7 +14,6 @@ import { Screen, Spinner, ThemeToggle, Emblem } from '../components/ui'
 import { Flag } from '../components/ui'
 import { Field, Stepper, Choice, Warn, GrowInput, input, inputFull } from '../components/form'
 import { resizeLogoTight } from '../lib/image'
-import { makeTeamCartoon } from '../lib/teamLogoAi'
 import { ScheduleRow, scheduleStatus } from '../components/ScheduleRow'
 import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts, KnockoutTab } from './MultiSportAdmin'
 import { sportsPresent } from '../lib/multisport'
@@ -518,19 +517,53 @@ function RandomGroups({ bundle, ev, token, run }: any) {
   )
 }
 
-/** MCMD/MCXD: self-registration progress + AI picture usage (migration 0029) */
+/** MCMD/MCXD: self-registration progress + per-team 4-digit codes (migration 0030) */
 function RegisterStatus({ teams, token, code }: { teams: any[]; token: string; code: string }) {
-  const [u, setU] = useState<{ today: number; today_code: number; total_code: number; cap: number } | null>(null)
-  useEffect(() => { api.adminAiUsage(token).then(setU).catch(() => setU(null)) }, [token, teams.length])
+  const [codes, setCodes] = useState<{ pin: string; team: string | null; claimed: boolean }[] | null>(null)
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const reload = () => api.adminRegCodes(token).then(setCodes).catch(() => setCodes(null))
+  useEffect(() => { reload() }, [token, teams.length]) // eslint-disable-line react-hooks/exhaustive-deps
   const done = teams.filter(t => t.logo && !String(t.logo).startsWith('data:image/svg')).length
+  const gen = async () => {
+    setBusy(true); setMsg('')
+    try { await api.adminGenRegCodes(token); await reload(); setOpen(true) }
+    catch (e: any) { setMsg(e.message || 'Could not generate codes') }
+    finally { setBusy(false) }
+  }
+  const copyAll = async () => {
+    const txt = (codes ?? []).map(c => `${c.pin}${c.team ? '  ' + c.team : ''}`).join('\n')
+    try { await navigator.clipboard.writeText(txt); setMsg('Copied') } catch { setMsg('Copy failed') }
+  }
+  const used = (codes ?? []).filter(c => c.claimed).length
   return (
     <div className="rounded-xl border border-line bg-surface p-3 text-sm">
       <div className="font-semibold">Registered {done} / {teams.length}
-        <span className="ml-2 font-normal text-fg-subtle">players sign up at /register/{code}</span></div>
-      {u && (
-        <div className="mt-1 text-xs text-fg-muted">
-          AI pictures today: {u.today} / {u.cap} (all codes) · {code} today {u.today_code} · {code} total {u.total_code}
-          <span className="text-fg-subtle"> ≈ US${(u.total_code * 0.07).toFixed(2)}</span>
+        <span className="ml-2 font-normal text-fg-subtle">players sign up at /register/{code} with their 4-digit team code</span></div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button disabled={busy} onClick={gen}
+          className="rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-brand-fg disabled:opacity-40">
+          {codes && codes.length ? '+ TOP UP CODES' : '🔑 GENERATE TEAM CODES'}
+        </button>
+        {!!codes?.length && (
+          <>
+            <button onClick={() => setOpen(!open)} className="rounded-lg border border-line px-3 py-1.5 text-xs font-bold">
+              {open ? 'HIDE' : 'SHOW'} CODES ({used} used / {codes.length})
+            </button>
+            <button onClick={copyAll} className="rounded-lg border border-line px-3 py-1.5 text-xs font-bold">COPY ALL</button>
+          </>
+        )}
+        {msg && <span className="text-xs text-fg-subtle">{msg}</span>}
+      </div>
+      {open && !!codes?.length && (
+        <div className="mt-2 grid max-h-72 grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-1 overflow-y-auto">
+          {codes.map(c => (
+            <div key={c.pin} className={`flex min-w-0 items-center gap-2 rounded-lg border px-2 py-1 text-xs ${c.claimed ? 'border-brand-ink/40' : 'border-line text-fg-subtle'}`}>
+              <span className="font-display text-base font-bold tracking-widest">{c.pin}</span>
+              <span className="truncate">{c.claimed ? c.team : 'not used yet'}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -548,25 +581,8 @@ function LogoControl({ t, token, run, tight, code }: any) {
       await api.adminSetTeamLogo(token, t.id, data)
     }, 'Logo updated')
   }
-  // MCMD/MCXD shortcut: pick the 2 player photos together -> AI chibi team picture -> saved as the logo
-  const onPair = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? [])
-    e.target.value = ''
-    if (!files.length) return
-    if (files.length !== 2) { alert('Select exactly 2 photos (one per player) in the same pick.'); return }
-    run(async () => {
-      const png = await makeTeamCartoon(code, files)
-      await api.adminSetTeamLogo(token, t.id, await resizeLogoTight(png, 400, true))
-    }, 'Team logo generated')
-  }
   return (
     <div className="relative shrink-0">
-      {tight && (
-        <label title="AI redo: pick the 2 player photos (costs ~US$0.03)"
-          className="absolute -bottom-1 -right-1 z-10 grid h-5 w-5 cursor-pointer place-items-center rounded-full bg-brand text-[11px] leading-none text-brand-fg">
-          <input type="file" accept="image/*" multiple className="hidden" onChange={onPair} />✨
-        </label>
-      )}
       <label className="block cursor-pointer">
         <input type="file" accept="image/*" className="hidden" onChange={onFile} />
         {t.logo

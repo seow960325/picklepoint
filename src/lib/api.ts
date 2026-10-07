@@ -413,9 +413,23 @@ export async function adminSetKoRules(
 }
 
 /** Public self-registration (MCMD/MCXD): no admin PIN. Needs migration 0028. */
-export async function registerTeam(code: string, p1: string, p2: string, logo: string, token: string): Promise<{ team_id: string; name: string; edited: boolean }> {
+export async function registerTeam(code: string, p1: string, p2: string, logo: string, token: string, pin: string): Promise<{ team_id: string; name: string; edited: boolean }> {
   if (IS_DEMO) throw new Error('REG_CLOSED')
-  return rpc<{ team_id: string; name: string; edited: boolean }>('register_team', { p_code: code, p_p1: p1, p_p2: p2, p_logo: logo, p_token: token })
+  return rpc<{ team_id: string; name: string; edited: boolean }>('register_team', { p_code: code, p_p1: p1, p_p2: p2, p_logo: logo, p_token: token, p_pin: pin })
+}
+
+/** 4-digit team code check (migration 0030) */
+export async function registerCheck(code: string, pin: string, token: string): Promise<void> {
+  if (IS_DEMO) throw new Error('REG_CLOSED')
+  await rpc('register_check', { p_code: code, p_pin: pin, p_token: token })
+}
+export async function adminGenRegCodes(token: string): Promise<void> {
+  if (IS_DEMO) return
+  await rpc('admin_gen_reg_codes', { p_token: token })
+}
+export async function adminRegCodes(token: string): Promise<{ pin: string; team: string | null; claimed: boolean }[]> {
+  if (IS_DEMO) return []
+  return rpc('admin_reg_codes', { p_token: token })
 }
 
 /** AI team-picture usage (migration 0029) */
