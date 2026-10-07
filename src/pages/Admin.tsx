@@ -14,6 +14,7 @@ import { Screen, Spinner, ThemeToggle, Emblem } from '../components/ui'
 import { Flag } from '../components/ui'
 import { Field, Stepper, Choice, Warn, GrowInput, input, inputFull } from '../components/form'
 import { resizeImage, resizeLogoTight } from '../lib/image'
+import { makeTeamCartoon, GEMINI_KEY_STORE } from '../lib/teamLogoAi'
 import { ScheduleRow, scheduleStatus } from '../components/ScheduleRow'
 import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts, KnockoutTab } from './MultiSportAdmin'
 import { sportsPresent } from '../lib/multisport'
@@ -527,8 +528,32 @@ function LogoControl({ t, token, run, tight }: any) {
       await api.adminSetTeamLogo(token, t.id, data)
     }, 'Logo updated')
   }
+  // MCMD/MCXD shortcut: pick the 2 player photos together -> AI chibi team picture -> saved as the logo
+  const onPair = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (!files.length) return
+    if (files.length !== 2) { alert('Select exactly 2 photos (one per player) in the same pick.'); return }
+    let key = ''
+    try { key = localStorage.getItem(GEMINI_KEY_STORE) || '' } catch { /* ignore */ }
+    if (!key) {
+      key = (window.prompt('Gemini API key (saved on this device only)') || '').trim()
+      if (!key) return
+      try { localStorage.setItem(GEMINI_KEY_STORE, key) } catch { /* ignore */ }
+    }
+    run(async () => {
+      const png = await makeTeamCartoon(key, files)
+      await api.adminSetTeamLogo(token, t.id, await resizeLogoTight(png, 400))
+    }, 'Team logo generated')
+  }
   return (
     <div className="relative shrink-0">
+      {tight && (
+        <label title="2 photos → team cartoon logo"
+          className="absolute -bottom-1 -right-1 z-10 grid h-5 w-5 cursor-pointer place-items-center rounded-full bg-brand text-[11px] leading-none text-brand-fg">
+          <input type="file" accept="image/*" multiple className="hidden" onChange={onPair} />✨
+        </label>
+      )}
       <label className="block cursor-pointer">
         <input type="file" accept="image/*" className="hidden" onChange={onFile} />
         {t.logo
