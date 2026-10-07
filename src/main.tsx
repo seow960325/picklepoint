@@ -11,10 +11,13 @@ import Admin from './pages/Admin'
 import Owner from './pages/Owner'
 import QuickPlay from './pages/QuickPlay'
 import CombinedTv from './pages/CombinedTv'
+import Register from './pages/Register'
 
 const router = createBrowserRouter([
   { path: '/', element: <Join /> },
   { path: '/quick', element: <QuickPlay /> },
+  { path: '/register', element: <Register /> },
+  { path: '/register/:code', element: <Register /> },
   { path: '/new', element: <NewCompetition /> },
   { path: '/c/:code', element: <Board /> },
   { path: '/c/:code/court/:number', element: <CourtScore /> },

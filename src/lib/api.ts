@@ -411,3 +411,9 @@ export async function adminSetKoRules(
     p_target: r.target_score, p_win_by: r.win_by, p_cap: r.cap, p_switch_at: r.switch_at,
   })
 }
+
+/** Public self-registration (MCMD/MCXD): no admin PIN. Needs migration 0028. */
+export async function registerTeam(code: string, p1: string, p2: string, logo: string): Promise<{ team_id: string; name: string }> {
+  if (IS_DEMO) throw new Error('REG_CLOSED')
+  return rpc<{ team_id: string; name: string }>('register_team', { p_code: code, p_p1: p1, p_p2: p2, p_logo: logo })
+}
