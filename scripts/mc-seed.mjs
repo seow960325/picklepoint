@@ -108,6 +108,16 @@ const sql = `-- MCMD (Men's Doubles) + MCXD (Mixed Doubles). Run AFTER migration
 -- 32 placeholder country teams each, random groups of 4, single round robin.
 -- Each group has a home court; a team uses at most 2 courts all day.
 -- Safe to re-run: it first removes any earlier MCMD / MCXD (test data only).
+-- Uploaded photo logos are saved and put back (same team names only).
+
+-- Keep uploaded photo logos across re-runs (matched by competition code + team name).
+create table if not exists mc_logo_keep (code text, name text, logo text, primary key (code, name));
+alter table mc_logo_keep enable row level security;
+delete from mc_logo_keep where code in ('MCMD', 'MCXD');
+insert into mc_logo_keep (code, name, logo)
+select c.code, t.name, t.logo
+from teams t join events e on e.id = t.event_id join competitions c on c.id = e.competition_id
+where c.code in ('MCMD', 'MCXD') and t.logo is not null and t.logo not like 'data:image/svg%';
 
 delete from competitions where code in ('MCMD', 'MCXD');
 
@@ -128,6 +138,11 @@ from (values
 ${COUNTRIES.map(n => `  (${q(n)}, ${q(flagUrl(n))})`).join(',\n')}
 ) as v(name, logo)
 where t.name = v.name and t.event_id in (${evOf('MCMD')}, ${evOf('MCXD')});
+
+update teams t set logo = k.logo
+from mc_logo_keep k, events e, competitions c
+where e.id = t.event_id and c.id = e.competition_id and c.code = k.code and t.name = k.name
+  and c.code in ('MCMD', 'MCXD');
 
 select c.code, e.name, e.legs, e.tiebreak, e.court_dispatch, e.ko_target_score,
        (select count(*) from teams t where t.event_id = e.id) as teams,
