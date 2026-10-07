@@ -2,7 +2,7 @@
  *  a no-op unless the event carries the matching flag, so competitions that
  *  never set them (TEST01, YC2626, MCMC26 …) behave exactly as before.
  *
- *   legs = 2             each pair inside a group meets twice
+ *   legs = 1             each pair inside a group meets once (round robin); 2 = twice
  *   court_dispatch=pool  group matches wait OFF-court in one shared queue; a
  *                        court that frees up takes the next match whose two
  *                        teams are both idle (keeps waiting time even)
@@ -189,7 +189,7 @@ export function greedyPoolSchedule(teams: DraftTeam[], courtCount: number, legs:
           courtIdx: first ? f.home : -1,
           homeCourt: f.home,
           sequence: seq++,
-          label: `Group ${f.pool} · Leg ${f.leg}`,
+          label: legs > 1 ? `Group ${f.pool} · Leg ${f.leg}` : `Group ${f.pool} · Round Robin`,
         })
         picked++
         break
@@ -364,7 +364,7 @@ export function rankByDiff<S extends RankRow>(rows: S[], done: Match[]): S[] {
   return out
 }
 
-/** Status for a court card header: "D · LEG 1", "QF 2", "SF 1",
+/** Status for a court card header: "ROUND ROBIN", "QF 2", "SF 1",
  *  "3RD PLACE", "FINAL". `kind` picks the glow colour. */
 export function stageLabel(b: Bundle, m: Match): { text: string; kind: 'group' | 'ko' | 'final' } {
   if (m.bracket_key != null) {
@@ -376,5 +376,6 @@ export function stageLabel(b: Bundle, m: Match): { text: string; kind: 'group' |
   // "Group B · Leg 2" -> "LEG 2" (group name is on the game row, not the header)
   const r = (m.round ?? '').replace(/\s+/g, ' ').trim()
   const leg = /leg\s*(\d+)/i.exec(r)
+  if (/round\s*robin/i.test(r)) return { text: 'ROUND ROBIN', kind: 'group' }
   return { text: leg ? `LEG ${leg[1]}` : (r.replace(/^group\s+/i, '') || 'GROUP').toUpperCase(), kind: 'group' }
 }

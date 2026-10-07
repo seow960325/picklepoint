@@ -1,4 +1,4 @@
-// MCMD / MCXD rules (migration 0026 opt-ins): double round robin on a shared
+// MCMD / MCXD rules (migration 0026 opt-ins): single round robin on a shared
 // court queue, wins -> point difference -> head-to-head -> coin toss,
 // 15-point sudden-death groups, 21-point sudden-death knockout, fixed
 // A-v-H bracket visible before the groups finish.
@@ -18,14 +18,14 @@ const EV = {
   id: 'ev', competition_id: 'c', name: "Men's Doubles", format: 'groups_ko',
   target_score: 15, win_by: 1, cap: 15, switch_at: 0, sort_order: 0, serve_mode: 'winner',
   group_size: 4, advance_per_group: 1, third_place: true,
-  legs: 2, tiebreak: 'diff', ko_target_score: 21, ko_win_by: 1, ko_cap: 21, ko_switch_at: 0,
+  legs: 1, tiebreak: 'diff', ko_target_score: 21, ko_win_by: 1, ko_cap: 21, ko_switch_at: 0,
   play_clock: true, court_dispatch: 'pool', bracket_preview: true,
 }
 
 /** A bundle shaped exactly like create_competition_v3 + demo.create leave it. */
 function makeBundle(seed = 1) {
   const teams = drawGroups(COUNTRIES, 4, rng(seed))
-  const fixtures = buildPoolSchedule(teams, 3, 2)
+  const fixtures = buildPoolSchedule(teams, 3, 1)
   const courts = [1, 2, 3].map(n => ({ id: `ct${n}`, number: n, label: `Court ${n}` }))
   const T = teams.map((t, i) => ({ id: `t${i}`, event_id: 'ev', name: t.name, pool: t.pool, player1: null, player2: null }))
   const blank = { score_a: 0, score_b: 0, a_on_left: true, sides_switched: false, winner_id: null,
@@ -52,10 +52,10 @@ function makeBundle(seed = 1) {
 }
 
 // ----------------------------------------------------------------- schedule
-test('double round robin: 8 groups x 12 = 96 games, every pair twice with ends swapped', () => {
+test('single round robin: 8 groups x 6 = 48 games, every pair once', () => {
   const b = makeBundle(7)
   const g = b.matches.filter(m => !m.bracket_key)
-  assert.equal(g.length, 96)
+  assert.equal(g.length, 48)
   const pool = id => b.teams.find(t => t.id === id).pool
   const pairs = new Map()
   for (const m of g) {
@@ -64,14 +64,12 @@ test('double round robin: 8 groups x 12 = 96 games, every pair twice with ends s
     pairs.set(k, [...(pairs.get(k) ?? []), m])
   }
   assert.equal(pairs.size, 48)
-  for (const ms of pairs.values()) {
-    assert.equal(ms.length, 2)
-    assert.equal(ms[0].team_a_id, ms[1].team_b_id, 'leg 2 swaps ends')
-  }
-  for (const t of b.teams) assert.equal(g.filter(m => m.team_a_id === t.id || m.team_b_id === t.id).length, 6)
+  for (const ms of pairs.values()) assert.equal(ms.length, 1)
+  for (const t of b.teams) assert.equal(g.filter(m => m.team_a_id === t.id || m.team_b_id === t.id).length, 3)
+  assert.ok(g.every(m => m.round.endsWith('Round Robin')))
 })
 
-test('play order: never back-to-back, second leg only after the first, even spacing', () => {
+test('play order: never back-to-back, even spacing', () => {
   for (const seed of [1, 2, 3, 4, 5]) {
     const b = makeBundle(seed)
     const g = b.matches.filter(m => !m.bracket_key).sort((x, y) => x.sequence - y.sequence)
@@ -83,11 +81,10 @@ test('play order: never back-to-back, second leg only after the first, even spac
         assert.ok(slots[i] - slots[i - 1] >= 3, `${t.name} rests under 2 games (seed ${seed})`)
         assert.ok(slots[i] - slots[i - 1] <= 7, `${t.name} waits too long: ${slots[i] - slots[i - 1]} (seed ${seed})`)
       }
-      assert.ok(mine.slice(0, 3).every(m => m.round.endsWith('Leg 1')), 'first three games are leg 1')
     }
     // only the first game on each court starts live; the rest wait in the queue
     assert.equal(g.filter(m => m.status === 'live').length, 3)
-    assert.equal(poolQueue(b, 'ev').length, 93)
+    assert.equal(poolQueue(b, 'ev').length, 45)
   }
 })
 
@@ -124,7 +121,7 @@ function simulate(seed) {
   return { b, start, end, total: now.t }
 }
 
-test('shared queue: all 96 games played, nobody on two courts, waits even', () => {
+test('shared queue: all 48 games played, nobody on two courts, waits even', () => {
   const worst = []
   for (const seed of [11, 12, 13, 14, 15, 16, 17, 18]) {
     const { b, start, end, total } = simulate(seed)

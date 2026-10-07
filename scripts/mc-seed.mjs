@@ -1,6 +1,6 @@
 // Generates supabase/seeds/mc_create.sql: creates MCMD (Men's Doubles) and
 // MCXD (Mixed Doubles) with 32 placeholder country teams each, random groups,
-// the double round robin in shared-queue order, the empty 8-team bracket and
+// the single round robin in shared-queue order, the empty 8-team bracket and
 // the 0026 opt-ins. Run:  node --experimental-strip-types scripts/mc-seed.mjs
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { drawGroups, buildBracketSkeleton } from '../src/lib/draw.ts'
@@ -75,7 +75,7 @@ const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10)
 const homes = {}
 function payload(code, category) {
   const teams = drawGroups(COUNTRIES, 4)
-  const games = buildPoolSchedule(teams, 3, 2)
+  const games = buildPoolSchedule(teams, 3, 1)
   homes[code] = games.map(g => [g.sequence, g.homeCourt + 1])
   const bracket = buildBracketSkeleton(8, 3, games.length + 1, true)
   return {
@@ -95,7 +95,7 @@ function payload(code, category) {
   }
 }
 const q = s => `'${s.replace(/'/g, "''")}'`
-const opts = partner => `legs = 2, tiebreak = 'diff', ko_target_score = 21, ko_win_by = 1, ko_cap = 21, ko_switch_at = 0, play_clock = true, court_dispatch = 'pool', bracket_preview = true, tv_partner = '${partner}'`
+const opts = partner => `legs = 1, tiebreak = 'diff', ko_target_score = 21, ko_win_by = 1, ko_cap = 21, ko_switch_at = 0, play_clock = true, court_dispatch = 'pool', bracket_preview = true, tv_partner = '${partner}'`
 const evOf = code => `(select e.id from events e join competitions c on c.id = e.competition_id where c.code = '${code}')`
 
 const homeSql = code => `update matches m set home_court = c.id
@@ -105,7 +105,7 @@ where m.event_id = ${evOf(code)} and m.sequence = v.seq;`
 
 const sql = `-- MCMD (Men's Doubles) + MCXD (Mixed Doubles). Run AFTER migration 0026.
 -- Admin PIN 0000 · court PINs 0001 / 0002 / 0003 (both codes).
--- 32 placeholder country teams each, random groups of 4, double round robin.
+-- 32 placeholder country teams each, random groups of 4, single round robin.
 -- Each group has a home court; a team uses at most 2 courts all day.
 -- Safe to re-run: it first removes any earlier MCMD / MCXD (test data only).
 
