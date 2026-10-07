@@ -12,7 +12,7 @@ const readable = (m: string) => ({
   REG_CLOSED: 'Registration is closed for this competition.',
   FULL: 'All team slots are taken.',
   NAME_TAKEN: 'A team with those names is already registered.',
-  BAD_NAME: 'Please enter both player names.',
+  BAD_NAME: 'Enter one word for each player name.',
   BAD_LOGO: 'The team picture could not be saved — generate it again.',
 }[m] ?? m)
 
@@ -32,6 +32,9 @@ function photoB64(file: File): Promise<string> {
     img.src = url
   })
 }
+
+/** one word only: "Lei Siang" -> "Siang" (last word), keeps names short enough for the court */
+const oneWord = (v: string) => v.trim().split(/\s+/).pop() ?? ''
 
 const fieldCls = 'w-full rounded-xl border-2 border-line bg-surface px-3 py-3 text-lg font-semibold text-fg outline-none focus:border-brand-ink'
 
@@ -83,6 +86,7 @@ export default function Register() {
 
   const generate = async () => {
     if (!f1 || !f2) return
+    setP1(oneWord(p1)); setP2(oneWord(p2))
     setErr(null); setBusy('gen')
     try {
       const [a, b] = await Promise.all([photoB64(f1), photoB64(f2)])
@@ -104,7 +108,7 @@ export default function Register() {
     if (!logo) return
     setErr(null); setBusy('save')
     try {
-      const r = await registerTeam(code, p1, p2, logo)
+      const r = await registerTeam(code, oneWord(p1), oneWord(p2), logo)
       setDone(r.name)
     } catch (e: any) { setErr(readable(e.message)) }
     finally { setBusy(null) }
@@ -155,20 +159,20 @@ export default function Register() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
-                <input className={fieldCls} placeholder="Player 1" maxLength={14} value={p1} onChange={e => setP1(e.target.value)} />
+                <input className={fieldCls} placeholder="Player 1 (one word)" maxLength={14} value={p1} onChange={e => setP1(e.target.value)} onBlur={() => setP1(oneWord(p1))} />
                 <PhotoPick label="Photo 1" file={f1} onFile={f => { setF1(f); setLogo(null) }} />
               </div>
               <div className="grid gap-2">
-                <input className={fieldCls} placeholder="Player 2" maxLength={14} value={p2} onChange={e => setP2(e.target.value)} />
+                <input className={fieldCls} placeholder="Player 2 (one word)" maxLength={14} value={p2} onChange={e => setP2(e.target.value)} onBlur={() => setP2(oneWord(p2))} />
                 <PhotoPick label="Photo 2" file={f2} onFile={f => { setF2(f); setLogo(null) }} />
               </div>
             </div>
-            <div className="text-center text-xs text-fg-subtle">One clear face photo each. Glasses, caps and hair are kept.</div>
+            <div className="text-center text-xs text-fg-subtle">One word per name (e.g. “Lei Siang” → Siang). One clear face photo each.</div>
 
             {logo && (
               <div className="rounded-2xl border border-line bg-surface p-3 text-center">
                 <img src={logo} alt="Team picture" className="mx-auto h-44 object-contain" />
-                <div className="mt-1 text-sm font-semibold">{p1.trim() || 'Player 1'} & {p2.trim() || 'Player 2'}</div>
+                <div className="mt-1 text-sm font-semibold">{oneWord(p1) || 'Player 1'} & {oneWord(p2) || 'Player 2'}</div>
               </div>
             )}
 

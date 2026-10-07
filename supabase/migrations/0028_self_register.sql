@@ -8,7 +8,8 @@ returns jsonb language plpgsql security definer set search_path = public as $$
 declare v_comp uuid; v_ev uuid; v_t uuid; v_p1 text; v_p2 text; v_name text; begin
   v_p1 := left(btrim(regexp_replace(coalesce(p_p1, ''), '[[:cntrl:]]', '', 'g')), 14);
   v_p2 := left(btrim(regexp_replace(coalesce(p_p2, ''), '[[:cntrl:]]', '', 'g')), 14);
-  if length(v_p1) < 1 or length(v_p2) < 1 then raise exception 'BAD_NAME'; end if;
+  -- one word each (the court shows "SIANG & DEREK" and must not overflow)
+  if v_p1 !~ '^[^[:space:]]+$' or v_p2 !~ '^[^[:space:]]+$' then raise exception 'BAD_NAME'; end if;
   if p_logo is null or p_logo !~ '^data:image/png;base64,' or length(p_logo) > 400000 then
     raise exception 'BAD_LOGO';
   end if;
