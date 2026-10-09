@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { IS_DEMO, join, registerCheck, registerTeam } from '../lib/api'
-import { resizeLogoTight } from '../lib/image'
+import { resizeLogoSafe } from '../lib/image'
 import { teamPrompt } from '../lib/teamPrompt'
 import { Screen } from '../components/ui'
 import type { Bundle } from '../lib/types'
@@ -15,6 +15,18 @@ const pinKey = (c: string) => `pp_pin_${c}`
 const tokKey = (c: string) => `pp_tok_${c}`
 const readMine = (c: string): Mine | null => { try { return JSON.parse(localStorage.getItem(regKey(c)) || 'null') } catch { return null } }
 const writeMine = (c: string, m: Mine) => { try { localStorage.setItem(regKey(c), JSON.stringify(m)) } catch { /* ignore */ } }
+// draft kept on the phone so a page reload (common after the photo picker) does not wipe what was typed
+const draftKey = (c: string) => `pp_draft_${c}`
+const readDraft = (c: string): { p1: string; p2: string; logo: string | null } => {
+  try { const d = JSON.parse(localStorage.getItem(draftKey(c)) || '{}'); return { p1: d.p1 || '', p2: d.p2 || '', logo: d.logo || null } }
+  catch { return { p1: '', p2: '', logo: null } }
+}
+const writeDraft = (c: string, d: { p1: string; p2: string; logo: string | null } | null) => {
+  try {
+    if (!d || (!d.p1 && !d.p2 && !d.logo)) localStorage.removeItem(draftKey(c))
+    else localStorage.setItem(draftKey(c), JSON.stringify(d))
+  } catch { /* storage full / blocked: ignore */ }
+}
 const readPin = (c: string) => { try { return localStorage.getItem(pinKey(c)) || '' } catch { return '' } }
 const writePin = (c: string, p: string) => { try { p ? localStorage.setItem(pinKey(c), p) : localStorage.removeItem(pinKey(c)) } catch { /* ignore */ } }
 const newToken = () => {
@@ -63,11 +75,11 @@ export default function Register() {
   const code = (params.code ?? '').toUpperCase()
   const [bundle, setBundle] = useState<Bundle | null>(null)
   const [loadErr, setLoadErr] = useState<string | null>(null)
-  const [p1, setP1] = useState(''); const [p2, setP2] = useState('')
-  const [logo, setLogo] = useState<string | null>(null)
+  const [p1, setP1] = useState(() => readDraft(code).p1); const [p2, setP2] = useState(() => readDraft(code).p2)
+  const [logo, setLogo] = useState<string | null>(() => readDraft(code).logo)
   const [pin, setPin] = useState(() => readPin(code)) // verified team code
   const [pinIn, setPinIn] = useState('')
-  const [busy, setBusy] = useState<null | 'pin' | 'save'>(null)
+  const [busy, setBusy] = useState<null | 'pin' | 'save' | 'pic'>(null)
   const [err, setErr] = useState<string | null>(null)
   const [mine, setMine] = useState<Mine | null>(() => readMine(code))
   const [editing, setEditing] = useState(false)
@@ -80,8 +92,12 @@ export default function Register() {
     join(code).then(setBundle).catch(() => setLoadErr('Competition not found.'))
   }
   useEffect(() => {
-    setBundle(null); setMine(readMine(code)); setPin(readPin(code)); setPinIn(''); setEditing(false); load()
+    setBundle(null); setMine(readMine(code)); setPin(readPin(code)); setPinIn(''); setEditing(false)
+    { const d = readDraft(code); setP1(d.p1); setP2(d.p2); setLogo(d.logo) }
+    load()
   }, [code]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { if (code && !editing) writeDraft(code, { p1, p2, logo }) }, [code, editing, p1, p2, logo])
 
   const ev = bundle?.events.find((e: any) => e.court_dispatch === 'pool')
   const teams = bundle && ev ? bundle.teams.filter((t: any) => t.event_id === ev.id) : []
@@ -106,9 +122,15 @@ export default function Register() {
   // the free way: the player made the picture in their own Gemini app
   const onOwnPicture = async (file: File | undefined) => {
     if (!file) return
-    setErr(null)
-    try { setLogo(await resizeLogoTight(file, 400, true)) }
-    catch { setErr('That picture could not be read — try another one.') }
+    setErr(null); setBusy('pic')
+    try { setLogo(await resizeLogoSafe(file, 400, true)) }
+    catch (e: any) {
+      console.error('picture upload failed', e)
+      setErr(e?.message === 'IMAGE_TOO_LARGE'
+        ? 'That picture is too big (max 8 MB) — screenshot it or pick a smaller one.'
+        : 'That picture could not be read — try another one.')
+    }
+    finally { setBusy(null) }
   }
 
   const submit = async () => {
@@ -118,7 +140,7 @@ export default function Register() {
       const token = mine?.token ?? phoneToken(code)
       const r = await registerTeam(code, oneWord(p1), oneWord(p2), logo, token, myPin)
       const m = { token, name: r.name, pin: myPin }
-      writeMine(code, m); setMine(m); setEditing(false); setLogo(null)
+      writeMine(code, m); writeDraft(code, null); setMine(m); setEditing(false); setLogo(null)
       load()
     } catch (e: any) {
       if (e.message === 'BAD_PIN' || e.message === 'PIN_USED') { writePin(code, ''); setPin(''); setPinIn('') }
@@ -212,7 +234,7 @@ export default function Register() {
             <div className="-mt-3 text-center text-xs text-fg-subtle">One word per name (e.g. “Ling Xiang” → Xiang)</div>
 
             <input ref={ownRef} type="file" accept="image/*" className="hidden"
-              onChange={e => { onOwnPicture(e.target.files?.[0]); e.target.value = '' }} />
+              onChange={e => { const f = e.target.files?.[0]; onOwnPicture(f).finally(() => { try { e.target.value = '' } catch { /* ignore */ } }) }} />
 
             {logo ? (
               <div className="rounded-2xl border border-line bg-surface p-3 text-center">
@@ -242,9 +264,9 @@ export default function Register() {
                     OPEN GEMINI ↗
                   </a>
                 </div>
-                <button onClick={() => ownRef.current?.click()}
-                  className="rounded-xl bg-brand py-3 font-display text-lg font-bold tracking-wide text-brand-fg active:scale-[0.99]">
-                  ⬆ UPLOAD THE PICTURE
+                <button disabled={busy === 'pic'} onClick={() => ownRef.current?.click()}
+                  className="rounded-xl bg-brand py-3 font-display text-lg font-bold tracking-wide text-brand-fg active:scale-[0.99] disabled:opacity-50">
+                  {busy === 'pic' ? 'PREPARING PICTURE…' : '⬆ UPLOAD THE PICTURE'}
                 </button>
               </div>
             )}

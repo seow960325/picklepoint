@@ -142,3 +142,35 @@ export function resizeLogoTight(file: File, max = 400, dropSpecks = false): Prom
     img.src = url
   })
 }
+
+/** Plain downscale (keeps aspect, no cleanup) - the safety net when the cleanup fails. */
+function plainScale(file: File, max: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      try {
+        const k = Math.min(1, max / Math.max(img.width, img.height))
+        const c = document.createElement('canvas')
+        c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k))
+        const x = c.getContext('2d'); if (!x) return reject(new Error('BAD_IMAGE'))
+        x.drawImage(img, 0, 0, c.width, c.height)
+        resolve(c.toDataURL('image/png'))
+      } catch { reject(new Error('BAD_IMAGE')) }
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('BAD_IMAGE')) }
+    img.src = url
+  })
+}
+
+/** Cleanup first (transparent background, tight trim); if that fails for any reason
+ *  (huge phone photo, odd format, everything erased) fall back to a plain resize so an
+ *  upload never ends in "nothing happens". Too-large files are still refused. */
+export async function resizeLogoSafe(file: File, max = 400, dropSpecks = false): Promise<string> {
+  try { return await resizeLogoTight(file, max, dropSpecks) }
+  catch (e: any) {
+    if (e?.message === 'IMAGE_TOO_LARGE') throw e
+    return plainScale(file, max)
+  }
+}
