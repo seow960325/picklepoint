@@ -168,9 +168,19 @@ function plainScale(file: File, max: number): Promise<string> {
  *  (huge phone photo, odd format, everything erased) fall back to a plain resize so an
  *  upload never ends in "nothing happens". Too-large files are still refused. */
 export async function resizeLogoSafe(file: File, max = 400, dropSpecks = false): Promise<string> {
-  try { return await resizeLogoTight(file, max, dropSpecks) }
-  catch (e: any) {
-    if (e?.message === 'IMAGE_TOO_LARGE') throw e
-    return plainScale(file, max)
+  // the database refuses pictures over 400 000 characters: shrink until it fits (detailed art can be bigger)
+  const LIMIT = 330000
+  const make = async (m: number) => {
+    try { return await resizeLogoTight(file, m, dropSpecks) }
+    catch (e: any) {
+      if (e?.message === 'IMAGE_TOO_LARGE') throw e
+      return plainScale(file, m)
+    }
   }
+  let out = await make(max)
+  for (const m of [340, 280, 230, 180, 140]) {
+    if (out.length <= LIMIT || m >= max) continue
+    out = await make(m)
+  }
+  return out
 }
