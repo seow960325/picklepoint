@@ -41,6 +41,13 @@ export default function Admin() {
   const { bundle, reload } = useCompetition(code)
   const [token, setToken] = useState<string | null>(() => readToken(code!))
 
+  // any admin call answered NOT_ADMIN -> forget the saved session so the PIN pad comes back
+  useEffect(() => {
+    const expired = () => { try { localStorage.removeItem(tokKey(code!)) } catch { /* ignore */ } setToken(null) }
+    window.addEventListener('pp:admin-expired', expired)
+    return () => window.removeEventListener('pp:admin-expired', expired)
+  }, [code])
+
   if (!bundle) return <Screen><Spinner /></Screen>
   if (!token) return <AdminGate code={code!} onIn={t => {
     writeToken(code!, t); setToken(t)

@@ -18,6 +18,8 @@ const rpc = async <T,>(fn: string, args: Record<string, unknown>): Promise<T> =>
   const { data, error } = await sb!.rpc(fn, args)
   if (error) {
     console.error(`[PicklePoint] rpc ${fn} failed:`, error.message, args)
+    // the admin session is no longer valid (expired, or the competition was recreated): ask the UI to show the PIN pad again
+    if (error.message === 'NOT_ADMIN' && typeof window !== 'undefined') window.dispatchEvent(new Event('pp:admin-expired'))
     throw new Error(error.message)
   }
   return data as T
