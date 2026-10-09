@@ -1,6 +1,6 @@
 // Generates supabase/seeds/mc_create.sql: creates MCMD (Men's Doubles) and
 // MCXD (Mixed Doubles) with 32 placeholder country teams each, random groups,
-// the single round robin in shared-queue order, the empty 8-team bracket and
+// the single round robin in shared-queue order, the empty 16-team bracket and
 // the 0026 opt-ins. Run:  node --experimental-strip-types scripts/mc-seed.mjs
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { drawGroups, buildBracketSkeleton } from '../src/lib/draw.ts'
@@ -77,12 +77,12 @@ function payload(code, category) {
   const teams = drawGroups(COUNTRIES, 4)
   const games = buildPoolSchedule(teams, 3, 1)
   homes[code] = games.map(g => [g.sequence, g.homeCourt + 1])
-  const bracket = buildBracketSkeleton(8, 3, games.length + 1, true)
+  const bracket = buildBracketSkeleton(16, 3, games.length + 1, true)
   return {
     code, name: `MC Pickleball Championship · ${category}`, venue: '', event_date: today, admin_pin: '0000',
     event: {
       name: category, format: 'groups_ko', target_score: 15, win_by: 1, cap: 15, switch_at: 0,
-      serve_mode: 'winner', group_size: 4, advance_per_group: 1, third_place: true,
+      serve_mode: 'winner', group_size: 4, advance_per_group: 2, third_place: true,
     },
     courts: [1, 2, 3].map(n => ({ number: n, label: `Court ${n}`, scorer_pin: `000${n}` })),
     teams: teams.map(t => ({ name: t.name, pool: t.pool })),

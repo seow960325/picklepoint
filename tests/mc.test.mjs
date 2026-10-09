@@ -17,7 +17,7 @@ function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 10139
 const EV = {
   id: 'ev', competition_id: 'c', name: "Men's Doubles", format: 'groups_ko',
   target_score: 15, win_by: 1, cap: 15, switch_at: 0, sort_order: 0, serve_mode: 'winner',
-  group_size: 4, advance_per_group: 1, third_place: true,
+  group_size: 4, advance_per_group: 2, third_place: true,
   legs: 1, tiebreak: 'diff', ko_target_score: 21, ko_win_by: 1, ko_cap: 21, ko_switch_at: 0,
   play_clock: true, court_dispatch: 'pool', bracket_preview: true,
 }
@@ -35,7 +35,7 @@ function makeBundle(seed = 1) {
     round: f.label, sequence: f.sequence, team_a_id: T[f.aIdx].id, team_b_id: T[f.bIdx].id,
     status: 'scheduled', bracket_key: null, home_court: courts[f.homeCourt].id,
   }))
-  const sk = buildBracketSkeleton(8, 3, fixtures.length + 1, true)
+  const sk = buildBracketSkeleton(16, 3, fixtures.length + 1, true)
   const id = k => `k:${k}`
   for (const k of sk) matches.push({
     ...blank, id: id(k.key), event_id: 'ev', court_id: null, round: k.round, sequence: k.sequence,
@@ -272,11 +272,18 @@ test('referee taps 15 by mistake -> REVIEW (undo) reopens the game', () => {
 test('fixed bracket: preview labels match the draw that is written later', () => {
   const b = makeBundle(9)
   const ko = b.matches.filter(m => m.bracket_key).sort((x, y) => x.sequence - y.sequence)
-  const qf = ko.filter(m => m.round === 'Quarter-final')
-  assert.deepEqual(qf.map(m => [koSlotLabel(b, EV, m, 'a'), koSlotLabel(b, EV, m, 'b')]), [
-    ['Group A winner', 'Group H winner'], ['Group D winner', 'Group E winner'],
-    ['Group B winner', 'Group G winner'], ['Group C winner', 'Group F winner'],
+  const r16 = ko.filter(m => m.round === 'Round of 16')
+  assert.equal(r16.length, 8)
+  assert.deepEqual(r16.map(m => [koSlotLabel(b, EV, m, 'a'), koSlotLabel(b, EV, m, 'b')]), [
+    ['Group A #1', 'Group H #2'], ['Group H #1', 'Group A #2'],
+    ['Group D #1', 'Group E #2'], ['Group E #1', 'Group D #2'],
+    ['Group B #1', 'Group G #2'], ['Group G #1', 'Group B #2'],
+    ['Group C #1', 'Group F #2'], ['Group F #1', 'Group C #2'],
   ])
+  assert.equal(koShort(b, r16[2]), 'R16-3')
+  const qf = ko.filter(m => m.round === 'Quarter-final')
+  assert.deepEqual(qf.map(m => [koSlotLabel(b, EV, m, 'a'), koSlotLabel(b, EV, m, 'b')]),
+    [['Winner R16-1', 'Winner R16-2'], ['Winner R16-3', 'Winner R16-4'], ['Winner R16-5', 'Winner R16-6'], ['Winner R16-7', 'Winner R16-8']])
   const sf = ko.filter(m => m.round === 'Semi-final')
   assert.deepEqual(sf.map(m => [koSlotLabel(b, EV, m, 'a'), koSlotLabel(b, EV, m, 'b')]),
     [['Winner QF1', 'Winner QF2'], ['Winner QF3', 'Winner QF4']])
@@ -285,11 +292,13 @@ test('fixed bracket: preview labels match the draw that is written later', () =>
   assert.deepEqual([koSlotLabel(b, EV, third, 'a'), koSlotLabel(b, EV, third, 'b')], ['Loser SF1', 'Loser SF2'])
   assert.equal(koShort(b, qf[2]), 'QF3')
 
-  // the admin's LOCK button writes seedBracket(group winners in group order)
-  const winners = 'ABCDEFGH'.split('').map(g => [b.teams.find(t => t.pool === g).id])
-  const pairs = seedBracket(winners, 8)
+  // the admin's LOCK button writes seedBracket([[winner, runner-up] per group])
+  const tops = 'ABCDEFGH'.split('').map(g => b.teams.filter(t => t.pool === g).slice(0, 2).map(t => t.id))
+  const pairs = seedBracket(tops, 16)
   const poolOf = id => b.teams.find(t => t.id === id).pool
-  assert.deepEqual(pairs.map(([a, z]) => `${poolOf(a)}v${poolOf(z)}`), ['AvH', 'DvE', 'BvG', 'CvF'])
+  const nth = id => tops.flat().indexOf(id) % 2 === 0 ? 1 : 2
+  assert.deepEqual(pairs.map(([a, z]) => `${poolOf(a)}${nth(a)}v${poolOf(z)}${nth(z)}`),
+    ['A1vH2', 'H1vA2', 'D1vE2', 'E1vD2', 'B1vG2', 'G1vB2', 'C1vF2', 'F1vC2'])
 })
 
 // ----------------------------------------------------------------- groups
