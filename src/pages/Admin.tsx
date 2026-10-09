@@ -48,6 +48,17 @@ export default function Admin() {
     return () => window.removeEventListener('pp:admin-expired', expired)
   }, [code])
 
+  // the saved session runs out after TOKEN_TTL_MS: bring the PIN pad back by itself, no refresh needed
+  // (checked every few seconds and when the tab wakes up, because phones pause timers in the background)
+  useEffect(() => {
+    if (!token) return
+    const check = () => { if (readToken(code!) == null) setToken(null) }
+    const iv = window.setInterval(check, 5000)
+    document.addEventListener('visibilitychange', check)
+    window.addEventListener('focus', check)
+    return () => { window.clearInterval(iv); document.removeEventListener('visibilitychange', check); window.removeEventListener('focus', check) }
+  }, [token, code])
+
   if (!bundle) return <Screen><Spinner /></Screen>
   if (!token) return <AdminGate code={code!} onIn={t => {
     writeToken(code!, t); setToken(t)
