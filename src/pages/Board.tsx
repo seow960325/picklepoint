@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect, createContext, useContext } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   useCompetition, teamName, teamSideName, teamLogo, liveOnCourt, nextOnCourt, onDeck, results, standings,
@@ -901,10 +901,11 @@ export function FitBox({ children }: { children: any }) {
   )
 }
 
-/** `oneSided` lays every round out left to right into the Final (instead of two
- *  mirrored halves). Same cards, but a far squarer shape, so on a TV showing one
- *  category it scales up much larger. */
-export function PosterBracket({ b, broadcast = false, oneSided = false }: { b: Bundle; broadcast?: boolean; oneSided?: boolean }) {
+/** `tall`: cards get taller (and slightly larger type) so the poster can use the
+ *  full height of a TV that shows one category. Parent must give it a height. */
+const TallCtx = createContext(false)
+
+export function PosterBracket({ b, broadcast = false, tall = false }: { b: Bundle; broadcast?: boolean; tall?: boolean }) {
   const ev = b.events.find(e => e.format === 'groups_ko')
   if (!ev) return null
   if (!bracketSeeded(b, ev.id) && !ev.bracket_preview) {
@@ -923,21 +924,11 @@ export function PosterBracket({ b, broadcast = false, oneSided = false }: { b: B
   const podium = koPodium(b)
 
   return (
-    <div className={`${broadcast ? 'w-max' : 'overflow-x-auto'} p-4 text-fg`} style={{ background: broadcast
+    <TallCtx.Provider value={tall}>
+    <div className={`${broadcast ? 'w-max' : 'overflow-x-auto'} ${tall ? 'flex flex-1 flex-col' : ''} p-4 text-fg`} style={{ background: broadcast
         ? 'radial-gradient(ellipse at top, rgba(244,205,106,0.10), transparent 60%), rgb(var(--canvas))'
         : 'radial-gradient(ellipse at top, rgba(244,205,106,0.06), transparent 55%), rgb(var(--canvas))' }}>
-      {oneSided ? (
-        <div className="mx-auto flex min-w-max items-stretch justify-center">
-          {play.map((col, i) => (
-            <div key={'O' + i} className="flex items-stretch">
-              <PColumn b={b} col={col} side="left" wide />
-              <PConnector count={col.matches.length} side="left" wide />
-            </div>
-          ))}
-          <PCentre b={b} finalM={finalM} thirdM={thirdM} champId={champId} podium={podium} oneSided />
-        </div>
-      ) : (
-      <div className="mx-auto flex min-w-max items-stretch justify-center">
+      <div className={`mx-auto flex min-w-max items-stretch justify-center ${tall ? 'flex-1' : ''}`}>
         {leftCols.map((col, i) => (
           <div key={'L' + i} className="flex items-stretch">
             <PColumn b={b} col={col} side="left" />
@@ -954,14 +945,14 @@ export function PosterBracket({ b, broadcast = false, oneSided = false }: { b: B
           </div>
         ))}
       </div>
-      )}
     </div>
+    </TallCtx.Provider>
   )
 }
 
-function PColumn({ b, col, side, wide = false }: { b: Bundle; col: { round: string; matches: Match[] }; side: 'left' | 'right'; wide?: boolean }) {
+function PColumn({ b, col, side }: { b: Bundle; col: { round: string; matches: Match[] }; side: 'left' | 'right' }) {
   return (
-    <div className={`flex flex-col ${wide ? 'min-w-[15rem]' : 'min-w-[9.5rem] lg:min-w-[11rem]'}`}>
+    <div className="flex min-w-[9.5rem] flex-col lg:min-w-[11rem]">
       <div className={`mb-1 h-4 text-[10px] font-bold uppercase tracking-widest text-fg-subtle ${side === 'right' ? 'text-right' : ''}`}>
         {col.round}
       </div>
@@ -976,11 +967,11 @@ function PColumn({ b, col, side, wide = false }: { b: Bundle; col: { round: stri
   )
 }
 
-function PConnector({ count, side, wide = false }: { count: number; side: 'left' | 'right'; wide?: boolean }) {
+function PConnector({ count, side }: { count: number; side: 'left' | 'right' }) {
   const cells = Math.max(1, Math.ceil(count / 2))
   const single = count <= 1
   return (
-    <div className={`flex flex-col ${wide ? 'w-8' : 'w-5 lg:w-8'}`}>
+    <div className="flex w-5 flex-col lg:w-8">
       <div className="mb-1 h-4" />
       <div className="flex flex-1 flex-col text-fg-subtle/50">
         {Array.from({ length: cells }).map((_, i) => (
@@ -1029,26 +1020,29 @@ function PMatch({ b, m, medalOf }: { b: Bundle; m?: Match; medalOf?: (id: string
 }
 
 function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder }: { b: Bundle; teamId: string | null; score: number; win: boolean; lose: boolean; finished: boolean; medal?: 'gold' | 'silver' | 'bronze' | null; placeholder?: string }) {
+  const tall = useContext(TallCtx)
+  const py = tall ? 'py-4' : 'py-1.5'
+  const tx = tall ? 'text-base' : 'text-xs'
   if (teamId == null && placeholder) {
     return (
-      <div className="flex items-center gap-2 border-l-2 border-transparent px-2.5 py-1.5">
+      <div className={`flex items-center gap-2 border-l-2 border-transparent px-2.5 ${py}`}>
         <span className="h-4 w-4 shrink-0 rounded-[2px] border border-dashed border-line-strong" />
-        <span className="min-w-0 flex-1 truncate text-xs italic text-fg-subtle">{placeholder}</span>
+        <span className={`min-w-0 flex-1 truncate ${tx} italic text-fg-subtle`}>{placeholder}</span>
       </div>
     )
   }
   return (
-    <div className={`flex items-center gap-2 border-l-2 px-2.5 py-1.5 ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
+    <div className={`flex items-center gap-2 border-l-2 px-2.5 ${py} ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
       <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-      <span className={`min-w-0 flex-1 truncate text-xs ${win ? 'font-bold text-fg' : 'text-fg-muted'}`}>{teamName(b, teamId)}</span>
+      <span className={`min-w-0 flex-1 truncate ${tx} ${win ? 'font-bold text-fg' : 'text-fg-muted'}`}>{teamName(b, teamId)}</span>
       {medal && <span className="shrink-0 text-xs leading-none" aria-label={medal}>{medal === 'gold' ? '🥇' : medal === 'silver' ? '🥈' : '🥉'}</span>}
-      {finished && <span className={`tabular shrink-0 text-xs ${win ? 'font-bold text-gold' : 'text-fg-subtle'}`}>{score}</span>}
+      {finished && <span className={`tabular shrink-0 ${tx} ${win ? 'font-bold text-gold' : 'text-fg-subtle'}`}>{score}</span>}
     </div>
   )
 }
 
-function PCentre({ b, finalM, thirdM, champId, podium, oneSided = false }: {
-  b: Bundle; finalM?: Match; thirdM?: Match; champId: string | null; oneSided?: boolean
+function PCentre({ b, finalM, thirdM, champId, podium }: {
+  b: Bundle; finalM?: Match; thirdM?: Match; champId: string | null
   podium: { champion: string; runnerUp: string | null; third: string | null } | null
 }) {
   // medals only once BOTH the Final and Third place matches are confirmed
@@ -1059,33 +1053,6 @@ function PCentre({ b, finalM, thirdM, champId, podium, oneSided = false }: {
     if (id === podium!.runnerUp) return 'silver'
     if (id === podium!.third) return 'bronze'
     return null
-  }
-  const trophy = (
-    <div className="my-1 flex flex-col items-center">
-      <Trophy lit={!!champId} />
-      {champId
-        ? <div className="mt-1 flex items-center gap-1.5 rounded-full border border-[#c2922c]/60 bg-[#f7d774]/10 px-3 py-1">
-            <Emblem logo={teamLogo(b, champId)} flagName={teamSideName(b, champId)} className="h-4 w-6 shrink-0 rounded-[1px] object-contain" />
-            <span className="font-cer text-sm font-bold text-[#f7d774]">{teamName(b, champId)}</span>
-          </div>
-        : <div className="mt-1 text-[10px] uppercase tracking-widest text-fg-subtle">champion</div>}
-    </div>
-  )
-  // one-sided: the Final sits dead centre so the semi-final connectors meet it
-  if (oneSided) {
-    return (
-      <div className="flex flex-col px-2 lg:px-5">
-        <div className="mb-1 h-4 text-center font-cer text-[11px] font-bold uppercase tracking-[0.28em] text-gold">Final</div>
-        <div className="flex flex-1 flex-col items-center">
-          <div className="flex flex-1 flex-col items-center justify-end pb-3">{trophy}</div>
-          <div className="w-60"><PMatch b={b} m={finalM} medalOf={medalOf} /></div>
-          <div className="flex flex-1 flex-col items-center justify-start gap-2 pt-8">
-            <div className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-fg-subtle">Third place</div>
-            <div className="w-52"><PMatch b={b} m={thirdM} medalOf={medalOf} /></div>
-          </div>
-        </div>
-      </div>
-    )
   }
   return (
     <div className="flex flex-col px-2 lg:px-5">

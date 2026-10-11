@@ -40,10 +40,12 @@ export function PlayClock({ m, className = '' }: { m: Match; className?: string 
 // ------------------------------------------------------------------ tables
 /** One group: # | team | P | W | L | +/- . The qualifying place is marked;
  *  teams still level after head-to-head carry a "coin toss" tag. */
-export function GroupTable({ b, g, rows, advance, big = false }: {
-  b: Bundle; g: string; rows: Standing[]; advance: number; big?: boolean
+export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
+  b: Bundle; g: string; rows: Standing[]; advance: number; big?: boolean; huge?: boolean
 }) {
-  const cell = big ? 'py-2.5 text-base' : 'py-1.5'
+  // huge = one category on the whole TV: much larger type, rows stretch to the card's height
+  const cell = huge ? 'py-3 text-2xl' : big ? 'py-2.5 text-base' : 'py-1.5'
+  const wN = huge ? 'w-11' : 'w-7'
   // a coin toss is only news once the group is over and the tie straddles
   // the qualifying line (mid-group, level teams simply haven't met yet)
   const ids = new Set(rows.map(r => r.team.id))
@@ -57,15 +59,15 @@ export function GroupTable({ b, g, rows, advance, big = false }: {
     return same.some(k => k < advance) && same.some(k => k >= advance)
   }
   return (
-    <table className={`w-full table-fixed ${big ? 'text-base' : 'text-sm'}`}>
-      <thead className="text-[10px] uppercase tracking-wider text-fg-subtle">
+    <table className={`w-full table-fixed ${huge ? 'h-full text-2xl' : big ? 'text-base' : 'text-sm'}`}>
+      <thead className={`${huge ? 'text-base' : 'text-[10px]'} uppercase tracking-wider text-fg-subtle`}>
         <tr>
-          <th className="w-7 px-1 py-1 text-center">#</th>
+          <th className={`${huge ? 'w-8' : 'w-7'} px-1 py-1 text-center`}>#</th>
           <th className="px-1 py-1 text-left">Group {g}</th>
-          <th className="w-7 px-1 py-1 text-right">P</th>
-          <th className="w-7 px-1 py-1 text-right">W</th>
-          <th className="w-7 px-1 py-1 text-right">L</th>
-          <th className="w-11 px-2 py-1 text-right" title="Point difference: points won minus points lost">+/-</th>
+          <th className={`${wN} px-1 py-1 text-right`}>P</th>
+          <th className={`${wN} px-1 py-1 text-right`}>W</th>
+          <th className={`${wN} px-1 py-1 text-right`}>L</th>
+          <th className={`${huge ? 'w-20' : 'w-11'} px-2 py-1 text-right`} title="Point difference: points won minus points lost">+/-</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-line">
@@ -73,11 +75,11 @@ export function GroupTable({ b, g, rows, advance, big = false }: {
           const q = i < advance
           return (
             <tr key={r.team.id} className={i === advance - 1 && i < rows.length - 1 ? 'border-b-2 border-dashed !border-line-strong' : ''}>
-              <td className={`tabular px-1 ${cell} text-center text-xs font-bold ${q ? 'text-brand-ink' : 'text-fg-subtle'}`}>{i + 1}</td>
+              <td className={`tabular px-1 ${cell} text-center ${huge ? 'text-lg' : 'text-xs'} font-bold ${q ? 'text-brand-ink' : 'text-fg-subtle'}`}>{i + 1}</td>
               <td className={`px-1 ${cell}`}>
                 <span className="flex min-w-0 items-start gap-1.5">
                   <Emblem logo={teamLogo(b, r.team.id)} flagName={teamSideName(b, r.team.id)}
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded-[2px] object-contain" />
+                    className={`mt-0.5 shrink-0 rounded-[2px] object-contain ${huge ? 'h-7 w-7' : 'h-4 w-4'}`} />
                   <span className="min-w-0 flex-1">
                     <span className={`block ${big ? 'line-clamp-2 break-words leading-tight' : 'truncate'} ${q ? 'font-semibold text-fg' : 'text-fg-muted'}`}>
                       {r.team.name}

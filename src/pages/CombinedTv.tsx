@@ -104,41 +104,40 @@ export default function CombinedTv() {
         <div className="line-clamp-1 font-display text-2xl font-bold tracking-wide sm:text-3xl lg:text-4xl">{title}</div>
         <div className="mt-0.5 text-[11px] uppercase tracking-[0.3em] text-fg-subtle">
           {shown === 'live' ? 'Live courts' : shown === 'groups' ? 'Group tables' : 'Knockout'}
-          {single && stageLine(bundles[0]) ? ` · ${stageLine(bundles[0])}` : ''}
         </div>
       </div>
 
       {shown === 'live' && (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           {bundles.map((b, i) => (
-            <LiveRow key={b.competition.id} b={b} tone={toneOf(b)} banner={!single} />
+            <LiveRow key={b.competition.id} b={b} tone={toneOf(b)} />
           ))}
         </div>
       )}
 
       {shown === 'groups' && (
-        single
-          ? <GroupsFill b={bundles[0]} />
-          : (
-            <div className="relative min-h-0 flex-1">
+        <div className="relative min-h-0 flex-1">
+          {single
+            ? <Fit fill><div className="flex w-[1840px] flex-1 flex-col"><GroupsBlock b={bundles[0]} tone={toneOf(bundles[0])} fill /></div></Fit>
+            : (
               <Fit>
                 <div className="flex w-[1840px] flex-col gap-5">
                   {bundles.map(b => <GroupsBlock key={b.competition.id} b={b} tone={toneOf(b)} />)}
                 </div>
               </Fit>
-            </div>
-          )
+            )}
+        </div>
       )}
 
       {shown === 'bracket' && (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           {bundles.map((b, i) => (
             <div key={b.competition.id} className="flex min-h-0 min-w-0 flex-1 flex-col">
-              {!single && <Banner b={b} tone={toneOf(b)} />}
+              <Banner b={b} tone={toneOf(b)} />
               <div className="relative min-h-0 flex-1">
                 {podiumReady(i)
                   ? <Fit><div className="flex h-[640px] w-[1200px] flex-col"><Podium b={b} champion={decided[i]!.champion} runnerUp={decided[i]!.runnerUp} third={decided[i]!.third} title={category(b)} /></div></Fit>
-                  : <Fit><PosterBracket b={b} broadcast oneSided={single} /></Fit>}
+                  : <Fit fill={single}><PosterBracket b={b} broadcast tall={single} /></Fit>}
               </div>
             </div>
           ))}
@@ -188,13 +187,13 @@ function Banner({ b, tone }: { b: Bundle; tone: typeof TONES[number] }) {
   )
 }
 
-function LiveRow({ b, tone, banner = true }: { b: Bundle; tone: typeof TONES[number]; banner?: boolean }) {
+function LiveRow({ b, tone }: { b: Bundle; tone: typeof TONES[number] }) {
   const ev = b.events.find(e => e.format === 'groups_ko')
   const next = ev ? upNext(b, ev.id, 4) : []
   const anyLive = b.courts.some(c => liveOnCourt(b, c.id))
   return (
     <section className="flex min-h-0 flex-1 flex-col">
-      {banner && <Banner b={b} tone={tone} />}
+      <Banner b={b} tone={tone} />
       <div className="relative min-h-0 flex-1">
         {anyLive || next.length
           ? <Fit><div className="w-[1800px]"><LiveGrid b={b} code={b.competition.code} tv /></div></Fit>
@@ -204,20 +203,19 @@ function LiveRow({ b, tone, banner = true }: { b: Bundle; tone: typeof TONES[num
   )
 }
 
-function GroupsBlock({ b, tone, cols = 4, banner = true }: { b: Bundle; tone: typeof TONES[number]; cols?: number; banner?: boolean }) {
+function GroupsBlock({ b, tone, fill = false }: { b: Bundle; tone: typeof TONES[number]; fill?: boolean }) {
   const ev = b.events.find(e => e.format === 'groups_ko')
   if (!ev) return null
   const tables = groupStandings(b, ev.id)
   const advance = ev.advance_per_group ?? 1
   const live = b.matches.filter(m => m.event_id === ev.id && m.status === 'live' && m.bracket_key == null)
   return (
-    <section>
-      {banner && <Banner b={b} tone={tone} />}
-      <div className="flex flex-wrap justify-center gap-3">
+    <section className={fill ? 'flex flex-1 flex-col' : ''}>
+      <Banner b={b} tone={tone} />
+      <div className={`grid grid-cols-4 gap-3 ${fill ? 'flex-1 [grid-auto-rows:minmax(max-content,1fr)]' : ''}`}>
         {Object.keys(tables).sort().map(g => (
-          <div key={g} className="rounded-xl border border-line bg-surface p-2"
-            style={{ width: `calc((100% - ${(cols - 1) * 12}px) / ${cols} - 0.01px)` }}>
-            <GroupTable b={b} g={g} rows={tables[g]} advance={advance} big />
+          <div key={g} className="rounded-xl border border-line bg-surface p-2">
+            <GroupTable b={b} g={g} rows={tables[g]} advance={advance} big huge={fill} />
           </div>
         ))}
       </div>
@@ -236,64 +234,21 @@ function GroupsBlock({ b, tone, cols = 4, banner = true }: { b: Bundle; tone: ty
   )
 }
 
-/** One category on the whole screen: pick the number of columns that lets the
- *  group tables scale up the most for THIS screen shape and group count, then
- *  let Fit do the exact scaling. (A TV that shows both categories keeps the
- *  fixed 4-column layout above.) */
-function GroupsFill({ b }: { b: Bundle }) {
-  const ev = b.events.find(e => e.format === 'groups_ko')
-  const box = useRef<HTMLDivElement>(null)
-  const [dim, setDim] = useState({ w: 0, h: 0 })
-  useLayoutEffect(() => {
-    const o = box.current
-    if (!o) return
-    const f = () => setDim({ w: o.clientWidth, h: o.clientHeight })
-    f()
-    const ro = new ResizeObserver(f)
-    ro.observe(o)
-    return () => ro.disconnect()
-  }, [])
-  if (!ev) return null
-  const tables = groupStandings(b, ev.id)
-  const n = Object.keys(tables).length
-  const maxRows = Math.max(1, ...Object.values(tables).map(r => r.length))
-  const liveCount = b.matches.filter(m => m.event_id === ev.id && m.status === 'live' && m.bracket_key == null).length
-  // a table is about 460 px wide; a header plus one 46 px row per team tall
-  const CW = 460, GAP = 12, cardH = 52 + maxRows * 46
-  let cols = Math.min(n, 4), best = 0, width = cols * CW + (cols - 1) * GAP
-  if (dim.w > 0 && dim.h > 0) {
-    for (let c = 1; c <= Math.min(n, 6); c++) {
-      const w = c * CW + (c - 1) * GAP
-      const rows = Math.ceil(n / c)
-      const h = rows * cardH + (rows - 1) * GAP + (liveCount ? 36 : 0)
-      const k = Math.min(dim.w / w, dim.h / h)
-      if (k > best + 0.001) { best = k; cols = c; width = w }
-    }
-    // height is the tight side: let the tables stretch wider into the spare width
-    width = Math.max(width, Math.floor(dim.w / best))
-  }
-  return (
-    <div ref={box} className="relative min-h-0 flex-1">
-      <Fit>
-        <div style={{ width }}>
-          <GroupsBlock b={b} tone={TONES[0]} cols={cols} banner={false} />
-        </div>
-      </Fit>
-    </div>
-  )
-}
-
 /** Scale a fixed-size block to fit the box (both directions), centred. The
  *  box is absolutely filled so its size never depends on the content. */
-function Fit({ children }: { children: ReactNode }) {
+function Fit({ children, fill = false }: { children: ReactNode; fill?: boolean }) {
   const outer = useRef<HTMLDivElement>(null)
   const inner = useRef<HTMLDivElement>(null)
   const [s, setS] = useState(1)
+  const [minH, setMinH] = useState(0)
   useLayoutEffect(() => {
     const fit = () => {
       const o = outer.current, i = inner.current
       if (!o || !i || !i.offsetWidth || !i.offsetHeight) return
-      const k = Math.min(o.clientWidth / i.offsetWidth, o.clientHeight / i.offsetHeight) * 0.99
+      // fill: give the block the screen's own shape so it stretches to use the full height
+      const want = fill && o.clientWidth ? Math.round(i.offsetWidth * o.clientHeight / o.clientWidth) : 0
+      setMinH(want)
+      const k = Math.min(o.clientWidth / i.offsetWidth, o.clientHeight / Math.max(i.offsetHeight, want)) * 0.99
       if (isFinite(k) && k > 0) setS(k)
     }
     fit()
@@ -303,11 +258,11 @@ function Fit({ children }: { children: ReactNode }) {
     const t = [150, 600, 1500].map(ms => setTimeout(fit, ms))
     ;(document as any).fonts?.ready?.then(fit).catch(() => {})
     return () => { ro.disconnect(); t.forEach(clearTimeout) }
-  }, [])
+  }, [fill])
   return (
     <div ref={outer} className="absolute inset-0 overflow-hidden">
-      <div ref={inner} className="absolute left-1/2 top-1/2 w-max"
-        style={{ transform: `translate(-50%, -50%) scale(${s})`, transformOrigin: 'center' }}>
+      <div ref={inner} className={`absolute left-1/2 top-1/2 w-max ${fill ? 'flex flex-col' : ''}`}
+        style={{ minHeight: minH || undefined, transform: `translate(-50%, -50%) scale(${s})`, transformOrigin: 'center' }}>
         {children}
       </div>
     </div>
