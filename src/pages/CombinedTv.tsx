@@ -65,6 +65,7 @@ export default function CombinedTv() {
   const decided = bundles.map(b => koPodium(b))
   const podiumReady = (i: number) => !!decided[i]?.third
   const title = sharedTitle(bundles)
+  const single = bundles.length === 1
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-canvas text-fg"
@@ -103,36 +104,41 @@ export default function CombinedTv() {
         <div className="line-clamp-1 font-display text-2xl font-bold tracking-wide sm:text-3xl lg:text-4xl">{title}</div>
         <div className="mt-0.5 text-[11px] uppercase tracking-[0.3em] text-fg-subtle">
           {shown === 'live' ? 'Live courts' : shown === 'groups' ? 'Group tables' : 'Knockout'}
+          {single && stageLine(bundles[0]) ? ` · ${stageLine(bundles[0])}` : ''}
         </div>
       </div>
 
       {shown === 'live' && (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           {bundles.map((b, i) => (
-            <LiveRow key={b.competition.id} b={b} tone={toneOf(b)} />
+            <LiveRow key={b.competition.id} b={b} tone={toneOf(b)} banner={!single} />
           ))}
         </div>
       )}
 
       {shown === 'groups' && (
-        <div className="relative min-h-0 flex-1">
-          <Fit>
-            <div className="flex w-[1840px] flex-col gap-5">
-              {bundles.map((b, i) => <GroupsBlock key={b.competition.id} b={b} tone={toneOf(b)} />)}
+        single
+          ? <GroupsFill b={bundles[0]} />
+          : (
+            <div className="relative min-h-0 flex-1">
+              <Fit>
+                <div className="flex w-[1840px] flex-col gap-5">
+                  {bundles.map(b => <GroupsBlock key={b.competition.id} b={b} tone={toneOf(b)} />)}
+                </div>
+              </Fit>
             </div>
-          </Fit>
-        </div>
+          )
       )}
 
       {shown === 'bracket' && (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           {bundles.map((b, i) => (
             <div key={b.competition.id} className="flex min-h-0 min-w-0 flex-1 flex-col">
-              <Banner b={b} tone={toneOf(b)} />
+              {!single && <Banner b={b} tone={toneOf(b)} />}
               <div className="relative min-h-0 flex-1">
                 {podiumReady(i)
                   ? <Fit><div className="flex h-[640px] w-[1200px] flex-col"><Podium b={b} champion={decided[i]!.champion} runnerUp={decided[i]!.runnerUp} third={decided[i]!.third} title={category(b)} /></div></Fit>
-                  : <Fit><PosterBracket b={b} broadcast /></Fit>}
+                  : <Fit><PosterBracket b={b} broadcast oneSided={single} /></Fit>}
               </div>
             </div>
           ))}
@@ -182,13 +188,13 @@ function Banner({ b, tone }: { b: Bundle; tone: typeof TONES[number] }) {
   )
 }
 
-function LiveRow({ b, tone }: { b: Bundle; tone: typeof TONES[number] }) {
+function LiveRow({ b, tone, banner = true }: { b: Bundle; tone: typeof TONES[number]; banner?: boolean }) {
   const ev = b.events.find(e => e.format === 'groups_ko')
   const next = ev ? upNext(b, ev.id, 4) : []
   const anyLive = b.courts.some(c => liveOnCourt(b, c.id))
   return (
     <section className="flex min-h-0 flex-1 flex-col">
-      <Banner b={b} tone={tone} />
+      {banner && <Banner b={b} tone={tone} />}
       <div className="relative min-h-0 flex-1">
         {anyLive || next.length
           ? <Fit><div className="w-[1800px]"><LiveGrid b={b} code={b.competition.code} tv /></div></Fit>
@@ -198,7 +204,7 @@ function LiveRow({ b, tone }: { b: Bundle; tone: typeof TONES[number] }) {
   )
 }
 
-function GroupsBlock({ b, tone }: { b: Bundle; tone: typeof TONES[number] }) {
+function GroupsBlock({ b, tone, cols = 4, banner = true }: { b: Bundle; tone: typeof TONES[number]; cols?: number; banner?: boolean }) {
   const ev = b.events.find(e => e.format === 'groups_ko')
   if (!ev) return null
   const tables = groupStandings(b, ev.id)
@@ -206,10 +212,11 @@ function GroupsBlock({ b, tone }: { b: Bundle; tone: typeof TONES[number] }) {
   const live = b.matches.filter(m => m.event_id === ev.id && m.status === 'live' && m.bracket_key == null)
   return (
     <section>
-      <Banner b={b} tone={tone} />
-      <div className="grid grid-cols-4 gap-3">
+      {banner && <Banner b={b} tone={tone} />}
+      <div className="flex flex-wrap justify-center gap-3">
         {Object.keys(tables).sort().map(g => (
-          <div key={g} className="rounded-xl border border-line bg-surface p-2">
+          <div key={g} className="rounded-xl border border-line bg-surface p-2"
+            style={{ width: `calc((100% - ${(cols - 1) * 12}px) / ${cols} - 0.01px)` }}>
             <GroupTable b={b} g={g} rows={tables[g]} advance={advance} big />
           </div>
         ))}
@@ -226,6 +233,53 @@ function GroupsBlock({ b, tone }: { b: Bundle; tone: typeof TONES[number] }) {
         </div>
       )}
     </section>
+  )
+}
+
+/** One category on the whole screen: pick the number of columns that lets the
+ *  group tables scale up the most for THIS screen shape and group count, then
+ *  let Fit do the exact scaling. (A TV that shows both categories keeps the
+ *  fixed 4-column layout above.) */
+function GroupsFill({ b }: { b: Bundle }) {
+  const ev = b.events.find(e => e.format === 'groups_ko')
+  const box = useRef<HTMLDivElement>(null)
+  const [dim, setDim] = useState({ w: 0, h: 0 })
+  useLayoutEffect(() => {
+    const o = box.current
+    if (!o) return
+    const f = () => setDim({ w: o.clientWidth, h: o.clientHeight })
+    f()
+    const ro = new ResizeObserver(f)
+    ro.observe(o)
+    return () => ro.disconnect()
+  }, [])
+  if (!ev) return null
+  const tables = groupStandings(b, ev.id)
+  const n = Object.keys(tables).length
+  const maxRows = Math.max(1, ...Object.values(tables).map(r => r.length))
+  const liveCount = b.matches.filter(m => m.event_id === ev.id && m.status === 'live' && m.bracket_key == null).length
+  // a table is about 460 px wide; a header plus one 46 px row per team tall
+  const CW = 460, GAP = 12, cardH = 52 + maxRows * 46
+  let cols = Math.min(n, 4), best = 0, width = cols * CW + (cols - 1) * GAP
+  if (dim.w > 0 && dim.h > 0) {
+    for (let c = 1; c <= Math.min(n, 6); c++) {
+      const w = c * CW + (c - 1) * GAP
+      const rows = Math.ceil(n / c)
+      const h = rows * cardH + (rows - 1) * GAP + (liveCount ? 36 : 0)
+      const k = Math.min(dim.w / w, dim.h / h)
+      if (k > best + 0.001) { best = k; cols = c; width = w }
+    }
+    // height is the tight side: let the tables stretch wider into the spare width
+    width = Math.max(width, Math.floor(dim.w / best))
+  }
+  return (
+    <div ref={box} className="relative min-h-0 flex-1">
+      <Fit>
+        <div style={{ width }}>
+          <GroupsBlock b={b} tone={TONES[0]} cols={cols} banner={false} />
+        </div>
+      </Fit>
+    </div>
   )
 }
 
