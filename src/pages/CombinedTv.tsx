@@ -4,7 +4,7 @@
  *  Separate route on purpose — the single-code board and YC2626's
  *  multi-sport TV are untouched. */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useCompetition, groupStandings, teamName, teamLogo, teamSideName, liveOnCourt } from '../lib/store'
 import type { Bundle } from '../lib/types'
 import { FullscreenButton, Spinner, Screen, Emblem } from '../components/ui'
@@ -28,6 +28,18 @@ export default function CombinedTv() {
   const one = useCompetition(list[0])
   const two = useCompetition(list[1])
   const [pane, setPane] = useState<Pane>('auto')
+  // which category the TV shows: both (default) or one code — URL ?c= wins, then this device's last pick
+  const [params, setParams] = useSearchParams()
+  const catKey = `pp.tvcat.${list.join('+').toUpperCase()}`
+  const [sel, setSel] = useState<string>(() => {
+    const c = (params.get('c') ?? (() => { try { return localStorage.getItem(catKey) } catch { return null } })() ?? '').toUpperCase()
+    return list.some(x => x.toUpperCase() === c) ? c : 'both'
+  })
+  const pickCat = (c: string) => {
+    setSel(c)
+    try { localStorage.setItem(catKey, c) } catch { /* private mode */ }
+    const next = new URLSearchParams(params); next.set('c', c.toLowerCase()); setParams(next, { replace: true })
+  }
   const [step, setStep] = useState(0)
   useEffect(() => {
     if (pane !== 'auto') return
@@ -36,8 +48,10 @@ export default function CombinedTv() {
   }, [pane])
 
   if (one.loading || (list[1] && two.loading)) return <Screen><Spinner /></Screen>
-  const bundles = [one.bundle, two.bundle].filter((b): b is Bundle => !!b)
-  if (!bundles.length) {
+  const all = [one.bundle, two.bundle].filter((b): b is Bundle => !!b)
+  const bundles = sel === 'both' ? all : all.filter(b => b.competition.code.toUpperCase() === sel)
+  const toneOf = (b: Bundle) => TONES[Math.max(0, all.indexOf(b)) % 2]
+  if (!all.length) {
     return (
       <Screen className="flex flex-col items-center justify-center gap-4 px-6">
         <div className="text-center text-fg-muted">No competition found for <span className="font-bold text-fg">{codes}</span></div>
@@ -62,6 +76,16 @@ export default function CombinedTv() {
       }}>
       {/* discreet controls */}
       <div className="absolute right-3 top-3 z-10 flex items-center gap-2 opacity-30 transition-opacity hover:opacity-100">
+        {all.length > 1 && (
+          <div className="flex rounded-lg border border-line bg-surface/70 p-0.5 text-xs">
+            {['both', ...all.map(b => b.competition.code.toUpperCase())].map(c => (
+              <button key={c} onClick={() => pickCat(c)}
+                className={`min-h-[30px] whitespace-nowrap rounded-md px-2.5 py-1.5 font-bold uppercase ${sel === c ? 'bg-fg text-canvas' : 'text-fg-muted'}`}>
+                {c === 'both' ? 'Both' : c}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex rounded-lg border border-line bg-surface/70 p-0.5 text-xs">
           {(['live', 'groups', 'bracket', 'auto'] as const).map(p => (
             <button key={p} onClick={() => { setPane(p); setStep(0) }}
@@ -85,7 +109,7 @@ export default function CombinedTv() {
       {shown === 'live' && (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           {bundles.map((b, i) => (
-            <LiveRow key={b.competition.id} b={b} tone={TONES[i % 2]} />
+            <LiveRow key={b.competition.id} b={b} tone={toneOf(b)} />
           ))}
         </div>
       )}
@@ -94,7 +118,7 @@ export default function CombinedTv() {
         <div className="relative min-h-0 flex-1">
           <Fit>
             <div className="flex w-[1840px] flex-col gap-5">
-              {bundles.map((b, i) => <GroupsBlock key={b.competition.id} b={b} tone={TONES[i % 2]} />)}
+              {bundles.map((b, i) => <GroupsBlock key={b.competition.id} b={b} tone={toneOf(b)} />)}
             </div>
           </Fit>
         </div>
@@ -104,7 +128,7 @@ export default function CombinedTv() {
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           {bundles.map((b, i) => (
             <div key={b.competition.id} className="flex min-h-0 min-w-0 flex-1 flex-col">
-              <Banner b={b} tone={TONES[i % 2]} />
+              <Banner b={b} tone={toneOf(b)} />
               <div className="relative min-h-0 flex-1">
                 {podiumReady(i)
                   ? <Fit><div className="flex h-[640px] w-[1200px] flex-col"><Podium b={b} champion={decided[i]!.champion} runnerUp={decided[i]!.runnerUp} third={decided[i]!.third} title={category(b)} /></div></Fit>
