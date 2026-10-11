@@ -13,7 +13,9 @@ export interface EventCfg {
   target_score: number; win_by: number; cap: number; switch_at: number
   sort_order: number
   // multi-sport competitions only; absent/'pickleball' everywhere else
-  sport?: 'pickleball' | 'badminton'
+  sport?: 'pickleball' | 'badminton' | 'captainball'
+  // captain ball only (migration 0031): clock / time-out / table rules, null = defaults
+  cb_rules?: Partial<import('./captainball').CbRules> | null
   // 'winner' = team that won the last point serves next (default, pure
   // rally scoring — every rally scores). 'alternate' = "Serve": real
   // doubles side-out scoring — only the serving team can score.
@@ -40,7 +42,7 @@ export interface EventCfg {
   bracket_preview?: boolean | null
   tv_partner?: string | null
 }
-export interface Court { id: string; number: number; label: string | null; sport?: 'pickleball' | 'badminton'
+export interface Court { id: string; number: number; label: string | null; sport?: 'pickleball' | 'badminton' | 'captainball'
   // multi-sport only: which game type (MD1 / MD2 / XD) this court hosts; null = any
   game_group?: string | null }
 export interface Team {
@@ -85,6 +87,8 @@ export interface Match {
   home_court?: string | null
   loser_match_id?: string | null
   loser_slot?: 'a' | 'b' | null
+  // captain ball only (migration 0031): clock, fouls, time-outs, score log
+  cb?: import('./captainball').CbState | null
   started_at: string | null; finished_at: string | null
   duration_seconds: number | null
 }

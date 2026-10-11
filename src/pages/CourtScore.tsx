@@ -11,7 +11,8 @@ import { tapPoint, tapFault, tapUndo, hornEnd, chimeSwitch, isSoundOn, setSoundO
 import { Screen, Spinner, FullscreenButton, Flag, Emblem } from '../components/ui'
 import Court from '../components/Court'
 import { PlayClock } from '../components/GroupsKo'
-import { koCourtLabel } from '../lib/multisport'
+import { koCourtLabel, isCb } from '../lib/multisport'
+import CbScorer from './CbScorer'
 
 export default function CourtScore() {
   const { code, number } = useParams()
@@ -68,9 +69,10 @@ export default function CourtScore() {
     )
   }
 
+  const Sc = isCb(eventOf(bundle, match)?.sport) ? CbScorer : Scorer
   return (
     <>
-      <Scorer key={match.id} bundle={bundle} match={match} token={token}
+      <Sc key={match.id} bundle={bundle} match={match} token={token}
         courtNo={court.number} code={code!} reload={reload}
         onRelogin={() => setShowRelogin(true)} />
       {showRelogin && (

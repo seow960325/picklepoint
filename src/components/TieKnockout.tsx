@@ -147,7 +147,7 @@ export function ChampionStage({ b, sport, k, title, size = 'md' }: {
 }) {
   const S = SIZE[size]
   const tone = SPORT_TONE[sport]
-  const beam = sport === 'badminton' ? '52,211,153' : '90,169,255'
+  const beam = sport === 'badminton' ? '52,211,153' : sport === 'captainball' ? '251,146,60' : '90,169,255'
   const f = k.final
   const champA = f && f.a === k.champion
   const won = f ? (champA ? `${f.aGames}–${f.bGames}` : `${f.bGames}–${f.aGames}`) : ''

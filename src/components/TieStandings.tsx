@@ -1,6 +1,7 @@
 import type { Bundle } from '../lib/types'
 import { teamLogo, teamSideName } from '../lib/store'
 import { Emblem } from './ui'
+import { CbStandings } from './CaptainBall'
 import { sportOf, SPORTS, SPORT_ICON, SPORT_LABEL, SPORT_TONE, tieStandings, groupEvents, groupStageDone } from '../lib/multisport'
 
 /** Multi-sport competitions only: per-sport group tables (tie points).
@@ -14,6 +15,7 @@ export default function TieStandings({ b, big = false }: { b: Bundle; big?: bool
     <div className={`p-3 lg:p-5 ${both ? 'grid gap-8 lg:grid-cols-2' : ''}`}>
       {events.map(ev => {
         const sport = sportOf(ev)
+        if (sport === 'captainball') return <CbStandings key={ev.id} b={b} ev={ev} big={big} heading={both} />
         const tone = SPORT_TONE[sport]
         const pools = tieStandings(b, ev.id)
         // semi-final places: top 2 of each of two groups, or top 4 of one group

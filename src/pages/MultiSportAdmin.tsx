@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import * as api from '../lib/api'
 import { teamName } from '../lib/store'
+import { buildCbDraw } from '../lib/captainball'
 import { validateRules } from '../lib/draw'
 import { Field, Stepper, Choice, Warn, inputFull } from '../components/form'
 import { ScheduleRow, scheduleStatus } from '../components/ScheduleRow'
 import {
   SPORTS, SPORT_LABEL, SPORT_PRESETS, SPORT_ICON, SPORT_TONE, FINAL_PRESETS, sportOf, buildTieDraw,
-  sportBundle, sportsPresent, groupEvents, finalEventOf, koState, semiPlan, finalsPlan, koGames, koCourtLabel,
+  sportBundle, sportsPresent, isCb, groupEvents, finalEventOf, koState, semiPlan, finalsPlan, koGames, koCourtLabel,
   type Sport, type KoGame,
 } from '../lib/multisport'
 
@@ -55,7 +56,7 @@ export function SportsTab({ bundle, token, run, onAdded }: any) {
     return {
       name: n,
       roster: r === '4' ? 4 : 6,
-      pool: (p || POOLS[i % 2]).toUpperCase().slice(0, 2),
+      pool: isCb(sport) ? 'A' : (p || POOLS[i % 2]).toUpperCase().slice(0, 2),
     }
   })
 
@@ -92,7 +93,8 @@ export function SportsTab({ bundle, token, run, onAdded }: any) {
         <Field label="Event name">
           <input className={`${inputFull} max-w-sm`} value={name} onChange={e => setName(e.target.value)} />
         </Field>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-4">
+        {isCb(sport) && <p className="text-xs text-fg-subtle">Captain Ball is timed (halves, clock, time-outs). Set its rules in Settings → Scoring after adding it. All teams go in one group.</p>}
+        {!isCb(sport) && <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-4">
           <Field label="Winning score">
             <Stepper value={rules.target_score} min={1} max={99}
               onChange={v => setRules({ ...rules, target_score: v })} />
@@ -110,12 +112,12 @@ export function SportsTab({ bundle, token, run, onAdded }: any) {
               onChange={v => setRules({ ...rules, switch_at: v })}
               format={v => v === 0 ? 'OFF' : String(v)} />
           </Field>
-        </div>
-        {bad && <Warn>{bad}</Warn>}
+        </div>}
+        {bad && !isCb(sport) && <Warn>{bad}</Warn>}
         <Field label={`${SPORT_LABEL[sport]} courts`}>
           <Stepper value={courtCount} min={1} max={16} onChange={setCourtCount} />
         </Field>
-        <Field label="Teams — one per line: Name, players (6 or 4), group">
+        <Field label={isCb(sport) ? 'Teams — one per line' : 'Teams — one per line: Name, players (6 or 4), group'}>
           <textarea className={`${inputFull} h-40 font-mono text-sm`} value={text}
             placeholder={'Team Alpha, 6, A\nTeam Beta, 4, B\nTeam Gamma'}
             onChange={e => setText(e.target.value)} />
@@ -132,7 +134,7 @@ export function SportsTab({ bundle, token, run, onAdded }: any) {
           Players 6 = three games per tie (MD, MD, XD); 4 = two games (MD, XD). Blank group
           alternates A / B. Group and player count can be edited later in Teams.
         </p>
-        <button disabled={!!bad || parsed.length < 2}
+        <button disabled={(!!bad && !isCb(sport)) || parsed.length < 2}
           onClick={() => run(async () => {
             await api.adminAddSportEvent(token, {
               name, sport, ...rules,
@@ -159,7 +161,9 @@ export function TieScheduleTab({ bundle, ev, token, run }: any) {
   const mine = bundle.matches.filter((m: any) => m.event_id === ev.id)
   const started = mine.some((m: any) => m.status === 'finished' || m.score_a > 0 || m.score_b > 0)
 
-  const preview = teams.length >= 2 && courts.length >= 1
+  const preview = teams.length >= 2 && courts.length >= 1 && isCb(sport)
+    ? buildCbDraw(teams.map((t: any) => ({ name: t.name, pool: t.pool ?? 'A' })), courts.length)
+    : teams.length >= 2 && courts.length >= 1
     ? buildTieDraw(
         teams.map((t: any) => ({ name: t.name, pool: t.pool ?? 'A', roster: t.roster ?? 6 })),
         courts.map((c: any) => c.game_group ?? null))
@@ -174,8 +178,8 @@ export function TieScheduleTab({ bundle, ev, token, run }: any) {
           {mine.length} games · {mine.filter((m: any) => m.status === 'finished').length} played
         </div>
         <div className="mt-1 text-xs text-fg-subtle">
-          Regenerating builds a round robin per group, each tie split into its games, spread over the{' '}
-          {courts.length} {SPORT_LABEL[sport]} court{courts.length === 1 ? '' : 's'} — {ties} ties, {preview.length} games.
+          {isCb(sport) ? 'Regenerating builds one round robin: every team plays every other team once, over the ' : 'Regenerating builds a round robin per group, each tie split into its games, spread over the '}
+          {courts.length} {SPORT_LABEL[sport]} court{courts.length === 1 ? '' : 's'} — {isCb(sport) ? `${preview.length} games` : `${ties} ties, ${preview.length} games`}.
         </div>
       </div>
       {courts.length === 0 && <Warn>This sport has no courts yet.</Warn>}
@@ -294,7 +298,7 @@ export function RosterToggle({ t, token, run }: any) {
 /** Semi-finals -> 3rd place + Final, per sport. Each step is one tap once the
  *  previous stage is decided; an unplayed stage can be undone. */
 export function KnockoutTab({ bundle, token, run }: any) {
-  const sports = sportsPresent(bundle)
+  const sports = sportsPresent(bundle).filter(s => !isCb(s))
   return (
     <div className="max-w-3xl space-y-6">
       <H>Knockout</H>

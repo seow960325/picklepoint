@@ -409,6 +409,49 @@ export const demo = {
     return next
   },
 
+  // captain ball twins of cb_save / cb_finish / admin_set_cb_rules (migration 0031)
+  cbSave(matchId: string, cb: any, scoreA: number, scoreB: number, aOnLeft: boolean): Match {
+    const s = load()
+    const i = s.bundle.matches.findIndex(m => m.id === matchId)
+    const m = s.bundle.matches[i]
+    const old = m.started_at ? ((m.cb as any)?.rev ?? 0) : 0
+    if ((cb?.rev ?? 0) <= old) throw new Error('CB_STALE')
+    const next: Match = { ...m, cb, score_a: scoreA, score_b: scoreB, a_on_left: aOnLeft,
+      started_at: m.started_at ?? new Date().toISOString(), status: 'live' }
+    s.bundle.matches[i] = next
+    save(s)
+    return next
+  },
+
+  cbFinish(matchId: string): Match {
+    const s = load()
+    const i = s.bundle.matches.findIndex(m => m.id === matchId)
+    const m = s.bundle.matches[i]
+    if (m.status === 'finished') return m
+    const next: Match = {
+      ...m, status: 'finished',
+      winner_id: m.score_a > m.score_b ? m.team_a_id : m.score_b > m.score_a ? m.team_b_id : null,
+      finished_at: new Date().toISOString(),
+      duration_seconds: m.started_at ? Math.round((Date.now() - Date.parse(m.started_at)) / 1000) : null,
+    }
+    s.bundle.matches[i] = next
+    const busy = s.bundle.matches.some(x => x.court_id === m.court_id && (x.status === 'live' || x.status === 'awaiting_confirm'))
+    const up = s.bundle.matches
+      .filter(x => x.court_id === m.court_id && x.status === 'scheduled')
+      .sort((a, b) => a.sequence - b.sequence)[0]
+    if (up && !busy) up.status = 'live'
+    save(s)
+    return next
+  },
+
+  adminSetCbRules(eventId: string, rules: any): void {
+    const s = load()
+    const ev = s.bundle.events.find(e => e.id === eventId)
+    if (!ev || ev.sport !== 'captainball') throw new Error('NO_EVENT')
+    ev.cb_rules = rules
+    save(s)
+  },
+
   confirm(matchId: string): Match {
     const s = load()
     const i = s.bundle.matches.findIndex(m => m.id === matchId)

@@ -16,7 +16,8 @@ import { Field, Stepper, Choice, Warn, GrowInput, input, inputFull } from '../co
 import { resizeLogoSafe } from '../lib/image'
 import { ScheduleRow, scheduleStatus } from '../components/ScheduleRow'
 import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts, KnockoutTab } from './MultiSportAdmin'
-import { sportsPresent } from '../lib/multisport'
+import { sportsPresent, isCb } from '../lib/multisport'
+import { CbRulesPanel } from '../components/CaptainBall'
 import { isPoolDispatch, shuffleMap, eventUntouched } from '../lib/pool'
 import { GroupTable } from '../components/GroupsKo'
 
@@ -186,7 +187,9 @@ function Panel({ bundle, token, code, reload, onLogout }: {
 
         {tab === 'competition' && <CompetitionTab bundle={bundle} token={token} run={run} secrets={secrets}
           refreshSecrets={() => api.adminBundle(token).then(setSecrets)} />}
-        {tab === 'scoring' && <ScoringTab ev={ev} token={token} run={run} />}
+        {tab === 'scoring' && (multi && isCb(ev?.sport)
+          ? <CbRulesPanel ev={ev} token={token} run={run} />
+          : <ScoringTab ev={ev} token={token} run={run} />)}
         {tab === 'teams' && <TeamsTab bundle={bundle} ev={ev} token={token} run={run} />}
         {tab === 'courts' && <CourtsTab bundle={bundle} token={token} run={run} secrets={secrets}
           refreshSecrets={() => api.adminBundle(token).then(setSecrets)} />}
@@ -638,7 +641,7 @@ function TeamRow({ t, ev, token, run, isDuel, multi, code }: any) {
           <input className={`${input} w-16 text-center uppercase`} value={pool} maxLength={2}
             onChange={e => setPool(e.target.value.toUpperCase())} />
         )}
-        {multi && <RosterToggle t={t} token={token} run={run} />}
+        {multi && !isCb(ev?.sport) && <RosterToggle t={t} token={token} run={run} />}
         <button disabled={!dirty}
           onClick={() => run(() => api.adminUpsertTeam(token, ev.id, t.id, name, pool, isDuel ? side : undefined), 'Team saved')}
           className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-brand-fg disabled:opacity-20">
@@ -657,7 +660,7 @@ function CourtsTab({ bundle, token, run, secrets, refreshSecrets }: any) {
   return (
     <div className="max-w-xl space-y-4">
       <H>Courts</H>
-      {bundle.competition.multi_sport && sportsPresent(bundle).map(s => (
+      {bundle.competition.multi_sport && sportsPresent(bundle).filter(s => !isCb(s)).map(s => (
         <SportCourts key={`${s}-${bundle.courts.filter((c: any) => (c.sport ?? 'pickleball') === s).map((c: any) => c.id + c.game_group).join()}`}
           bundle={bundle} token={token} run={run} sport={s} />
       ))}

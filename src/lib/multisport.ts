@@ -8,13 +8,15 @@
 import type { Bundle, EventCfg, Match, Team } from './types'
 import { buildDraw, type DraftMatch, type DraftTeam } from './draw.ts'
 
-export type Sport = 'pickleball' | 'badminton'
-export const SPORTS: Sport[] = ['pickleball', 'badminton']
-export const SPORT_LABEL: Record<Sport, string> = { pickleball: 'Pickleball', badminton: 'Badminton' }
-export const SPORT_ICON: Record<Sport, string> = { pickleball: '🏓', badminton: '🏸' }
+export type Sport = 'pickleball' | 'badminton' | 'captainball'
+export const SPORTS: Sport[] = ['pickleball', 'badminton', 'captainball']
+export const SPORT_LABEL: Record<Sport, string> = { pickleball: 'Pickleball', badminton: 'Badminton', captainball: 'Captain Ball' }
+export const SPORT_ICON: Record<Sport, string> = { pickleball: '🏓', badminton: '🏸', captainball: '🏀' }
 
 export const sportOf = (e?: { sport?: string | null } | null): Sport =>
-  e?.sport === 'badminton' ? 'badminton' : 'pickleball'
+  e?.sport === 'badminton' ? 'badminton' : e?.sport === 'captainball' ? 'captainball' : 'pickleball'
+/** Captain ball is a timed game (lib/captainball.ts), not a tie of rally games. */
+export const isCb = (s?: string | null): boolean => s === 'captainball'
 export const isMultiSport = (b: Bundle): boolean => !!b.competition.multi_sport
 
 /** Group-stage rules from the organiser's sheet. */
@@ -26,6 +28,8 @@ export const SPORT_PRESETS: Record<Sport, {
   pickleball: { target_score: 21, win_by: 1, cap: 21, switch_at: 11, serve_mode: 'winner' },
   // 21 x 1 game, deuce: win by 2
   badminton: { target_score: 21, win_by: 2, cap: 30, switch_at: 11, serve_mode: 'winner' },
+  // timed game: the score fields are unused (clock rules live in events.cb_rules)
+  captainball: { target_score: 99, win_by: 1, cap: 99, switch_at: 0, serve_mode: 'winner' },
 }
 
 /** The slice of a bundle that belongs to one sport (events, courts, teams, matches). */
@@ -275,6 +279,7 @@ export const FINAL_PRESETS: Record<Sport, {
 }> = {
   pickleball: { target_score: 11, win_by: 2, cap: 21, switch_at: 6, serve_mode: 'alternate' },
   badminton: { target_score: 15, win_by: 2, cap: 21, switch_at: 8, serve_mode: 'winner' },
+  captainball: { target_score: 99, win_by: 1, cap: 99, switch_at: 0, serve_mode: 'winner' },
 }
 
 export interface KoGame {
@@ -373,11 +378,19 @@ export const SPORT_TONE: Record<Sport, {
     soft: 'bg-[#34d399]/[0.08]',
     bar: 'bg-[#34d399]',
   },
+  captainball: {
+    solid: 'bg-[#fb923c] text-[#0a0e17]',
+    text: 'text-[#c2410c] dark:text-[#fdba74]',
+    border: 'border-[#f97316] dark:border-[#fb923c]',
+    soft: 'bg-[#fb923c]/[0.08]',
+    bar: 'bg-[#fb923c]',
+  },
 }
 
 const ALIAS: Record<string, SportView> = {
   pickleball: 'pickleball', pickle: 'pickleball', pb: 'pickleball',
   badminton: 'badminton', bm: 'badminton', bd: 'badminton',
+  captainball: 'captainball', captain: 'captainball', cb: 'captainball',
   all: 'all', both: 'all',
 }
 /** `?s=badminton` / `?s=pb` / `?s=all` deep links (one QR per hall). */

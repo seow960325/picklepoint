@@ -439,3 +439,26 @@ export async function adminAiUsage(token: string): Promise<{ today: number; toda
   if (IS_DEMO) return null
   return rpc('admin_ai_usage', { p_token: token })
 }
+
+// ------------------------------------------------- captain ball (migration 0031)
+/** Save the full captain-ball game state (clock, fouls, time-outs, score log). */
+export async function cbSave(
+  matchId: string, token: string, cb: unknown, scoreA: number, scoreB: number, aOnLeft: boolean,
+): Promise<Match> {
+  if (IS_DEMO) return demo.cbSave(matchId, cb, scoreA, scoreB, aOnLeft)
+  return rpc<Match>('cb_save', {
+    p_match_id: matchId, p_token: token, p_cb: cb,
+    p_score_a: scoreA, p_score_b: scoreB, p_a_on_left: aOnLeft,
+  })
+}
+
+/** Lock a captain-ball result (a level score is a draw) and start the next game. */
+export async function cbFinish(matchId: string, token: string): Promise<Match> {
+  if (IS_DEMO) return demo.cbFinish(matchId)
+  return rpc<Match>('cb_finish', { p_match_id: matchId, p_token: token })
+}
+
+export async function adminSetCbRules(token: string, eventId: string, rules: unknown): Promise<void> {
+  if (IS_DEMO) return demo.adminSetCbRules(eventId, rules)
+  await rpc('admin_set_cb_rules', { p_token: token, p_event_id: eventId, p_rules: rules })
+}

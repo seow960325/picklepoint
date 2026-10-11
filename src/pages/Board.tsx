@@ -16,6 +16,7 @@ import {
   parseSportView, readSportView, saveSportView, tiesOf, tieTitle, koState, koCourtLabel,
   type Sport, type SportView, type Tie,
 } from '../lib/multisport'
+import { CbLive, CbMatches, CbStandings } from '../components/CaptainBall'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide } from '../components/TieKnockout'
 import { CourtQueues, GroupCardPro, PlayClock, UpNextQueue } from '../components/GroupsKo'
 import { isPoolDispatch, koSlotLabel, stageLabel } from '../lib/pool'
@@ -384,6 +385,7 @@ function StageTop({ sb, sport, title, size }: { sb: Bundle; sport: Sport; title:
 function MultiLive({ b, code, view, onPick, title, wide }: {
   b: Bundle; code: string; view: SportView; onPick: (v: SportView) => void; title: string; wide: boolean
 }) {
+  if (view === 'captainball') return <CbLive b={sportBundle(b, view)} code={code} />
   if (view !== 'all') {
     const sb = sportBundle(b, view)
     return <>
@@ -399,9 +401,10 @@ function MultiLive({ b, code, view, onPick, title, wide }: {
         return (
           <section key={s} className="min-w-0">
             <SportBanner sport={s} b={sb} onOpen={() => onPick(s)} />
+            {s === 'captainball' ? <CbLive b={sb} code={code} n={3} /> : <>
             <StageTop sb={sb} sport={s} title={title} size="sm" />
             <LiveGrid b={sb} code={code} tv={false} compact hideDeck />
-            <NextTies b={sb} />
+            <NextTies b={sb} /></>}
           </section>
         )
       })}
@@ -458,6 +461,19 @@ function TvSports({ b, view, code, pane, flip, title }: {
       <div className={`mx-auto grid w-full gap-6 ${split ? 'max-w-[1800px] lg:grid-cols-2 lg:gap-8' : 'max-w-[1600px]'}`}>
         {sports.map(s => {
           const sb = sportBundle(b, s)
+          if (s === 'captainball') {
+            const cbEv = sb.events[0]
+            const cbLive = sb.courts.some(ct => liveOnCourt(sb, ct.id))
+            const showTable = pane === 'board' || (pane === 'auto' && flip) || !cbLive
+            return (
+              <section key={s} className="min-w-0">
+                <SportBanner sport={s} b={sb} big />
+                {showTable && cbEv
+                  ? <CbStandings b={sb} ev={cbEv} big />
+                  : <CbLive b={sb} code={code} tv split={split} sound n={split ? 2 : 3} />}
+              </section>
+            )
+          }
           const k = koState(sb)
           const live = sb.courts.some(ct => liveOnCourt(sb, ct.id))
           const finalLive = !!k.final?.games.some(g => g.status === 'live')
@@ -490,7 +506,10 @@ function TvSports({ b, view, code, pane, flip, title }: {
 
 /** Knockout tab: ceremony (once decided) above each sport's bracket. */
 function MultiKnockout({ b, view, title, wide }: { b: Bundle; view: SportView; title: string; wide: boolean }) {
-  const sports = view === 'all' ? sportsPresent(b) : [view]
+  const sports = (view === 'all' ? sportsPresent(b) : [view]).filter(s => s !== 'captainball')
+  if (sports.length === 0) return (
+    <div className="p-4 text-sm text-fg-subtle">Captain Ball is a round robin — the table is on the Standings tab.</div>
+  )
   const both = sports.length > 1
   return (
     <div className={`p-3 lg:p-5 ${both ? 'grid gap-8 xl:grid-cols-2' : ''}`}>
@@ -516,9 +535,9 @@ function TieMatches({ b, code, view }: { b: Bundle; code: string; view: SportVie
   const both = sports.length > 1
   return (
     <div className={`p-3 lg:p-5 ${both ? 'grid gap-6 lg:grid-cols-2' : ''}`}>
-      {sports.map(s => (
-        <SportTies key={s} b={sportBundle(b, s)} sport={s} code={code} banner={both} wide={!both} />
-      ))}
+      {sports.map(s => s === 'captainball'
+        ? <CbMatches key={s} b={sportBundle(b, s)} banner={both ? <SportBanner sport={s} b={sportBundle(b, s)} /> : undefined} />
+        : <SportTies key={s} b={sportBundle(b, s)} sport={s} code={code} banner={both} wide={!both} />)}
     </div>
   )
 }

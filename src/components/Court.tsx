@@ -39,7 +39,7 @@ export interface CourtProps {
   label?: string | null
   /** 'badminton' swaps the court markings and the serve ball for a shuttlecock.
    *  Omitted / 'pickleball' = the original look, unchanged. */
-  sport?: 'pickleball' | 'badminton'
+  sport?: 'pickleball' | 'badminton' | 'captainball'
   /** Official "serving-receiving-server#" call (Serve/alternate mode only) —
    *  the exact string a referee would call out loud. Null/undefined hides it
    *  (Winner mode, or game over). */
