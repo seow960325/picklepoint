@@ -11,7 +11,7 @@ import { buildDraw, type DraftMatch, type DraftTeam } from './draw.ts'
 export type Sport = 'pickleball' | 'badminton' | 'captainball'
 export const SPORTS: Sport[] = ['pickleball', 'badminton', 'captainball']
 export const SPORT_LABEL: Record<Sport, string> = { pickleball: 'Pickleball', badminton: 'Badminton', captainball: 'Captain Ball' }
-export const SPORT_ICON: Record<Sport, string> = { pickleball: '🏓', badminton: '🏸', captainball: '🏀' }
+export const SPORT_ICON: Record<Sport, string> = { pickleball: '🏓', badminton: '🏸', captainball: '🏐' }
 
 export const sportOf = (e?: { sport?: string | null } | null): Sport =>
   e?.sport === 'badminton' ? 'badminton' : e?.sport === 'captainball' ? 'captainball' : 'pickleball'

@@ -29,6 +29,15 @@ export default function Board() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('live')
   const [tv, setTv] = useState(false)
+  // TV controls stay hidden; any mouse move / touch shows them for a few seconds
+  const [tvCtl, setTvCtl] = useState(false)
+  useEffect(() => {
+    if (!tv) return
+    let t: ReturnType<typeof setTimeout> | undefined
+    const show = () => { setTvCtl(true); clearTimeout(t); t = setTimeout(() => setTvCtl(false), 3500) }
+    window.addEventListener('mousemove', show); window.addEventListener('touchstart', show); window.addEventListener('keydown', show)
+    return () => { clearTimeout(t); window.removeEventListener('mousemove', show); window.removeEventListener('touchstart', show); window.removeEventListener('keydown', show); setTvCtl(false) }
+  }, [tv])
   const [tvView, setTvView] = useState<'live' | 'bracket'>('live')
   // multi-sport codes only: which sport this viewer follows (URL ?s= wins, then this device's last pick)
   const [params, setParams] = useSearchParams()
@@ -85,6 +94,7 @@ export default function Board() {
 
   // ---- TV mode: dedicated, centred fullscreen presentation ----
   if (tv) {
+    const cbFocus = multi && sv === 'captainball' && tvPane !== 'board' && sportBundle(bundle, 'captainball').courts.some(ct => liveOnCourt(sportBundle(bundle, 'captainball'), ct.id))
     return (
       <div className="fixed inset-0 flex flex-col justify-center gap-5 overflow-auto bg-canvas py-6 text-fg"
         style={{
@@ -94,7 +104,7 @@ export default function Board() {
           paddingRight: 'env(safe-area-inset-right)',
         }}>
         {/* discreet controls, top-right */}
-        <div className="absolute right-4 top-4 z-10 flex items-center gap-2 opacity-30 transition-opacity hover:opacity-100">
+        <div className={`absolute right-4 top-4 z-10 flex items-center gap-2 transition-opacity duration-500 ${tvCtl ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
           {multi && sports.length > 1 && <SportSwitch sports={sports} view={sv} onPick={pickSport} size="sm" />}
           {multi && (
             <div className="flex rounded-lg border border-line bg-surface/70 p-0.5 text-xs">
@@ -120,11 +130,11 @@ export default function Board() {
           <IphoneHomeTip />
         </div>
 
-        {/* title */}
-        <div className="shrink-0 px-4 text-center sm:px-8">
+        {/* title (left out when one captain-ball game fills the screen) */}
+        {!cbFocus && <div className="shrink-0 px-4 text-center sm:px-8">
           <div className="font-display text-2xl font-bold tracking-wide sm:text-3xl md:text-4xl">{c.name}</div>
           {c.venue && <div className="mt-0.5 text-xs text-fg-muted sm:text-sm">{c.venue}</div>}
-        </div>
+        </div>}
 
         {/* big scoreboard */}
         {duelEvent && (
@@ -467,7 +477,7 @@ function TvSports({ b, view, code, pane, flip, title }: {
             const showTable = pane === 'board' || (pane === 'auto' && flip) || !cbLive
             return (
               <section key={s} className="min-w-0">
-                <SportBanner sport={s} b={sb} big />
+                {!(!split && !showTable) && <SportBanner sport={s} b={sb} big />}
                 {showTable && cbEv
                   ? <CbStandings b={sb} ev={cbEv} big />
                   : <CbLive b={sb} code={code} tv split={split} sound n={split ? 2 : 3} />}

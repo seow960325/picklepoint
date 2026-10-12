@@ -93,7 +93,7 @@ function useBoardFont(cap: string | null) {
   return { ref, px, fontSize: cap ? `min(${px}px, ${cap})` : `${px}px` }
 }
 
-const CAP = { card: null, split: '2.1vh', tv: '2.3vh' } as const
+const CAP = { card: null, split: '2.1vh', tv: '3vh' } as const
 
 /** The live scoreboard of one captain-ball game: an official-style LED board
  *  (team names, scores, game clock, period, fouls, team calls). Every number
@@ -245,7 +245,7 @@ export function CbLive({ b, code, tv = false, split = false, sound = false, n = 
           </div>
         ))}
       </div>
-      <CbUpNext b={b} n={n} big={tv} />
+      {!tv && <CbUpNext b={b} n={n} big={false} />}
     </div>
   )
 }
@@ -290,7 +290,7 @@ export function CbStandings({ b, ev, big = false, heading = false }: {
     <section className="min-w-0">
       {heading && (
         <h2 className={`mb-3 flex items-center gap-2 font-display text-xl font-bold uppercase tracking-widest ${tone}`}>
-          <span>🏀</span><span>{ev.name || 'Captain Ball'}</span>
+          <span>🏐</span><span>{ev.name || 'Captain Ball'}</span>
         </h2>
       )}
       <div className="overflow-hidden rounded-xl border border-line">

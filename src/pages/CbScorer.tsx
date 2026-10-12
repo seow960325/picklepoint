@@ -261,12 +261,13 @@ export default function CbScorer({ bundle, match, token, courtNo, code, reload, 
         </span>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-2 content-start gap-2 landscape:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)_minmax(0,1fr)] landscape:content-stretch">
+      <div className="grid min-h-0 flex-1 grid-cols-2 content-start gap-2 landscape:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)_minmax(0,1fr)]">
         {/* centre: clock + game controls */}
         <div className={`${PANEL} col-span-2 flex flex-col gap-2 p-2 landscape:order-2 landscape:col-span-1`}>
-          <div className="flex h-6 shrink-0 items-center justify-between px-1">
-            <span className="font-display text-base font-bold uppercase tracking-[0.2em] text-white">{v.periodLabel}</span>
-            <span className="flex w-[9rem] items-center justify-end gap-1.5 font-display text-sm font-bold uppercase tracking-[0.18em]" style={{ color: statusColor }}>
+          <div className="grid h-8 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-1">
+            <span className="whitespace-nowrap font-display text-sm font-bold uppercase tracking-[0.06em] text-white">{v.periodLabel}</span>
+            <Btn tone={st.phase === 'break' ? 'call' : 'ghost'} className="h-8 px-3 text-xs" onClick={() => apply(cbFlip)}>⇄ SWAP</Btn>
+            <span className="flex items-center justify-end gap-1.5 font-display text-sm font-bold uppercase tracking-[0.06em]" style={{ color: statusColor }}>
               <span className={`h-2 w-2 rounded-full ${v.running ? 'animate-pulse' : ''}`} style={{ background: statusColor }} />
               <span className="whitespace-nowrap">{v.status}</span>
             </span>
@@ -276,18 +277,14 @@ export default function CbScorer({ bundle, match, token, courtNo, code, reload, 
           </div>
           {info}
           {main}
-          <div className="grid h-11 shrink-0 grid-cols-4 gap-2">
-            {[-10000, -1000, 1000, 10000].map(d => (
-              <Btn key={d} tone="ghost" className="tabular text-base" disabled={!clockOpen} onClick={() => apply(cbAdjust(d))}>
-                {d < 0 ? '−' : '+'}{Math.abs(d) / 1000}s
-              </Btn>
-            ))}
-          </div>
-          <div className="grid h-11 shrink-0 grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1.1fr)_2.75rem] gap-2">
-            <Btn tone="ghost" className="px-1 text-xs" onClick={() => apply(cbUndo, tapUndo)} disabled={!st.log.length}>↶ Undo</Btn>
-            <Btn tone="ghost" className="px-1 text-xs" onClick={() => setConfirm('endhalf')} disabled={!(st.phase === 'play' && !v.expired)}>{endWord}</Btn>
-            <Btn tone={st.phase === 'break' ? 'call' : 'ghost'} className="px-1 text-xs" onClick={() => apply(cbFlip)}>⇄ Swap ends</Btn>
-            <Btn tone="ghost" className="px-0 text-xl" onClick={() => setMenu(true)}>⋯</Btn>
+          <div className="grid h-11 shrink-0 grid-cols-5 gap-2">
+            {[-10000, -1000, 0, 1000, 10000].map(d => d === 0
+              ? <Btn key="menu" tone="ghost" className="px-0 text-xl" onClick={() => setMenu(true)} aria-label="Settings">⚙</Btn>
+              : (
+                <Btn key={d} tone="ghost" className="tabular px-0 text-base" disabled={!clockOpen} onClick={() => apply(cbAdjust(d))}>
+                  {d < 0 ? '−' : '+'}{Math.abs(d) / 1000}s
+                </Btn>
+              ))}
           </div>
         </div>
 
@@ -313,7 +310,10 @@ export default function CbScorer({ bundle, match, token, courtNo, code, reload, 
               <span className="font-display text-xl font-bold uppercase tracking-wide">More</span>
               <Btn tone="ghost" className="h-9 px-3 text-sm" onClick={() => setMenu(false)}>Close</Btn>
             </div>
-            <Btn tone="ghost" className="h-11 w-full text-sm" onClick={() => apply(cbFlip)}>⇄ Swap ends (teams left / right)</Btn>
+            <div className="grid grid-cols-2 gap-2">
+              <Btn tone="ghost" className="h-11 text-sm" onClick={() => apply(cbUndo, tapUndo)} disabled={!st.log.length}>↶ Undo last</Btn>
+              <Btn tone="ghost" className="h-11 text-sm" onClick={() => { setMenu(false); setConfirm('endhalf') }} disabled={!(st.phase === 'play' && !v.expired)}>{endWord}</Btn>
+            </div>
             {(['a', 'b'] as Side[]).map(s => (
               <div key={s} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
                 <span className="truncate text-sm font-semibold"><span className="mr-2 inline-block h-3 w-1.5 rounded align-middle" style={{ background: CB_TEAM_COLOR[s] }} />{nm(s)}</span>
