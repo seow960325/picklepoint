@@ -115,38 +115,44 @@ export function CbScoreboard({ b, m, size = 'card', sound = false, courtLabel }:
   const lbl = 'font-display font-bold uppercase tracking-[0.18em] text-[#8b93a1]'
   const lblSize = narrow ? { fontSize: 'max(0.85em, 7px)', letterSpacing: '0.06em' } : { fontSize: '0.85em' }
 
-  const team = (s: Side) => {
+  const bh = narrow ? '5.2em' : '4.8em'
+  const tileH = '9.2em'
+  // every column shares the same grid rows, so names, tiles and bottom boxes line up exactly
+  const nameCell = (s: Side) => (
+    <div className="flex min-w-0 items-center justify-center text-center">
+      <span className="line-clamp-2 break-words font-display font-bold uppercase text-white"
+        style={{ fontSize: '1.6em', lineHeight: 1.1, letterSpacing: '0.04em' }}>{teamName(b, id(s))}</span>
+    </div>
+  )
+  const barCell = (col: string, w = '70%', glow = true) => (
+    <div className="mx-auto self-center rounded-full" style={{ height: '0.28em', width: w, background: col, boxShadow: glow ? `0 0 0.6em ${col}88` : undefined }} />
+  )
+  const scoreCell = (s: Side) => (
+    <div className={`${box} flex items-center justify-center`} style={{ height: tileH }}>
+      <SevenSeg text={segScore(sc[s], sc.a >= 100 || sc.b >= 100 ? 3 : 2)} color={CB_TEAM_COLOR[s]} size="7.5em" label={`${teamName(b, id(s))} ${sc[s]}`} />
+    </div>
+  )
+  const lowCell = (s: Side) => {
     const allowed = Math.max(0, toAllowed(st, s)), have = toLeft(st, s)
-    const col = CB_TEAM_COLOR[s]
     return (
-      <div className="flex min-w-0 flex-col items-stretch">
-        <div className="flex items-center justify-center text-center" style={{ height: '3.6em' }}>
-          <span className="line-clamp-2 break-words font-display font-bold uppercase text-white"
-            style={{ fontSize: '1.6em', lineHeight: 1.1, letterSpacing: '0.04em' }}>{teamName(b, id(s))}</span>
+      <div className="grid grid-cols-2 gap-[0.6em]">
+        <div className={`${box} flex flex-col items-center justify-between`} style={{ height: bh, padding: '0.4em' }}>
+          <span className={lbl} style={lblSize}>Fouls</span>
+          <SevenSeg text={segScore(st.f[s])} color={CB_FOUL_COLOR} size="2.4em" glow={false} />
         </div>
-        <div className="mx-auto rounded-full" style={{ height: '0.28em', width: '70%', background: col, boxShadow: `0 0 0.6em ${col}88` }} />
-        <div className={`${box} mt-[0.6em] flex justify-center`} style={{ padding: '0.5em 0.6em' }}>
-          <SevenSeg text={segScore(sc[s], sc.a >= 100 || sc.b >= 100 ? 3 : 2)} color={col} size="7.5em" label={`${teamName(b, id(s))} ${sc[s]}`} />
-        </div>
-        <div className="mt-[0.6em] grid grid-cols-2 gap-[0.6em]">
-          <div className={`${box} flex flex-col items-center justify-between`} style={{ height: narrow ? '5.2em' : '4.6em', padding: '0.4em' }}>
-            <span className={lbl} style={lblSize}>Fouls</span>
-            <SevenSeg text={segScore(st.f[s])} color={CB_FOUL_COLOR} size="2.4em" glow={false} />
-          </div>
-          <div className={`${box} flex flex-col items-center justify-between`} style={{ height: narrow ? '5.2em' : '4.6em', padding: '0.4em' }}>
-            <span className={lbl} style={lblSize}>{px < 20 ? 'Calls' : 'Team calls'}</span>
-            <span className="flex flex-wrap items-center justify-center" style={{ gap: '0.35em', minHeight: '2.4em' }}>
-              {allowed === 0
-                ? <span className={lbl} style={lblSize}>—</span>
-                : Array.from({ length: allowed }, (_, i) => (
-                  <span key={i} className="rounded-full" style={{
-                    width: '1em', height: '1em',
-                    background: i < have ? CB_CALL_COLOR : '#2a2e35',
-                    boxShadow: i < have ? `0 0 0.5em ${CB_CALL_COLOR}aa` : undefined,
-                  }} />
-                ))}
-            </span>
-          </div>
+        <div className={`${box} flex flex-col items-center justify-between`} style={{ height: bh, padding: '0.4em' }}>
+          <span className={lbl} style={lblSize}>{px < 20 ? 'Calls' : 'Team calls'}</span>
+          <span className="flex flex-1 flex-wrap items-center justify-center" style={{ gap: '0.35em' }}>
+            {allowed === 0
+              ? <span className={lbl} style={lblSize}>—</span>
+              : Array.from({ length: allowed }, (_, i) => (
+                <span key={i} className="rounded-full" style={{
+                  width: '1em', height: '1em',
+                  background: i < have ? CB_CALL_COLOR : '#2a2e35',
+                  boxShadow: i < have ? `0 0 0.5em ${CB_CALL_COLOR}aa` : undefined,
+                }} />
+              ))}
+          </span>
         </div>
       </div>
     )
@@ -178,44 +184,52 @@ export function CbScoreboard({ b, m, size = 'card', sound = false, courtLabel }:
           </span>
         </div>
 
-        <div className="mt-[0.6em] grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start" style={{ gap: '1.3em' }}>
-          {team(left)}
-          <div className="flex flex-col items-center">
-            <div className="flex items-end justify-center" style={{ height: '3.6em', paddingBottom: '0.3em' }}>
-              <span className="font-display font-bold uppercase text-white" style={{ fontSize: '1.9em', letterSpacing: '0.16em' }}>{v.periodLabel}</span>
-            </div>
-            <div className="rounded-full" style={{ height: '0.28em', width: '40%', background: '#2a2e35' }} />
-            <div className={`${box} mt-[0.6em]`} style={{ padding: '0.5em 0.9em' }}>
-              <SevenSeg text={segClock(shownClock)} color={CB_CLOCK_COLOR} size="7.5em" label={fmtClock(shownClock)} />
-            </div>
-            <div className="mt-[0.6em] grid w-full grid-cols-2 gap-[0.6em]">
-              {(halves.length >= 2 ? halves.slice(-2) : [...halves, { label: `${ordinal(2)} HALF`, a: -1, b: -1 }]).map(h => (
-                <div key={h.label} className={`${box} flex flex-col items-center justify-between`} style={{ height: narrow ? '5.2em' : '4.6em', padding: '0.4em' }}>
-                  <span className={lbl} style={lblSize}>{h.label}</span>
-                  <span className="tabular font-display font-bold text-white" style={{ fontSize: '1.7em', lineHeight: 1 }}>
-                    {h.a < 0 ? <span className="text-[#3a3f48]">– –</span> : <>
-                      <span style={{ color: CB_TEAM_COLOR[left] }}>{h[left]}</span>
-                      <span className="text-[#5b6270]"> – </span>
-                      <span style={{ color: CB_TEAM_COLOR[right] }}>{h[right]}</span>
-                    </>}
-                  </span>
-                </div>
-              ))}
-            </div>
+        <div className="mt-[0.6em] grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]"
+          style={{ columnGap: '1.3em', rowGap: '0.6em', gridTemplateRows: '3.6em 0.28em auto auto' }}>
+          {nameCell(left)}
+          <div className="flex items-center justify-center">
+            <span className="font-display font-bold uppercase text-white" style={{ fontSize: '1.9em', letterSpacing: '0.16em' }}>{v.periodLabel}</span>
           </div>
-          {team(right)}
+          {nameCell(right)}
+
+          {barCell(CB_TEAM_COLOR[left])}
+          {barCell('#2a2e35', '40%', false)}
+          {barCell(CB_TEAM_COLOR[right])}
+
+          {scoreCell(left)}
+          <div className={`${box} flex items-center justify-center`} style={{ height: tileH, padding: '0 0.9em' }}>
+            <SevenSeg text={segClock(shownClock)} color={CB_CLOCK_COLOR} size="7.5em" label={fmtClock(shownClock)} />
+          </div>
+          {scoreCell(right)}
+
+          {lowCell(left)}
+          <div className="grid grid-cols-2 gap-[0.6em]">
+            {(halves.length >= 2 ? halves.slice(-2) : [...halves, { label: `${ordinal(2)} HALF`, a: -1, b: -1 }]).map(h => (
+              <div key={h.label} className={`${box} flex flex-col items-center justify-between`} style={{ height: bh, padding: '0.4em' }}>
+                <span className={lbl} style={lblSize}>{h.label}</span>
+                <span className="tabular flex flex-1 items-center font-display font-bold text-white" style={{ fontSize: '1.7em', lineHeight: 1 }}>
+                  {h.a < 0 ? <span className="text-[#3a3f48]">– –</span> : <>
+                    <span style={{ color: CB_TEAM_COLOR[left] }}>{h[left]}</span>
+                    <span className="text-[#5b6270]">&nbsp;–&nbsp;</span>
+                    <span style={{ color: CB_TEAM_COLOR[right] }}>{h[right]}</span>
+                  </>}
+                </span>
+              </div>
+            ))}
+          </div>
+          {lowCell(right)}
         </div>
 
         {/* team call / half-time countdown — the slot is always there, so nothing jumps */}
-        <div className="mt-[0.9em] flex items-center justify-center rounded-[0.5em] border-[0.1em]"
+        <div className="mt-[0.9em] flex items-center justify-center overflow-hidden rounded-[0.5em] border-[0.1em]"
           style={{
-            height: '4em', gap: '1.2em',
+            height: '4em', gap: '0.9em', padding: '0 0.8em',
             borderColor: band ? `${band.c}88` : '#16191e',
             background: band ? `${band.c}1f` : 'transparent',
           }}>
           {band && <>
-            <span className="truncate font-display font-bold uppercase tracking-[0.14em]" style={{ fontSize: '1.7em', color: band.c }}>{band.txt}</span>
-            {band.t >= 0 && <SevenSeg text={segClock(band.t, false)} color={band.c} size="2.6em" />}
+            <span className="min-w-0 truncate text-center font-display font-bold uppercase tracking-[0.1em]" style={{ fontSize: '1.5em', color: band.c }}>{band.txt}</span>
+            {band.t >= 0 && <span className="shrink-0"><SevenSeg text={segClock(band.t, false).trimStart()} color={band.c} size="2.3em" /></span>}
           </>}
         </div>
       </div>
