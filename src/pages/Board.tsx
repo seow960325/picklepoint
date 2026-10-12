@@ -649,6 +649,27 @@ const neon = (kind: 'group' | 'ko' | 'final'): React.CSSProperties => {
   return { color: c, textShadow: `0 0 4px ${c}, 0 0 12px ${c}99, 0 0 26px ${c}55` }
 }
 
+/** Courts worth showing now. Knockout rounds use fewer courts (e.g. 6 → 2 → 1): a court
+ *  with nothing live and nothing queued drops out, so the rest get bigger. In a shared-queue
+ *  (pool) event, idle courts stay only while playable knockout games are still waiting. */
+function activeCourts(b: Bundle, pool: boolean): Bundle['courts'] {
+  const open = (m: Match) => m.status === 'scheduled' || m.status === 'on_deck'
+  const keep = new Set<string>()
+  for (const ct of b.courts) {
+    if (liveOnCourt(b, ct.id)) keep.add(ct.id)
+    else if (b.matches.some(m => open(m) && (m.court_id === ct.id || (pool && m.court_id == null && m.home_court === ct.id)))) keep.add(ct.id)
+  }
+  if (pool) {
+    const waiting = b.matches.filter(m => open(m) && m.court_id == null && m.bracket_key != null && m.team_a_id && m.team_b_id).length
+    for (const ct of b.courts.slice().sort((x, y) => x.number - y.number)) {
+      if (keep.size >= Math.min(b.courts.length, b.courts.filter(c => liveOnCourt(b, c.id)).length + waiting)) break
+      keep.add(ct.id)
+    }
+  }
+  const out = b.courts.filter(ct => keep.has(ct.id))
+  return out.length ? out : b.courts
+}
+
 export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck = false }: {
   b: Bundle; code: string; tv: boolean
   split?: boolean    // TV half-screen (multi-sport "both")
@@ -657,12 +678,12 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
 }) {
   const poolEv = b.events.find(e => e.format === 'groups_ko' && isPoolDispatch(e))
   // shared-queue events keep every court on the TV (an empty one says "open")
-  const shownCourts = tv && !poolEv ? b.courts.filter(ct => liveOnCourt(b, ct.id)) : b.courts
+  const shownCourts = tv && !poolEv ? b.courts.filter(ct => liveOnCourt(b, ct.id)) : activeCourts(b, !!poolEv)
   if (tv && shownCourts.length === 0) return <TvIdle b={b} />
   // court cards and the "on deck" lists share ONE column rule so they line up
   // one rule for every category: the fewest rows that keep each court large —
   // 1 → full width, 2 → side by side, 3 → one row of 3, 4 → 2×2, 5-6 → 3 across × 2 rows
-  const n = tv ? shownCourts.length : b.courts.length
+  const n = shownCourts.length
   const boardCols = compact ? (n <= 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2')
     : n <= 1 ? 'grid-cols-1'
     : n === 2 || n === 4 ? 'grid-cols-1 sm:grid-cols-2'
@@ -723,10 +744,10 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
       </div>
 
       {!tv && !hideDeck && poolEv && (
-        <div className="mt-4"><CourtQueues b={b} ev={poolEv} cols={cols} n={99} /></div>
+        <div className="mt-4"><CourtQueues b={b} ev={poolEv} cols={cols} n={99} courts={shownCourts} /></div>
       )}
       {tv && poolEv && !split && (
-        <div className="mt-2 lg:mt-3"><CourtQueues b={b} ev={poolEv} cols={cols} n={3} big /></div>
+        <div className="mt-2 lg:mt-3"><CourtQueues b={b} ev={poolEv} cols={cols} n={3} big courts={shownCourts} /></div>
       )}
       {tv && poolEv && split && (
         <div className="mt-2 lg:mt-3"><UpNextQueue b={b} ev={poolEv} n={4} big /></div>

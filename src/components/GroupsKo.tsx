@@ -209,12 +209,13 @@ export function UpNextQueue({ b, ev, n = 6, big = false }: { b: Bundle; ev: Even
 /** One "up next" list under each court (same column rule as the court cards
  *  above, so list and court line up): that court's home-group games in queue
  *  order. A game whose team is still on court is dimmed. */
-export function CourtQueues({ b, ev, cols, n = 6, big = false }: { b: Bundle; ev: EventCfg; cols: string; n?: number; big?: boolean }) {
+export function CourtQueues({ b, ev, cols, n = 6, big = false, courts }: { b: Bundle; ev: EventCfg; cols: string; n?: number; big?: boolean; courts?: Bundle['courts'] }) {
   const queue = poolQueue(b, ev.id)
+  if (queue.length === 0) return null   // knockout rounds: nothing queued per court
   const poolOf = (id: string | null) => b.teams.find(t => t.id === id)?.pool ?? '–'
   return (
     <div className={`grid gap-2 lg:gap-3 ${cols}`}>
-      {b.courts.map(ct => {
+      {(courts ?? b.courts).map(ct => {
         const mine = queue.filter(m => m.home_court === ct.id).slice(0, n)
         return (
           <div key={ct.id} className="min-w-0 rounded-2xl border border-line bg-surface p-3">
