@@ -661,13 +661,18 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
   const shownCourts = tv && !poolEv ? b.courts.filter(ct => liveOnCourt(b, ct.id)) : b.courts
   if (tv && shownCourts.length === 0) return <TvIdle b={b} />
   // court cards and the "on deck" lists share ONE column rule so they line up
-  const boardCols = compact ? 'grid-cols-1 sm:grid-cols-2'
-    : b.courts.length > 3 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+  // one rule for every category: the fewest rows that keep each court large —
+  // 1 → full width, 2 → side by side, 3 → one row of 3, 4 → 2×2, 5-6 → 3 across × 2 rows
+  const n = tv ? shownCourts.length : b.courts.length
+  const boardCols = compact ? (n <= 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2')
+    : n <= 1 ? 'grid-cols-1'
+    : n === 2 || n === 4 ? 'grid-cols-1 sm:grid-cols-2'
+    : n === 8 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
     : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
   const cols = !tv
     ? boardCols
-    : shownCourts.length <= 1 ? 'grid-cols-1'
-    : shownCourts.length === 2 || split ? 'grid-cols-1 sm:grid-cols-2'
+    : n <= 1 ? 'grid-cols-1'
+    : split || n === 2 || n === 4 ? 'grid-cols-1 sm:grid-cols-2'
     : 'grid-cols-1 sm:grid-cols-3'
   const tvBig = tv && !!poolEv && !split   // MC combined TV: larger wording
   const wrap = tv && !split && shownCourts.length === 1 ? 'mx-auto w-full max-w-[1100px] ' : ''
