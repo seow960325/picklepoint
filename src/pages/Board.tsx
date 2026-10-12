@@ -933,6 +933,40 @@ function bracketTierFn(rounds: Array<{ round: string; matches: Match[] }>, final
 }
 const McCtx = createContext<((round: string | null) => Tier) | null>(null)
 
+/** Shrinks a wide bracket to the width of its container (never enlarges), so nothing runs off screen. */
+function FitWidth({ children, tall }: { children: any; tall: boolean }) {
+  const outer = useRef<HTMLDivElement>(null)
+  const inner = useRef<HTMLDivElement>(null)
+  const [fit, setFit] = useState({ s: 1, h: 0 })
+  useLayoutEffect(() => {
+    const recompute = () => {
+      const o = outer.current, i = inner.current
+      if (!o || !i) return
+      const ow = o.clientWidth, w = i.offsetWidth, h = i.offsetHeight
+      if (!ow || !w) return
+      const s = Math.max(0.35, Math.min(1, (ow / w) * 0.995))
+      setFit(f => (Math.abs(f.s - s) < 0.002 && f.h === h ? f : { s, h }))
+    }
+    recompute()
+    const t = [100, 400, 1000].map(ms => setTimeout(recompute, ms))
+    const ro = new ResizeObserver(recompute)
+    if (outer.current) ro.observe(outer.current)
+    if (inner.current) ro.observe(inner.current)
+    window.addEventListener('resize', recompute)
+    ;(document as any).fonts?.ready?.then(recompute).catch(() => {})
+    return () => { ro.disconnect(); t.forEach(clearTimeout); window.removeEventListener('resize', recompute) }
+  }, [])
+  return (
+    <div ref={outer} className={`w-full overflow-x-auto overflow-y-hidden ${tall ? 'flex flex-1 flex-col' : ''}`}
+      style={!tall && fit.h ? { height: fit.h * fit.s } : undefined}>
+      <div ref={inner} className={`mx-auto w-max ${tall ? 'flex flex-1 flex-col' : ''}`}
+        style={{ transform: `scale(${fit.s})`, transformOrigin: 'top left', ...(fit.s < 1 ? { marginLeft: 0, marginRight: 0 } : {}) }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export function PosterBracket({ b, broadcast = false, tall = false }: { b: Bundle; broadcast?: boolean; tall?: boolean }) {
   const ev = b.events.find(e => e.format === 'groups_ko')
   if (!ev) return null
@@ -954,9 +988,10 @@ export function PosterBracket({ b, broadcast = false, tall = false }: { b: Bundl
   return (
     <TallCtx.Provider value={tall}>
     <McCtx.Provider value={bracketTierFn(rounds.filter(r => r !== thirdR), finalR?.round ?? 'Final')}>
-    <div className={`${broadcast ? 'w-max' : 'overflow-x-auto'} ${tall ? 'flex flex-1 flex-col' : ''} p-4 text-fg`} style={{ background: broadcast
+    <div className={`${broadcast ? 'w-max' : ''} ${tall ? 'flex flex-1 flex-col' : ''} p-4 text-fg`} style={{ background: broadcast
         ? 'radial-gradient(ellipse at top, rgba(244,205,106,0.10), transparent 60%), rgb(var(--canvas))'
         : 'radial-gradient(ellipse at top, rgba(244,205,106,0.06), transparent 55%), rgb(var(--canvas))' }}>
+      {(broadcast ? (n: any) => n : (n: any) => <FitWidth tall={tall}>{n}</FitWidth>)(
       <div className={`mx-auto flex min-w-max items-stretch justify-center ${tall ? 'flex-1' : ''}`}>
         {leftCols.map((col, i) => (
           <div key={'L' + i} className="flex items-stretch">
@@ -973,7 +1008,7 @@ export function PosterBracket({ b, broadcast = false, tall = false }: { b: Bundl
             <PColumn b={b} col={col} side="right" />
           </div>
         ))}
-      </div>
+      </div>)}
     </div>
     </McCtx.Provider>
     </TallCtx.Provider>
@@ -1071,11 +1106,11 @@ function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder, tier
     )
   }
   return (
-    <div className={`flex items-center ${mc ? 'gap-4' : 'gap-2'} border-l-2 px-2.5 ${py} ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
+    <div className={`flex items-center ${mc ? 'gap-2 pl-4 pr-3' : 'gap-2 px-2.5'} border-l-2 ${py} ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
       <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className={`${logoCls} shrink-0 rounded-[2px] object-contain`} />
       <span className={`min-w-0 flex-1 ${mc ? 'text-center' : ''} ${stack ? 'line-clamp-2 break-words leading-[1.1]' : 'truncate'} ${tx} ${mc && live ? 'font-extrabold tracking-wide text-white' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-fg' : mc ? 'font-medium text-fg-muted' : 'text-fg-muted'}`}>{stack ? (() => { const parts = teamName(b, teamId).split(' & '); return parts.length === 2 ? <><span className="block truncate">{parts[0]}</span><span className="block truncate">{parts[1]}</span></> : teamName(b, teamId) })() : teamName(b, teamId)}</span>
       {medal && <span className="shrink-0 text-xs leading-none" aria-label={medal}>{medal === 'gold' ? '🥇' : medal === 'silver' ? '🥈' : '🥉'}</span>}
-      {(finished || (mc && live)) && <span className={`tabular shrink-0 ${tx} ${mc && live ? 'font-extrabold text-brand-ink' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-gold' : 'text-fg-subtle'}`}>{score}</span>}
+      {(finished || (mc && live)) && <span className={`tabular shrink-0 ${mc ? 'w-6 text-center' : ''} ${tx} ${mc && live ? 'font-extrabold text-brand-ink' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-gold' : 'text-fg-subtle'}`}>{score}</span>}
     </div>
   )
 }
