@@ -763,6 +763,7 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
 
 /** The next games queued on one court, shown under that court's score. */
 function CourtUpList({ b, courtId, tv }: { b: Bundle; courtId: string; tv: boolean }) {
+  const mc = !!b.competition.multi_sport
   const ups = b.matches
     .filter(m => m.court_id === courtId && (m.status === 'scheduled' || m.status === 'on_deck'))
     .sort((x, y) => x.sequence - y.sequence).slice(0, 3)
@@ -777,14 +778,14 @@ function CourtUpList({ b, courtId, tv }: { b: Bundle; courtId: string; tv: boole
           {ups.map((m, i) => (
             <div key={m.id} className={`grid items-center ${tv ? 'grid-cols-[2.6rem_minmax(0,1fr)_2rem_minmax(0,1fr)] gap-2 py-1.5 text-xl' : 'grid-cols-[2rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-1.5 py-1 text-sm'}`}>
               <span className={`text-center font-display font-bold text-fg-subtle ${tv ? 'text-base' : 'text-[10px]'}`}>{m.game_label ?? i + 1}</span>
-              <span className="flex min-w-0 items-center justify-end gap-1.5 text-fg-muted">
-                <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
+              <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : 'justify-end'} gap-1.5 text-fg-muted`}>
+                <span className={`truncate ${mc ? 'text-center' : 'text-right'}`}>{teamName(b, m.team_a_id)}</span>
                 <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={`${fl} shrink-0 rounded-[2px] object-contain`} />
               </span>
               <span className="text-center text-xs text-fg-subtle">vs</span>
-              <span className="flex min-w-0 items-center gap-1.5 text-fg-muted">
+              <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : ''} gap-1.5 text-fg-muted`}>
                 <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={`${fl} shrink-0 rounded-[2px] object-contain`} />
-                <span className="truncate">{teamName(b, m.team_b_id)}</span>
+                <span className={`truncate ${mc ? 'text-center' : ''}`}>{teamName(b, m.team_b_id)}</span>
               </span>
             </div>
           ))}

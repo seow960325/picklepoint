@@ -167,6 +167,7 @@ export function GameRow({ b, code, m, tag }: { b: Bundle; code: string; m: Match
  *  takes the next one. */
 export function UpNextQueue({ b, ev, n = 6, big = false }: { b: Bundle; ev: EventCfg; n?: number; big?: boolean }) {
   const list = upNext(b, ev.id, n)
+  const mc = !!b.competition.multi_sport
   const poolOf = (id: string | null) => b.teams.find(t => t.id === id)?.pool ?? '–'
   const courtNo = (id?: string | null) => {
     const c = b.courts.find(c => c.id === id)
@@ -189,14 +190,14 @@ export function UpNextQueue({ b, ev, n = 6, big = false }: { b: Bundle; ev: Even
               <span className="whitespace-nowrap text-center text-[10px] font-bold text-fg-subtle">
                 {courtNo(m.home_court) ? `${courtNo(m.home_court)} · ` : ''}{poolOf(m.team_a_id)}
               </span>
-              <span className="flex min-w-0 items-center justify-end gap-1.5 text-fg-muted">
-                <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
+              <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : 'justify-end'} gap-1.5 text-fg-muted`}>
+                <span className={`truncate ${mc ? 'text-center' : 'text-right'}`}>{teamName(b, m.team_a_id)}</span>
                 <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-3.5 w-3.5 shrink-0 rounded-[1px] object-contain" />
               </span>
               <span className="text-center text-xs text-fg-subtle">vs</span>
-              <span className="flex min-w-0 items-center gap-1.5 text-fg-muted">
+              <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : ''} gap-1.5 text-fg-muted`}>
                 <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-3.5 w-3.5 shrink-0 rounded-[1px] object-contain" />
-                <span className="truncate">{teamName(b, m.team_b_id)}</span>
+                <span className={`truncate ${mc ? 'text-center' : ''}`}>{teamName(b, m.team_b_id)}</span>
               </span>
             </div>
           ))}
@@ -212,6 +213,7 @@ export function UpNextQueue({ b, ev, n = 6, big = false }: { b: Bundle; ev: Even
 export function CourtQueues({ b, ev, cols, n = 6, big = false, courts }: { b: Bundle; ev: EventCfg; cols: string; n?: number; big?: boolean; courts?: Bundle['courts'] }) {
   const queue = poolQueue(b, ev.id)
   if (queue.length === 0) return null   // knockout rounds: nothing queued per court
+  const mc = !!b.competition.multi_sport
   const poolOf = (id: string | null) => b.teams.find(t => t.id === id)?.pool ?? '–'
   return (
     <div className={`grid gap-2 lg:gap-3 ${cols}`}>
@@ -232,14 +234,14 @@ export function CourtQueues({ b, ev, cols, n = 6, big = false, courts }: { b: Bu
                     className={`grid ${big ? 'grid-cols-[1.6rem_1.6rem_minmax(0,1fr)_2.2rem_minmax(0,1fr)] gap-2 py-2.5 text-2xl' : 'grid-cols-[1.1rem_1.1rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-1.5 py-1.5 text-sm'} grid items-center ${teamsBusy(b, m) ? 'opacity-60' : ''}`}>
                     <span className={`text-center font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>{i + 1}</span>
                     <span className={`text-center font-bold text-fg-subtle ${big ? 'text-base' : 'text-[10px]'}`}>{poolOf(m.team_a_id)}</span>
-                    <span className="flex min-w-0 items-center justify-end gap-1.5 text-fg-muted">
-                      <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
+                    <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : 'justify-end'} gap-1.5 text-fg-muted`}>
+                      <span className={`truncate ${mc ? 'text-center' : 'text-right'}`}>{teamName(b, m.team_a_id)}</span>
                       <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={`shrink-0 rounded-[2px] object-contain ${big ? 'h-6 w-6' : 'h-3.5 w-3.5'}`} />
                     </span>
                     <span className={`text-center text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>vs</span>
-                    <span className="flex min-w-0 items-center gap-1.5 text-fg-muted">
+                    <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : ''} gap-1.5 text-fg-muted`}>
                       <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={`shrink-0 rounded-[2px] object-contain ${big ? 'h-6 w-6' : 'h-3.5 w-3.5'}`} />
-                      <span className="truncate">{teamName(b, m.team_b_id)}</span>
+                      <span className={`truncate ${mc ? 'text-center' : ''}`}>{teamName(b, m.team_b_id)}</span>
                     </span>
                   </div>
                 ))}
