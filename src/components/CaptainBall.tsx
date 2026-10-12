@@ -352,47 +352,62 @@ export function CbStandings({ b, ev, big = false, heading = false }: {
   )
 }
 
-/** Matches tab: every captain-ball game, upcoming first, then results. */
+/** Matches tab: every captain-ball game, grouped by round (upcoming first, then results). One row per game:
+ *  game number | team A (right-aligned) | vs / score | team B (left-aligned) | status. */
 export function CbMatches({ b, banner }: { b: Bundle; banner?: React.ReactNode }) {
   const games = [...b.matches].sort((x, y) => x.sequence - y.sequence)
   const up = games.filter(m => m.status !== 'finished')
   const done = games.filter(m => m.status === 'finished').reverse()
-  const card = (m: Match) => {
+  const row = (m: Match) => {
     const live = m.status === 'live' && !!m.started_at
     const fin = m.status === 'finished'
     const aW = fin && m.score_a > m.score_b, bW = fin && m.score_b > m.score_a
-    const name = (id: string | null, win: boolean, right: boolean) => (
-      <span className={`flex min-w-0 items-center gap-1.5 ${right ? 'justify-end' : ''} ${win ? 'font-bold text-fg' : fin ? 'text-fg-muted' : 'text-fg'}`}>
-        {right && <span className="truncate text-right">{teamName(b, id)}</span>}
-        <Emblem logo={teamLogo(b, id)} className="h-4 w-4 shrink-0 rounded-[2px]" />
-        {!right && <span className="truncate">{teamName(b, id)}</span>}
+    const nm = (id: string | null, win: boolean, right: boolean) => (
+      <span className={`flex min-w-0 items-center gap-2 text-base leading-tight ${right ? 'justify-end text-right' : 'text-left'} ${win ? 'font-bold text-fg' : fin ? 'font-medium text-fg-muted' : 'font-semibold text-fg'}`}>
+        {right && <span className="line-clamp-2 break-words">{teamName(b, id)}</span>}
+        <Emblem logo={teamLogo(b, id)} className="h-6 w-6 shrink-0 rounded-[2px] object-contain" />
+        {!right && <span className="line-clamp-2 break-words">{teamName(b, id)}</span>}
       </span>
     )
     return (
-      <div key={m.id} className={`overflow-hidden rounded-xl border bg-surface ${live ? 'border-[#f97316] dark:border-[#fb923c]' : 'border-line'}`}>
-        <div className="flex items-center justify-between gap-2 px-3 pt-2 text-[10px] font-bold uppercase tracking-widest text-fg-subtle">
-          <span className="truncate">Game {m.sequence} · {cbRound(m)}</span>
-          {live ? <Pill tone="live">● live</Pill> : fin ? <Pill tone="done">{m.winner_id ? 'final' : 'draw'}</Pill> : null}
-        </div>
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 py-2 text-sm">
-          {name(m.team_a_id, aW, true)}
-          <span className={`tabular font-display text-lg font-bold ${live || fin ? 'text-[#c2410c] dark:text-[#fdba74]' : 'text-fg-subtle'}`}>
-            {live || fin ? `${m.score_a}–${m.score_b}` : 'vs'}
-          </span>
-          {name(m.team_b_id, bW, false)}
-        </div>
+      <div key={m.id} className={`grid grid-cols-[2.25rem_minmax(0,1fr)_3.75rem_minmax(0,1fr)_4.5rem] items-center gap-2 border-l-2 px-2 py-2.5 ${live ? 'border-[#f97316] bg-[#f97316]/10' : 'border-transparent'}`}>
+        <span className="text-center font-display text-sm font-bold text-fg-subtle">{m.sequence}</span>
+        {nm(m.team_a_id, aW, true)}
+        <span className={`tabular text-center font-display ${live || fin ? 'text-xl font-bold text-[#c2410c] dark:text-[#fdba74]' : 'text-sm font-semibold uppercase text-fg-subtle'}`}>
+          {live || fin ? `${m.score_a}–${m.score_b}` : 'vs'}
+        </span>
+        {nm(m.team_b_id, bW, false)}
+        <span className="text-right">{live ? <Pill tone="live">● live</Pill> : fin ? <Pill tone="done">{m.winner_id ? 'final' : 'draw'}</Pill> : null}</span>
       </div>
     )
   }
-  const head = (t: string) => <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">{t}</div>
+  const group = (list: Match[]) => {
+    const rounds: { r: string; ms: Match[] }[] = []
+    for (const m of list) {
+      const r = cbRound(m) || ''
+      const last = rounds[rounds.length - 1]
+      if (last && last.r === r) last.ms.push(m); else rounds.push({ r, ms: [m] })
+    }
+    return (
+      <div className="space-y-3">
+        {rounds.map(g => (
+          <div key={g.r} className="overflow-hidden rounded-xl border border-line bg-surface">
+            {g.r && <div className="border-b border-line bg-surface-2/60 px-3 py-1.5 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">{g.r}</div>}
+            <div className="divide-y divide-line/60">{g.ms.map(row)}</div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+  const head = (t: string) => <div className="mb-2 px-1 font-display text-base font-bold uppercase tracking-widest text-accent">{t}</div>
   return (
     <section className="min-w-0">
       {banner}
       {games.length === 0 ? <div className="rounded-xl border border-line p-4 text-sm text-fg-subtle">Schedule not drawn yet.</div> : (
-        <div className="space-y-5">
-          <div>{head('Up next')}{up.length ? <div className="grid gap-2 sm:grid-cols-2">{up.map(card)}</div>
+        <div className="space-y-6">
+          <div>{head('Upcoming games')}{up.length ? group(up)
             : <div className="rounded-xl border border-line p-4 text-sm text-fg-subtle">Every game has been played.</div>}</div>
-          {done.length > 0 && <div>{head('Results')}<div className="grid gap-2 sm:grid-cols-2">{done.map(card)}</div></div>}
+          {done.length > 0 && <div>{head('Results')}{group(done)}</div>}
         </div>
       )}
     </section>
