@@ -391,7 +391,6 @@ function MultiLive({ b, code, view, onPick, title, wide }: {
     return <>
       <div className="px-3 pt-3 lg:px-5 [&:empty]:hidden"><StageTop sb={sb} sport={view} title={title} size={wide ? 'md' : 'sm'} /></div>
       <LiveGrid b={sb} code={code} tv={false} hideDeck />
-      <div className="px-3 pb-4 lg:px-5"><NextTies b={sb} /></div>
     </>
   }
   return (
@@ -404,7 +403,7 @@ function MultiLive({ b, code, view, onPick, title, wide }: {
             {s === 'captainball' ? <CbLive b={sb} code={code} n={3} /> : <>
             <StageTop sb={sb} sport={s} title={title} size="sm" />
             <LiveGrid b={sb} code={code} tv={false} compact hideDeck />
-            <NextTies b={sb} /></>}
+            </>}
           </section>
         )
       })}
@@ -702,11 +701,13 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
               {m ? <CourtScoreRow b={b} m={m} tv={tv} /> : (
                 <div className="py-6 text-center text-sm text-fg-subtle lg:py-10">No match running</div>
               )}
-              {up && (
-                <div className={`mt-3 border-t border-line pt-2 text-fg-muted lg:mt-4 lg:pt-3 ${tvBig ? 'text-xl' : 'text-[11px] lg:text-sm'}`}>
-                  Next: <span className="truncate">{teamName(b, up.team_a_id)}</span> vs <span className="truncate">{teamName(b, up.team_b_id)}</span>
-                </div>
-              )}
+              {poolEv
+                ? up && (
+                  <div className={`mt-3 border-t border-line pt-2 text-fg-muted lg:mt-4 lg:pt-3 ${tvBig ? 'text-xl' : 'text-[11px] lg:text-sm'}`}>
+                    Next: <span className="truncate">{teamName(b, up.team_a_id)}</span> vs <span className="truncate">{teamName(b, up.team_b_id)}</span>
+                  </div>
+                )
+                : <CourtUpList b={b} courtId={ct.id} tv={tv} />}
             </>
           return tv ? (
             <div key={ct.id} className="block rounded-2xl border border-line bg-surface p-2 lg:p-3">
@@ -730,45 +731,37 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
       {tv && poolEv && split && (
         <div className="mt-2 lg:mt-3"><UpNextQueue b={b} ev={poolEv} n={4} big /></div>
       )}
-      {!tv && !hideDeck && !poolEv && (
-        <div className="mt-4">
-          <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-accent">
-            On deck
-          </div>
-          <div className={`grid gap-3 ${boardCols}`}>
-            {b.courts.map(ct => {
-              const ups = b.matches
-                .filter(mm => mm.court_id === ct.id && (mm.status === 'scheduled' || mm.status === 'on_deck'))
-                .sort((x, y) => x.sequence - y.sequence)
-              return (
-                <div key={ct.id} className="rounded-2xl border border-line bg-surface p-3">
-                  <div className="mb-1.5 font-display text-xs font-bold uppercase tracking-widest text-fg-muted">
-                    {b.competition.multi_sport && ct.label ? ct.label : `Court ${ct.number}`}
-                  </div>
-                  {ups.length === 0 ? (
-                    <div className="py-1.5 text-xs text-fg-subtle">No upcoming matches</div>
-                  ) : (
-                    <div className="divide-y divide-line/60">
-                      {ups.map((mm, i) => (
-                        <div key={mm.id} className="grid grid-cols-[1.1rem_minmax(0,1fr)_1.75rem_minmax(0,1fr)] items-center gap-1.5 py-1.5 text-sm">
-                          <span className="text-center font-display text-xs font-bold text-fg-subtle">{i + 1}</span>
-                          <span className="flex items-center justify-end gap-1.5 text-fg-muted">
-                            <span className="max-w-[4.5rem] truncate text-right sm:max-w-[5rem]">{teamName(b, mm.team_a_id)}</span>
-                            <Emblem logo={teamLogo(b, mm.team_a_id)} flagName={teamSideName(b, mm.team_a_id)} className="h-3.5 w-auto shrink-0 rounded-[1px]" />
-                          </span>
-                          <span className="text-center text-xs text-fg-subtle">vs</span>
-                          <span className="flex items-center justify-start gap-1.5 text-fg-muted">
-                            <Emblem logo={teamLogo(b, mm.team_b_id)} flagName={teamSideName(b, mm.team_b_id)} className="h-3.5 w-auto shrink-0 rounded-[1px]" />
-                            <span className="max-w-[4.5rem] truncate text-left sm:max-w-[5rem]">{teamName(b, mm.team_b_id)}</span>
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+    </div>
+  )
+}
+
+/** The next games queued on one court, shown under that court's score. */
+function CourtUpList({ b, courtId, tv }: { b: Bundle; courtId: string; tv: boolean }) {
+  const ups = b.matches
+    .filter(m => m.court_id === courtId && (m.status === 'scheduled' || m.status === 'on_deck'))
+    .sort((x, y) => x.sequence - y.sequence).slice(0, 3)
+  const fl = tv ? 'h-5 w-5' : 'h-3.5 w-3.5'
+  return (
+    <div className="mt-3 border-t border-line pt-2 lg:mt-4">
+      <div className={`mb-1 font-display font-bold uppercase tracking-widest text-accent ${tv ? 'text-base' : 'text-[11px]'}`}>Up next</div>
+      {ups.length === 0 ? (
+        <div className={`py-1 text-fg-subtle ${tv ? 'text-lg' : 'text-xs'}`}>No more games</div>
+      ) : (
+        <div className="divide-y divide-line/60">
+          {ups.map((m, i) => (
+            <div key={m.id} className={`grid items-center ${tv ? 'grid-cols-[2.6rem_minmax(0,1fr)_2rem_minmax(0,1fr)] gap-2 py-1.5 text-xl' : 'grid-cols-[2rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-1.5 py-1 text-sm'}`}>
+              <span className={`text-center font-display font-bold text-fg-subtle ${tv ? 'text-base' : 'text-[10px]'}`}>{m.game_label ?? i + 1}</span>
+              <span className="flex min-w-0 items-center justify-end gap-1.5 text-fg-muted">
+                <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
+                <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={`${fl} shrink-0 rounded-[2px] object-contain`} />
+              </span>
+              <span className="text-center text-xs text-fg-subtle">vs</span>
+              <span className="flex min-w-0 items-center gap-1.5 text-fg-muted">
+                <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={`${fl} shrink-0 rounded-[2px] object-contain`} />
+                <span className="truncate">{teamName(b, m.team_b_id)}</span>
+              </span>
+            </div>
+          ))}
         </div>
       )}
     </div>
