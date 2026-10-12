@@ -8,7 +8,6 @@ import { FlagGlyph } from './ui'
 // layout constants for the aspect-correct overlay (480 x 240)
 const NET = 240, KIT = 70, MIDY = 120
 const HALO = { stroke: '#0b2145', strokeWidth: 6, strokeLinejoin: 'round' as const, paintOrder: 'stroke' as const }
-const CXL = 120, CXR = 360, R = 72
 
 export interface CourtProps {
   leftName: string
@@ -47,6 +46,10 @@ export interface CourtProps {
   /** MCMD/MCXD (pool events) only: team emblem 1.5x the flag size, no frame
    *  or shadow. Omitted = the original 54x38 framed badge, unchanged. */
   bigEmblem?: boolean
+  /** MCMD/MCXD only: slimmer tile. The overlay is 528 wide instead of 480
+   *  (court is 2.2:1 not 2:1) so the circles sit at 1/4 and 3/4 of a wider,
+   *  shorter box. Omitted = the original 480 x 240 layout, unchanged. */
+  wide?: boolean
 }
 
 const clip = (n: string, max = 17) =>
@@ -116,7 +119,7 @@ function ShuttleGlyph({ cx, cy, r = 9, dir }: { cx: number; cy: number; r?: numb
 // Corner slots the serve ball can sit in, near the outer baseline+sideline
 // corner of each service court — well clear of the (now sideline-mounted,
 // vertical) team name and the top flag/logo badge.
-const BALL_X_LEFT = 30, BALL_X_RIGHT = 450
+const BALL_X_LEFT = 30
 const BALL_Y_TOP = 52, BALL_Y_BOTTOM = 188
 
 /** serverCourt() gives 'right'/'left' from the SERVER'S OWN baseline
@@ -136,8 +139,13 @@ function ballY(court: 'right' | 'left' | null | undefined, servingSide: 'left' |
 
 export default function Court({
   leftName, rightName, nameSize = 15, nameHalo = false, nameBelow = false, leftScore, rightScore, onTap, disabled, serving, serverNo, serverCourt,
-  leftFlag, rightFlag, leftLogo, rightLogo, label, callScore, sport, bigEmblem = false,
+  leftFlag, rightFlag, leftLogo, rightLogo, label, callScore, sport, bigEmblem = false, wide = false,
 }: CourtProps) {
+  const VW = wide ? 528 : 480
+  const CXL = VW / 4, CXR = VW * 3 / 4
+  const BALL_X_RIGHT = VW - 30
+  const R = wide ? 74 : 72
+  const SCORE_FS = 104
   const bad = sport === 'badminton'
   const [down, setDown] = useState<'left' | 'right' | null>(null)
   const ballCy = ballY(serverCourt, serving) ?? (nameBelow ? MIDY + R + 8 : MIDY + R + 17) // no active server (game over) — old fixed spot below the circle
@@ -254,7 +262,7 @@ export default function Court({
       </svg>
 
       {/* ---- score circles + flags + names: aspect-correct overlay ---- */}
-      <svg viewBox="0 0 480 240" preserveAspectRatio="xMidYMid meet"
+      <svg viewBox={`0 0 ${VW} 240`} preserveAspectRatio="xMidYMid meet"
         className="pointer-events-none absolute inset-0 h-full w-full" style={{ touchAction: 'manipulation' }}>
         <defs>
           <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
@@ -279,7 +287,7 @@ export default function Court({
         <circle cx={CXL} cy={MIDY} r={R} fill="none" stroke="#c6ff3d" strokeWidth="3"
           strokeOpacity={down === 'left' ? 0.95 : 0.6} />
         <text x={CXL} y={MIDY} textAnchor="middle" dominantBaseline="central"
-          fill="#ffffff" fontSize="104" fontWeight="700"
+          fill="#ffffff" fontSize={SCORE_FS} fontWeight="700"
           fontFamily="'Barlow Condensed', Impact, sans-serif"
           style={{ fontVariantNumeric: 'tabular-nums' }}>
           {leftScore}
@@ -306,14 +314,14 @@ export default function Court({
         <circle cx={CXR} cy={MIDY} r={R} fill="none" stroke="#22d3ee" strokeWidth="3"
           strokeOpacity={down === 'right' ? 0.95 : 0.6} />
         <text x={CXR} y={MIDY} textAnchor="middle" dominantBaseline="central"
-          fill="#ffffff" fontSize="104" fontWeight="700"
+          fill="#ffffff" fontSize={SCORE_FS} fontWeight="700"
           fontFamily="'Barlow Condensed', Impact, sans-serif"
           style={{ fontVariantNumeric: 'tabular-nums' }}>
           {rightScore}
         </text>
         {badge(CXR, rightLogo, rightFlag)}
         {serving === 'right' && (bad
-          ? <ShuttleGlyph cx={serverCourt ? 428 : CXR} cy={ballCy} r={9} dir="right" />
+          ? <ShuttleGlyph cx={serverCourt ? VW - 52 : CXR} cy={ballCy} r={9} dir="right" />
           : <PickleballGlyph cx={serverCourt ? BALL_X_RIGHT : CXR} cy={ballCy} r={9} serverNo={serverNo} />)}
         {flash?.side === 'right' && (
           <circle key={`flash-right-${flash.key}`} cx={CXR} cy={MIDY} r={R + 10}
@@ -328,7 +336,7 @@ export default function Court({
           pointerEvents="all" aria-label={`point ${rightName}`} role="button" />
 
         {label && (
-          <text x="240" y="19" textAnchor="middle" fill="#f7d774" fontSize="16" fontWeight="700"
+          <text x={VW / 2} y="19" textAnchor="middle" fill="#f7d774" fontSize="16" fontWeight="700"
             fontFamily="'Barlow Condensed', sans-serif" letterSpacing="2.5">
             {label.toUpperCase()}
           </text>
@@ -337,8 +345,8 @@ export default function Court({
         {/* official score call, e.g. "3-0-2" — bottom center, Serve mode only */}
         {callScore && (
           <g>
-            <rect x="196" y="216" width="88" height="20" rx="10" fill="#0a0e17" opacity="0.55" />
-            <text x="240" y="227" textAnchor="middle" dominantBaseline="central"
+            <rect x={VW / 2 - 44} y="216" width="88" height="20" rx="10" fill="#0a0e17" opacity="0.55" />
+            <text x={VW / 2} y="227" textAnchor="middle" dominantBaseline="central"
               fill="#c6ff3d" fontSize="15" fontWeight="700"
               fontFamily="'Barlow Condensed', Impact, sans-serif" letterSpacing="1"
               style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -351,7 +359,7 @@ export default function Court({
             both serve-ball corners (top ~52 and bottom ~188) and the flag */}
         {nameBelow && ([[CXL, leftName, '#c6ff3d'], [CXR, rightName, '#22d3ee']] as const).map(([cx, nm, col]) => {
           const full = clip(nm, 30)
-          const fs = Math.max(12, Math.min(22, Math.floor((190 / Math.max(full.length, 1) - 1) / 0.45)))
+          const fs = Math.max(12, Math.min(22, Math.floor(((wide ? 215 : 190) / Math.max(full.length, 1) - 1) / 0.45)))
           return (
             <text key={cx} x={cx} y="219" textAnchor="middle" dominantBaseline="central"
               {...HALO} fill={col} fontSize={fs} fontWeight="700"
@@ -366,7 +374,7 @@ export default function Court({
           fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
           {clip(leftName, 12)}
         </text>}
-        {!nameBelow && <text x={nameHalo ? 458 : 466} y={MIDY} textAnchor="middle" transform={`rotate(90 ${nameHalo ? 458 : 466} ${MIDY})`}
+        {!nameBelow && <text x={VW - (nameHalo ? 22 : 14)} y={MIDY} textAnchor="middle" transform={`rotate(90 ${VW - (nameHalo ? 22 : 14)} ${MIDY})`}
           {...(nameHalo ? HALO : {})}
           fill="#22d3ee" fontSize={nameSize} fontWeight="700"
           fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
