@@ -1,4 +1,5 @@
 import type { Bundle } from '../lib/types'
+import FillGrid from './FillGrid'
 import { SportIcon } from './SportIcon'
 import { teamLogo, teamSideName } from '../lib/store'
 import { Emblem } from './ui'
@@ -13,7 +14,7 @@ export default function TieStandings({ b, big = false }: { b: Bundle; big?: bool
   const both = events.length > 1
   const cell = big ? 'py-3 text-lg' : 'py-2'
   return (
-    <div className={`p-3 lg:p-5 ${both ? 'grid gap-8 lg:grid-cols-2' : ''}`}>
+    <div className="p-3 lg:p-5"><FillGrid className="gap-8">
       {events.map(ev => {
         const sport = sportOf(ev)
         if (sport === 'captainball') return <CbStandings key={ev.id} b={b} ev={ev} big={big} heading={both} />
@@ -30,7 +31,7 @@ export default function TieStandings({ b, big = false }: { b: Bundle; big?: bool
                 <span><SportIcon sport={sport} /></span><span>{ev.name || SPORT_LABEL[sport]}</span>
               </h2>
             )}
-            <div className={`grid gap-3 ${both ? '' : 'lg:grid-cols-2'}`}>
+            <FillGrid className="gap-3">
               {Object.keys(pools).sort().map(pool => (
                 <div key={pool} className="overflow-hidden rounded-xl border border-line">
                   <div className={`flex items-center justify-between gap-2 px-3 py-1.5 text-xs font-bold uppercase tracking-widest ${tone.soft}`}>
@@ -78,10 +79,10 @@ export default function TieStandings({ b, big = false }: { b: Bundle; big?: bool
               {Object.keys(pools).length === 0 && (
                 <div className="text-sm text-fg-subtle">No teams yet.</div>
               )}
-            </div>
+            </FillGrid>
           </section>
         )
       })}
-    </div>
+    </FillGrid></div>
   )
 }

@@ -2,6 +2,7 @@
  *  scoreboard, the round-robin table, the games list and the admin rules
  *  panel. Only rendered for events whose sport is 'captainball'. */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import FillGrid from './FillGrid'
 import { Link } from 'react-router-dom'
 import type { Bundle, EventCfg, Match } from '../lib/types'
 import { teamName, teamLogo, liveOnCourt } from '../lib/store'
@@ -245,7 +246,7 @@ export function CbLive({ b, code, tv = false, split = false, sound = false, n = 
   const size = tv ? (split ? 'split' : 'tv') : 'card'
   return (
     <div className={tv ? 'space-y-4' : `mx-auto space-y-4 p-3 lg:p-5 ${live.length > 1 ? 'max-w-[96rem]' : 'max-w-[50rem]'}`}>
-      <div className={`grid gap-3 ${live.length > 1 && !tv ? 'lg:grid-cols-2' : ''}`}>
+      <FillGrid max={tv ? 1 : 4} className="gap-3">
         {live.map(({ ct, m }) => m ? (
           tv ? <CbScoreboard key={ct.id} b={b} m={m} size={size} sound={sound} courtLabel={ct.label ?? undefined} />
             : (
@@ -258,7 +259,7 @@ export function CbLive({ b, code, tv = false, split = false, sound = false, n = 
             {ct.label ?? `Court ${ct.number}`} · no game running
           </div>
         ))}
-      </div>
+      </FillGrid>
       {!tv && <CbUpNext b={b} n={n} big={false} />}
     </div>
   )

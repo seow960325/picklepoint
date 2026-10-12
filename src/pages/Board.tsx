@@ -20,6 +20,7 @@ import {
 import { CbLive, CbMatches, CbStandings } from '../components/CaptainBall'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide } from '../components/TieKnockout'
 import { CourtQueues, GroupCardPro, PlayClock } from '../components/GroupsKo'
+import FillGrid from '../components/FillGrid'
 import { isPoolDispatch, koSlotLabel, stageLabel } from '../lib/pool'
 
 type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
@@ -379,7 +380,7 @@ function MultiLive({ b, code, view, onPick, title, wide }: {
     </>
   }
   return (
-    <div className="grid gap-6 p-3 lg:grid-cols-2 lg:p-5">
+    <FillGrid className="gap-6 p-3 lg:p-5">
       {sportsPresent(b).map(s => {
         const sb = sportBundle(b, s)
         return (
@@ -392,7 +393,7 @@ function MultiLive({ b, code, view, onPick, title, wide }: {
           </section>
         )
       })}
-    </div>
+    </FillGrid>
   )
 }
 
@@ -444,7 +445,7 @@ function TvSports({ b, view, code, pane, flip, title }: {
   const split = sports.length > 1
   return (
     <div className="shrink-0 px-4 sm:px-8">
-      <div className={`mx-auto grid w-full gap-6 ${split ? 'max-w-[1800px] lg:grid-cols-2 lg:gap-8' : 'max-w-[1600px]'}`}>
+      <FillGrid className={`mx-auto w-full gap-6 ${split ? 'max-w-[1800px] lg:gap-8' : 'max-w-[1600px]'}`}>
         {sports.map(s => {
           const sb = sportBundle(b, s)
           if (s === 'captainball') {
@@ -485,7 +486,7 @@ function TvSports({ b, view, code, pane, flip, title }: {
             </section>
           )
         })}
-      </div>
+      </FillGrid>
     </div>
   )
 }
@@ -498,7 +499,7 @@ function MultiKnockout({ b, view, title, wide }: { b: Bundle; view: SportView; t
   )
   const both = sports.length > 1
   return (
-    <div className={`p-3 lg:p-5 ${both ? 'grid gap-8 xl:grid-cols-2' : ''}`}>
+    <FillGrid className="gap-8 p-3 lg:p-5">
       {sports.map(s => {
         const sb = sportBundle(b, s)
         const k = koState(sb)
@@ -511,7 +512,7 @@ function MultiKnockout({ b, view, title, wide }: { b: Bundle; view: SportView; t
           </section>
         )
       })}
-    </div>
+    </FillGrid>
   )
 }
 
@@ -520,11 +521,11 @@ function TieMatches({ b, code, view }: { b: Bundle; code: string; view: SportVie
   const sports = view === 'all' ? sportsPresent(b) : [view]
   const both = sports.length > 1
   return (
-    <div className={`p-3 lg:p-5 ${both ? 'grid gap-6 lg:grid-cols-2' : ''}`}>
+    <FillGrid className="gap-6 p-3 lg:p-5">
       {sports.map(s => s === 'captainball'
         ? <CbMatches key={s} b={sportBundle(b, s)} banner={both ? <SportBanner sport={s} b={sportBundle(b, s)} /> : undefined} />
         : <SportTies key={s} b={sportBundle(b, s)} sport={s} code={code} banner={both} wide={!both} />)}
-    </div>
+    </FillGrid>
   )
 }
 
@@ -535,7 +536,6 @@ function SportTies({ b, sport, code, banner, wide }: {
   const isLive = (t: Tie) => t.games.some(g => g.status === 'live')
   const upcoming = ties.filter(t => !t.done).sort((x, y) => Number(isLive(y)) - Number(isLive(x)))
   const done = ties.filter(t => t.done).reverse()
-  const grid = `grid gap-2 ${wide ? 'sm:grid-cols-2 xl:grid-cols-3' : ''}`
   const head = (txt: string) => (
     <div className="mb-2 px-1 font-display text-base font-bold uppercase tracking-widest text-fg-muted">{txt}</div>
   )
@@ -550,13 +550,13 @@ function SportTies({ b, sport, code, banner, wide }: {
           <div>
             {head('Up next')}
             {upcoming.length
-              ? <div className={grid}>{upcoming.map(t => <TieCard key={t.id} b={b} t={t} code={code} sport={sport} />)}</div>
+              ? <FillGrid className="gap-2">{upcoming.map(t => <TieCard key={t.id} b={b} t={t} code={code} sport={sport} />)}</FillGrid>
               : empty('Every tie has been played.')}
           </div>
           {done.length > 0 && (
             <div>
               {head('Results')}
-              <div className={grid}>{done.map(t => <TieCard key={t.id} b={b} t={t} code={code} sport={sport} />)}</div>
+              <FillGrid className="gap-2">{done.map(t => <TieCard key={t.id} b={b} t={t} code={code} sport={sport} />)}</FillGrid>
             </div>
           )}
         </div>
@@ -667,25 +667,13 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
   // shared-queue events keep every court on the TV (an empty one says "open")
   const shownCourts = tv && !poolEv ? b.courts.filter(ct => liveOnCourt(b, ct.id)) : activeCourts(b, !!poolEv)
   if (tv && shownCourts.length === 0) return <TvIdle b={b} />
-  // court cards and the "on deck" lists share ONE column rule so they line up
-  // one rule for every category: the fewest rows that keep each court large —
-  // 1 → full width, 2 → side by side, 3 → one row of 3, 4 → 2×2, 5-6 → 3 across × 2 rows
-  const n = shownCourts.length
-  const boardCols = compact ? (n <= 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2')
-    : n <= 1 ? 'grid-cols-1'
-    : n === 2 || n === 4 ? 'grid-cols-1 sm:grid-cols-2'
-    : n === 8 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-  const cols = !tv
-    ? boardCols
-    : n <= 1 ? 'grid-cols-1'
-    : split || n === 2 || n === 4 ? 'grid-cols-1 sm:grid-cols-2'
-    : 'grid-cols-1 sm:grid-cols-3'
+  // court cards and the "on deck" lists share ONE layout rule (FillGrid) so they line up
+  const maxCols = split ? 2 : 4
   const tvBig = tv && !!poolEv && !split   // MC combined TV: larger wording
   const wrap = tv && !split && shownCourts.length === 1 ? 'mx-auto w-full max-w-[1100px] ' : ''
   return (
     <div className={tv || compact ? '' : 'p-3 lg:p-5'}>
-      <div className={`${wrap}grid gap-2 lg:gap-3 ${cols}`}>
+      <FillGrid max={maxCols} className={`${wrap}gap-2 lg:gap-3`}>
         {shownCourts.map(ct => {
           const m = liveOnCourt(b, ct.id)
           const up = nextOnCourt(b, ct.id)
@@ -728,10 +716,10 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
             </Link>
           )
         })}
-      </div>
+      </FillGrid>
 
       {!tv && !hideDeck && poolEv && (
-        <div className="mt-4"><CourtQueues b={b} ev={poolEv} cols={cols} n={99} courts={shownCourts} /></div>
+        <div className="mt-4"><CourtQueues b={b} ev={poolEv} max={maxCols} n={99} courts={shownCourts} /></div>
       )}
     </div>
   )
@@ -1607,7 +1595,7 @@ function Matches({ b, code }: { b: Bundle; code: string }) {
 
       <section>
         <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">Groups</div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <FillGrid className="gap-3">
           {Object.keys(tables).sort().map(g => (
             koEv.tiebreak === 'diff'
               ? <GroupCardPro key={g} b={b} code={code} g={g} rows={tables[g]} advance={advance}
@@ -1619,7 +1607,7 @@ function Matches({ b, code }: { b: Bundle; code: string }) {
                 .filter(m => m.event_id === koEv.id && !isKoMatch(m) && poolOf(m.team_a_id) === g)
                 .sort((x, y) => x.sequence - y.sequence)} />
           ))}
-        </div>
+        </FillGrid>
       </section>
     </div>
   )

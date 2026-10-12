@@ -4,6 +4,7 @@
  *  Separate route on purpose — the single-code board and YC2626's
  *  multi-sport TV are untouched. */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import FillGrid from '../components/FillGrid'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useCompetition, groupStandings, teamName, teamLogo, teamSideName, liveOnCourt } from '../lib/store'
 import type { Bundle } from '../lib/types'
@@ -229,13 +230,13 @@ function GroupsBlock({ b, tone, fill = false }: { b: Bundle; tone: typeof TONES[
   return (
     <section>
       <Banner b={b} tone={tone} />
-      <div className="grid grid-cols-4 gap-3">
+      <FillGrid className="gap-3">
         {Object.keys(tables).sort().map(g => (
           <div key={g} className="rounded-xl border border-line bg-surface p-2">
             <GroupTable b={b} g={g} rows={tables[g]} advance={advance} big huge={fill} />
           </div>
         ))}
-      </div>
+      </FillGrid>
       {live.length > 0 && (
         <div className="mt-1.5 flex items-center gap-4 text-sm text-fg-subtle">
           {live.map(m => (
