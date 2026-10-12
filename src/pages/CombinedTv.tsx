@@ -98,7 +98,7 @@ export default function CombinedTv() {
           <div className="flex rounded-lg border border-line bg-surface/70 p-0.5 text-xs">
             {['both', ...all.map(b => b.competition.code.toUpperCase())].map(c => (
               <button key={c} onClick={() => pickCat(c)}
-                className={`min-h-[30px] whitespace-nowrap rounded-md px-2.5 py-1.5 font-bold uppercase ${sel === c ? 'bg-fg text-canvas' : 'text-fg-muted'}`}>
+                className={`min-h-[40px] touch-manipulation whitespace-nowrap rounded-md px-3.5 py-2 text-sm font-bold uppercase ${sel === c ? 'bg-fg text-canvas' : 'text-fg-muted'}`}>
                 {c === 'both' ? 'Both' : c}
               </button>
             ))}
@@ -107,13 +107,13 @@ export default function CombinedTv() {
         <div className="flex rounded-lg border border-line bg-surface/70 p-0.5 text-xs">
           {PANES.map(p => (
             <button key={p} onClick={() => togglePane(p)} aria-pressed={on.includes(p)}
-              className={`min-h-[30px] whitespace-nowrap rounded-md px-2.5 py-1.5 capitalize ${on.includes(p) ? 'bg-fg text-canvas' : 'text-fg-muted'}`}>
+              className={`min-h-[40px] touch-manipulation whitespace-nowrap rounded-md px-3.5 py-2 text-sm capitalize ${on.includes(p) ? 'bg-fg text-canvas' : 'text-fg-muted'}`}>
               {p}
             </button>
           ))}
         </div>
         <Link to={`/c/${bundles[0].competition.code}`}
-          className="flex min-h-[32px] items-center whitespace-nowrap rounded-lg border border-line bg-surface/70 px-3 text-xs text-fg-muted">exit TV</Link>
+          className="flex min-h-[44px] touch-manipulation items-center whitespace-nowrap rounded-lg border border-line bg-surface/70 px-4 text-sm text-fg-muted">exit TV</Link>
         <FullscreenButton className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-surface/70 p-1.5 text-fg-muted" />
       </div>
 

@@ -35,7 +35,7 @@ export default function Board() {
   useEffect(() => {
     if (!tv) return
     let t: ReturnType<typeof setTimeout> | undefined
-    const show = () => { setTvCtl(true); clearTimeout(t); t = setTimeout(() => setTvCtl(false), 3500) }
+    const show = () => { setTvCtl(true); clearTimeout(t); t = setTimeout(() => setTvCtl(false), 8000) }
     window.addEventListener('mousemove', show); window.addEventListener('touchstart', show); window.addEventListener('keydown', show)
     return () => { clearTimeout(t); window.removeEventListener('mousemove', show); window.removeEventListener('touchstart', show); window.removeEventListener('keydown', show); setTvCtl(false) }
   }, [tv])
@@ -104,25 +104,25 @@ export default function Board() {
           paddingRight: 'env(safe-area-inset-right)',
         }}>
         {/* discreet controls, top-right */}
-        <div className={`absolute right-4 top-4 z-10 flex items-center gap-2 transition-opacity duration-500 ${tvCtl ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
+        <div className={`absolute right-4 top-4 z-10 flex items-center gap-2 transition-opacity duration-500 ${tvCtl ? 'opacity-100' : 'opacity-25'}`}>
           {multi && sports.length > 1 && <SportSwitch sports={sports} view={sv} onPick={pickSport} size="sm" />}
           {multi && (
             <div className="flex rounded-lg border border-line bg-surface/70 p-0.5 text-xs">
               {(['live', 'board', 'auto'] as const).map(p => (
                 <button key={p} onClick={() => { setTvPane(p); setFlip(false) }}
-                  className={`rounded-md px-2.5 py-1 ${tvPane === p ? 'bg-fg text-canvas' : 'text-fg-muted'}`}>
+                  className={`min-h-[40px] touch-manipulation rounded-md px-3.5 py-2 text-sm font-semibold ${tvPane === p ? 'bg-fg text-canvas' : 'text-fg-muted'}`}>
                   {p === 'live' ? 'Live' : p === 'board' ? (anyKo ? 'Bracket' : 'Tables') : 'Auto'}
                 </button>
               ))}
             </div>
           )}
           <button onClick={() => setTv(false)}
-            className="rounded-lg border border-line bg-surface/70 px-3 py-1.5 text-xs text-fg-muted">
+            className="min-h-[44px] touch-manipulation rounded-lg border border-line bg-surface/70 px-4 py-2 text-sm font-semibold text-fg-muted">
             exit TV
           </button>
           {koReady && (
             <button onClick={() => setTvView(v => v === 'live' ? 'bracket' : 'live')}
-              className="rounded-lg border border-line bg-surface/70 px-3 py-1.5 text-xs text-fg-muted">
+              className="min-h-[44px] touch-manipulation rounded-lg border border-line bg-surface/70 px-4 py-2 text-sm font-semibold text-fg-muted">
               {tvView === 'live' ? 'show bracket' : 'show live'}
             </button>
           )}
@@ -319,7 +319,7 @@ function SportSwitch({ sports, view, onPick, size = 'md' }: {
         return (
           <button key={o} onClick={() => onPick(o)}
             className={`flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-display font-bold uppercase tracking-wider ${
-              size === 'md' ? 'px-2 py-2 text-[13px] tracking-wide sm:px-3 sm:text-sm sm:tracking-wider lg:text-base' : 'px-2.5 py-1 text-xs'} ${
+              size === 'md' ? 'px-2 py-2 text-[13px] tracking-wide sm:px-3 sm:text-sm sm:tracking-wider lg:text-base' : 'min-h-[40px] px-3.5 py-2 text-sm'} touch-manipulation ${
               on ? tone : 'text-fg-muted active:bg-surface-2'}`}>
             {o === 'all' ? 'Both' : <><span><SportIcon sport={o} /></span><span className="truncate">{SPORT_LABEL[o]}</span></>}
           </button>
@@ -405,7 +405,7 @@ function NextTies({ b, n = 4 }: { b: Bundle; n?: number }) {
   const fl = 'h-4 w-4 shrink-0 rounded-[2px] object-contain'
   return (
     <div className="mt-4">
-      <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-accent">Next ties</div>
+      <div className="mb-2 px-1 font-display text-base font-bold uppercase tracking-widest text-fg-muted">Next ties</div>
       <div className="divide-y divide-line/60 rounded-2xl border border-line bg-surface">
         {ties.map((t, i) => (
           <div key={t.id} className="px-3 py-2">
@@ -537,7 +537,7 @@ function SportTies({ b, sport, code, banner, wide }: {
   const done = ties.filter(t => t.done).reverse()
   const grid = `grid gap-2 ${wide ? 'sm:grid-cols-2 xl:grid-cols-3' : ''}`
   const head = (txt: string) => (
-    <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">{txt}</div>
+    <div className="mb-2 px-1 font-display text-base font-bold uppercase tracking-widest text-fg-muted">{txt}</div>
   )
   const empty = (txt: string) => (
     <div className="rounded-xl border border-line p-4 text-sm text-fg-subtle">{txt}</div>
@@ -587,7 +587,7 @@ function TieCard({ b, t, code, sport }: { b: Bundle; t: Tie; code: string; sport
   return (
     <div className={`overflow-hidden rounded-xl border bg-surface ${
       t.stage === 'F' ? 'border-[#c99a3c]' : live ? tone.border : 'border-line'}`}>
-      <div className={`flex items-center justify-between gap-2 px-3 pt-2 text-[10px] font-bold uppercase tracking-widest ${
+      <div className={`flex items-center justify-between gap-2 px-3 pt-2 text-xs font-bold uppercase tracking-widest ${
         t.stage === 'F' ? 'font-cer text-gold' : t.stage ? tone.text : 'text-fg-subtle'}`}>
         <span className="truncate">{tieTitle(t)}</span>
         {live ? <Pill tone="live">● live</Pill> : t.done ? <Pill tone="done">final</Pill> : null}

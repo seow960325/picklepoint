@@ -271,7 +271,7 @@ function CbUpNext({ b, n, big }: { b: Bundle; n: number; big?: boolean }) {
   const fl = big ? 'h-7 w-7 shrink-0 rounded-[3px]' : 'h-4 w-4 shrink-0 rounded-[2px]'
   return (
     <div>
-      <div className={`mb-2 px-1 font-display font-bold uppercase tracking-widest text-accent ${big ? 'text-xl' : 'text-sm'}`}>Up next</div>
+      <div className={`mb-2 px-1 font-display font-bold uppercase tracking-widest text-fg-muted ${big ? 'text-xl' : 'text-base'}`}>Up next</div>
       <div className="divide-y divide-line/60 rounded-2xl border border-line bg-surface">
         {ups.map(m => (
           <div key={m.id} className={`grid grid-cols-[3.5rem_minmax(0,1fr)_1.75rem_minmax(0,1fr)] items-center gap-1.5 px-3 ${big ? 'py-3 text-2xl' : 'py-2 text-sm'}`}>
@@ -392,14 +392,14 @@ export function CbMatches({ b, banner }: { b: Bundle; banner?: React.ReactNode }
       <div className="space-y-3">
         {rounds.map(g => (
           <div key={g.r} className="overflow-hidden rounded-xl border border-line bg-surface">
-            {g.r && <div className="border-b border-line bg-surface-2/60 px-3 py-1.5 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">{g.r}</div>}
+            {g.r && <div className="border-b border-line bg-surface-2/60 px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest text-fg-muted">{g.r}</div>}
             <div className="divide-y divide-line/60">{g.ms.map(row)}</div>
           </div>
         ))}
       </div>
     )
   }
-  const head = (t: string) => <div className="mb-2 px-1 font-display text-base font-bold uppercase tracking-widest text-accent">{t}</div>
+  const head = (t: string) => <div className="mb-2 px-1 font-display text-base font-bold uppercase tracking-widest text-fg-muted">{t}</div>
   return (
     <section className="min-w-0">
       {banner}
