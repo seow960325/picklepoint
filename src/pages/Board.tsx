@@ -9,7 +9,7 @@ import { displayScores, rulesOf, servingSide, serverCourt as serverCourtOf, scor
 import type { Bundle, EventCfg, Match } from '../lib/types'
 import { Screen, Pill, Spinner, FullscreenButton, Flag, Emblem, ThemeToggle } from '../components/ui'
 import Court from '../components/Court'
-import { IS_DEMO, demo } from '../lib/api'
+import { IS_DEMO, demo, refresh as fetchBundle } from '../lib/api'
 import { fullscreenSupported } from '../lib/fullscreen'
 import TieStandings from '../components/TieStandings'
 import {
@@ -19,8 +19,9 @@ import {
 } from '../lib/multisport'
 import { CbLive, CbMatches, CbStandings } from '../components/CaptainBall'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide } from '../components/TieKnockout'
-import { CourtQueues, GroupCardPro, PlayClock } from '../components/GroupsKo'
+import { CourtQueues, GroupCardPro, GroupTable, PlayClock } from '../components/GroupsKo'
 import FillGrid from '../components/FillGrid'
+import { useAutoHide } from '../lib/useAutoHide'
 import { isPoolDispatch, koSlotLabel, stageLabel } from '../lib/pool'
 
 type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
@@ -31,15 +32,8 @@ export default function Board() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('live')
   const [tv, setTv] = useState(false)
-  // TV controls stay hidden; any mouse move / touch shows them for a few seconds
-  const [tvCtl, setTvCtl] = useState(false)
-  useEffect(() => {
-    if (!tv) return
-    let t: ReturnType<typeof setTimeout> | undefined
-    const show = () => { setTvCtl(true); clearTimeout(t); t = setTimeout(() => setTvCtl(false), 8000) }
-    window.addEventListener('mousemove', show); window.addEventListener('touchstart', show); window.addEventListener('keydown', show)
-    return () => { clearTimeout(t); window.removeEventListener('mousemove', show); window.removeEventListener('touchstart', show); window.removeEventListener('keydown', show); setTvCtl(false) }
-  }, [tv])
+  // TV controls stay hidden; a touch / mouse move shows them for a few seconds
+  const { shown: tvCtl, guard: tvGuard } = useAutoHide(tv, 5000)
   const [tvView, setTvView] = useState<'live' | 'bracket'>('live')
   // multi-sport codes only: which sport this viewer follows (URL ?s= wins, then this device's last pick)
   const [params, setParams] = useSearchParams()
@@ -105,7 +99,7 @@ export default function Board() {
           paddingRight: 'env(safe-area-inset-right)',
         }}>
         {/* discreet controls, top-right */}
-        <div className={`absolute right-4 z-10 flex items-center gap-2 transition-opacity duration-500 ${tvCtl ? 'opacity-100' : 'opacity-25'}`} style={{ top: 'calc(var(--pp-top) + 0.75rem)' }}>
+        <div className={`absolute right-4 z-10 flex items-center gap-2 transition-opacity duration-500 ${tvCtl ? 'opacity-100' : 'opacity-0'}`} style={{ top: 'calc(var(--pp-top) + 0.75rem)' }} {...tvGuard}>
           {multi && sports.length > 1 && <SportSwitch sports={sports} view={sv} onPick={pickSport} size="sm" />}
           {multi && (
             <div className="flex rounded-lg border border-line bg-surface/70 p-0.5 text-xs">
@@ -182,9 +176,9 @@ export default function Board() {
               ←<span className="hidden font-semibold sm:inline"> Lobby</span>
             </Link>
             <div className="min-w-0">
-              <div className={`${multi || twoCat ? 'line-clamp-2 leading-tight' : 'truncate'} font-display text-2xl font-bold tracking-wide lg:text-3xl`}>{c.name}</div>
+              <div className={`${multi || twoCat ? 'line-clamp-2 leading-tight' : 'truncate'} font-display text-2xl font-bold tracking-wide lg:text-3xl`}>{twoCat ? stripSuffix(c.name, koEv!.name) : c.name}</div>
               <div className="truncate text-xs text-fg-muted lg:text-sm">
-                {twoCat ? koEv!.name : c.venue} · code <span className="font-bold text-brand-ink">{c.code}</span>
+                {[twoCat ? koEv!.name : c.venue].filter(Boolean).map(x => <span key="v">{x} · </span>)}code <span className="font-bold text-brand-ink">{c.code}</span>
               </div>
             </div>
           </div>
@@ -209,16 +203,22 @@ export default function Board() {
             <SportSwitch sports={sports} view={sv} onPick={pickSport} />
           </div>
         )}
+        {twoCat && (
+          <div className="mt-3 lg:mt-4">
+            <CategorySwitch code={c.code} name={koEv!.name} partner={koEv!.tv_partner!} />
+          </div>
+        )}
 
         <div className="mt-3 flex gap-1 overflow-x-auto lg:mt-4 lg:gap-2">
-          {([...(bundle.events.some(e => e.format === 'groups_ko')
-              ? ['live', 'matches', 'bracket']
-              : ['live', 'matches']),
-             ...(isMultiSport(bundle) ? ['standings', 'knockout'] : [])] as Tab[]).map(t => (
+          {(multi
+              ? ['live', 'matches', 'standings', 'knockout']
+              : ['live', 'matches',
+                 ...(bundle.events.some(e => e.format === 'groups_ko' || e.format === 'round_robin') ? ['standings'] : []),
+                 ...(bundle.events.some(e => e.format === 'groups_ko') ? ['bracket'] : [])] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider lg:px-4 lg:text-sm ${
                 tab === t ? activeTab : 'text-fg-muted'}`}>
-              {t}
+              {t === 'knockout' ? 'bracket' : t}
             </button>
           ))}
         </div>
@@ -227,7 +227,7 @@ export default function Board() {
       {tab === 'live' && (multi
         ? <MultiLive b={bundle} code={code!} view={sv} onPick={pickSport} title={c.name} wide={wide} />
         : <LiveGrid b={bundle} code={code!} tv={false} />)}
-      {tab === 'standings' && multi && <TieStandings b={vb} />}
+      {tab === 'standings' && (multi ? <TieStandings b={vb} /> : <Standings b={bundle} />)}
       {tab === 'knockout' && multi && <MultiKnockout b={bundle} view={sv} title={c.name} wide={wide} />}
       {tab === 'bracket' && <PosterBracket b={bundle} />}
       {tab === 'matches' && (multi
@@ -304,6 +304,45 @@ function SportGate({ b, sports, onPick }: { b: Bundle; sports: Sport[]; onPick: 
         </div>
       </div>
     </Screen>
+  )
+}
+
+/** "MC Open · Men's Doubles" with a "Men's Doubles" subtitle -> "MC Open". */
+function stripSuffix(title: string, suffix: string): string {
+  const t = title.trim(), c = (suffix ?? '').trim()
+  if (!c || !t.toLowerCase().endsWith(c.toLowerCase())) return t
+  const head = t.slice(0, t.length - c.length).replace(/[\s·\-–—|:]+$/, '')
+  return head.length >= 3 ? head : t
+}
+
+/** Sister-category codes (MCMD / MCXD): the same coloured bar as the multi-sport switch,
+ *  one button per category; tapping the other one opens its board. */
+function CategorySwitch({ code, name, partner }: { code: string; name: string; partner: string }) {
+  const navigate = useNavigate()
+  const [pName, setPName] = useState<string>(partner)
+  useEffect(() => {
+    let alive = true
+    fetchBundle(partner).then(b => {
+      const n = b.events.find(e => e.format === 'groups_ko')?.name
+      if (alive && n && b.competition.code.toUpperCase() === partner.toUpperCase()) setPName(n)
+    }).catch(() => {})
+    return () => { alive = false }
+  }, [partner])
+  const opts = [{ c: code, n: name, tone: 'bg-[#5aa9ff] text-[#0a0e17]' }, { c: partner, n: pName, tone: 'bg-[#f472b6] text-[#0a0e17]' }]
+    .sort((x, y) => x.c.localeCompare(y.c))
+  return (
+    <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface p-1">
+      {opts.map(o => {
+        const on = o.c.toUpperCase() === code.toUpperCase()
+        return (
+          <button key={o.c} onClick={() => !on && navigate(`/c/${o.c}`)}
+            className={`flex min-w-0 items-center justify-center whitespace-nowrap rounded-lg px-2 py-2 font-display text-[13px] font-bold uppercase tracking-wide sm:px-3 sm:text-sm sm:tracking-wider lg:text-base ${
+              on ? o.tone : 'text-fg-muted active:bg-surface-2'}`}>
+            <span className="truncate">{o.n}</span>
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -909,14 +948,15 @@ function bracketTierFn(rounds: Array<{ round: string; matches: Match[] }>, final
   const done = (r: { matches: Match[] }) => r.matches.every(m => m.status === 'finished')
   let a = order.findIndex(r => !done(r))
   if (a < 0) a = order.length - 1
+  // the round being played gets the room (names, logos and scores in full);
+  // every other round - played or still to come - shrinks to make that space
   return (round) => {
-    if (round === 'Third place') return order[a]?.round === finalRound ? 'big' : 'std'
+    if (round === 'Third place') return order[a]?.round === finalRound ? 'big' : 'compact'
     const r = order.findIndex(x => x.round === round)
-    if (r < 0) return 'std'
+    if (r < 0) return 'compact'
     const role = order.length - 1 - r            // 0 final, 1 semi-final, 2 quarter-final, 3+ earlier
-    if (r < a) return role >= 2 ? 'compact' : 'std'
-    if (r === a) return role === 0 ? 'xxl' : role === 1 ? 'xl' : role === 2 ? 'big' : 'std'
-    return role === 0 ? 'big' : 'std'
+    if (r === a) return role === 0 ? 'xxl' : 'xl'
+    return 'compact'
   }
 }
 const McCtx = createContext<((round: string | null) => Tier) | null>(null)
@@ -1450,7 +1490,7 @@ function BracketSide(
 // ------------------------------------------------------------- standings
 function Standings({ b }: { b: Bundle }) {
   return (
-    <div className="p-3 space-y-5">
+    <div className="space-y-5 p-3 lg:p-5">
       {b.events.map(ev => {
         if (ev.format === 'duel') {
           return (
@@ -1462,15 +1502,30 @@ function Standings({ b }: { b: Bundle }) {
         }
         // a quarter-final win must not leak into the group table that produced
         // the quarter-finalists, so groups_ko reads group matches only
-        const pools = ev.format === 'groups_ko'
-          ? groupStandings(b, ev.id) : standings(b, ev.id)
+        if (ev.format === 'groups_ko') {
+          const tables = groupStandings(b, ev.id)
+          return (
+            <section key={ev.id}>
+              <div className="mb-2 px-1 font-display text-base font-bold uppercase tracking-widest text-fg-muted">Groups</div>
+              <FillGrid className="gap-3">
+                {Object.keys(tables).sort().map(g => (
+                  <div key={g} className="rounded-xl border border-line bg-surface p-2">
+                    <GroupTable b={b} g={g} rows={tables[g]} advance={ev.advance_per_group ?? 2} />
+                  </div>
+                ))}
+              </FillGrid>
+            </section>
+          )
+        }
+        const pools = standings(b, ev.id)
         return (
-          <div key={ev.id}>
-            <div className="mb-2 font-display text-lg font-bold tracking-wide">{ev.name}</div>
+          <section key={ev.id}>
+            <div className="mb-2 px-1 font-display text-base font-bold uppercase tracking-widest text-fg-muted">{ev.name}</div>
+            <FillGrid className="gap-3">
             {Object.entries(pools).map(([pool, rows]) => (
-              <div key={pool} className="mb-4 overflow-hidden rounded-xl border border-line">
+              <div key={pool} className="overflow-hidden rounded-xl border border-line">
                 <div className="bg-surface px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-fg-muted">
-                  Pool {pool}
+                  Group {pool}
                 </div>
                 <table className="w-full text-sm">
                   <thead className="text-[10px] uppercase tracking-wider text-fg-subtle">
@@ -1494,7 +1549,8 @@ function Standings({ b }: { b: Bundle }) {
                 </table>
               </div>
             ))}
-          </div>
+            </FillGrid>
+          </section>
         )
       })}
     </div>
@@ -1547,11 +1603,11 @@ function Matches({ b, code }: { b: Bundle; code: string }) {
     <div className="space-y-6 p-3">
       {rounds.length > 0 && (
         <section>
-          <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">Knockout</div>
+          <div className="mb-2 px-1 font-display text-base font-bold uppercase tracking-widest text-fg-muted">Knockout</div>
           <div className="space-y-3">
             {rounds.map(r => (
               <div key={r.round} className="rounded-xl border border-line bg-surface p-3">
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">{r.round}</div>
+                <div className="mb-2 text-xs font-bold uppercase tracking-widest text-fg-subtle">{r.round}</div>
                 <ul className="space-y-1 text-sm">
                   {r.matches.map(m => {
                     const decided = m.status === 'finished'
@@ -1594,7 +1650,7 @@ function Matches({ b, code }: { b: Bundle; code: string }) {
       )}
 
       <section>
-        <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">Groups</div>
+        <div className="mb-2 px-1 font-display text-base font-bold uppercase tracking-widest text-fg-muted">Groups</div>
         <FillGrid className="gap-3">
           {Object.keys(tables).sort().map(g => (
             koEv.tiebreak === 'diff'
@@ -1770,7 +1826,7 @@ function FlatMatches({ b, code }: { b: Bundle; code: string }) {
         </div>
       </section>
       <section>
-        <div className="mb-2 px-1 font-display text-sm font-bold uppercase tracking-widest text-fg-muted">Results</div>
+        <div className="mb-2 px-1 font-display text-base font-bold uppercase tracking-widest text-fg-muted">Results</div>
         <Header />
         <div className="divide-y divide-line overflow-hidden rounded-xl border border-line">
           {done.length ? done.map(row) : <div className="p-4 text-sm text-fg-subtle">No completed matches yet.</div>}

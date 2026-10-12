@@ -5,6 +5,7 @@
  *  multi-sport TV are untouched. */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import FillGrid from '../components/FillGrid'
+import { useAutoHide } from '../lib/useAutoHide'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useCompetition, groupStandings, teamName, teamLogo, teamSideName, liveOnCourt } from '../lib/store'
 import type { Bundle } from '../lib/types'
@@ -45,6 +46,7 @@ export default function CombinedTv() {
     setOn(next); setStep(0)
     try { localStorage.setItem(paneKey, next.join(',')) } catch { /* private mode */ }
   }
+  const { shown: ctl, guard } = useAutoHide(true, 5000)
   const seq = rotation(on)
   // which category the TV shows: both (default) or one code — URL ?c= wins, then this device's last pick
   const [params, setParams] = useSearchParams()
@@ -93,42 +95,52 @@ export default function CombinedTv() {
         paddingLeft: 'max(env(safe-area-inset-left), 1rem)',
         paddingRight: 'max(env(safe-area-inset-right), 1rem)',
       }}>
-      {/* discreet controls */}
-      <div className="absolute right-3 z-10 flex items-center gap-2 opacity-30 transition-opacity hover:opacity-100" style={{ top: 'calc(var(--pp-top) + 0.5rem)' }}>
+      {/* controls: hidden until the screen is touched, same look as the multi-sport TV */}
+      <div className={`absolute right-4 z-10 flex items-center gap-2 transition-opacity duration-500 ${ctl ? 'opacity-100' : 'opacity-0'}`}
+        style={{ top: 'calc(var(--pp-top) + 0.75rem)' }} {...guard}>
         {all.length > 1 && (
-          <div className="flex rounded-lg border border-line bg-surface/70 p-0.5 text-xs">
-            {['both', ...all.map(b => b.competition.code.toUpperCase())].map(c => (
-              <button key={c} onClick={() => pickCat(c)}
-                className={`min-h-[40px] touch-manipulation whitespace-nowrap rounded-md px-3.5 py-2 text-sm font-bold uppercase ${sel === c ? 'bg-fg text-canvas' : 'text-fg-muted'}`}>
-                {c === 'both' ? 'Both' : c}
-              </button>
-            ))}
+          <div className="flex gap-1 rounded-xl border border-line bg-surface p-1">
+            {[...all.map(b => b.competition.code.toUpperCase()), 'both'].map(c => {
+              const b = all.find(x => x.competition.code.toUpperCase() === c)
+              const on = sel === c
+              const tone = b ? toneOf(b) : null
+              return (
+                <button key={c} onClick={() => pickCat(c)}
+                  className={`flex min-h-[40px] touch-manipulation items-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 font-display text-sm font-bold uppercase tracking-wider ${
+                    on ? (tone ? `${tone.bar} text-[#0a0e17]` : 'bg-fg text-canvas') : 'text-fg-muted active:bg-surface-2'}`}>
+                  {tone && !on && <span className={`h-3 w-1.5 rounded-full ${tone.bar}`} />}
+                  {b ? category(b) : 'Both'}
+                </button>
+              )
+            })}
           </div>
         )}
-        <div className="flex rounded-lg border border-line bg-surface/70 p-0.5 text-xs">
+        <div className="flex rounded-lg border border-line bg-surface/70 p-0.5">
           {PANES.map(p => (
             <button key={p} onClick={() => togglePane(p)} aria-pressed={on.includes(p)}
-              className={`min-h-[40px] touch-manipulation whitespace-nowrap rounded-md px-3.5 py-2 text-sm capitalize ${on.includes(p) ? 'bg-fg text-canvas' : 'text-fg-muted'}`}>
+              className={`min-h-[40px] touch-manipulation whitespace-nowrap rounded-md px-3.5 py-2 text-sm font-semibold capitalize ${on.includes(p) ? 'bg-fg text-canvas' : 'text-fg-muted'}`}>
               {p}
             </button>
           ))}
         </div>
         <Link to={`/c/${bundles[0].competition.code}`}
-          className="flex min-h-[44px] touch-manipulation items-center whitespace-nowrap rounded-lg border border-line bg-surface/70 px-4 text-sm text-fg-muted">exit TV</Link>
-        <FullscreenButton className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-surface/70 p-1.5 text-fg-muted" />
+          className="flex min-h-[44px] touch-manipulation items-center whitespace-nowrap rounded-lg border border-line bg-surface/70 px-4 text-sm font-semibold text-fg-muted">exit TV</Link>
+        <FullscreenButton className="grid h-11 w-11 place-items-center rounded-lg border border-line bg-surface/70 p-2 text-fg-muted" />
       </div>
 
-      <div className="shrink-0 pb-2 text-center">
-        <div className="line-clamp-1 font-display text-2xl font-bold tracking-wide sm:text-3xl lg:text-4xl">{title}</div>
-        <div className="mt-0.5 text-[11px] uppercase tracking-[0.3em] text-fg-subtle">
-          {shown === 'live' ? 'Live courts' : shown === 'groups' ? 'Group tables' : 'Knockout'}
+      {shown !== 'live' && (
+        <div className="shrink-0 pb-2 text-center">
+          <div className="line-clamp-1 font-display text-2xl font-bold tracking-wide sm:text-3xl lg:text-4xl">{title}</div>
+          <div className="mt-0.5 text-[11px] uppercase tracking-[0.3em] text-fg-subtle">
+            {shown === 'groups' ? 'Group tables' : 'Knockout'}
+          </div>
         </div>
-      </div>
+      )}
 
       {shown === 'live' && (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           {bundles.map((b, i) => (
-            <LiveRow key={b.competition.id} b={b} tone={toneOf(b)} />
+            <LiveRow key={b.competition.id} b={b} tone={toneOf(b)} title={i === 0 ? title : undefined} />
           ))}
         </div>
       )}
@@ -192,31 +204,42 @@ function stageLine(b: Bundle): string {
   return koPodium(b) ? 'Champions decided' : 'Knockout'
 }
 
-function Banner({ b, tone }: { b: Bundle; tone: typeof TONES[number] }) {
+/** "MC Open · Men's Doubles" above a "Men's Doubles" banner -> just "MC Open". */
+function stripCat(title: string, cat: string): string {
+  const t = title.trim(), c = cat.trim()
+  if (!c || !t.toLowerCase().endsWith(c.toLowerCase())) return t
+  const head = t.slice(0, t.length - c.length).replace(/[\s·\-–—|:]+$/, '')
+  return head.length >= 3 ? head : t
+}
+
+function Banner({ b, tone, big = false }: { b: Bundle; tone: typeof TONES[number]; big?: boolean }) {
   return (
-    <div className={`mb-2 flex shrink-0 items-center justify-between gap-3 rounded-xl px-3 py-1.5 ${tone.soft}`}>
-      <span className="flex min-w-0 items-center gap-2">
-        <span className={`h-5 w-1.5 shrink-0 rounded-full ${tone.bar}`} />
-        <span className={`truncate whitespace-nowrap font-display text-xl font-bold uppercase tracking-widest lg:text-2xl ${tone.text}`}>{category(b)}</span>
-        <span className="shrink-0 whitespace-nowrap font-display text-sm font-bold tracking-widest text-fg-subtle">{b.competition.code}</span>
+    <div className={`flex shrink-0 items-center justify-between gap-3 rounded-xl ${big ? 'mb-3 px-5 py-3' : 'mb-2 px-3 py-1.5'} ${tone.soft}`}>
+      <span className="flex min-w-0 items-center gap-3">
+        <span className={`${big ? 'h-9 w-2' : 'h-5 w-1.5'} shrink-0 rounded-full ${tone.bar}`} />
+        <span className={`truncate whitespace-nowrap font-display font-bold uppercase tracking-widest ${big ? 'text-4xl' : 'text-xl lg:text-2xl'} ${tone.text}`}>{category(b)}</span>
+        <span className={`shrink-0 whitespace-nowrap font-display font-bold tracking-widest text-fg-subtle ${big ? 'text-2xl' : 'text-sm'}`}>{b.competition.code}</span>
       </span>
-      <span className="shrink-0 whitespace-nowrap text-xs font-semibold text-fg-muted lg:text-sm">{stageLine(b)}</span>
+      <span className={`shrink-0 whitespace-nowrap font-semibold text-fg-muted ${big ? 'text-2xl' : 'text-xs lg:text-sm'}`}>{stageLine(b)}</span>
     </div>
   )
 }
 
-function LiveRow({ b, tone }: { b: Bundle; tone: typeof TONES[number] }) {
+function LiveRow({ b, tone, title }: { b: Bundle; tone: typeof TONES[number]; title?: string }) {
   const ev = b.events.find(e => e.format === 'groups_ko')
   const next = ev ? upNext(b, ev.id, 4) : []
   const anyLive = b.courts.some(c => liveOnCourt(b, c.id))
   return (
-    <section className="flex min-h-0 flex-1 flex-col">
-      <Banner b={b} tone={tone} />
-      <div className="relative min-h-0 flex-1">
-        {anyLive || next.length
-          ? <Fit><div className="w-[1800px]"><LiveGrid b={b} code={b.competition.code} tv /></div></Fit>
-          : <div className="grid h-full place-items-center text-lg text-fg-subtle">No game on court right now</div>}
-      </div>
+    <section className="relative min-h-0 flex-1">
+      <Fit>
+        <div className="w-[1800px]">
+          {title && <div className="mb-3 text-center font-display text-5xl font-bold tracking-wide">{stripCat(title, category(b))}</div>}
+          <Banner b={b} tone={tone} big />
+          {anyLive || next.length
+            ? <LiveGrid b={b} code={b.competition.code} tv />
+            : <div className="py-24 text-center text-3xl text-fg-subtle">No game on court right now</div>}
+        </div>
+      </Fit>
     </section>
   )
 }

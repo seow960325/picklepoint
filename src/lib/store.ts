@@ -18,10 +18,13 @@ export function useCompetition(code: string | undefined) {
   const codeRef = useRef(code)
   codeRef.current = code
 
+  // a slow, older refresh must never overwrite a newer one (that is what makes scores flash back)
+  const reqNo = useRef(0)
   const reload = useCallback(async () => {
     if (!codeRef.current) return
-    try { setBundle(await api.refresh(codeRef.current)); setError(null) }
-    catch (e: any) { setError(e.message) }
+    const my = ++reqNo.current
+    try { const b = await api.refresh(codeRef.current); if (my === reqNo.current) { setBundle(b); setError(null) } }
+    catch (e: any) { if (my === reqNo.current) setError(e.message) }
   }, [])
 
   useEffect(() => {

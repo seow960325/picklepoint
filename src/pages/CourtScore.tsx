@@ -240,7 +240,40 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
   const history = useRef<[number, number, UndoState][]>([])
   const prevToken = useRef(token)
 
-  useEffect(() => { setM(match) }, [match.id, match.score_a, match.score_b, match.status, match.a_on_left])
+  // ---- no flash-back: the screen shows the referee's own taps first ----
+  // Server pushes (realtime refresh) can carry a snapshot taken BEFORE the latest tap,
+  // and responses can arrive out of order. So: requests go out one at a time, only the
+  // newest response is shown, and a pushed copy of the match is adopted only once this
+  // device has been quiet for a moment (nothing in flight, nothing queued).
+  const seq = useRef(0)
+  const inflight = useRef(0)
+  const lastLocal = useRef(0)
+  const chain = useRef<Promise<unknown>>(Promise.resolve())
+  const latest = useRef(match)
+  latest.current = match
+  const settle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const adopt = () => {
+    clearTimeout(settle.current)
+    const quiet = inflight.current === 0 && pending() === 0 && Date.now() - lastLocal.current > 1500
+    if (quiet) setM(latest.current)
+    else settle.current = setTimeout(adopt, 400)
+  }
+  useEffect(() => () => clearTimeout(settle.current), [])
+  const curId = useRef(match.id)
+  useEffect(() => {
+    if (curId.current !== match.id) { curId.current = match.id; clearTimeout(settle.current); setM(match); return }
+    adopt()
+  }, [match.id, match.score_a, match.score_b, match.status, match.a_on_left, match.serving_team, match.server_no])
+  /** send one change to the server, in order; show its result only if nothing newer was tapped since */
+  const send = (fn: () => Promise<Match>): Promise<Match> => {
+    const my = ++seq.current
+    inflight.current++
+    lastLocal.current = Date.now()
+    const p = chain.current.then(fn)
+    chain.current = p.catch(() => {})
+    return p.then(r => { if (my === seq.current) setM(r); return r })
+      .finally(() => { inflight.current--; lastLocal.current = Date.now(); adopt() })
+  }
 
   const sync = async () => {
     await flush(async op => {
@@ -286,7 +319,7 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
 
     const evId = crypto.randomUUID()
     try {
-      setM(await api.scorePoint(m.id, side, token, evId))
+      await send(() => api.scorePoint(m.id, side, token, evId))
       setOffline(pending() > 0)
     } catch (e: any) {
       if (isPermanentError(String(e?.message ?? e))) { history.current.pop(); setM(before); reload(); return }   // match already finished/confirmed
@@ -302,7 +335,7 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
     const prev = history.current.pop()
     if (prev) setM(applyUndo(m, prev[0], prev[1], rules, prev[2]))
     tapUndo()
-    try { setM(await api.undoPoint(m.id, token)) }
+    try { await send(() => api.undoPoint(m.id, token)) }
     catch {
       // undo_point is not idempotent, so we never queue it — a lost response
       // would double-delete on replay. Revert so local matches the server.
@@ -315,7 +348,7 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
   const pickFirstServer = async (side: 'left' | 'right') => {
     setServerPicked(true)
     if (m.score_a !== 0 || m.score_b !== 0) return   // only before the match has started
-    try { setM(await api.setFirstServer(m.id, side, token)) } catch { /* best-effort */ }
+    try { await send(() => api.setFirstServer(m.id, side, token)) } catch { /* best-effort */ }
   }
 
   const confirm = async () => {
@@ -338,7 +371,7 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
     if (resetTimer.current) clearTimeout(resetTimer.current)
     setConfirmingReset(false)
     history.current = []
-    setM(await api.resetMatch(m.id, token))
+    await send(() => api.resetMatch(m.id, token))
   }
 
   const s = displayScores(m)
@@ -357,7 +390,7 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
   // SWAP persists to the server (a_on_left) so the live board and TV mirror it.
   const swap = async () => {
     setM(prev => ({ ...prev, a_on_left: !prev.a_on_left }))
-    try { setM(await api.flipSides(m.id, token)) }
+    try { await send(() => api.flipSides(m.id, token)) }
     catch { setM(prev => ({ ...prev, a_on_left: !prev.a_on_left })) } // revert; retry when online
   }
   const matchNo = bundle.matches
