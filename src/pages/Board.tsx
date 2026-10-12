@@ -18,7 +18,7 @@ import {
 } from '../lib/multisport'
 import { CbLive, CbMatches, CbStandings } from '../components/CaptainBall'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide } from '../components/TieKnockout'
-import { CourtQueues, GroupCardPro, PlayClock } from '../components/GroupsKo'
+import { CourtQueues, GroupCardPro, PlayClock, UpNextQueue } from '../components/GroupsKo'
 import { isPoolDispatch, koSlotLabel, stageLabel } from '../lib/pool'
 
 type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
@@ -245,12 +245,31 @@ export default function Board() {
 }
 
 // ------------------------------------------------------------- live grid
-function TvIdle({ b: _b }: { b: Bundle }) {
+function TvIdle({ b }: { b: Bundle }) {
+  const ups = onDeck(b, { n: 6 })
   return (
     <div className="px-6 py-16 text-center">
       <div className="font-display text-2xl font-bold tracking-wide text-fg-muted sm:text-3xl">
         No match live right now
       </div>
+      {ups.length > 0 && (
+        <div className="mx-auto mt-6 max-w-lg space-y-2">
+          <div className="text-xs font-bold uppercase tracking-widest text-accent">Up next</div>
+          {ups.map(m => (
+            <div key={m.id} className="grid grid-cols-[minmax(0,1fr)_2rem_minmax(0,1fr)] items-center gap-2 text-base sm:text-lg">
+              <span className="flex min-w-0 items-center justify-end gap-2">
+                <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
+                <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-4 w-auto shrink-0 rounded-[1px]" />
+              </span>
+              <span className="text-center text-fg-subtle">vs</span>
+              <span className="flex min-w-0 items-center gap-2">
+                <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-4 w-auto shrink-0 rounded-[1px]" />
+                <span className="truncate">{teamName(b, m.team_b_id)}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -709,12 +728,12 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
                 <div className="py-6 text-center text-sm text-fg-subtle lg:py-10">No match running</div>
               )}
               {poolEv
-                ? !tv && up && (
+                ? up && (
                   <div className={`mt-3 border-t border-line pt-2 text-fg-muted lg:mt-4 lg:pt-3 ${tvBig ? 'text-xl' : 'text-[11px] lg:text-sm'}`}>
                     Next: <span className="truncate">{teamName(b, up.team_a_id)}</span> vs <span className="truncate">{teamName(b, up.team_b_id)}</span>
                   </div>
                 )
-                : !tv && <CourtUpList b={b} courtId={ct.id} tv={tv} />}
+                : <CourtUpList b={b} courtId={ct.id} tv={tv} />}
             </>
           return tv ? (
             <div key={ct.id} className="block rounded-2xl border border-line bg-surface p-2 lg:p-3">
@@ -732,6 +751,12 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
       {!tv && !hideDeck && poolEv && (
         <div className="mt-4"><CourtQueues b={b} ev={poolEv} cols={cols} n={99} courts={shownCourts} /></div>
       )}
+      {tv && poolEv && !split && (
+        <div className="mt-2 lg:mt-3"><CourtQueues b={b} ev={poolEv} cols={cols} n={3} big courts={shownCourts} /></div>
+      )}
+      {tv && poolEv && split && (
+        <div className="mt-2 lg:mt-3"><UpNextQueue b={b} ev={poolEv} n={4} big /></div>
+      )}
     </div>
   )
 }
@@ -742,22 +767,22 @@ function CourtUpList({ b, courtId, tv }: { b: Bundle; courtId: string; tv: boole
   const ups = b.matches
     .filter(m => m.court_id === courtId && (m.status === 'scheduled' || m.status === 'on_deck'))
     .sort((x, y) => x.sequence - y.sequence).slice(0, 3)
-  const fl = tv ? 'h-6 w-6' : 'h-5 w-5 lg:h-6 lg:w-6'
+  const fl = tv ? 'h-5 w-5' : 'h-3.5 w-3.5'
   return (
     <div className="mt-3 border-t border-line pt-2 lg:mt-4">
-      <div className={`mb-1 font-display font-bold uppercase tracking-widest text-accent ${tv ? 'text-xl' : 'text-base lg:text-xl'}`}>Up next</div>
+      <div className={`mb-1 font-display font-bold uppercase tracking-widest text-accent ${tv ? 'text-base' : 'text-[11px]'}`}>Up next</div>
       {ups.length === 0 ? (
-        <div className={`py-1 text-fg-subtle ${tv ? 'text-xl' : 'text-base'}`}>No more games</div>
+        <div className={`py-1 text-fg-subtle ${tv ? 'text-lg' : 'text-xs'}`}>No more games</div>
       ) : (
         <div className="divide-y divide-line/60">
           {ups.map((m, i) => (
-            <div key={m.id} className={`grid items-center ${tv ? 'grid-cols-[2.6rem_minmax(0,1fr)_2.2rem_minmax(0,1fr)] gap-2 py-2 text-2xl' : 'grid-cols-[2.2rem_minmax(0,1fr)_2rem_minmax(0,1fr)] gap-2 py-1.5 text-lg lg:text-2xl'}`}>
-              <span className={`text-center font-display font-bold text-fg-subtle ${tv ? 'text-lg' : 'text-sm'}`}>{m.game_label ?? i + 1}</span>
+            <div key={m.id} className={`grid items-center ${tv ? 'grid-cols-[2.6rem_minmax(0,1fr)_2rem_minmax(0,1fr)] gap-2 py-1.5 text-xl' : 'grid-cols-[2rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-1.5 py-1 text-sm'}`}>
+              <span className={`text-center font-display font-bold text-fg-subtle ${tv ? 'text-base' : 'text-[10px]'}`}>{m.game_label ?? i + 1}</span>
               <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : 'justify-end'} gap-1.5 text-fg-muted`}>
                 <span className={`truncate ${mc ? 'text-center' : 'text-right'}`}>{teamName(b, m.team_a_id)}</span>
                 <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={`${fl} shrink-0 rounded-[2px] object-contain`} />
               </span>
-              <span className="text-center text-base text-fg-subtle">vs</span>
+              <span className="text-center text-xs text-fg-subtle">vs</span>
               <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : ''} gap-1.5 text-fg-muted`}>
                 <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={`${fl} shrink-0 rounded-[2px] object-contain`} />
                 <span className={`truncate ${mc ? 'text-center' : ''}`}>{teamName(b, m.team_b_id)}</span>
@@ -786,12 +811,13 @@ function CourtScoreRow({ b, m, tv }: { b: Bundle; m: Match; tv: boolean }) {
   const courtSide = m.status === 'live' ? serverCourtOf(m, rules.serve_mode) : null
   const call = m.status === 'live' ? scoreCall(m, rules.serve_mode) : null
   return (
-    <div className="aspect-[2/1] lg:aspect-[7/4]">
+    <div className={ev.court_dispatch === 'pool' ? 'aspect-[2.2/1]' : 'aspect-[2/1] lg:aspect-[7/4]'}>
       <Court
         leftName={teamName(b, leftTeamId)}
         nameHalo={ev.court_dispatch === 'pool'}
         nameBelow={ev.court_dispatch === 'pool'}
         bigEmblem={ev.court_dispatch === 'pool'}
+        wide={ev.court_dispatch === 'pool'}
         rightName={teamName(b, rightTeamId)}
         leftScore={s.left} rightScore={s.right}
         leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}
@@ -904,6 +930,8 @@ export function FitBox({ children }: { children: any }) {
 /** `tall`: cards get taller (and slightly larger type) so the poster can use the
  *  full height of a TV that shows one category. Parent must give it a height. */
 const TallCtx = createContext(false)
+/** MCMD/MCXD (pool dispatch) bracket: photo logos, slimmer boxes, lighter type */
+const McCtx = createContext(false)
 
 export function PosterBracket({ b, broadcast = false, tall = false }: { b: Bundle; broadcast?: boolean; tall?: boolean }) {
   const ev = b.events.find(e => e.format === 'groups_ko')
@@ -925,6 +953,7 @@ export function PosterBracket({ b, broadcast = false, tall = false }: { b: Bundl
 
   return (
     <TallCtx.Provider value={tall}>
+    <McCtx.Provider value={isPoolDispatch(ev)}>
     <div className={`${broadcast ? 'w-max' : 'overflow-x-auto'} ${tall ? 'flex flex-1 flex-col' : ''} p-4 text-fg`} style={{ background: broadcast
         ? 'radial-gradient(ellipse at top, rgba(244,205,106,0.10), transparent 60%), rgb(var(--canvas))'
         : 'radial-gradient(ellipse at top, rgba(244,205,106,0.06), transparent 55%), rgb(var(--canvas))' }}>
@@ -946,13 +975,15 @@ export function PosterBracket({ b, broadcast = false, tall = false }: { b: Bundl
         ))}
       </div>
     </div>
+    </McCtx.Provider>
     </TallCtx.Provider>
   )
 }
 
 function PColumn({ b, col, side }: { b: Bundle; col: { round: string; matches: Match[] }; side: 'left' | 'right' }) {
+  const mc = useContext(McCtx)
   return (
-    <div className="flex min-w-[9.5rem] flex-col lg:min-w-[11rem]">
+    <div className={`flex flex-col ${mc ? 'min-w-[11.5rem] lg:min-w-[12.5rem]' : 'min-w-[9.5rem] lg:min-w-[11rem]'}`}>
       <div className={`mb-1 h-4 text-[10px] font-bold uppercase tracking-widest text-fg-subtle ${side === 'right' ? 'text-right' : ''}`}>
         {col.round}
       </div>
@@ -1021,22 +1052,24 @@ function PMatch({ b, m, medalOf }: { b: Bundle; m?: Match; medalOf?: (id: string
 
 function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder }: { b: Bundle; teamId: string | null; score: number; win: boolean; lose: boolean; finished: boolean; medal?: 'gold' | 'silver' | 'bronze' | null; placeholder?: string }) {
   const tall = useContext(TallCtx)
-  const py = tall ? 'py-4' : 'py-1.5'
-  const tx = tall ? 'text-base' : 'text-xs'
+  const mc = useContext(McCtx)
+  const py = mc ? 'py-1' : tall ? 'py-4' : 'py-1.5'
+  const tx = mc ? 'text-xs' : tall ? 'text-base' : 'text-xs'
+  const logoCls = mc ? 'h-9 w-11' : 'h-4 w-4'
   if (teamId == null && placeholder) {
     return (
       <div className={`flex items-center gap-2 border-l-2 border-transparent px-2.5 ${py}`}>
-        <span className="h-4 w-4 shrink-0 rounded-[2px] border border-dashed border-line-strong" />
+        <span className={`${logoCls} shrink-0 rounded-[2px] border border-dashed border-line-strong`} />
         <span className={`min-w-0 flex-1 truncate ${tx} italic text-fg-subtle`}>{placeholder}</span>
       </div>
     )
   }
   return (
     <div className={`flex items-center gap-2 border-l-2 px-2.5 ${py} ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
-      <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-      <span className={`min-w-0 flex-1 truncate ${tx} ${win ? 'font-bold text-fg' : 'text-fg-muted'}`}>{teamName(b, teamId)}</span>
+      <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className={`${logoCls} shrink-0 rounded-[2px] object-contain`} />
+      <span className={`min-w-0 flex-1 truncate ${tx} ${win ? (mc ? 'font-semibold' : 'font-bold') + ' text-fg' : mc ? 'font-medium text-fg-muted' : 'text-fg-muted'}`}>{teamName(b, teamId)}</span>
       {medal && <span className="shrink-0 text-xs leading-none" aria-label={medal}>{medal === 'gold' ? '🥇' : medal === 'silver' ? '🥈' : '🥉'}</span>}
-      {finished && <span className={`tabular shrink-0 ${tx} ${win ? 'font-bold text-gold' : 'text-fg-subtle'}`}>{score}</span>}
+      {finished && <span className={`tabular shrink-0 ${tx} ${win ? (mc ? 'font-semibold' : 'font-bold') + ' text-gold' : 'text-fg-subtle'}`}>{score}</span>}
     </div>
   )
 }

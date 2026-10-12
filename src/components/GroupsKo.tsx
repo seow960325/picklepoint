@@ -44,8 +44,11 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
   b: Bundle; g: string; rows: Standing[]; advance: number; big?: boolean; huge?: boolean
 }) {
   // huge = one category on the whole TV: much larger type, rows stretch to the card's height
-  const cell = huge ? 'py-3 text-2xl' : big ? 'py-2.5 text-base' : 'py-1.5'
-  const wN = huge ? 'w-11' : 'w-7'
+  // TV (big / huge): photo logo large, one-line names in a lighter weight, no P column
+  const tv = big || huge
+  const cell = huge ? 'py-1.5 text-xl' : big ? 'py-1 text-lg' : 'py-1.5'
+  const wN = tv ? 'w-9' : 'w-7'
+  const logo = huge ? 'h-12 w-[3.75rem]' : big ? 'h-11 w-14' : 'h-7 w-9'
   // a coin toss is only news once the group is over and the tie straddles
   // the qualifying line (mid-group, level teams simply haven't met yet)
   const ids = new Set(rows.map(r => r.team.id))
@@ -59,15 +62,15 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
     return same.some(k => k < advance) && same.some(k => k >= advance)
   }
   return (
-    <table className={`w-full table-fixed ${huge ? 'h-full text-2xl' : big ? 'text-base' : 'text-sm'}`}>
-      <thead className={`${huge ? 'text-base' : 'text-[10px]'} uppercase tracking-wider text-fg-subtle`}>
+    <table className={`w-full table-fixed ${huge ? 'h-full text-xl' : big ? 'text-lg' : 'text-sm'}`}>
+      <thead className={`${tv ? 'text-xs' : 'text-[10px]'} uppercase tracking-wider text-fg-subtle`}>
         <tr>
-          <th className={`${huge ? 'w-8' : 'w-7'} px-1 py-1 text-center`}>#</th>
+          <th className={`${tv ? 'w-7' : 'w-7'} px-1 py-1 text-center`}>#</th>
           <th className="px-1 py-1 text-left">Group {g}</th>
-          <th className={`${wN} px-1 py-1 text-right`}>P</th>
+          {!tv && <th className={`${wN} px-1 py-1 text-right`}>P</th>}
           <th className={`${wN} px-1 py-1 text-right`}>W</th>
           <th className={`${wN} px-1 py-1 text-right`}>L</th>
-          <th className={`${huge ? 'w-20' : 'w-11'} px-2 py-1 text-right`} title="Point difference: points won minus points lost">+/-</th>
+          <th className={`${tv ? 'w-14' : 'w-11'} px-2 py-1 text-right`} title="Point difference: points won minus points lost">+/-</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-line">
@@ -75,13 +78,13 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
           const q = i < advance
           return (
             <tr key={r.team.id} className={i === advance - 1 && i < rows.length - 1 ? 'border-b-2 border-dashed !border-line-strong' : ''}>
-              <td className={`tabular px-1 ${cell} text-center ${huge ? 'text-lg' : 'text-xs'} font-bold ${q ? 'text-brand-ink' : 'text-fg-subtle'}`}>{i + 1}</td>
+              <td className={`tabular px-1 ${cell} text-center ${tv ? 'text-sm' : 'text-xs'} font-bold ${q ? 'text-brand-ink' : 'text-fg-subtle'}`}>{i + 1}</td>
               <td className={`px-1 ${cell}`}>
-                <span className="flex min-w-0 items-start gap-1.5">
+                <span className={`flex min-w-0 gap-2 ${tv ? 'items-center' : 'items-start gap-1.5'}`}>
                   <Emblem logo={teamLogo(b, r.team.id)} flagName={teamSideName(b, r.team.id)}
-                    className={`mt-0.5 shrink-0 rounded-[2px] object-contain ${huge ? 'h-7 w-7' : 'h-4 w-4'}`} />
+                    className={`shrink-0 rounded-[2px] object-contain ${tv ? '' : 'mt-0.5'} ${logo}`} />
                   <span className="min-w-0 flex-1">
-                    <span className={`block ${big ? 'line-clamp-2 break-words leading-tight' : 'truncate'} ${q ? 'font-semibold text-fg' : 'text-fg-muted'}`}>
+                    <span className={`block ${tv ? 'whitespace-nowrap leading-tight' : 'truncate'} ${tv ? 'font-medium' : q ? 'font-semibold' : ''} ${q ? 'text-fg' : 'text-fg-muted'}`}>
                       {r.team.name}
                     </span>
                     {tossAt(i) && (
@@ -90,8 +93,8 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
                   </span>
                 </span>
               </td>
-              <td className={`tabular px-1 ${cell} text-right text-fg-muted`}>{r.played}</td>
-              <td className={`tabular px-1 ${cell} text-right font-bold ${q ? 'text-fg' : 'text-fg-muted'}`}>{r.won}</td>
+              {!tv && <td className={`tabular px-1 ${cell} text-right text-fg-muted`}>{r.played}</td>}
+              <td className={`tabular px-1 ${cell} text-right ${tv ? 'font-semibold' : 'font-bold'} ${q ? 'text-fg' : 'text-fg-muted'}`}>{r.won}</td>
               <td className={`tabular px-1 ${cell} text-right text-fg-muted`}>{r.lost}</td>
               <td className={`tabular px-2 ${cell} text-right ${r.diff > 0 ? 'text-brand-ink' : r.diff < 0 ? 'text-red-400' : 'text-fg-muted'}`}>
                 {r.diff > 0 ? `+${r.diff}` : r.diff}
@@ -143,7 +146,7 @@ export function GameRow({ b, code, m, tag }: { b: Bundle; code: string; m: Match
       className={`grid grid-cols-[minmax(0,1fr)_3.5rem_minmax(0,1fr)_3.25rem] items-center gap-2 border-b border-line/60 px-3 py-2 text-xs last:border-0 active:bg-surface-2 ${live ? 'bg-brand/[0.06]' : ''}`}>
       <span className={`flex min-w-0 items-center justify-end gap-1.5 ${name(aWin)}`}>
         <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
-        <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
+        <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-6 w-8 shrink-0 rounded-[2px] object-contain" />
       </span>
       <span className="flex justify-center">
         {decided || live
@@ -151,7 +154,7 @@ export function GameRow({ b, code, m, tag }: { b: Bundle; code: string; m: Match
           : <span className="text-[10px] font-bold uppercase tracking-widest text-fg-subtle">{tag ?? 'vs'}</span>}
       </span>
       <span className={`flex min-w-0 items-center gap-1.5 ${name(bWin)}`}>
-        <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
+        <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-6 w-8 shrink-0 rounded-[2px] object-contain" />
         <span className="truncate">{teamName(b, m.team_b_id)}</span>
       </span>
       <span className="flex justify-end text-[11px] text-fg-subtle">
@@ -222,7 +225,7 @@ export function CourtQueues({ b, ev, cols, n = 6, big = false, courts }: { b: Bu
         return (
           <div key={ct.id} className="min-w-0 rounded-2xl border border-line bg-surface p-3">
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <span className={`min-w-0 truncate whitespace-nowrap font-display font-bold uppercase tracking-widest text-fg-muted ${big ? 'text-xl' : mc ? 'text-sm lg:text-lg' : 'text-xs'}`}>{b.competition.multi_sport && ct.label ? ct.label : `Court ${ct.number}`} · up next</span>
+              <span className={`min-w-0 truncate whitespace-nowrap font-display font-bold uppercase tracking-widest text-fg-muted ${big ? 'text-xl' : 'text-xs'}`}>{b.competition.multi_sport && ct.label ? ct.label : `Court ${ct.number}`} · up next</span>
               <span className={`shrink-0 whitespace-nowrap text-fg-subtle ${big ? 'text-base' : 'text-[10px]'}`}>{queue.filter(m => m.home_court === ct.id).length} left</span>
             </div>
             {mine.length === 0 ? (
@@ -231,7 +234,7 @@ export function CourtQueues({ b, ev, cols, n = 6, big = false, courts }: { b: Bu
               <div className="divide-y divide-line/60">
                 {mine.map((m, i) => (
                   <div key={m.id}
-                    className={`grid ${big ? 'grid-cols-[1.6rem_1.6rem_minmax(0,1fr)_2.2rem_minmax(0,1fr)] gap-2 py-2.5 text-2xl' : 'grid-cols-[1.1rem_1.1rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-1.5 py-1.5 text-sm'} ${mc && !big ? 'lg:!text-xl lg:!py-2' : ''} grid items-center ${teamsBusy(b, m) ? 'opacity-60' : ''}`}>
+                    className={`grid ${big ? 'grid-cols-[1.6rem_1.6rem_minmax(0,1fr)_2.2rem_minmax(0,1fr)] gap-2 py-2.5 text-2xl' : 'grid-cols-[1.1rem_1.1rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-1.5 py-1.5 text-sm'} grid items-center ${teamsBusy(b, m) ? 'opacity-60' : ''}`}>
                     <span className={`text-center font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>{i + 1}</span>
                     <span className={`text-center font-bold text-fg-subtle ${big ? 'text-base' : 'text-[10px]'}`}>{poolOf(m.team_a_id)}</span>
                     <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : 'justify-end'} gap-1.5 text-fg-muted`}>
