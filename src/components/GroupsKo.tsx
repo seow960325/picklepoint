@@ -65,7 +65,7 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
     <table className={`w-full table-fixed ${huge ? 'h-full text-xl' : big ? 'text-lg' : 'text-sm'}`}>
       <thead className={`${tv ? 'text-xs' : 'text-[10px]'} uppercase tracking-wider text-fg-subtle`}>
         <tr>
-          <th className={`${tv ? 'w-7' : 'w-7'} px-1 py-1 text-center`}>#</th>
+          <th className="w-7 px-1 py-1 text-center">#</th>
           <th className="px-1 py-1 text-left">Group {g}</th>
           {!tv && <th className={`${wN} px-1 py-1 text-right`}>P</th>}
           <th className={`${wN} px-1 py-1 text-right`}>W</th>
@@ -225,7 +225,7 @@ export function CourtQueues({ b, ev, cols, n = 6, big = false, courts }: { b: Bu
         return (
           <div key={ct.id} className="min-w-0 rounded-2xl border border-line bg-surface p-3">
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <span className={`min-w-0 truncate whitespace-nowrap font-display font-bold uppercase tracking-widest text-fg-muted ${big ? 'text-xl' : 'text-xs'}`}>{b.competition.multi_sport && ct.label ? ct.label : `Court ${ct.number}`} · up next</span>
+              <span className={`min-w-0 truncate whitespace-nowrap font-display font-bold uppercase tracking-widest text-fg-muted ${big ? 'text-xl' : mc ? 'text-sm lg:text-lg' : 'text-xs'}`}>{b.competition.multi_sport && ct.label ? ct.label : `Court ${ct.number}`} · up next</span>
               <span className={`shrink-0 whitespace-nowrap text-fg-subtle ${big ? 'text-base' : 'text-[10px]'}`}>{queue.filter(m => m.home_court === ct.id).length} left</span>
             </div>
             {mine.length === 0 ? (
@@ -234,7 +234,7 @@ export function CourtQueues({ b, ev, cols, n = 6, big = false, courts }: { b: Bu
               <div className="divide-y divide-line/60">
                 {mine.map((m, i) => (
                   <div key={m.id}
-                    className={`grid ${big ? 'grid-cols-[1.6rem_1.6rem_minmax(0,1fr)_2.2rem_minmax(0,1fr)] gap-2 py-2.5 text-2xl' : 'grid-cols-[1.1rem_1.1rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-1.5 py-1.5 text-sm'} grid items-center ${teamsBusy(b, m) ? 'opacity-60' : ''}`}>
+                    className={`grid ${big ? 'grid-cols-[1.6rem_1.6rem_minmax(0,1fr)_2.2rem_minmax(0,1fr)] gap-2 py-2.5 text-2xl' : 'grid-cols-[1.1rem_1.1rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-1.5 py-1.5 text-sm'} ${mc && !big ? 'lg:!text-xl lg:!py-2' : ''} grid items-center ${teamsBusy(b, m) ? 'opacity-60' : ''}`}>
                     <span className={`text-center font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>{i + 1}</span>
                     <span className={`text-center font-bold text-fg-subtle ${big ? 'text-base' : 'text-[10px]'}`}>{poolOf(m.team_a_id)}</span>
                     <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : 'justify-end'} gap-1.5 text-fg-muted`}>
