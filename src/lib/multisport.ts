@@ -282,6 +282,12 @@ export const FINAL_PRESETS: Record<Sport, {
   captainball: { target_score: 99, win_by: 1, cap: 99, switch_at: 0, serve_mode: 'winner' },
 }
 
+/** Courts in use per knockout stage (from the organiser: badminton drops to 2
+ *  courts for the semi-finals and 1 court for 3rd place + the Final). */
+export const KO_COURTS: Partial<Record<Sport, Partial<Record<TieStage, number>>>> = {
+  badminton: { SF1: 2, SF2: 2, '3P': 1, F: 1 },
+}
+
 export interface KoGame {
   a: string; b: string; court: string; seq: number
   game: string; set: number | null; round: string
@@ -293,7 +299,12 @@ export interface KoGame {
 export function koGames(
   sb: Bundle, stage: TieStage, a: Team, b: Team, opts: { bestOf3?: boolean } = {},
 ): KoGame[] {
-  const courts = [...sb.courts].sort((x, y) => x.number - y.number)
+  const sorted = [...sb.courts].sort((x, y) => x.number - y.number)
+  // fewer courts in the knockout (badminton: 2 for the semis, 1 for 3rd place + Final):
+  // the lowest-numbered courts are kept and every game group may use them
+  const limit = KO_COURTS[sportOf(sb.events[0])]?.[stage]
+  const reduced = !!limit && sorted.length > limit
+  const courts = reduced ? sorted.slice(0, limit) : sorted
   const load = new Map<string, number>()
   for (const c of courts) load.set(c.id, 0)
   for (const m of sb.matches) {
@@ -304,7 +315,7 @@ export function koGames(
   const out: KoGame[] = []
   let seq = 0
   for (const g of tieGames(a, b)) {
-    const mine = courts.filter(c => c.game_group === gameGroup(g))
+    const mine = reduced ? [] : courts.filter(c => c.game_group === gameGroup(g))
     const pool = mine.length ? mine : courts
     if (!pool.length) continue
     const court = pool.reduce((best, c) => (load.get(c.id)! < load.get(best.id)! ? c : best), pool[0])

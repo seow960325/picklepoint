@@ -207,3 +207,25 @@ test('phase walks groups -> semis -> finals -> done with champion, runner-up, th
   assert.deepEqual([k.champion, k.runnerUp, k.thirdPlace], ['c', 'a', 'd'])
   assert.equal(allTies(bundle(teams, ms)).length, 5)
 })
+
+test('badminton knockout uses 2 courts for the semis and 1 for 3rd place + Final', () => {
+  const mk = (n, grp) => ({ id: 'c' + n, number: n, game_group: grp, sport: 'badminton' })
+  const sb = {
+    events: [{ id: 'e', sport: 'badminton' }],
+    courts: [mk(1, 'MD1'), mk(2, 'MD1'), mk(3, 'MD2'), mk(4, 'MD2'), mk(5, 'XD'), mk(6, 'XD')],
+    matches: [],
+  }
+  const A = { id: 'a', roster: 6 }, B = { id: 'b', roster: 6 }
+  const sf = koGames(sb, 'SF1', A, B)
+  assert.equal(sf.length, 3)
+  assert.ok(sf.every(g => ['c1', 'c2'].includes(g.court)))
+  assert.ok(new Set(sf.map(g => g.court)).size === 2)   // spread over both courts
+  const th = koGames(sb, '3P', A, B)
+  assert.ok(th.every(g => g.court === 'c1'))
+  const f = koGames(sb, 'F', A, B, { bestOf3: true })
+  assert.equal(f.length, 9)
+  assert.ok(f.every(g => g.court === 'c1'))
+  // pickleball is not reduced
+  const pb = { ...sb, events: [{ id: 'e', sport: 'pickleball' }] }
+  assert.ok(new Set(koGames(pb, 'F', A, B).map(g => g.court)).size > 1)
+})
