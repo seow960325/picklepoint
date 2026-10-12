@@ -168,7 +168,10 @@ export function GameRow({ b, code, m, tag }: { b: Bundle; code: string; m: Match
 export function UpNextQueue({ b, ev, n = 6, big = false }: { b: Bundle; ev: EventCfg; n?: number; big?: boolean }) {
   const list = upNext(b, ev.id, n)
   const poolOf = (id: string | null) => b.teams.find(t => t.id === id)?.pool ?? '–'
-  const courtNo = (id?: string | null) => b.courts.find(c => c.id === id)?.number
+  const courtNo = (id?: string | null) => {
+    const c = b.courts.find(c => c.id === id)
+    return c ? (b.competition.multi_sport && c.label ? c.label.toUpperCase() : `CT${c.number}`) : undefined
+  }
   return (
     <div className="rounded-2xl border border-line bg-surface p-3">
       <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -184,7 +187,7 @@ export function UpNextQueue({ b, ev, n = 6, big = false }: { b: Bundle; ev: Even
               className={`grid grid-cols-[1.25rem_3.25rem_minmax(0,1fr)_1.75rem_minmax(0,1fr)] items-center gap-1.5 py-1.5 ${big ? 'text-base' : 'text-sm'} ${waiting ? 'opacity-60' : ''}`}>
               <span className="text-center font-display text-xs font-bold text-fg-subtle">{i + 1}</span>
               <span className="whitespace-nowrap text-center text-[10px] font-bold text-fg-subtle">
-                {courtNo(m.home_court) ? `CT${courtNo(m.home_court)} · ` : ''}{poolOf(m.team_a_id)}
+                {courtNo(m.home_court) ? `${courtNo(m.home_court)} · ` : ''}{poolOf(m.team_a_id)}
               </span>
               <span className="flex min-w-0 items-center justify-end gap-1.5 text-fg-muted">
                 <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
@@ -216,7 +219,7 @@ export function CourtQueues({ b, ev, cols, n = 6, big = false }: { b: Bundle; ev
         return (
           <div key={ct.id} className="min-w-0 rounded-2xl border border-line bg-surface p-3">
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <span className={`min-w-0 truncate whitespace-nowrap font-display font-bold uppercase tracking-widest text-fg-muted ${big ? 'text-xl' : 'text-xs'}`}>Court {ct.number} · up next</span>
+              <span className={`min-w-0 truncate whitespace-nowrap font-display font-bold uppercase tracking-widest text-fg-muted ${big ? 'text-xl' : 'text-xs'}`}>{b.competition.multi_sport && ct.label ? ct.label : `Court ${ct.number}`} · up next</span>
               <span className={`shrink-0 whitespace-nowrap text-fg-subtle ${big ? 'text-base' : 'text-[10px]'}`}>{queue.filter(m => m.home_court === ct.id).length} left</span>
             </div>
             {mine.length === 0 ? (

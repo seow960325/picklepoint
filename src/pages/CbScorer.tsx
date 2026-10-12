@@ -109,8 +109,8 @@ function TeamPanel({ name, side, st, score, callMs, callSide, apply }: {
   )
 }
 
-export default function CbScorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
-  bundle: Bundle; match: Match; token: string; courtNo: number; code: string
+export default function CbScorer({ bundle, match, token, courtNo, courtName, code, reload, onRelogin }: {
+  bundle: Bundle; match: Match; token: string; courtNo: number; courtName?: string; courtShort?: string; code: string
   reload: () => void; onRelogin: () => void
 }) {
   const ev = eventOf(bundle, match)
@@ -254,7 +254,7 @@ export default function CbScorer({ bundle, match, token, courtNo, code, reload, 
       <div className="grid h-9 shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
         <Link to={`/c/${code}`} className="rounded-lg border border-white/15 px-3 py-1.5 font-display text-sm font-bold tracking-wide">← BOARD</Link>
         <div className="truncate text-center font-display text-sm font-bold uppercase tracking-[0.12em] text-white/60">
-          Court {courtNo} · Game {matchNo || match.sequence}
+          {courtName ?? `Court ${courtNo}`} · Game {matchNo || match.sequence}
         </div>
         <span className={`inline-block w-16 text-right text-[11px] ${offline ? 'font-bold text-[#fbbf24]' : 'text-white/40'}`}>
           {offline ? '● saving…' : '● synced'}

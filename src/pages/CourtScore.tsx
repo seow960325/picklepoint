@@ -25,6 +25,10 @@ export default function CourtScore() {
   useEffect(useWakeLockEffect, [])
 
   if (!bundle) return <Screen><Spinner /></Screen>
+  // multi-sport codes number courts per sport ("Captain Ball 1", "Badminton 3"), not 1..9 across all sports
+  const named = !!bundle.competition.multi_sport && !!court?.label
+  const cname = named ? court!.label!.toUpperCase() : `COURT ${court?.number}`
+  const cshort = named ? court!.label!.toUpperCase() : `CT${court?.number}`
   if (!court) return (
     <Screen className="flex items-center justify-center">
       <div className="text-fg-muted">Court {number} not found</div>
@@ -32,7 +36,7 @@ export default function CourtScore() {
   )
 
   if (!token) return (
-    <PinGate courtId={court.id} courtNo={court.number} code={code!}
+    <PinGate courtId={court.id} courtNo={court.number} courtName={cname} code={code!}
       onUnlock={t => setToken(t)} />
   )
 
@@ -43,7 +47,7 @@ export default function CourtScore() {
       .sort((a, b) => (b.finished_at ?? '').localeCompare(a.finished_at ?? ''))
     return (
       <Screen className="flex flex-col items-center justify-center gap-4 px-6">
-        <div className="font-display text-3xl font-bold text-fg-subtle">COURT {court.number}</div>
+        <div className="font-display text-3xl font-bold text-fg-subtle">{cname}</div>
         {courtDone.length > 0 ? (
           <>
             <div className="text-sm text-fg-muted">All matches complete — tap a result to review or reset.</div>
@@ -73,10 +77,10 @@ export default function CourtScore() {
   return (
     <>
       <Sc key={match.id} bundle={bundle} match={match} token={token}
-        courtNo={court.number} code={code!} reload={reload}
+        courtNo={court.number} courtName={cname} courtShort={cshort} code={code!} reload={reload}
         onRelogin={() => setShowRelogin(true)} />
       {showRelogin && (
-        <PinModal courtId={court.id} courtNo={court.number}
+        <PinModal courtId={court.id} courtNo={court.number} courtName={cname}
           onUnlock={t => { setToken(t); setShowRelogin(false) }}
           onCancel={() => setShowRelogin(false)} />
       )}
@@ -85,8 +89,8 @@ export default function CourtScore() {
 }
 
 // --------------------------------------------------------------- PIN gate
-function PinGate({ courtId, courtNo, code, onUnlock }: {
-  courtId: string; courtNo: number; code: string; onUnlock: (t: string) => void
+function PinGate({ courtId, courtNo, courtName, code, onUnlock }: {
+  courtId: string; courtNo: number; courtName: string; code: string; onUnlock: (t: string) => void
 }) {
   const [pin, setPin] = useState('')
   const [err, setErr] = useState(false)
@@ -117,7 +121,7 @@ function PinGate({ courtId, courtNo, code, onUnlock }: {
 
       <div className="text-right">
         <div className="font-display text-5xl font-bold tracking-widest text-fg-muted">
-          COURT {courtNo}
+          {courtName}
         </div>
         <div className="mt-1 text-sm text-fg-subtle">Scorer PIN</div>
         {locked && (
@@ -151,8 +155,8 @@ function PinGate({ courtId, courtNo, code, onUnlock }: {
 }
 
 // ------------------------------------------------ re-login modal (in place)
-function PinModal({ courtId, courtNo, onUnlock, onCancel }: {
-  courtId: string; courtNo: number; onUnlock: (t: string) => void; onCancel: () => void
+function PinModal({ courtId, courtNo, courtName, onUnlock, onCancel }: {
+  courtId: string; courtNo: number; courtName: string; onUnlock: (t: string) => void; onCancel: () => void
 }) {
   const [pin, setPin] = useState('')
   const [err, setErr] = useState(false)
@@ -180,7 +184,7 @@ function PinModal({ courtId, courtNo, onUnlock, onCancel }: {
     <div className="absolute inset-0 z-40 flex items-center justify-center gap-8 bg-canvas/95 px-8">
       <div className="text-right">
         <div className="font-display text-3xl font-bold tracking-widest text-fg-muted">
-          COURT {courtNo}
+          {courtName}
         </div>
         <div className="mt-1 text-sm text-red-400">Session expired — re-enter PIN to resume</div>
         {locked && (
@@ -212,8 +216,8 @@ function PinModal({ courtId, courtNo, onUnlock, onCancel }: {
 }
 
 // ----------------------------------------------------------------- scorer
-function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
-  bundle: any; match: Match; token: string; courtNo: number; code: string; reload: () => void
+function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRelogin }: {
+  bundle: any; match: Match; token: string; courtNo: number; courtName?: string; courtShort?: string; code: string; reload: () => void
   onRelogin: () => void
 }) {
   const rules = useMemo(() => rulesOf(eventOf(bundle, match), match), [bundle, match.event_id, match.bracket_key])
@@ -398,7 +402,7 @@ function Scorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
           </Link>
           <div className={`flex min-w-0 items-baseline gap-2 truncate font-display font-bold tracking-widest text-fg-muted ${
             isPortrait ? 'text-sm' : ''}`}>
-            <span className={isPortrait ? 'text-sm' : 'text-base sm:text-lg'}>CT{courtNo} · M{matchNo}</span>
+            <span className={isPortrait ? 'text-sm' : 'text-base sm:text-lg'}>{courtShort ?? `CT${courtNo}`} · M{matchNo}</span>
             {matchPoint && <span className="shrink-0 animate-pulse text-sm text-brand-ink">MATCH PT</span>}
             {ev.play_clock && <PlayClock m={m} className="text-xs font-semibold tracking-normal text-fg-subtle" />}
           </div>
