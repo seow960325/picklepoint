@@ -138,10 +138,10 @@ export function CbScoreboard({ b, m, size = 'card', sound = false, courtLabel }:
       <div className="grid grid-cols-2 gap-[0.6em]">
         <div className={`${box} flex flex-col items-center justify-between`} style={{ height: bh, padding: '0.4em' }}>
           <span className={lbl} style={lblSize}>Fouls</span>
-          <SevenSeg text={segScore(st.f[s])} color={CB_FOUL_COLOR} size="2.4em" glow={false} />
+          <span className="flex flex-1 items-center justify-center"><SevenSeg text={segScore(st.f[s])} color={CB_FOUL_COLOR} size="2.4em" glow={false} /></span>
         </div>
         <div className={`${box} flex flex-col items-center justify-between`} style={{ height: bh, padding: '0.4em' }}>
-          <span className={lbl} style={lblSize}>{px < 20 ? 'Calls' : 'Team calls'}</span>
+          <span className={lbl} style={lblSize}>Calls</span>
           <span className="flex flex-1 flex-wrap items-center justify-center" style={{ gap: '0.35em' }}>
             {allowed === 0
               ? <span className={lbl} style={lblSize}>—</span>
