@@ -1106,11 +1106,11 @@ function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder, tier
     )
   }
   return (
-    <div className={`flex items-center ${mc ? 'gap-2 pl-4 pr-3' : 'gap-2 px-2.5'} border-l-2 ${py} ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
+    <div className={`flex items-center ${mc ? (stack ? 'gap-2 pl-4 pr-6' : 'gap-2 pl-4 pr-4') : 'gap-2 px-2.5'} border-l-2 ${py} ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
       <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className={`${logoCls} shrink-0 rounded-[2px] object-contain`} />
       <span className={`min-w-0 flex-1 ${mc ? 'text-center' : ''} ${stack ? 'line-clamp-2 break-words leading-[1.1]' : 'truncate'} ${tx} ${mc && live ? 'font-extrabold tracking-wide text-white' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-fg' : mc ? 'font-medium text-fg-muted' : 'text-fg-muted'}`}>{stack ? (() => { const parts = teamName(b, teamId).split(' & '); return parts.length === 2 ? <><span className="block truncate">{parts[0]}</span><span className="block truncate">{parts[1]}</span></> : teamName(b, teamId) })() : teamName(b, teamId)}</span>
       {medal && <span className="shrink-0 text-xs leading-none" aria-label={medal}>{medal === 'gold' ? '🥇' : medal === 'silver' ? '🥈' : '🥉'}</span>}
-      {(finished || (mc && live)) && <span className={`tabular shrink-0 ${mc ? 'w-6 text-center' : ''} ${tx} ${mc && live ? 'font-extrabold text-brand-ink' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-gold' : 'text-fg-subtle'}`}>{score}</span>}
+      {(finished || (mc && live)) && <span className={`tabular shrink-0 ${mc ? (stack ? 'min-w-[2.5rem]' : 'min-w-[1.75rem]') + ' text-center' : ''} ${tx} ${mc && live ? 'font-extrabold text-brand-ink' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-gold' : 'text-fg-subtle'}`}>{score}</span>}
     </div>
   )
 }
