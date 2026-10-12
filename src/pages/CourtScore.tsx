@@ -387,7 +387,7 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
   return (
     <div className={`fixed inset-0 flex ${isPortrait ? 'flex-col' : ''} bg-canvas no-select`}
       style={{
-        paddingTop: 'env(safe-area-inset-top)',
+        paddingTop: 'var(--pp-top)',
         paddingBottom: 'env(safe-area-inset-bottom)',
         paddingLeft: 'env(safe-area-inset-left)',
         paddingRight: 'env(safe-area-inset-right)',

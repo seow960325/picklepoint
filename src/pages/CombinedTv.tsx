@@ -87,13 +87,13 @@ export default function CombinedTv() {
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-canvas text-fg"
       style={{
-        paddingTop: 'max(env(safe-area-inset-top), 1rem)',
+        paddingTop: 'max(var(--pp-top), 1rem)',
         paddingBottom: 'max(env(safe-area-inset-bottom), 1rem)',
         paddingLeft: 'max(env(safe-area-inset-left), 1rem)',
         paddingRight: 'max(env(safe-area-inset-right), 1rem)',
       }}>
       {/* discreet controls */}
-      <div className="absolute right-3 top-3 z-10 flex items-center gap-2 opacity-30 transition-opacity hover:opacity-100">
+      <div className="absolute right-3 z-10 flex items-center gap-2 opacity-30 transition-opacity hover:opacity-100" style={{ top: 'calc(var(--pp-top) + 0.5rem)' }}>
         {all.length > 1 && (
           <div className="flex rounded-lg border border-line bg-surface/70 p-0.5 text-xs">
             {['both', ...all.map(b => b.competition.code.toUpperCase())].map(c => (

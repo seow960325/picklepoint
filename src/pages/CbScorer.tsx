@@ -249,7 +249,7 @@ export default function CbScorer({ bundle, match, token, courtNo, courtName, cod
 
   return (
     <div className="fixed inset-0 flex flex-col gap-2 overflow-y-auto bg-[#06070a] p-2 text-white select-none"
-      style={{ paddingTop: 'max(env(safe-area-inset-top), 0.5rem)', paddingBottom: 'max(env(safe-area-inset-bottom), 0.5rem)' }}>
+      style={{ paddingTop: 'max(var(--pp-top), 0.5rem)', paddingBottom: 'max(env(safe-area-inset-bottom), 0.5rem)' }}>
       {/* top bar */}
       <div className="grid h-9 shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
         <Link to={`/c/${code}`} className="rounded-lg border border-white/15 px-3 py-1.5 font-display text-sm font-bold tracking-wide">← BOARD</Link>

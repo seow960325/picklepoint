@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+:root { --pp-top: env(safe-area-inset-top, 0px); }
+/* iPad / phones: keep controls clear of the system status bar (time, battery) */
+@media (hover: none) and (pointer: coarse) { :root { --pp-top: max(env(safe-area-inset-top, 0px), 1.5rem); } }
 :root {
   color-scheme: light;
   --canvas: 248 250 252;

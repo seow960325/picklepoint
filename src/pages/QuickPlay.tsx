@@ -261,7 +261,7 @@ function Scorer({ match, rules, teamAName, teamBName, gameNo, onChangeSettings, 
   return (
     <div className={`fixed inset-0 flex ${isPortrait ? 'flex-col' : ''} bg-canvas no-select`}
       style={{
-        paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingTop: 'var(--pp-top)', paddingBottom: 'env(safe-area-inset-bottom)',
         paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)',
       }}>
       <div className="flex min-w-0 flex-1 flex-col">

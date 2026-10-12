@@ -9,7 +9,7 @@ import type { Bundle, EventCfg, Match, Team } from './types'
 import { buildDraw, type DraftMatch, type DraftTeam } from './draw.ts'
 
 export type Sport = 'pickleball' | 'badminton' | 'captainball'
-export const SPORTS: Sport[] = ['pickleball', 'badminton', 'captainball']
+export const SPORTS: Sport[] = ['badminton', 'captainball', 'pickleball']
 export const SPORT_LABEL: Record<Sport, string> = { pickleball: 'Pickleball', badminton: 'Badminton', captainball: 'Captain Ball' }
 export const SPORT_ICON: Record<Sport, string> = { pickleball: '🏓', badminton: '🏸', captainball: '🏐' }
 

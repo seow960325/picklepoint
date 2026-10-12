@@ -98,13 +98,13 @@ export default function Board() {
     return (
       <div className="fixed inset-0 flex flex-col justify-center gap-5 overflow-auto bg-canvas py-6 text-fg"
         style={{
-          paddingTop: 'max(env(safe-area-inset-top), 1.5rem)',
+          paddingTop: 'max(var(--pp-top), 1.5rem)',
           paddingBottom: 'max(env(safe-area-inset-bottom), 1.5rem)',
           paddingLeft: 'env(safe-area-inset-left)',
           paddingRight: 'env(safe-area-inset-right)',
         }}>
         {/* discreet controls, top-right */}
-        <div className={`absolute right-4 top-4 z-10 flex items-center gap-2 transition-opacity duration-500 ${tvCtl ? 'opacity-100' : 'opacity-25'}`}>
+        <div className={`absolute right-4 z-10 flex items-center gap-2 transition-opacity duration-500 ${tvCtl ? 'opacity-100' : 'opacity-25'}`} style={{ top: 'calc(var(--pp-top) + 0.75rem)' }}>
           {multi && sports.length > 1 && <SportSwitch sports={sports} view={sv} onPick={pickSport} size="sm" />}
           {multi && (
             <div className="flex rounded-lg border border-line bg-surface/70 p-0.5 text-xs">
@@ -171,7 +171,7 @@ export default function Board() {
   return (
     <Screen>
       {duelEvent && <DuelScoreboard b={bundle} ev={duelEvent} big={false} />}
-      <div aria-hidden style={{ height: 'env(safe-area-inset-top)' }} />
+      <div aria-hidden style={{ height: 'var(--pp-top)' }} />
 
       <div className="border-b border-line px-4 py-3 lg:px-6 lg:py-4">
         <div className="flex items-center justify-between gap-3">
