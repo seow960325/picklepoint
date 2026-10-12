@@ -983,7 +983,7 @@ function PColumn({ b, col, side }: { b: Bundle; col: { round: string; matches: M
   const tierOf = useContext(McCtx)
   return (
     <div className={`flex flex-col transition-all duration-500 ${tierOf ? TIER[tierOf(col.round)].col : 'min-w-[9.5rem] lg:min-w-[11rem]'}`}>
-      <div className={`mb-1 h-4 text-[10px] font-bold uppercase tracking-widest text-fg-subtle ${side === 'right' ? 'text-right' : ''}`}>
+      <div className={`mb-1.5 flex h-6 items-center justify-center text-center text-sm font-bold uppercase tracking-[0.16em] ${tierOf && tierOf(col.round) !== 'compact' && tierOf(col.round) !== 'std' ? 'text-fg' : 'text-fg-muted'}`}>
         {col.round}
       </div>
       <div className="flex flex-1 flex-col">
@@ -1002,7 +1002,7 @@ function PConnector({ count, side }: { count: number; side: 'left' | 'right' }) 
   const single = count <= 1
   return (
     <div className="flex w-5 flex-col lg:w-8">
-      <div className="mb-1 h-4" />
+      <div className="mb-1.5 h-6" />
       <div className="flex flex-1 flex-col text-fg-subtle/50">
         {Array.from({ length: cells }).map((_, i) => (
           <div key={i} className="flex-1">
@@ -1097,7 +1097,7 @@ function PCentre({ b, finalM, thirdM, champId, podium }: {
   const fight = !!tierOf && !!finalM && !!finalM.team_a_id && !!finalM.team_b_id && finalM.status !== 'finished'
   return (
     <div className="flex flex-col px-2 lg:px-5">
-      <div className="mb-1 h-4 text-center font-cer text-[11px] font-bold uppercase tracking-[0.28em] text-gold">Final</div>
+      <div className="mb-1.5 flex h-6 items-center justify-center text-center font-cer text-base font-bold uppercase tracking-[0.3em] text-gold">Final</div>
       <div className="flex flex-1 flex-col items-center justify-center gap-2">
         <div className={`${finalT ? finalT.box : 'w-52'} transition-all duration-500`}><PMatch b={b} m={finalM} medalOf={medalOf} /></div>
         <div className="my-1 flex flex-col items-center">
