@@ -1071,9 +1071,9 @@ function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder, tier
     )
   }
   return (
-    <div className={`flex items-center gap-2 border-l-2 px-2.5 ${py} ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
+    <div className={`flex items-center ${mc ? 'gap-4' : 'gap-2'} border-l-2 px-2.5 ${py} ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
       <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className={`${logoCls} shrink-0 rounded-[2px] object-contain`} />
-      <span className={`min-w-0 flex-1 ${stack ? 'line-clamp-2 break-words leading-[1.1]' : 'truncate'} ${tx} ${mc && live ? 'font-extrabold tracking-wide text-white' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-fg' : mc ? 'font-medium text-fg-muted' : 'text-fg-muted'}`}>{stack ? (() => { const parts = teamName(b, teamId).split(' & '); return parts.length === 2 ? <><span className="block truncate">{parts[0]} &amp;</span><span className="block truncate">{parts[1]}</span></> : teamName(b, teamId) })() : teamName(b, teamId)}</span>
+      <span className={`min-w-0 flex-1 ${mc ? 'text-center' : ''} ${stack ? 'line-clamp-2 break-words leading-[1.1]' : 'truncate'} ${tx} ${mc && live ? 'font-extrabold tracking-wide text-white' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-fg' : mc ? 'font-medium text-fg-muted' : 'text-fg-muted'}`}>{stack ? (() => { const parts = teamName(b, teamId).split(' & '); return parts.length === 2 ? <><span className="block truncate">{parts[0]}</span><span className="block truncate">{parts[1]}</span></> : teamName(b, teamId) })() : teamName(b, teamId)}</span>
       {medal && <span className="shrink-0 text-xs leading-none" aria-label={medal}>{medal === 'gold' ? '🥇' : medal === 'silver' ? '🥈' : '🥉'}</span>}
       {(finished || (mc && live)) && <span className={`tabular shrink-0 ${tx} ${mc && live ? 'font-extrabold text-brand-ink' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-gold' : 'text-fg-subtle'}`}>{score}</span>}
     </div>
