@@ -789,9 +789,9 @@ function CourtScoreRow({ b, m, tv }: { b: Bundle; m: Match; tv: boolean }) {
     <div className="aspect-[2/1] lg:aspect-[7/4]">
       <Court
         leftName={teamName(b, leftTeamId)}
-        nameHalo={ev.court_dispatch === 'pool'}
-        nameBelow={ev.court_dispatch === 'pool'}
-        bigEmblem={ev.court_dispatch === 'pool'}
+        nameHalo
+        nameBelow
+        bigEmblem
         rightName={teamName(b, rightTeamId)}
         leftScore={s.left} rightScore={s.right}
         leftFlag={sideName(leftTeamId)} rightFlag={sideName(rightTeamId)}

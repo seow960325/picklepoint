@@ -359,7 +359,7 @@ export default function Court({
             both serve-ball corners (top ~52 and bottom ~188) and the flag */}
         {nameBelow && ([[CXL, leftName, '#c6ff3d'], [CXR, rightName, '#22d3ee']] as const).map(([cx, nm, col]) => {
           const full = clip(nm, 30)
-          const fs = Math.max(12, Math.min(22, Math.floor(((wide ? 215 : 190) / Math.max(full.length, 1) - 1) / 0.45)))
+          const fs = Math.max(12, Math.min(22, Math.floor(((wide ? 215 : 176) / Math.max(full.length, 1) - 1) / 0.45)))
           return (
             <text key={cx} x={cx} y="219" textAnchor="middle" dominantBaseline="central"
               {...HALO} fill={col} fontSize={fs} fontWeight="700"

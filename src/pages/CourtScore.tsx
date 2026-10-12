@@ -435,9 +435,9 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
                 leftLogo={teamLogoOf(leftTeamId)} rightLogo={teamLogoOf(rightTeamId)}
                 label={koCourtLabel(m) ?? (m.bracket_key ? (m.round ?? undefined) : (m.game_label ?? undefined))}
                 sport={eventOf(bundle, match).sport}
-                bigEmblem={eventOf(bundle, match).court_dispatch === 'pool'}
-                nameHalo={eventOf(bundle, match).court_dispatch === 'pool'}
-                nameBelow={eventOf(bundle, match).court_dispatch === 'pool'}
+                bigEmblem
+                nameHalo
+                nameBelow
                 serving={serving}
                 serverNo={serverNo}
                 serverCourt={courtSide}
@@ -458,9 +458,9 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
                 leftLogo={teamLogoOf(leftTeamId)} rightLogo={teamLogoOf(rightTeamId)}
                 label={koCourtLabel(m) ?? (m.bracket_key ? (m.round ?? undefined) : (m.game_label ?? undefined))}
                 sport={eventOf(bundle, match).sport}
-                bigEmblem={eventOf(bundle, match).court_dispatch === 'pool'}
-                nameHalo={eventOf(bundle, match).court_dispatch === 'pool'}
-                nameBelow={eventOf(bundle, match).court_dispatch === 'pool'}
+                bigEmblem
+                nameHalo
+                nameBelow
                 serving={serving}
                 serverNo={serverNo}
                 serverCourt={courtSide}
