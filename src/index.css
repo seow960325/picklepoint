@@ -64,7 +64,9 @@ body {
 .pp-champ-ring{animation:pp-pop .7s cubic-bezier(.2,1.4,.35,1) .85s both, pp-glow 2.6s ease-in-out 1.7s infinite}
 @keyframes pp-live{0%,100%{box-shadow:0 0 0 0 rgba(198,255,61,0)}50%{box-shadow:0 0 14px 1px rgba(198,255,61,.65)}}
 .pp-live{animation:pp-live 1.6s ease-in-out infinite}
-@media (prefers-reduced-motion:reduce){.pp-grow,.pp-rise,.pp-pop,.pp-champ-ring,.pp-live{animation:none !important}}
+@keyframes pp-trophy-fight{0%,100%{filter:drop-shadow(0 0 6px rgba(247,215,116,.45)) drop-shadow(0 0 18px rgba(247,215,116,.25));transform:scale(1)}50%{filter:drop-shadow(0 0 16px rgba(255,236,160,.95)) drop-shadow(0 0 42px rgba(247,215,116,.7));transform:scale(1.07)}}
+.pp-trophy-fight{animation:pp-trophy-fight 1.8s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.pp-trophy-fight,.pp-grow,.pp-rise,.pp-pop,.pp-champ-ring,.pp-live{animation:none !important}}
 
 /* multi-sport champions ceremony */
 @keyframes pp-confetti{0%{transform:translate3d(0,-20px,0) rotate(0);opacity:0}8%{opacity:1}100%{transform:translate3d(var(--pp-drift,0),110vh,0) rotate(720deg);opacity:0}}

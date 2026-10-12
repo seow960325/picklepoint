@@ -905,7 +905,32 @@ export function FitBox({ children }: { children: any }) {
  *  full height of a TV that shows one category. Parent must give it a height. */
 const TallCtx = createContext(false)
 /** MCMD/MCXD (pool dispatch) bracket: photo logos, slimmer boxes, lighter type */
-const McCtx = createContext(false)
+type Tier = 'compact' | 'std' | 'big' | 'xl' | 'xxl'
+const TIER: Record<Tier, { logo: string; tx: string; liveTx: string; py: string; col: string; box: string }> = {
+  compact: { logo: 'h-7 w-9',   tx: 'text-[11px]', liveTx: 'text-xs',  py: 'py-0.5', col: 'min-w-[9.5rem]',  box: 'w-44' },
+  std:     { logo: 'h-9 w-11',  tx: 'text-xs',     liveTx: 'text-sm',  py: 'py-1',   col: 'min-w-[11.5rem]', box: 'w-52' },
+  big:     { logo: 'h-12 w-14', tx: 'text-sm',     liveTx: 'text-lg',  py: 'py-1.5', col: 'min-w-[14.5rem]', box: 'w-72' },
+  xl:      { logo: 'h-16 w-20', tx: 'text-lg',     liveTx: 'text-2xl', py: 'py-2',   col: 'min-w-[19rem]',   box: 'w-96' },
+  xxl:     { logo: 'h-20 w-24', tx: 'text-2xl',    liveTx: 'text-3xl', py: 'py-2.5', col: 'min-w-[24rem]',   box: 'w-[26rem]' },
+}
+/** MC bracket: which size each round gets. The round being played now (the first one not finished)
+ *  gets the room - bigger the closer to the final; rounds already played shrink to compact. */
+function bracketTierFn(rounds: Array<{ round: string; matches: Match[] }>, finalRound: string): (round: string | null) => Tier {
+  const order = rounds.filter(r => r.round !== 'Third place')
+  const done = (r: { matches: Match[] }) => r.matches.every(m => m.status === 'finished')
+  let a = order.findIndex(r => !done(r))
+  if (a < 0) a = order.length - 1
+  return (round) => {
+    if (round === 'Third place') return order[a]?.round === finalRound ? 'big' : 'std'
+    const r = order.findIndex(x => x.round === round)
+    if (r < 0) return 'std'
+    const role = order.length - 1 - r            // 0 final, 1 semi-final, 2 quarter-final, 3+ earlier
+    if (r < a) return role >= 2 ? 'compact' : 'std'
+    if (r === a) return role === 0 ? 'xxl' : role === 1 ? 'xl' : role === 2 ? 'big' : 'std'
+    return role === 0 ? 'big' : 'std'
+  }
+}
+const McCtx = createContext<((round: string | null) => Tier) | null>(null)
 
 export function PosterBracket({ b, broadcast = false, tall = false }: { b: Bundle; broadcast?: boolean; tall?: boolean }) {
   const ev = b.events.find(e => e.format === 'groups_ko')
@@ -927,7 +952,7 @@ export function PosterBracket({ b, broadcast = false, tall = false }: { b: Bundl
 
   return (
     <TallCtx.Provider value={tall}>
-    <McCtx.Provider value={isPoolDispatch(ev)}>
+    <McCtx.Provider value={isPoolDispatch(ev) ? bracketTierFn(rounds.filter(r => r !== thirdR), finalR?.round ?? 'Final') : null}>
     <div className={`${broadcast ? 'w-max' : 'overflow-x-auto'} ${tall ? 'flex flex-1 flex-col' : ''} p-4 text-fg`} style={{ background: broadcast
         ? 'radial-gradient(ellipse at top, rgba(244,205,106,0.10), transparent 60%), rgb(var(--canvas))'
         : 'radial-gradient(ellipse at top, rgba(244,205,106,0.06), transparent 55%), rgb(var(--canvas))' }}>
@@ -955,9 +980,9 @@ export function PosterBracket({ b, broadcast = false, tall = false }: { b: Bundl
 }
 
 function PColumn({ b, col, side }: { b: Bundle; col: { round: string; matches: Match[] }; side: 'left' | 'right' }) {
-  const mc = useContext(McCtx)
+  const tierOf = useContext(McCtx)
   return (
-    <div className={`flex flex-col ${mc ? 'min-w-[11.5rem] lg:min-w-[12.5rem]' : 'min-w-[9.5rem] lg:min-w-[11rem]'}`}>
+    <div className={`flex flex-col transition-all duration-500 ${tierOf ? TIER[tierOf(col.round)].col : 'min-w-[9.5rem] lg:min-w-[11rem]'}`}>
       <div className={`mb-1 h-4 text-[10px] font-bold uppercase tracking-widest text-fg-subtle ${side === 'right' ? 'text-right' : ''}`}>
         {col.round}
       </div>
@@ -1006,30 +1031,34 @@ function PMatch({ b, m, medalOf }: { b: Bundle; m?: Match; medalOf?: (id: string
   const slot = (s: 'a' | 'b') => ev?.bracket_preview ? koSlotLabel(b, ev, m, s) : undefined
   const decided = m.status === 'finished'
   const live = m.status === 'live'
+  const tierOf = useContext(McCtx)
+  const tier: Tier | null = tierOf ? tierOf(m.round) : null
   return (
     <div className="relative">
-      {live && (
+      {live && !(tier === "compact" || tier === "std") && (
         <div className="absolute right-0 top-0 z-10 -translate-y-[130%]">
           <Pill tone="live"><span className="mr-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-current align-middle" />live</Pill>
         </div>
       )}
       <div className={`overflow-hidden rounded-md border ${live ? 'border-brand pp-live' : 'border-line'} bg-surface`}>
-        <PTeam b={b} teamId={m.team_a_id} score={m.score_a} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} medal={medalOf?.(m.team_a_id) ?? null} placeholder={slot('a')} />
+        <PTeam b={b} teamId={m.team_a_id} score={m.score_a} tier={tier} live={live} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} medal={medalOf?.(m.team_a_id) ?? null} placeholder={slot('a')} />
         <div className="h-px bg-line" />
         {bye
           ? <div className="px-2.5 py-1.5 text-[11px] italic text-fg-subtle">bye</div>
-          : <PTeam b={b} teamId={m.team_b_id} score={m.score_b} win={decided && m.winner_id === m.team_b_id} lose={decided && m.winner_id !== m.team_b_id} finished={decided} medal={medalOf?.(m.team_b_id) ?? null} placeholder={slot('b')} />}
+          : <PTeam b={b} teamId={m.team_b_id} score={m.score_b} tier={tier} live={live} win={decided && m.winner_id === m.team_b_id} lose={decided && m.winner_id !== m.team_b_id} finished={decided} medal={medalOf?.(m.team_b_id) ?? null} placeholder={slot('b')} />}
       </div>
     </div>
   )
 }
 
-function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder }: { b: Bundle; teamId: string | null; score: number; win: boolean; lose: boolean; finished: boolean; medal?: 'gold' | 'silver' | 'bronze' | null; placeholder?: string }) {
+function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder, tier = null, live = false }: { b: Bundle; teamId: string | null; score: number; win: boolean; lose: boolean; finished: boolean; medal?: 'gold' | 'silver' | 'bronze' | null; placeholder?: string; tier?: Tier | null; live?: boolean }) {
   const tall = useContext(TallCtx)
-  const mc = useContext(McCtx)
-  const py = mc ? 'py-1' : tall ? 'py-4' : 'py-1.5'
-  const tx = mc ? 'text-xs' : tall ? 'text-base' : 'text-xs'
-  const logoCls = mc ? 'h-9 w-11' : 'h-4 w-4'
+  const mc = tier != null
+  const T = TIER[tier ?? 'std']
+  const py = mc ? T.py : tall ? 'py-4' : 'py-1.5'
+  // a live game is the one to watch: bigger, bold, bright. Everything else stays calm.
+  const tx = mc ? (live ? T.liveTx : T.tx) : tall ? 'text-base' : 'text-xs'
+  const logoCls = mc ? T.logo : 'h-4 w-4'
   if (teamId == null && placeholder) {
     return (
       <div className={`flex items-center gap-2 border-l-2 border-transparent px-2.5 ${py}`}>
@@ -1041,9 +1070,9 @@ function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder }: { 
   return (
     <div className={`flex items-center gap-2 border-l-2 px-2.5 ${py} ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
       <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className={`${logoCls} shrink-0 rounded-[2px] object-contain`} />
-      <span className={`min-w-0 flex-1 truncate ${tx} ${win ? (mc ? 'font-semibold' : 'font-bold') + ' text-fg' : mc ? 'font-medium text-fg-muted' : 'text-fg-muted'}`}>{teamName(b, teamId)}</span>
+      <span className={`min-w-0 flex-1 truncate ${tx} ${mc && live ? 'font-extrabold tracking-wide text-white' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-fg' : mc ? 'font-medium text-fg-muted' : 'text-fg-muted'}`}>{teamName(b, teamId)}</span>
       {medal && <span className="shrink-0 text-xs leading-none" aria-label={medal}>{medal === 'gold' ? '🥇' : medal === 'silver' ? '🥈' : '🥉'}</span>}
-      {finished && <span className={`tabular shrink-0 ${tx} ${win ? (mc ? 'font-semibold' : 'font-bold') + ' text-gold' : 'text-fg-subtle'}`}>{score}</span>}
+      {(finished || (mc && live)) && <span className={`tabular shrink-0 ${tx} ${mc && live ? 'font-extrabold text-brand-ink' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-gold' : 'text-fg-subtle'}`}>{score}</span>}
     </div>
   )
 }
@@ -1061,13 +1090,18 @@ function PCentre({ b, finalM, thirdM, champId, podium }: {
     if (id === podium!.third) return 'bronze'
     return null
   }
+  const tierOf = useContext(McCtx)
+  const finalT = tierOf ? TIER[tierOf('Final')] : null
+  const thirdT = tierOf ? TIER[tierOf('Third place')] : null
+  // both finalists known and the Final not yet decided: the trophy is being fought for
+  const fight = !!tierOf && !!finalM && !!finalM.team_a_id && !!finalM.team_b_id && finalM.status !== 'finished'
   return (
     <div className="flex flex-col px-2 lg:px-5">
       <div className="mb-1 h-4 text-center font-cer text-[11px] font-bold uppercase tracking-[0.28em] text-gold">Final</div>
       <div className="flex flex-1 flex-col items-center justify-center gap-2">
-        <div className="w-52"><PMatch b={b} m={finalM} medalOf={medalOf} /></div>
+        <div className={`${finalT ? finalT.box : 'w-52'} transition-all duration-500`}><PMatch b={b} m={finalM} medalOf={medalOf} /></div>
         <div className="my-1 flex flex-col items-center">
-          <Trophy lit={!!champId} />
+          <Trophy lit={!!champId} fight={fight} />
           {champId
             ? <div className="mt-1 flex items-center gap-1.5 rounded-full border border-[#c2922c]/60 bg-[#f7d774]/10 px-3 py-1">
                 <Emblem logo={teamLogo(b, champId)} flagName={teamSideName(b, champId)} className="h-4 w-6 shrink-0 rounded-[1px] object-contain" />
@@ -1076,15 +1110,15 @@ function PCentre({ b, finalM, thirdM, champId, podium }: {
             : <div className="mt-1 text-[10px] uppercase tracking-widest text-fg-subtle">champion</div>}
         </div>
         <div className="mt-1 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-fg-subtle">Third place</div>
-        <div className="w-48"><PMatch b={b} m={thirdM} medalOf={medalOf} /></div>
+        <div className={`${thirdT ? thirdT.box : 'w-48'} transition-all duration-500`}><PMatch b={b} m={thirdM} medalOf={medalOf} /></div>
       </div>
     </div>
   )
 }
 
-function Trophy({ lit }: { lit?: boolean }) {
+function Trophy({ lit, fight }: { lit?: boolean; fight?: boolean }) {
   return (
-    <svg viewBox="0 0 48 60" className={`h-16 w-16 ${lit ? 'drop-shadow-[0_0_10px_rgba(247,215,116,0.6)]' : 'opacity-60'}`} aria-hidden="true">
+    <svg viewBox="0 0 48 60" className={`${fight ? 'h-24 w-24 pp-trophy-fight' : 'h-16 w-16'} ${lit ? 'drop-shadow-[0_0_10px_rgba(247,215,116,0.6)]' : fight ? '' : 'opacity-60'}`} aria-hidden="true">
       <defs>
         <linearGradient id="ppTrophy" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#f7d774" /><stop offset="100%" stopColor="#c2922c" />
