@@ -952,7 +952,7 @@ export function PosterBracket({ b, broadcast = false, tall = false }: { b: Bundl
 
   return (
     <TallCtx.Provider value={tall}>
-    <McCtx.Provider value={isPoolDispatch(ev) ? bracketTierFn(rounds.filter(r => r !== thirdR), finalR?.round ?? 'Final') : null}>
+    <McCtx.Provider value={bracketTierFn(rounds.filter(r => r !== thirdR), finalR?.round ?? 'Final')}>
     <div className={`${broadcast ? 'w-max' : 'overflow-x-auto'} ${tall ? 'flex flex-1 flex-col' : ''} p-4 text-fg`} style={{ background: broadcast
         ? 'radial-gradient(ellipse at top, rgba(244,205,106,0.10), transparent 60%), rgb(var(--canvas))'
         : 'radial-gradient(ellipse at top, rgba(244,205,106,0.06), transparent 55%), rgb(var(--canvas))' }}>
