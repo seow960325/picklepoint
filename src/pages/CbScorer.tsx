@@ -261,7 +261,7 @@ export default function CbScorer({ bundle, match, token, courtNo, code, reload, 
         </span>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-2 content-start gap-2 landscape:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)_minmax(0,1fr)]">
+      <div className="my-auto grid shrink-0 grid-cols-2 gap-2 landscape:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)_minmax(0,1fr)]">
         {/* centre: clock + game controls */}
         <div className={`${PANEL} col-span-2 flex flex-col gap-2 p-2 landscape:order-2 landscape:col-span-1`}>
           <div className="grid h-8 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-1">

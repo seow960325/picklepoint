@@ -171,7 +171,7 @@ export default function Board() {
   return (
     <Screen>
       {duelEvent && <DuelScoreboard b={bundle} ev={duelEvent} big={false} />}
-      {multi && <SportBar view={sv} sports={sports} />}
+      <div aria-hidden style={{ height: 'env(safe-area-inset-top)' }} />
 
       <div className="border-b border-line px-4 py-3 lg:px-6 lg:py-4">
         <div className="flex items-center justify-between gap-3">
@@ -344,16 +344,6 @@ function SportSwitch({ sports, view, onPick, size = 'md' }: {
           </button>
         )
       })}
-    </div>
-  )
-}
-
-/** Thin colour strip on top of the board: one sport's colour, or both halves. */
-function SportBar({ view, sports }: { view: SportView; sports: Sport[] }) {
-  const show = view === 'all' ? sports : [view]
-  return (
-    <div className="flex h-1.5">
-      {show.map(s => <div key={s} className={`flex-1 ${SPORT_TONE[s].bar}`} />)}
     </div>
   )
 }
