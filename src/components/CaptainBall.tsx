@@ -1,7 +1,7 @@
 /** Captain ball (multi-sport, migration 0031): the basketball-style
  *  scoreboard, the round-robin table, the games list and the admin rules
  *  panel. Only rendered for events whose sport is 'captainball'. */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Bundle, EventCfg, Match } from '../lib/types'
 import { teamName, teamLogo, liveOnCourt } from '../lib/store'
@@ -9,8 +9,9 @@ import { Emblem, Pill } from './ui'
 import { Field, Stepper, Warn } from './form'
 import * as api from '../lib/api'
 import { hornEnd } from '../lib/feedback'
+import { SevenSeg, segClock, segScore } from './SevenSeg'
 import {
-  cbStateOf, cbView, cbScore, cbRulesOf, cbStandings, cbRound, fmtClock, toLeft, toAllowed,
+  cbStateOf, cbView, cbScore, cbRulesOf, cbStandings, cbRound, fmtClock, toLeft, toAllowed, ordinal,
   type CbRules, type CbState, type Side,
 } from '../lib/captainball'
 
@@ -30,12 +31,15 @@ const ticking = (st: CbState, now: number) => {
   return v.running || v.toMs > 0 || v.brkMs > 0
 }
 
-/** Each team keeps one colour all game, also after the teams swap ends. */
-export const CB_TEAM_COLOR: Record<Side, string> = { a: '#fbbf24', b: '#a5b4fc' }
+/** Each team keeps one LED colour all game, also after the teams swap ends. */
+export const CB_TEAM_COLOR: Record<Side, string> = { a: '#ffb020', b: '#3fd0ff' }
+export const CB_CLOCK_COLOR = '#ff3b30'
+export const CB_FOUL_COLOR = '#ffd60a'
+export const CB_CALL_COLOR = '#ff9f0a'
 
 const evOf = (b: Bundle, m: Match) => b.events.find(e => e.id === m.event_id)
 
-/** Plays the horn once when the half ends or a time-out runs out (TV / board). */
+/** Plays the horn once when the half ends or a team call runs out (TV / board). */
 export function useHorn(st: CbState, now: number, on: boolean) {
   const prev = useRef<{ running: boolean; to: number; brk: number } | null>(null)
   const v = cbView(st, now)
@@ -47,88 +51,162 @@ export function useHorn(st: CbState, now: number, on: boolean) {
   })
 }
 
-const SIZES = {
-  card: { name: 'text-sm', score: 'text-6xl', clock: 'text-5xl', small: 'text-[10px]', pad: 'p-3', dot: 'h-2 w-2', logo: 'h-5 w-5', status: 'text-xs' },
-  split: { name: 'text-xl', score: 'text-8xl', clock: 'text-7xl', small: 'text-sm', pad: 'p-4', dot: 'h-3 w-3', logo: 'h-8 w-8', status: 'text-lg' },
-  tv: { name: 'text-3xl', score: 'text-[9rem] leading-none', clock: 'text-[8rem] leading-none', small: 'text-lg', pad: 'p-6', dot: 'h-4 w-4', logo: 'h-12 w-12', status: 'text-2xl' },
-} as const
+/** Points scored per half, e.g. [{label:'1ST HALF', a:12, b:9}, ...]. */
+export function cbHalfScores(st: CbState): Array<{ label: string; a: number; b: number }> {
+  const out: Array<{ label: string; a: number; b: number }> = []
+  const upto = st.et ? st.r.halves + 1 : st.half
+  for (let h = 1; h <= upto; h++) {
+    let a = 0, b = 0
+    for (const e of st.log) if (e.h === h) { if (e.s === 'a') a += e.n; else b += e.n }
+    out.push({ label: h > st.r.halves ? 'EXTRA' : `${ordinal(h)} HALF`, a, b })
+  }
+  return out
+}
 
-/** The live scoreboard of one captain-ball game (always dark, like a hall scoreboard). */
+/** Board text size follows the width it is given (capped by screen height on a TV),
+ *  so the whole scoreboard keeps one shape on a phone, half a TV or a full TV. */
+function useBoardFont(cap: string | null) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [w, setW] = useState(0)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const f = () => setW(el.clientWidth)
+    f()
+    const ro = new ResizeObserver(f)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const px = w ? w / 54 : 8
+  return { ref, px, fontSize: cap ? `min(${px}px, ${cap})` : `${px}px` }
+}
+
+const CAP = { card: null, split: '2.1vh', tv: '2.3vh' } as const
+
+/** The live scoreboard of one captain-ball game: an official-style LED board
+ *  (team names, scores, game clock, period, fouls, team calls). Every number
+ *  sits in a fixed-width cell, so nothing moves when digits change. */
 export function CbScoreboard({ b, m, size = 'card', sound = false, courtLabel }: {
-  b: Bundle; m: Match; size?: keyof typeof SIZES; sound?: boolean; courtLabel?: string
+  b: Bundle; m: Match; size?: keyof typeof CAP; sound?: boolean; courtLabel?: string
 }) {
   const st = cbStateOf(m, evOf(b, m))
-  const now = useNow(ticking(st, Date.now()))
+  const now = useNow(ticking(st, Date.now()), 100)
   useHorn(st, now, sound)
   const v = cbView(st, now)
   const sc = cbScore(st)
-  const z = SIZES[size]
+  const { ref, px, fontSize } = useBoardFont(CAP[size])
+  const narrow = px < 12   // phone-size board: shorter labels
   const left: Side = m.a_on_left ? 'a' : 'b'
   const right: Side = left === 'a' ? 'b' : 'a'
   const id = (s: Side) => (s === 'a' ? m.team_a_id : m.team_b_id)
-  const low = v.clock < 60000 && st.phase === 'play'
+  const box = 'rounded-[0.5em] border-[0.1em] border-[#23272e] bg-[#0b0c0f]'
+  const lbl = 'font-display font-bold uppercase tracking-[0.18em] text-[#8b93a1]'
+  const lblSize = narrow ? { fontSize: 'max(0.85em, 7px)', letterSpacing: '0.06em' } : { fontSize: '0.85em' }
 
-  const side = (s: Side, alignRight: boolean) => {
-    const allowed = toAllowed(st, s), left_ = toLeft(st, s)
+  const team = (s: Side) => {
+    const allowed = Math.max(0, toAllowed(st, s)), have = toLeft(st, s)
+    const col = CB_TEAM_COLOR[s]
     return (
-      <div className={`flex min-w-0 flex-col ${alignRight ? 'items-end text-right' : 'items-start text-left'}`}>
-        <div className={`flex w-full min-w-0 items-center gap-2 ${alignRight ? 'flex-row-reverse' : ''}`}>
-          <span className="shrink-0 rounded-[3px]" style={{ background: CB_TEAM_COLOR[s], width: '0.6em', height: '1.6em' }} />
-          <Emblem logo={teamLogo(b, id(s))} className={`${z.logo} shrink-0 rounded-[3px]`} />
-          <span className={`min-w-0 font-display font-bold uppercase leading-tight tracking-wide text-white line-clamp-2 break-words ${z.name}`}>
-            {teamName(b, id(s))}
-          </span>
+      <div className="flex min-w-0 flex-col items-stretch">
+        <div className="flex items-center justify-center text-center" style={{ height: '3.6em' }}>
+          <span className="line-clamp-2 break-words font-display font-bold uppercase text-white"
+            style={{ fontSize: '1.6em', lineHeight: 1.1, letterSpacing: '0.04em' }}>{teamName(b, id(s))}</span>
         </div>
-        <div className={`tabular font-display font-bold ${z.score}`}
-          style={{ color: CB_TEAM_COLOR[s], textShadow: `0 0 18px ${CB_TEAM_COLOR[s]}55` }}>
-          {sc[s]}
+        <div className="mx-auto rounded-full" style={{ height: '0.28em', width: '70%', background: col, boxShadow: `0 0 0.6em ${col}88` }} />
+        <div className={`${box} mt-[0.6em] flex justify-center`} style={{ padding: '0.5em 0.6em' }}>
+          <SevenSeg text={segScore(sc[s], sc.a >= 100 || sc.b >= 100 ? 3 : 2)} color={col} size="7.5em" label={`${teamName(b, id(s))} ${sc[s]}`} />
         </div>
-        <div className={`flex items-center gap-3 ${z.small} font-semibold uppercase tracking-widest text-white/60 ${alignRight ? 'flex-row-reverse' : ''}`}>
-          <span>Foul <span className="tabular font-display text-[1.35em] font-bold text-[#facc15]">{st.f[s]}</span></span>
-          <span className={`flex items-center gap-1 ${alignRight ? 'flex-row-reverse' : ''}`} title="Time-outs left">
-            <span>TO</span>
-            {Array.from({ length: Math.max(allowed, 0) }, (_, i) => (
-              <span key={i} className={`${z.dot} rounded-full ${i < left_ ? 'bg-[#f87171]' : 'bg-white/15'}`} />
-            ))}
-          </span>
+        <div className="mt-[0.6em] grid grid-cols-2 gap-[0.6em]">
+          <div className={`${box} flex flex-col items-center justify-between`} style={{ height: narrow ? '5.2em' : '4.6em', padding: '0.4em' }}>
+            <span className={lbl} style={lblSize}>Fouls</span>
+            <SevenSeg text={segScore(st.f[s])} color={CB_FOUL_COLOR} size="2.4em" glow={false} />
+          </div>
+          <div className={`${box} flex flex-col items-center justify-between`} style={{ height: narrow ? '5.2em' : '4.6em', padding: '0.4em' }}>
+            <span className={lbl} style={lblSize}>{px < 20 ? 'Calls' : 'Team calls'}</span>
+            <span className="flex flex-wrap items-center justify-center" style={{ gap: '0.35em', minHeight: '2.4em' }}>
+              {allowed === 0
+                ? <span className={lbl} style={lblSize}>—</span>
+                : Array.from({ length: allowed }, (_, i) => (
+                  <span key={i} className="rounded-full" style={{
+                    width: '1em', height: '1em',
+                    background: i < have ? CB_CALL_COLOR : '#2a2e35',
+                    boxShadow: i < have ? `0 0 0.5em ${CB_CALL_COLOR}aa` : undefined,
+                  }} />
+                ))}
+            </span>
+          </div>
         </div>
       </div>
     )
   }
 
-  const banner = v.toMs > 0
-    ? { txt: `Time-out · ${teamName(b, id(v.toSide!))}`, t: fmtClock(v.toMs, false), c: '#f59e0b' }
-    : v.brkMs > 0 || st.phase === 'break'
-    ? { txt: 'Half-time · teams swap ends', t: fmtClock(v.brkMs, false), c: '#38bdf8' }
+  const statusTone = v.running ? '#30d158' : v.toMs > 0 ? CB_CALL_COLOR : st.phase === 'over' || v.expired ? '#ffffff' : '#ffd60a'
+  const halves = cbHalfScores(st)
+  // half-time: the game clock counts the rest down (as on a basketball board)
+  const shownClock = st.phase === 'break' ? v.brkMs : v.clock
+  const band = v.toMs > 0
+    ? { c: CB_CALL_COLOR, txt: `Team call · ${teamName(b, id(v.toSide!))}`, t: v.toMs }
+    : st.phase === 'break'
+    ? { c: '#64d2ff', txt: 'Half-time rest · teams swap ends', t: -1 }
     : null
 
   return (
-    <div className={`overflow-hidden rounded-2xl bg-[#07090d] ${z.pad} text-white ring-1 ring-white/10`}>
-      <div className={`mb-1 flex items-center justify-between gap-2 ${z.small} font-semibold uppercase tracking-[0.18em] text-white/50`}>
-        <span className="truncate">{[courtLabel, cbRound(m), `Game ${m.sequence}`].filter(Boolean).join(' · ')}</span>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 font-bold ${
-          v.running ? 'bg-[#22c55e]/20 text-[#4ade80]' : st.phase === 'over' || v.expired ? 'bg-white/10 text-white' : 'bg-white/10 text-white/70'}`}>
-          {v.running ? '● Live' : v.status}
-        </span>
-      </div>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
-        {side(left, false)}
-        <div className="flex flex-col items-center px-1">
-          <div className={`tabular font-display font-bold ${z.clock}`}
-            style={{ color: '#ff3b30', textShadow: '0 0 14px #ff3b3088, 0 0 34px #ff3b3044', opacity: v.running || low || st.phase !== 'play' ? 1 : 0.85 }}>
-            {fmtClock(v.clock)}
+    <div ref={ref} className="w-full">
+      <div className="overflow-hidden rounded-[1em] border-[0.15em] border-[#1c1f25] bg-[#050607] text-white"
+        style={{ fontSize, padding: '1em 1.3em 1.1em', boxShadow: 'inset 0 0 3em #000' }}>
+        {/* header */}
+        <div className="flex items-center justify-between" style={{ height: '1.6em' }}>
+          <span className={`truncate ${lbl}`} style={{ fontSize: 'max(1em, 10px)' }}>
+            {[courtLabel, cbRound(m), `Game ${m.sequence}`].filter(Boolean).join(' · ')}
+          </span>
+          <span className="flex shrink-0 items-center justify-end font-display font-bold uppercase tracking-[0.18em]"
+            style={{ fontSize: 'max(1em, 10px)', gap: '0.5em', color: statusTone, minWidth: '9em' }}>
+            <span className={`rounded-full ${v.running ? 'animate-pulse' : ''}`} style={{ width: '0.7em', height: '0.7em', background: statusTone }} />
+            <span className="whitespace-nowrap">{v.status}</span>
+          </span>
+        </div>
+
+        <div className="mt-[0.6em] grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start" style={{ gap: '1.3em' }}>
+          {team(left)}
+          <div className="flex flex-col items-center">
+            <div className="flex items-end justify-center" style={{ height: '3.6em', paddingBottom: '0.3em' }}>
+              <span className="font-display font-bold uppercase text-white" style={{ fontSize: '1.9em', letterSpacing: '0.16em' }}>{v.periodLabel}</span>
+            </div>
+            <div className="rounded-full" style={{ height: '0.28em', width: '40%', background: '#2a2e35' }} />
+            <div className={`${box} mt-[0.6em]`} style={{ padding: '0.5em 0.9em' }}>
+              <SevenSeg text={segClock(shownClock)} color={CB_CLOCK_COLOR} size="7.5em" label={fmtClock(shownClock)} />
+            </div>
+            <div className="mt-[0.6em] grid w-full grid-cols-2 gap-[0.6em]">
+              {(halves.length >= 2 ? halves.slice(-2) : [...halves, { label: `${ordinal(2)} HALF`, a: -1, b: -1 }]).map(h => (
+                <div key={h.label} className={`${box} flex flex-col items-center justify-between`} style={{ height: narrow ? '5.2em' : '4.6em', padding: '0.4em' }}>
+                  <span className={lbl} style={lblSize}>{h.label}</span>
+                  <span className="tabular font-display font-bold text-white" style={{ fontSize: '1.7em', lineHeight: 1 }}>
+                    {h.a < 0 ? <span className="text-[#3a3f48]">– –</span> : <>
+                      <span style={{ color: CB_TEAM_COLOR[left] }}>{h[left]}</span>
+                      <span className="text-[#5b6270]"> – </span>
+                      <span style={{ color: CB_TEAM_COLOR[right] }}>{h[right]}</span>
+                    </>}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className={`mt-1 font-display font-bold uppercase tracking-[0.2em] text-white/80 ${z.status}`}>{v.periodLabel}</div>
+          {team(right)}
         </div>
-        {side(right, true)}
+
+        {/* team call / half-time countdown — the slot is always there, so nothing jumps */}
+        <div className="mt-[0.9em] flex items-center justify-center rounded-[0.5em] border-[0.1em]"
+          style={{
+            height: '4em', gap: '1.2em',
+            borderColor: band ? `${band.c}88` : '#16191e',
+            background: band ? `${band.c}1f` : 'transparent',
+          }}>
+          {band && <>
+            <span className="truncate font-display font-bold uppercase tracking-[0.14em]" style={{ fontSize: '1.7em', color: band.c }}>{band.txt}</span>
+            {band.t >= 0 && <SevenSeg text={segClock(band.t, false)} color={band.c} size="2.6em" />}
+          </>}
+        </div>
       </div>
-      {banner && (
-        <div className="mt-2 flex items-center justify-center gap-3 rounded-xl px-3 py-1.5 font-display font-bold uppercase tracking-wider"
-          style={{ background: `${banner.c}22`, color: banner.c, boxShadow: `inset 0 0 0 1px ${banner.c}66` }}>
-          <span className={`truncate ${z.status}`}>{banner.txt}</span>
-          <span className={`tabular ${z.status} text-white`}>{banner.t}</span>
-        </div>
-      )}
     </div>
   )
 }
@@ -315,13 +393,13 @@ export function CbRulesPanel({ ev, token, run }: { ev: EventCfg; token: string; 
         </div>
       </div>
       <div className="space-y-4 rounded-xl border border-line bg-surface p-4">
-        <div className={H}>Time-outs (per team)</div>
+        <div className={H}>Team calls (per team)</div>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-4">
-          <Field label="Length (sec)"><Stepper value={r.to_sec} min={10} max={180} onChange={v => set('to_sec')(Math.round(v / 5) * 5 || 10)} /></Field>
+          <Field label="Call length (sec)"><Stepper value={r.to_sec} min={10} max={180} onChange={v => set('to_sec')(Math.round(v / 5) * 5 || 10)} /></Field>
           <Field label="1st half"><Stepper value={r.to_h1} min={0} max={9} onChange={set('to_h1')} /></Field>
           <Field label="2nd half / extra"><Stepper value={r.to_h2} min={0} max={9} onChange={set('to_h2')} /></Field>
         </div>
-        <p className="text-xs text-fg-subtle">The court scorer can also give one team an extra time-out during a game.</p>
+        <p className="text-xs text-fg-subtle">Each team call stops the game clock and runs its own countdown. The court scorer can also give a team one extra call during a game.</p>
       </div>
       <div className="space-y-4 rounded-xl border border-line bg-surface p-4">
         <div className={H}>Table points</div>

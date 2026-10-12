@@ -1,21 +1,113 @@
 /** Court scorer for captain ball (multi-sport, migration 0031). One referee
- *  device runs the whole game: clock, +1 / +2 / −1 points, fouls, per-team
- *  time-outs, adding time back, half-time rest and swapping ends. Every action
- *  produces the full new game state, which is sent to the server (cb_save);
- *  the board and TV read it and tick the clock themselves. */
-import { useEffect, useMemo, useRef, useState } from 'react'
+ *  device runs the whole game: game clock, +1 (boy) / +2 (girl) / −1, team
+ *  fouls, team calls (each team's time-out, with its own countdown), clock
+ *  corrections, half-time rest and swapping ends. Every action produces the
+ *  full new game state, which is sent to the server (cb_save); the board and
+ *  TV read it and tick the clock themselves.
+ *
+ *  Layout rule: every row has a fixed height and every number a fixed-width
+ *  cell, so nothing on this screen moves when a value or a state changes.
+ *  All small components live at module level — defining them inside the
+ *  scorer re-created the buttons on every clock tick, which swallowed taps
+ *  (the "STOP / RESUME lags" bug). */
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { Bundle, Match } from '../lib/types'
-import { teamName, teamLogo, eventOf } from '../lib/store'
+import { teamName, eventOf } from '../lib/store'
 import * as api from '../lib/api'
-import { Emblem } from '../components/ui'
 import { tapPoint, tapUndo, chimeSwitch } from '../lib/feedback'
-import { CB_TEAM_COLOR, useHorn, useNow } from '../components/CaptainBall'
+import { CB_TEAM_COLOR, CB_CLOCK_COLOR, CB_FOUL_COLOR, CB_CALL_COLOR, useHorn, useNow } from '../components/CaptainBall'
+import { SevenSeg, segClock, segScore } from '../components/SevenSeg'
 import {
   cbStateOf, cbView, cbScore, cbRun, cbStop, cbPoint, cbUndo, cbFoul, cbTimeout, cbEndTimeout,
   cbTimeoutBack, cbGrantTimeout, cbAdjust, cbEndHalf, cbNextHalf, cbExtraTime, cbReopen, cbRestart,
-  cbFlip, fmtClock, toLeft, toAllowed, type Act, type CbSnap, type Side,
+  cbFlip, fmtClock, toLeft, toAllowed, ordinal, isLastPeriod, type Act, type CbSnap, type CbState, type Side,
 } from '../lib/captainball'
+
+type Tone = 'base' | 'go' | 'stop' | 'warn' | 'call' | 'ghost' | 'danger'
+const TONE: Record<Tone, string> = {
+  base: 'bg-[#1b1f27] text-white border border-[#2b313c]',
+  go: 'bg-[#22c55e] text-black',
+  stop: 'bg-[#ef4444] text-white',
+  warn: 'bg-[#f59e0b] text-black',
+  call: 'bg-[#ff9f0a]/15 text-[#ffb340] border border-[#ff9f0a]/60',
+  ghost: 'bg-transparent text-white/85 border border-white/15',
+  danger: 'bg-transparent text-[#f87171] border border-[#ef4444]/50',
+}
+
+function Btn({ children, onClick, tone = 'base', className = '', disabled = false }: {
+  children: ReactNode; onClick: () => void; tone?: Tone; className?: string; disabled?: boolean
+}) {
+  return (
+    <button type="button" disabled={disabled} onClick={onClick}
+      style={{ touchAction: 'manipulation' }}
+      className={`flex select-none items-center justify-center rounded-xl font-display font-bold uppercase tracking-wide transition-transform active:scale-[0.97] disabled:opacity-25 ${TONE[tone]} ${className}`}>
+      {children}
+    </button>
+  )
+}
+
+function Lamps({ total, lit, color }: { total: number; lit: number; color: string }) {
+  if (total <= 0) return <span className="text-xs text-white/40">none</span>
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {Array.from({ length: total }, (_, i) => (
+        <span key={i} className="h-3 w-3 rounded-full"
+          style={{ background: i < lit ? color : '#30353f', boxShadow: i < lit ? `0 0 6px ${color}` : undefined }} />
+      ))}
+    </span>
+  )
+}
+
+const PANEL = 'rounded-2xl border border-[#1f242d] bg-[#0c0f14]'
+const LABEL = 'font-display text-[11px] font-bold uppercase tracking-[0.2em] text-[#8b93a1]'
+
+/** One team's column: name, score, +1 / +2 / −1, fouls, team call. */
+function TeamPanel({ name, side, st, score, callMs, callSide, apply }: {
+  name: string; side: Side; st: CbState; score: number; callMs: number; callSide: Side | null
+  apply: (a: Act, feel?: () => void) => void
+}) {
+  const col = CB_TEAM_COLOR[side]
+  const allowed = Math.max(0, toAllowed(st, side)), left = toLeft(st, side)
+  const mine = callMs > 0 && callSide === side
+  const other = callMs > 0 && callSide !== side
+  const live = st.phase !== 'over' && st.phase !== 'break'
+  return (
+    <div className={`${PANEL} flex min-w-0 flex-1 flex-col gap-2 p-2`}>
+      <div className="flex h-8 shrink-0 items-center gap-2 px-1">
+        <span className="h-6 w-1.5 shrink-0 rounded" style={{ background: col, boxShadow: `0 0 8px ${col}` }} />
+        <span className="min-w-0 truncate font-display text-base font-bold uppercase tracking-wide landscape:text-lg">{name}</span>
+      </div>
+      <div className="flex shrink-0 justify-center rounded-xl bg-black/60 py-1.5 text-[min(13vh,21vw)] landscape:text-[min(16vh,8vw)]">
+        <SevenSeg text={segScore(score)} color={col} size="1em" label={`${name} ${score}`} />
+      </div>
+      <div className="grid h-20 shrink-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.75rem] gap-2 landscape:h-[min(16vh,4rem)]">
+        <Btn onClick={() => apply(cbPoint(side, 1), tapPoint)} className="flex-col leading-none" tone="base">
+          <span className="text-3xl">+1</span><span className="mt-0.5 text-[10px] tracking-[0.2em] text-white/50">boy</span>
+        </Btn>
+        <Btn onClick={() => apply(cbPoint(side, 2), tapPoint)} className="flex-col leading-none" tone="base">
+          <span className="text-3xl">+2</span><span className="mt-0.5 text-[10px] tracking-[0.2em] text-white/50">girl</span>
+        </Btn>
+        <Btn onClick={() => apply(cbPoint(side, -1), tapUndo)} tone="ghost" className="text-lg" disabled={score < 1}>−1</Btn>
+      </div>
+      <div className="grid h-12 shrink-0 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 landscape:h-10">
+        <Btn onClick={() => apply(cbFoul(side, -1))} tone="ghost" className="h-full text-xl" disabled={st.f[side] < 1}>−</Btn>
+        <span className="flex h-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl border border-[#2b313c] bg-[#14171d] landscape:flex-row landscape:gap-2">
+          <span className="font-display text-[9px] font-bold uppercase tracking-[0.18em] text-[#8b93a1] landscape:text-[11px]">Fouls</span>
+          <span className="text-[20px] leading-none landscape:text-[22px]"><SevenSeg text={segScore(st.f[side])} color={CB_FOUL_COLOR} size="1em" glow={false} /></span>
+        </span>
+        <Btn onClick={() => apply(cbFoul(side, 1), tapPoint)} tone="ghost" className="h-full text-xl">+</Btn>
+      </div>
+      <Btn tone={mine ? 'warn' : 'call'} className="h-14 shrink-0 gap-3 text-base landscape:h-12"
+        disabled={!mine && (other || !live || left < 1)}
+        onClick={() => apply(mine ? cbEndTimeout : cbTimeout(side), chimeSwitch)}>
+        {mine
+          ? <><span>End call</span><span className="tabular inline-block w-[3.2rem] text-left text-xl">{fmtClock(callMs, false)}</span></>
+          : <><span>Team call</span><Lamps total={allowed} lit={left} color={CB_CALL_COLOR} /></>}
+      </Btn>
+    </div>
+  )
+}
 
 export default function CbScorer({ bundle, match, token, courtNo, code, reload, onRelogin }: {
   bundle: Bundle; match: Match; token: string; courtNo: number; code: string
@@ -32,7 +124,7 @@ export default function CbScorer({ bundle, match, token, courtNo, code, reload, 
   const [menu, setMenu] = useState(false)
 
   const st = snap.st
-  const now = useNow(true, 200)
+  const now = useNow(true, 100)
   const v = cbView(st, now)
   useHorn(st, now, true)
   const sc = cbScore(st)
@@ -55,7 +147,7 @@ export default function CbScorer({ bundle, match, token, courtNo, code, reload, 
         const c = cbScore(s.st)
         try {
           await api.cbSave(match.id, token, s.st, c.a, c.b, s.aOnLeft)
-          sentRev.current = s.st.rev; setOffline(false)
+          sentRev.current = Math.max(sentRev.current, s.st.rev); setOffline(false)
         } catch (e: any) {
           const msg = String(e?.message ?? e)
           if (msg.includes('CB_STALE')) { sentRev.current = s.st.rev; setConflict(true); reload(); break }
@@ -72,10 +164,11 @@ export default function CbScorer({ bundle, match, token, courtNo, code, reload, 
     return () => { clearInterval(t); window.removeEventListener('online', flush) }
   }, [token])
 
+  // the screen updates at once; saving happens behind it
   const apply = (act: Act, feel?: () => void) => {
     const next = act(latest.current, Date.now())
     if (next === latest.current) return
-    latest.current = next; setSnap(next); feel?.(); flush()
+    latest.current = next; setSnap(next); feel?.(); void flush()
   }
 
   const finish = async () => {
@@ -88,199 +181,171 @@ export default function CbScorer({ bundle, match, token, courtNo, code, reload, 
   const left: Side = snap.aOnLeft ? 'a' : 'b'
   const right: Side = left === 'a' ? 'b' : 'a'
   const tid = (s: Side) => (s === 'a' ? match.team_a_id : match.team_b_id)
+  const nm = (s: Side) => teamName(bundle, tid(s))
   const level = sc.a === sc.b
-  const lastHalf = st.et || st.half >= st.r.halves
+  const last = isLastPeriod(st)
   const clockOpen = st.phase === 'play' || st.phase === 'ready'
-  const canRun = clockOpen && !v.running && st.ms > 0 && v.clock > 0 && st.phase !== 'break'
-  const wasAdded = st.adj !== 0
+  const endWord = last ? 'Full time' : `End ${ordinal(st.half)} half`
   const matchNo = useMemo(() => bundle.matches
     .filter(x => x.court_id === match.court_id).sort((a, b) => a.sequence - b.sequence)
     .findIndex(x => x.id === match.id) + 1, [bundle.matches, match.id])
 
-  const Btn = ({ children, onClick, tone = 'base', className = '', disabled = false }: {
-    children: React.ReactNode; onClick: () => void; tone?: 'base' | 'go' | 'stop' | 'warn' | 'ghost'; className?: string; disabled?: boolean
-  }) => (
-    <button disabled={disabled} onClick={onClick}
-      className={`rounded-xl font-display font-bold uppercase tracking-wide active:scale-[0.97] disabled:opacity-30 ${
-        tone === 'go' ? 'bg-[#22c55e] text-black' : tone === 'stop' ? 'bg-[#ef4444] text-white'
-        : tone === 'warn' ? 'bg-[#f59e0b] text-black' : tone === 'ghost' ? 'border border-white/20 text-white/80'
-        : 'bg-white/10 text-white'} ${className}`}>
-      {children}
-    </button>
-  )
+  const statusColor = v.running ? '#30d158' : v.toMs > 0 ? CB_CALL_COLOR : v.expired || st.phase === 'over' ? '#ffffff' : '#ffd60a'
+  const adj = st.adj
+  const adjTxt = `${adj > 0 ? '+' : adj < 0 ? '−' : '±'}${fmtClock(Math.abs(adj), false)}`
 
-  const team = (s: Side) => {
-    const col = CB_TEAM_COLOR[s]
-    const allowed = toAllowed(st, s), have = toLeft(st, s)
+  // ---------------------------------------------------------- main button
+  const main = (() => {
+    const k = 'h-14 w-full text-2xl'
+    if (st.phase === 'break') {
+      return <Btn tone="go" className={k} onClick={() => apply(cbNextHalf, chimeSwitch)}>▶ Start {ordinal(st.half + 1)} half</Btn>
+    }
+    if (st.phase === 'over') {
+      return level
+        ? <div className="grid h-14 grid-cols-2 gap-2">
+            <Btn tone="go" className="text-lg" onClick={() => apply(cbExtraTime)}>Extra time {st.r.extra_min}:00</Btn>
+            <Btn tone="warn" className="text-lg" onClick={() => setConfirm('finish')}>Finish · draw</Btn>
+          </div>
+        : <Btn tone="go" className={k} onClick={() => setConfirm('finish')}>Finish game · {sc[left]}–{sc[right]}</Btn>
+    }
+    if (v.expired) return <Btn tone="warn" className={`${k} animate-pulse`} onClick={() => apply(cbEndHalf)}>{endWord}</Btn>
+    if (v.running) return <Btn tone="stop" className={k} onClick={() => apply(cbStop)}>■ Stop clock</Btn>
     return (
-      <div className="flex min-w-0 flex-1 flex-col gap-2 rounded-2xl bg-white/[0.04] p-2.5">
-        <div className="flex items-center gap-2">
-          <span className="h-6 w-1.5 shrink-0 rounded" style={{ background: col }} />
-          <Emblem logo={teamLogo(bundle, tid(s))} className="h-6 w-6 shrink-0 rounded-[3px]" />
-          <span className="min-w-0 truncate font-display text-lg font-bold uppercase tracking-wide">{teamName(bundle, tid(s))}</span>
+      <Btn tone="go" className={k} onClick={() => apply(cbRun)} disabled={v.clock <= 0}>
+        ▶ {st.phase === 'ready' ? `Start ${st.et ? 'extra time' : `${ordinal(st.half)} half`}` : 'Resume clock'}
+      </Btn>
+    )
+  })()
+
+  // ------------------------------------------------- info slot (fixed height)
+  const info = (() => {
+    const base = 'flex h-12 items-center justify-between gap-2 rounded-xl px-3'
+    if (v.toMs > 0) {
+      return (
+        <div className={`${base} border border-[#ff9f0a]/60 bg-[#ff9f0a]/15`}>
+          <span className="min-w-0 truncate font-display text-base font-bold uppercase tracking-wide text-[#ffb340]">Team call · {nm(v.toSide!)}</span>
+          <span className="shrink-0 text-[30px]"><SevenSeg text={segClock(v.toMs, false)} color={CB_CALL_COLOR} size="1em" /></span>
         </div>
-        <div className="tabular text-center font-display text-[min(24vh,7rem)] landscape:text-[min(22vh,6rem)] font-bold leading-none"
-          style={{ color: col, textShadow: `0 0 18px ${col}44` }}>{sc[s]}</div>
-        <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
-          <Btn onClick={() => apply(cbPoint(s, 1), tapPoint)} className="py-4 text-3xl" tone="base">+1</Btn>
-          <Btn onClick={() => apply(cbPoint(s, 2), tapPoint)} className="py-4 text-3xl" tone="base">+2</Btn>
-          <Btn onClick={() => apply(cbPoint(s, -1), tapUndo)} tone="ghost" className="px-3 text-xl" disabled={sc[s] < 1}>−1</Btn>
+      )
+    }
+    if (st.phase === 'break') {
+      return (
+        <div className={`${base} justify-center border border-[#64d2ff]/50 bg-[#64d2ff]/10`}>
+          <span className="min-w-0 truncate font-display text-base font-bold uppercase tracking-wide text-[#64d2ff]">Half-time · teams swap ends</span>
         </div>
-        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-          <Btn onClick={() => apply(cbFoul(s, -1))} tone="ghost" className="h-9 w-9 text-lg" disabled={st.f[s] < 1}>−</Btn>
-          <button onClick={() => apply(cbFoul(s, 1), tapPoint)}
-            className="rounded-xl bg-[#facc15]/15 py-2 font-display text-base font-bold uppercase tracking-wider text-[#facc15] active:scale-[0.97]">
-            Foul <span className="tabular text-2xl">{st.f[s]}</span>
-          </button>
-          <span className="w-9" />
-        </div>
-        <div className="flex items-center gap-2">
-          <Btn onClick={() => apply(cbTimeout(s), chimeSwitch)} tone="warn" className="flex-1 py-2.5 text-base"
-            disabled={have < 1 || st.phase === 'over' || st.phase === 'break'}>
-            Time-out
-            <span className="ml-2 inline-flex gap-1 align-middle">
-              {Array.from({ length: allowed }, (_, i) => (
-                <span key={i} className={`h-2.5 w-2.5 rounded-full ${i < have ? 'bg-black' : 'bg-black/25'}`} />
-              ))}
-            </span>
-          </Btn>
-        </div>
+      )
+    }
+    const msg = st.phase === 'over' ? (level ? 'Full time · level score' : 'Full time · confirm the result')
+      : v.expired ? 'Time up'
+      : st.phase === 'ready' ? 'Ready'
+      : v.running ? 'Clock running' : 'Clock stopped'
+    return (
+      <div className={`${base} border border-[#1f242d] bg-black/30`}>
+        <span className="min-w-0 truncate font-display text-base font-bold uppercase tracking-wide text-white/70">{msg}</span>
+        <span className="shrink-0 text-xs text-white/40">clock adj <span className="tabular inline-block w-12 text-right font-bold text-white/70">{adjTxt}</span></span>
       </div>
     )
-  }
+  })()
 
-  const bar = 'rounded-lg px-3 py-2 text-sm'
   return (
-    <div className="fixed inset-0 flex flex-col gap-2 overflow-y-auto bg-[#07090d] p-2 text-white no-select"
+    <div className="fixed inset-0 flex flex-col gap-2 overflow-y-auto bg-[#06070a] p-2 text-white select-none"
       style={{ paddingTop: 'max(env(safe-area-inset-top), 0.5rem)', paddingBottom: 'max(env(safe-area-inset-bottom), 0.5rem)' }}>
-      {/* header */}
-      <div className="flex shrink-0 items-center justify-between gap-2">
-        <Link to={`/c/${code}`} className="rounded-xl border border-white/20 px-3 py-1.5 font-display text-sm font-bold tracking-wide">← BOARD</Link>
-        <div className="min-w-0 truncate font-display text-sm font-bold tracking-widest text-white/60">
-          CT{courtNo} · G{matchNo || match.sequence}
+      {/* top bar */}
+      <div className="grid h-9 shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+        <Link to={`/c/${code}`} className="rounded-lg border border-white/15 px-3 py-1.5 font-display text-sm font-bold tracking-wide">← BOARD</Link>
+        <div className="truncate text-center font-display text-sm font-bold uppercase tracking-[0.12em] text-white/60">
+          Court {courtNo} · Game {matchNo || match.sequence}
         </div>
-        <span className={`text-[11px] ${offline ? 'font-bold text-[#fbbf24]' : 'text-white/40'}`}>
-          {offline ? '● offline — saving…' : '● synced'}
+        <span className={`inline-block w-16 text-right text-[11px] ${offline ? 'font-bold text-[#fbbf24]' : 'text-white/40'}`}>
+          {offline ? '● saving…' : '● synced'}
         </span>
       </div>
 
-      {conflict && (
-        <div className="shrink-0 rounded-lg bg-[#f59e0b]/20 px-3 py-2 text-sm text-[#fbbf24]">
-          Another device changed this game. Screen refreshed to the latest.
-        </div>
-      )}
-
-      <div className="grid min-h-0 flex-1 grid-cols-2 content-start gap-2 landscape:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,1fr)]">
-        <div className="col-span-2 flex flex-col gap-2 landscape:order-2 landscape:col-span-1">
-      {/* clock */}
-      <div className="shrink-0 rounded-2xl bg-white/[0.04] px-3 py-2 text-center">
-        <div className="flex items-center justify-center gap-3 font-display text-sm font-bold uppercase tracking-[0.22em] text-white/70">
-          <span>{v.periodLabel}</span>
-          <span className={v.running ? 'text-[#4ade80]' : v.expired || st.phase === 'over' ? 'text-white' : 'text-[#fbbf24]'}>
-            {v.running ? '● RUNNING' : v.status}
-          </span>
-        </div>
-        <div className="tabular font-display text-[min(14vh,5.5rem)] landscape:text-[min(20vh,6rem)] font-bold leading-none"
-          style={{ color: '#ff3b30', textShadow: '0 0 16px #ff3b3077' }}>
-          {st.phase === 'break' ? fmtClock(v.brkMs, false) : fmtClock(v.clock)}
-        </div>
-        {st.phase === 'break' && <div className="text-sm font-semibold text-[#38bdf8]">HALF-TIME REST · teams swap ends for the next half</div>}
-        {v.toMs > 0 && (
-          <div className="mx-auto mt-1 flex max-w-md items-center justify-center gap-3 rounded-xl bg-[#f59e0b]/20 px-3 py-1.5 font-display text-xl font-bold uppercase text-[#fbbf24]">
-            <span className="truncate">Time-out · {teamName(bundle, tid(v.toSide!))}</span>
-            <span className="tabular text-3xl text-white">{fmtClock(v.toMs, false)}</span>
-            <button onClick={() => apply(cbEndTimeout)} className="rounded-lg border border-[#fbbf24]/50 px-2 py-0.5 text-sm">END</button>
+      <div className="grid min-h-0 flex-1 grid-cols-2 content-start gap-2 landscape:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)_minmax(0,1fr)] landscape:content-stretch">
+        {/* centre: clock + game controls */}
+        <div className={`${PANEL} col-span-2 flex flex-col gap-2 p-2 landscape:order-2 landscape:col-span-1`}>
+          <div className="flex h-6 shrink-0 items-center justify-between px-1">
+            <span className="font-display text-base font-bold uppercase tracking-[0.2em] text-white">{v.periodLabel}</span>
+            <span className="flex w-[9rem] items-center justify-end gap-1.5 font-display text-sm font-bold uppercase tracking-[0.18em]" style={{ color: statusColor }}>
+              <span className={`h-2 w-2 rounded-full ${v.running ? 'animate-pulse' : ''}`} style={{ background: statusColor }} />
+              <span className="whitespace-nowrap">{v.status}</span>
+            </span>
           </div>
-        )}
-        {wasAdded && st.phase !== 'break' && (
-          <div className="mt-1 text-xs text-white/50">time added back this game: {st.adj > 0 ? '+' : '−'}{fmtClock(Math.abs(st.adj), false)}</div>
-        )}
-      </div>
+          <div className="flex shrink-0 justify-center rounded-xl bg-black/60 py-2 text-[min(12vh,23vw)] landscape:text-[min(16vh,8vw)]">
+            <SevenSeg text={segClock(st.phase === 'break' ? v.brkMs : v.clock)} color={CB_CLOCK_COLOR} size="1em" label={fmtClock(v.clock)} />
+          </div>
+          {info}
+          {main}
+          <div className="grid h-11 shrink-0 grid-cols-4 gap-2">
+            {[-10000, -1000, 1000, 10000].map(d => (
+              <Btn key={d} tone="ghost" className="tabular text-base" disabled={!clockOpen} onClick={() => apply(cbAdjust(d))}>
+                {d < 0 ? '−' : '+'}{Math.abs(d) / 1000}s
+              </Btn>
+            ))}
+          </div>
+          <div className="grid h-11 shrink-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_3.5rem] gap-2">
+            <Btn tone="ghost" className="text-sm" onClick={() => apply(cbUndo, tapUndo)} disabled={!st.log.length}>↶ Undo</Btn>
+            <Btn tone="ghost" className="text-sm" onClick={() => setConfirm('endhalf')} disabled={!(st.phase === 'play' && !v.expired)}>{endWord}</Btn>
+            <Btn tone="ghost" className="text-xl" onClick={() => setMenu(true)}>⋯</Btn>
+          </div>
+        </div>
 
-      {/* main controls */}
-      <div className="grid shrink-0 gap-2">
-        {st.phase === 'break' ? (
-          <Btn tone="go" onClick={() => apply(cbNextHalf, chimeSwitch)} className="py-4 text-2xl">
-            START HALF {st.half + 1} · SWAP ENDS
-          </Btn>
-        ) : st.phase === 'over' ? (
-          level
-            ? <div className="grid grid-cols-2 gap-2">
-                <Btn tone="go" onClick={() => apply(cbExtraTime)} className="py-4 text-xl">EXTRA TIME {st.r.extra_min}:00</Btn>
-                <Btn tone="warn" onClick={() => setConfirm('finish')} className="py-4 text-xl">FINISH · DRAW</Btn>
-              </div>
-            : <Btn tone="go" onClick={() => setConfirm('finish')} className="py-4 text-2xl">FINISH GAME · {sc[left]}–{sc[right]}</Btn>
-        ) : v.expired ? (
-          <Btn tone="warn" onClick={() => apply(cbEndHalf)} className="animate-pulse py-4 text-2xl">
-            {lastHalf ? 'FULL TIME' : `END HALF ${st.half}`}
-          </Btn>
-        ) : v.running ? (
-          <Btn tone="stop" onClick={() => apply(cbStop)} className="py-4 text-2xl">■ STOP CLOCK</Btn>
-        ) : (
-          <Btn tone="go" onClick={() => apply(cbRun)} disabled={!canRun} className="py-4 text-2xl">
-            ▶ {st.phase === 'ready' ? 'START' : 'RESUME'}
-          </Btn>
-        )}
-        <div className="grid grid-cols-[1fr_auto] gap-2">
-          <Btn tone="ghost" onClick={() => apply(cbUndo, tapUndo)} disabled={!st.log.length} className="py-2 text-base">↶ UNDO LAST SCORE</Btn>
-          <Btn tone="ghost" onClick={() => setMenu(m => !m)} className="px-5 py-2 text-base">⋯</Btn>
+        <div className="flex min-w-0 landscape:order-1">
+          <TeamPanel name={nm(left)} side={left} st={st} score={sc[left]} callMs={v.toMs} callSide={v.toSide} apply={apply} />
+        </div>
+        <div className="flex min-w-0 landscape:order-3">
+          <TeamPanel name={nm(right)} side={right} st={st} score={sc[right]} callMs={v.toMs} callSide={v.toSide} apply={apply} />
         </div>
       </div>
 
-      {/* time add-back */}
-      {clockOpen && (
-        <div className="flex shrink-0 flex-wrap items-center justify-center gap-1.5">
-          <span className="mr-1 text-xs font-semibold uppercase tracking-widest text-white/50">Clock</span>
-          {[-60000, -10000, 10000, 30000, 60000].map(d => (
-            <Btn key={d} tone="ghost" onClick={() => apply(cbAdjust(d))} className={`${bar} min-w-[3.4rem] tabular`}>
-              {d < 0 ? '−' : '+'}{Math.abs(d) >= 60000 ? `${Math.abs(d) / 60000}m` : `${Math.abs(d) / 1000}s`}
-            </Btn>
-          ))}
-          {!v.expired && st.phase === 'play' && (
-            <Btn tone="ghost" onClick={() => setConfirm('endhalf')} className={`${bar}`}>
-              {lastHalf ? 'End game' : `End half ${st.half}`}
-            </Btn>
-          )}
+      {conflict && (
+        <div className="fixed inset-x-2 bottom-2 z-40 rounded-lg bg-[#f59e0b] px-3 py-2 text-sm font-semibold text-black" onClick={() => setConflict(false)}>
+          Another device changed this game — showing the latest. Tap to close.
         </div>
       )}
 
+      {/* more: a sheet over the screen, so the layout under it never moves */}
       {menu && (
-        <div className="grid shrink-0 grid-cols-2 gap-2 rounded-2xl bg-white/[0.06] p-2.5 sm:grid-cols-4">
-          <Btn tone="ghost" onClick={() => apply(cbFlip)} className={bar}>⇄ Swap sides on screen</Btn>
-          {(['a', 'b'] as Side[]).map(s => (
-            <Btn key={s} tone="ghost" className={bar} onClick={() => apply(cbGrantTimeout(s, 1))}>
-              + time-out · {teamName(bundle, tid(s))}
-            </Btn>
-          ))}
-          {(['a', 'b'] as Side[]).map(s => (
-            <Btn key={`b${s}`} tone="ghost" className={bar} onClick={() => apply(cbTimeoutBack(s))} disabled={!(st.tou[s][st.et ? st.r.halves : st.half - 1] > 0)}>
-              give back time-out · {teamName(bundle, tid(s))}
-            </Btn>
-          ))}
-          {st.phase === 'over' && <Btn tone="ghost" onClick={() => apply(cbReopen)} className={bar}>Reopen (not full time yet)</Btn>}
-          <Btn tone="ghost" onClick={() => setConfirm('restart')} className={`${bar} !border-[#ef4444]/50 text-[#f87171]`}>Restart game 0–0</Btn>
+        <div className="fixed inset-0 z-40 grid place-items-center bg-black/70 p-4" onClick={() => setMenu(false)}>
+          <div className="w-full max-w-md space-y-3 rounded-2xl border border-[#2b313c] bg-[#0f1218] p-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <span className="font-display text-xl font-bold uppercase tracking-wide">More</span>
+              <Btn tone="ghost" className="h-9 px-3 text-sm" onClick={() => setMenu(false)}>Close</Btn>
+            </div>
+            <Btn tone="ghost" className="h-11 w-full text-sm" onClick={() => apply(cbFlip)}>⇄ Swap teams left / right on this screen</Btn>
+            {(['a', 'b'] as Side[]).map(s => (
+              <div key={s} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
+                <span className="truncate text-sm font-semibold"><span className="mr-2 inline-block h-3 w-1.5 rounded align-middle" style={{ background: CB_TEAM_COLOR[s] }} />{nm(s)}</span>
+                <Btn tone="ghost" className="h-10 px-3 text-xs" onClick={() => apply(cbGrantTimeout(s, 1))}>+1 team call</Btn>
+                <Btn tone="ghost" className="h-10 px-3 text-xs" onClick={() => apply(cbTimeoutBack(s))}
+                  disabled={!(st.tou[s][st.et ? st.r.halves : st.half - 1] > 0)}>Give call back</Btn>
+              </div>
+            ))}
+            {st.phase === 'over' && <Btn tone="ghost" className="h-11 w-full text-sm" onClick={() => { apply(cbReopen); setMenu(false) }}>Reopen — not full time yet</Btn>}
+            <Btn tone="danger" className="h-11 w-full text-sm" onClick={() => { setMenu(false); setConfirm('restart') }}>Restart game from 0–0</Btn>
+          </div>
         </div>
       )}
-
-        </div>
-        <div className="flex min-w-0 landscape:order-1">{team(left)}</div>
-        <div className="flex min-w-0 landscape:order-3">{team(right)}</div>
-      </div>
 
       {confirm && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-6">
-          <div className="w-full max-w-sm space-y-4 rounded-2xl bg-[#11151c] p-5 text-center">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-6">
+          <div className="w-full max-w-sm space-y-4 rounded-2xl border border-[#2b313c] bg-[#0f1218] p-5 text-center">
             <div className="font-display text-2xl font-bold uppercase">
-              {confirm === 'finish' ? `Finish game ${sc.a}–${sc.b}?` : confirm === 'endhalf' ? (lastHalf ? 'End the game now?' : `End half ${st.half} now?`) : 'Restart the game?'}
+              {confirm === 'finish' ? `Finish game ${sc[left]}–${sc[right]}?` : confirm === 'endhalf' ? `${endWord} now?` : 'Restart the game?'}
             </div>
-            {confirm === 'finish' && <div className="text-sm text-white/60">The result is locked and the next game starts on this court.{level ? ' Level score = draw.' : ''}</div>}
-            {confirm === 'restart' && <div className="text-sm text-white/60">Score, fouls, time-outs and the clock go back to the start.</div>}
+            <div className="text-sm text-white/60">
+              {confirm === 'finish' && <>The result is locked and the next game starts on this court.{level ? ' Level score = draw.' : ''}</>}
+              {confirm === 'endhalf' && (last
+                ? <>Stops the game here, before the clock reaches 0:00.</>
+                : <>Ends the {ordinal(st.half).toLowerCase()} half before the clock reaches 0:00. Half-time rest ({st.r.rest_min} min) starts, then the teams swap ends.</>)}
+              {confirm === 'restart' && <>Score, fouls, team calls and the clock go back to the start.</>}
+            </div>
             <div className="grid grid-cols-2 gap-2">
-              <Btn tone="ghost" onClick={() => setConfirm(null)} className="py-3 text-lg">Cancel</Btn>
-              <Btn tone={confirm === 'restart' ? 'stop' : 'go'} className="py-3 text-lg" onClick={() => {
+              <Btn tone="ghost" className="h-12 text-lg" onClick={() => setConfirm(null)}>Cancel</Btn>
+              <Btn tone={confirm === 'restart' ? 'stop' : 'go'} className="h-12 text-lg" onClick={() => {
                 if (confirm === 'finish') finish()
                 else if (confirm === 'endhalf') { setConfirm(null); apply(cbEndHalf) }
-                else { setConfirm(null); setMenu(false); apply(cbRestart(st.r)) }
+                else { setConfirm(null); apply(cbRestart(st.r)) }
               }}>Yes</Btn>
             </div>
           </div>

@@ -96,8 +96,8 @@ export interface CbView {
   toMs: number             // time-out left (0 = none)
   toSide: Side | null
   brkMs: number            // half-time rest left
-  periodLabel: string      // "HALF 1" / "EXTRA TIME"
-  status: string           // short status line for the board
+  periodLabel: string      // "1ST HALF" / "EXTRA TIME"
+  status: string           // RUNNING / STOPPED / TEAM CALL / TIME UP / HALF-TIME / FULL TIME / READY
 }
 
 export function cbView(st: CbState, now: number): CbView {
@@ -106,16 +106,21 @@ export function cbView(st: CbState, now: number): CbView {
   const expired = st.phase === 'play' && clock <= 0
   const toMs = st.to && st.to.until > now ? st.to.until - now : 0
   const brkMs = st.phase === 'break' && st.brk ? Math.max(0, st.brk - now) : 0
-  const lastHalf = st.half >= st.r.halves
-  const periodLabel = st.et ? 'EXTRA TIME' : `HALF ${st.half}`
+  const periodLabel = st.phase === 'break' ? 'HALF-TIME' : st.et ? 'EXTRA TIME' : `${ordinal(st.half)} HALF`
   const status = st.phase === 'over' ? 'FULL TIME'
-    : st.phase === 'break' ? 'HALF-TIME'
-    : expired ? (lastHalf || st.et ? 'FULL TIME' : 'END OF HALF')
-    : toMs > 0 ? 'TIME-OUT'
-    : st.phase === 'ready' ? (st.half === 1 && !st.et ? 'READY' : 'READY')
-    : running ? 'LIVE' : 'CLOCK STOPPED'
+    : st.phase === 'break' ? 'REST'
+    : expired ? 'TIME UP'
+    : toMs > 0 ? 'TEAM CALL'
+    : st.phase === 'ready' ? 'READY'
+    : running ? 'RUNNING' : 'STOPPED'
   return { clock, running, expired, toMs, toSide: toMs > 0 ? st.to!.s : null, brkMs, periodLabel, status }
 }
+
+export const ordinal = (n: number): string =>
+  `${n}${n % 10 === 1 && n % 100 !== 11 ? 'ST' : n % 10 === 2 && n % 100 !== 12 ? 'ND' : n % 10 === 3 && n % 100 !== 13 ? 'RD' : 'TH'}`
+
+/** True once this half is the last one (or extra time): closing it ends the game. */
+export const isLastPeriod = (st: CbState): boolean => st.et || st.half >= st.r.halves
 
 /** "9:58", or "42.7" under a minute (like a basketball clock). */
 export function fmtClock(ms: number, tenths = true): string {
@@ -158,7 +163,7 @@ export const cbFoul = (s: Side, d: number): Act => p => {
   return v === p.st.f[s] ? p : bump(p, { f: { ...p.st.f, [s]: v } })
 }
 
-/** Team time-out: the clock stops and a time-out countdown starts. */
+/** Team call (a team's time-out): the clock stops and the call's countdown starts. */
 export const cbTimeout = (s: Side): Act => (p, now) => {
   const st = p.st
   if (st.phase === 'over' || st.phase === 'break' || toLeft(st, s) < 1) return p
