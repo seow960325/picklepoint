@@ -20,10 +20,22 @@ export function useNow(on: boolean, ms = 200): number {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (!on) { setNow(Date.now()); return }
+    if (ms <= 50) {   // tenths of a second: follow the screen refresh, so every tenth shows evenly
+      let raf = 0
+      const loop = () => { setNow(Date.now()); raf = requestAnimationFrame(loop) }
+      raf = requestAnimationFrame(loop)
+      return () => cancelAnimationFrame(raf)
+    }
     const id = setInterval(() => setNow(Date.now()), ms)
     return () => clearInterval(id)
   }, [on, ms])
   return on ? now : Date.now()
+}
+
+/** Tick rate: smooth (every frame) only while the tenths show, i.e. the clock runs under a minute. */
+export const tickMs = (st: CbState, now: number) => {
+  const v = cbView(st, now)
+  return v.running && v.clock < 61000 ? 16 : 100
 }
 
 const ticking = (st: CbState, now: number) => {
@@ -90,7 +102,7 @@ export function CbScoreboard({ b, m, size = 'card', sound = false, courtLabel }:
   b: Bundle; m: Match; size?: keyof typeof CAP; sound?: boolean; courtLabel?: string
 }) {
   const st = cbStateOf(m, evOf(b, m))
-  const now = useNow(ticking(st, Date.now()), 100)
+  const now = useNow(ticking(st, Date.now()), tickMs(st, Date.now()))
   useHorn(st, now, sound)
   const v = cbView(st, now)
   const sc = cbScore(st)
@@ -147,11 +159,11 @@ export function CbScoreboard({ b, m, size = 'card', sound = false, courtLabel }:
   const band = v.toMs > 0
     ? { c: CB_CALL_COLOR, txt: `Team call · ${teamName(b, id(v.toSide!))}`, t: v.toMs }
     : st.phase === 'break'
-    ? { c: '#64d2ff', txt: 'Half-time rest · teams swap ends', t: -1 }
+    ? { c: '#64d2ff', txt: 'Half-time rest', t: -1 }
     : null
 
   return (
-    <div ref={ref} className="w-full">
+    <div ref={ref} className="mx-auto w-full" style={{ maxWidth: size === 'card' ? 'none' : `calc(54 * ${CAP[size]})` }}>
       <div className="overflow-hidden rounded-[1em] border-[0.15em] border-[#1c1f25] bg-[#050607] text-white"
         style={{ fontSize, padding: '1em 1.3em 1.1em', boxShadow: 'inset 0 0 3em #000' }}>
         {/* header */}
@@ -218,7 +230,7 @@ export function CbLive({ b, code, tv = false, split = false, sound = false, n = 
   const live = b.courts.map(ct => ({ ct, m: liveOnCourt(b, ct.id) }))
   const size = tv ? (split ? 'split' : 'tv') : 'card'
   return (
-    <div className={tv ? 'space-y-4' : 'space-y-4 p-3 lg:p-5'}>
+    <div className={tv ? 'space-y-4' : `mx-auto space-y-4 p-3 lg:p-5 ${live.length > 1 ? 'max-w-[96rem]' : 'max-w-[50rem]'}`}>
       <div className={`grid gap-3 ${live.length > 1 && !tv ? 'lg:grid-cols-2' : ''}`}>
         {live.map(({ ct, m }) => m ? (
           tv ? <CbScoreboard key={ct.id} b={b} m={m} size={size} sound={sound} courtLabel={ct.label ?? undefined} />

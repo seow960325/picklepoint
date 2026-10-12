@@ -214,11 +214,11 @@ export const cbEndHalf: Act = (p, now) => {
     : { ms: 0, at: null, to: null, phase: 'break', brk: now + Math.round(st.r.rest_min * 60000) })
 }
 
-/** After the rest: next half, full clock, teams swap ends. */
+/** After the rest: next half, full clock. Ends are NOT swapped here — the referee uses SWAP. */
 export const cbNextHalf: Act = p => {
   const st = p.st
   if (st.phase !== 'break') return p
-  return bump(p, { phase: 'ready', half: st.half + 1, ms: halfMs(st.r), at: null, brk: null, to: null }, !p.aOnLeft)
+  return bump(p, { phase: 'ready', half: st.half + 1, ms: halfMs(st.r), at: null, brk: null, to: null })
 }
 
 /** Level at full time: play extra time. */

@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   CB_DEFAULT, cbFresh, cbStateOf, cbScore, clockAt, cbView, fmtClock, toLeft,
-  cbRun, cbStop, cbPoint, cbUndo, cbFoul, cbTimeout, cbEndTimeout, cbAdjust, cbEndHalf, cbNextHalf,
+  cbRun, cbStop, cbPoint, cbUndo, cbFoul, cbTimeout, cbEndTimeout, cbAdjust, cbEndHalf, cbNextHalf, cbFlip,
   cbExtraTime, cbRestart, cbGrantTimeout, cbTimeoutBack, cbStandings, buildCbDraw,
 } from '../src/lib/captainball.ts'
 
@@ -104,7 +104,7 @@ test('time added after the clock hit 0:00 does not restart it by itself', () => 
   assert.equal(cbView(p.st, T0 + 605000).expired, false)
 })
 
-test('end of half 1 -> 2 min rest -> half 2 with a full clock and swapped ends', () => {
+test('end of half 1 -> 2 min rest -> half 2 with a full clock and ends kept until swapped', () => {
   let p = cbRun(start(), T0)
   p = cbPoint('a', 2)(p, T0 + 1000)
   p = cbEndHalf(p, T0 + 600000)
@@ -113,7 +113,8 @@ test('end of half 1 -> 2 min rest -> half 2 with a full clock and swapped ends',
   assert.equal(p.aOnLeft, true)
   p = cbNextHalf(p, T0 + 700000)
   assert.equal(p.st.half, 2); assert.equal(p.st.ms, 600000); assert.equal(p.st.phase, 'ready')
-  assert.equal(p.aOnLeft, false)                              // swapped
+  assert.equal(p.aOnLeft, true)                               // ends only change when the referee swaps
+  assert.equal(cbFlip(p, T0).aOnLeft, false)
   assert.deepEqual(cbScore(p.st), { a: 2, b: 0 })             // score carries over
   assert.equal(p.st.log[0].h, 1)
   assert.equal(cbPoint('b', 1)(p, T0).st.log[1].h, 2)

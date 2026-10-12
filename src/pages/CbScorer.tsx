@@ -16,7 +16,7 @@ import type { Bundle, Match } from '../lib/types'
 import { teamName, eventOf } from '../lib/store'
 import * as api from '../lib/api'
 import { tapPoint, tapUndo, chimeSwitch } from '../lib/feedback'
-import { CB_TEAM_COLOR, CB_CLOCK_COLOR, CB_FOUL_COLOR, CB_CALL_COLOR, useHorn, useNow } from '../components/CaptainBall'
+import { CB_TEAM_COLOR, CB_CLOCK_COLOR, CB_FOUL_COLOR, CB_CALL_COLOR, useHorn, useNow, tickMs } from '../components/CaptainBall'
 import { SevenSeg, segClock, segScore } from '../components/SevenSeg'
 import {
   cbStateOf, cbView, cbScore, cbRun, cbStop, cbPoint, cbUndo, cbFoul, cbTimeout, cbEndTimeout,
@@ -124,7 +124,7 @@ export default function CbScorer({ bundle, match, token, courtNo, code, reload, 
   const [menu, setMenu] = useState(false)
 
   const st = snap.st
-  const now = useNow(true, 100)
+  const now = useNow(true, tickMs(st, Date.now()))
   const v = cbView(st, now)
   useHorn(st, now, true)
   const sc = cbScore(st)
@@ -231,7 +231,7 @@ export default function CbScorer({ bundle, match, token, courtNo, code, reload, 
     if (st.phase === 'break') {
       return (
         <div className={`${base} justify-center border border-[#64d2ff]/50 bg-[#64d2ff]/10`}>
-          <span className="min-w-0 truncate font-display text-base font-bold uppercase tracking-wide text-[#64d2ff]">Half-time · teams swap ends</span>
+          <span className="min-w-0 truncate font-display text-base font-bold uppercase tracking-wide text-[#64d2ff]">Half-time · tap ⇄ SWAP ENDS if needed</span>
         </div>
       )
     }
@@ -283,10 +283,11 @@ export default function CbScorer({ bundle, match, token, courtNo, code, reload, 
               </Btn>
             ))}
           </div>
-          <div className="grid h-11 shrink-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_3.5rem] gap-2">
-            <Btn tone="ghost" className="text-sm" onClick={() => apply(cbUndo, tapUndo)} disabled={!st.log.length}>↶ Undo</Btn>
-            <Btn tone="ghost" className="text-sm" onClick={() => setConfirm('endhalf')} disabled={!(st.phase === 'play' && !v.expired)}>{endWord}</Btn>
-            <Btn tone="ghost" className="text-xl" onClick={() => setMenu(true)}>⋯</Btn>
+          <div className="grid h-11 shrink-0 grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1.1fr)_2.75rem] gap-2">
+            <Btn tone="ghost" className="px-1 text-xs" onClick={() => apply(cbUndo, tapUndo)} disabled={!st.log.length}>↶ Undo</Btn>
+            <Btn tone="ghost" className="px-1 text-xs" onClick={() => setConfirm('endhalf')} disabled={!(st.phase === 'play' && !v.expired)}>{endWord}</Btn>
+            <Btn tone={st.phase === 'break' ? 'call' : 'ghost'} className="px-1 text-xs" onClick={() => apply(cbFlip)}>⇄ Swap ends</Btn>
+            <Btn tone="ghost" className="px-0 text-xl" onClick={() => setMenu(true)}>⋯</Btn>
           </div>
         </div>
 
@@ -312,7 +313,7 @@ export default function CbScorer({ bundle, match, token, courtNo, code, reload, 
               <span className="font-display text-xl font-bold uppercase tracking-wide">More</span>
               <Btn tone="ghost" className="h-9 px-3 text-sm" onClick={() => setMenu(false)}>Close</Btn>
             </div>
-            <Btn tone="ghost" className="h-11 w-full text-sm" onClick={() => apply(cbFlip)}>⇄ Swap teams left / right on this screen</Btn>
+            <Btn tone="ghost" className="h-11 w-full text-sm" onClick={() => apply(cbFlip)}>⇄ Swap ends (teams left / right)</Btn>
             {(['a', 'b'] as Side[]).map(s => (
               <div key={s} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
                 <span className="truncate text-sm font-semibold"><span className="mr-2 inline-block h-3 w-1.5 rounded align-middle" style={{ background: CB_TEAM_COLOR[s] }} />{nm(s)}</span>
@@ -337,7 +338,7 @@ export default function CbScorer({ bundle, match, token, courtNo, code, reload, 
               {confirm === 'finish' && <>The result is locked and the next game starts on this court.{level ? ' Level score = draw.' : ''}</>}
               {confirm === 'endhalf' && (last
                 ? <>Stops the game here, before the clock reaches 0:00.</>
-                : <>Ends the {ordinal(st.half).toLowerCase()} half before the clock reaches 0:00. Half-time rest ({st.r.rest_min} min) starts, then the teams swap ends.</>)}
+                : <>Ends the {ordinal(st.half).toLowerCase()} half before the clock reaches 0:00. Half-time rest ({st.r.rest_min} min) starts. Use ⇄ SWAP ENDS if the teams change sides.</>)}
               {confirm === 'restart' && <>Score, fouls, team calls and the clock go back to the start.</>}
             </div>
             <div className="grid grid-cols-2 gap-2">
