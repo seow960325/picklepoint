@@ -1,5 +1,6 @@
 /** Admin screens that only exist for multi-sport competitions. Rendered by
  *  Admin.tsx only when competition.multi_sport is true. */
+import { SportIcon } from '../components/SportIcon'
 import { useState } from 'react'
 import * as api from '../lib/api'
 import { teamName } from '../lib/store'
@@ -30,7 +31,7 @@ export function EventSwitcher({ events, value, onChange }: {
         <button key={e.id} onClick={() => onChange(e.id)}
           className={`whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-wider ${
             e.id === value ? 'border-brand bg-brand text-brand-fg' : 'border-line text-fg-muted'}`}>
-          {SPORT_ICON[sportOf(e)]} {e.name}
+          <SportIcon sport={sportOf(e)} /> {e.name}
         </button>
       ))}
     </div>
@@ -75,7 +76,7 @@ export function SportsTab({ bundle, token, run, onAdded }: any) {
       <div className="divide-y divide-line rounded-xl border border-line text-sm">
         {bundle.events.map((e: any) => (
           <div key={e.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-            <span className="font-semibold">{SPORT_ICON[sportOf(e)]} {e.name}</span>
+            <span className="font-semibold"><SportIcon sport={sportOf(e)} /> {e.name}</span>
             <span className="text-xs text-fg-subtle">
               {bundle.teams.filter((t: any) => t.event_id === e.id).length} teams ·{' '}
               {sportCourts(sportOf(e)).length} courts · to {e.target_score}, win by {e.win_by}
@@ -88,7 +89,7 @@ export function SportsTab({ bundle, token, run, onAdded }: any) {
         <div className="font-display text-lg font-bold tracking-wide">Add a sport</div>
         <Field label="Sport">
           <Choice value={sport} onChange={pick}
-            options={SPORTS.map(s => ({ label: `${SPORT_ICON[s]} ${SPORT_LABEL[s]}`, value: s }))} />
+            options={SPORTS.map(s => ({ label: SPORT_LABEL[s], value: s }))} />
         </Field>
         <Field label="Event name">
           <input className={`${inputFull} max-w-sm`} value={name} onChange={e => setName(e.target.value)} />
@@ -251,7 +252,7 @@ export function SportCourts({ bundle, token, run, sport, onApplied }: any) {
   return (
     <div className="space-y-3 rounded-xl border border-line bg-surface p-4">
       <div>
-        <div className="font-display text-lg font-bold tracking-wide">{SPORT_ICON[sport as Sport]} {SPORT_LABEL[sport as Sport]}</div>
+        <div className="font-display text-lg font-bold tracking-wide"><SportIcon sport={sport as Sport} /> {SPORT_LABEL[sport as Sport]}</div>
         <div className="text-xs text-fg-subtle">Courts per game</div>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -369,7 +370,7 @@ function SportKnockout({ bundle, sport, token, run }: any) {
   return (
     <section className={`space-y-4 rounded-xl border bg-surface p-4 ${tone.border}`}>
       <div className={`font-display text-xl font-bold uppercase tracking-widest ${tone.text}`}>
-        {SPORT_ICON[sport as Sport]} {SPORT_LABEL[sport as Sport]}
+        <SportIcon sport={sport as Sport} /> {SPORT_LABEL[sport as Sport]}
         <span className="ml-2 text-xs font-semibold normal-case tracking-normal text-fg-subtle">
           {k.phase === 'groups' ? 'group stage' : k.phase === 'semis' ? 'semi-finals' : k.phase === 'finals' ? 'finals' : 'complete'}
         </span>

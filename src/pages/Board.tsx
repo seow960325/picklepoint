@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useLayoutEffect, createContext, useContext } from 'react'
+import { SportIcon } from '../components/SportIcon'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   useCompetition, teamName, teamSideName, teamLogo, liveOnCourt, nextOnCourt, onDeck, results, standings,
@@ -279,7 +280,7 @@ function SportGate({ b, sports, onPick }: { b: Bundle; sports: Sport[]; onPick: 
             return (
               <button key={s} onClick={() => onPick(s)}
                 className={`flex items-center gap-4 rounded-2xl border-2 px-5 py-5 text-left active:scale-[0.99] ${t.border} ${t.soft}`}>
-                <span className="text-4xl leading-none">{SPORT_ICON[s]}</span>
+                <span className="text-4xl leading-none"><SportIcon sport={s} /></span>
                 <span className="min-w-0 flex-1">
                   <span className={`block font-display text-3xl font-bold uppercase tracking-wide ${t.text}`}>{SPORT_LABEL[s]}</span>
                   <span className="block text-xs text-fg-muted">
@@ -320,7 +321,7 @@ function SportSwitch({ sports, view, onPick, size = 'md' }: {
             className={`flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-display font-bold uppercase tracking-wider ${
               size === 'md' ? 'px-2 py-2 text-[13px] tracking-wide sm:px-3 sm:text-sm sm:tracking-wider lg:text-base' : 'px-2.5 py-1 text-xs'} ${
               on ? tone : 'text-fg-muted active:bg-surface-2'}`}>
-            {o === 'all' ? 'Both' : <><span>{SPORT_ICON[o]}</span><span className="truncate">{SPORT_LABEL[o]}</span></>}
+            {o === 'all' ? 'Both' : <><span><SportIcon sport={o} /></span><span className="truncate">{SPORT_LABEL[o]}</span></>}
           </button>
         )
       })}
@@ -337,7 +338,7 @@ function SportBanner({ sport, b, big = false, onOpen, title, stage }: {
   const live = b.courts.filter(ct => liveOnCourt(b, ct.id)).length
   return (
     <div className={`mb-2 flex items-center gap-2 rounded-xl border ${t.border} ${t.soft} ${big ? 'mb-3 px-4 py-2' : 'px-3 py-1.5'}`}>
-      <span className={big ? 'text-3xl leading-none' : 'text-lg leading-none'}>{SPORT_ICON[sport]}</span>
+      <span className={big ? 'text-3xl leading-none' : 'text-lg leading-none'}><SportIcon sport={sport} /></span>
       <span className={`min-w-0 truncate font-display font-bold uppercase tracking-widest ${t.text} ${big ? 'text-3xl' : 'text-base'}`}>
         {title && <><span className="text-fg">{title}</span><span className="mx-3 text-fg-subtle">–</span></>}
         {SPORT_LABEL[sport]}
@@ -907,11 +908,11 @@ const TallCtx = createContext(false)
 /** MCMD/MCXD (pool dispatch) bracket: photo logos, slimmer boxes, lighter type */
 type Tier = 'compact' | 'std' | 'big' | 'xl' | 'xxl'
 const TIER: Record<Tier, { logo: string; tx: string; liveTx: string; py: string; col: string; box: string }> = {
-  compact: { logo: 'h-7 w-9',   tx: 'text-[11px]', liveTx: 'text-xs',  py: 'py-0.5', col: 'min-w-[9.5rem]',  box: 'w-44' },
-  std:     { logo: 'h-9 w-11',  tx: 'text-xs',     liveTx: 'text-sm',  py: 'py-1',   col: 'min-w-[11.5rem]', box: 'w-52' },
-  big:     { logo: 'h-12 w-14', tx: 'text-sm',     liveTx: 'text-lg',  py: 'py-1.5', col: 'min-w-[14.5rem]', box: 'w-72' },
-  xl:      { logo: 'h-16 w-20', tx: 'text-lg',     liveTx: 'text-2xl', py: 'py-2',   col: 'min-w-[19rem]',   box: 'w-96' },
-  xxl:     { logo: 'h-20 w-24', tx: 'text-2xl',    liveTx: 'text-3xl', py: 'py-2.5', col: 'min-w-[24rem]',   box: 'w-[26rem]' },
+  compact: { logo: 'h-7 w-9',   tx: 'text-[11px]', liveTx: 'text-xs',  py: 'py-0.5', col: 'w-[9.5rem] shrink-0',  box: 'w-44' },
+  std:     { logo: 'h-9 w-11',  tx: 'text-xs',     liveTx: 'text-sm',  py: 'py-1',   col: 'w-[11.5rem] shrink-0', box: 'w-52' },
+  big:     { logo: 'h-12 w-14', tx: 'text-sm',     liveTx: 'text-lg',  py: 'py-1.5', col: 'w-[14.5rem] shrink-0', box: 'w-72' },
+  xl:      { logo: 'h-16 w-20', tx: 'text-lg',     liveTx: 'text-2xl', py: 'py-2',   col: 'w-[20rem] shrink-0',   box: 'w-96' },
+  xxl:     { logo: 'h-20 w-24', tx: 'text-2xl',    liveTx: 'text-3xl', py: 'py-2.5', col: 'w-[24rem] shrink-0',   box: 'w-[26rem]' },
 }
 /** MC bracket: which size each round gets. The round being played now (the first one not finished)
  *  gets the room - bigger the closer to the final; rounds already played shrink to compact. */
@@ -983,7 +984,7 @@ function PColumn({ b, col, side }: { b: Bundle; col: { round: string; matches: M
   const tierOf = useContext(McCtx)
   return (
     <div className={`flex flex-col transition-all duration-500 ${tierOf ? TIER[tierOf(col.round)].col : 'min-w-[9.5rem] lg:min-w-[11rem]'}`}>
-      <div className={`mb-1.5 flex h-6 items-center justify-center text-center text-sm font-bold uppercase tracking-[0.16em] ${tierOf && tierOf(col.round) !== 'compact' && tierOf(col.round) !== 'std' ? 'text-fg' : 'text-fg-muted'}`}>
+      <div className={`mb-2 flex h-8 items-center justify-center border-b-2 border-line-strong pb-1 text-center text-sm font-bold uppercase tracking-[0.16em] ${tierOf && tierOf(col.round) !== 'compact' && tierOf(col.round) !== 'std' ? 'text-fg' : 'text-fg-muted'}`}>
         {col.round}
       </div>
       <div className="flex flex-1 flex-col">
@@ -1002,7 +1003,7 @@ function PConnector({ count, side }: { count: number; side: 'left' | 'right' }) 
   const single = count <= 1
   return (
     <div className="flex w-5 flex-col lg:w-8">
-      <div className="mb-1.5 h-6" />
+      <div className="mb-2 h-8" />
       <div className="flex flex-1 flex-col text-fg-subtle/50">
         {Array.from({ length: cells }).map((_, i) => (
           <div key={i} className="flex-1">
@@ -1059,6 +1060,8 @@ function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder, tier
   // a live game is the one to watch: bigger, bold, bright. Everything else stays calm.
   const tx = mc ? (live ? T.liveTx : T.tx) : tall ? 'text-base' : 'text-xs'
   const logoCls = mc ? T.logo : 'h-4 w-4'
+  // semi-final / final (and quarter-final): a long team name stacks on two lines instead of stretching the column
+  const stack = mc && (tier === 'big' || tier === 'xl' || tier === 'xxl')
   if (teamId == null && placeholder) {
     return (
       <div className={`flex items-center gap-2 border-l-2 border-transparent px-2.5 ${py}`}>
@@ -1070,7 +1073,7 @@ function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder, tier
   return (
     <div className={`flex items-center gap-2 border-l-2 px-2.5 ${py} ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
       <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className={`${logoCls} shrink-0 rounded-[2px] object-contain`} />
-      <span className={`min-w-0 flex-1 truncate ${tx} ${mc && live ? 'font-extrabold tracking-wide text-white' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-fg' : mc ? 'font-medium text-fg-muted' : 'text-fg-muted'}`}>{teamName(b, teamId)}</span>
+      <span className={`min-w-0 flex-1 ${stack ? 'line-clamp-2 break-words leading-[1.1]' : 'truncate'} ${tx} ${mc && live ? 'font-extrabold tracking-wide text-white' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-fg' : mc ? 'font-medium text-fg-muted' : 'text-fg-muted'}`}>{stack ? (() => { const parts = teamName(b, teamId).split(' & '); return parts.length === 2 ? <><span className="block truncate">{parts[0]} &amp;</span><span className="block truncate">{parts[1]}</span></> : teamName(b, teamId) })() : teamName(b, teamId)}</span>
       {medal && <span className="shrink-0 text-xs leading-none" aria-label={medal}>{medal === 'gold' ? '🥇' : medal === 'silver' ? '🥈' : '🥉'}</span>}
       {(finished || (mc && live)) && <span className={`tabular shrink-0 ${tx} ${mc && live ? 'font-extrabold text-brand-ink' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-gold' : 'text-fg-subtle'}`}>{score}</span>}
     </div>
@@ -1097,7 +1100,7 @@ function PCentre({ b, finalM, thirdM, champId, podium }: {
   const fight = !!tierOf && !!finalM && !!finalM.team_a_id && !!finalM.team_b_id && finalM.status !== 'finished'
   return (
     <div className="flex flex-col px-2 lg:px-5">
-      <div className="mb-1.5 flex h-6 items-center justify-center text-center font-cer text-base font-bold uppercase tracking-[0.3em] text-gold">Final</div>
+      <div className="mb-2 flex h-8 items-center justify-center border-b-2 border-gold/60 pb-1 text-center font-cer text-base font-bold uppercase tracking-[0.3em] text-gold">Final</div>
       <div className="flex flex-1 flex-col items-center justify-center gap-2">
         <div className={`${finalT ? finalT.box : 'w-52'} transition-all duration-500`}><PMatch b={b} m={finalM} medalOf={medalOf} /></div>
         <div className="my-1 flex flex-col items-center">

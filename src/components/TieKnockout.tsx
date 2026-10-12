@@ -1,5 +1,6 @@
 /** Multi-sport (opt-in) knockout presentation: bracket, Final banner and the
  *  champions ceremony. Only rendered for competitions with multi_sport on. */
+import { SportIcon } from './SportIcon'
 import { useEffect, useState } from 'react'
 import type { Bundle } from '../lib/types'
 import { teamName, teamLogo, teamSideName } from '../lib/store'
@@ -198,7 +199,7 @@ export function ChampionStage({ b, sport, k, title, size = 'md' }: {
       <div className="relative z-[1] mb-6 text-center">
         {title && <div className="font-display text-sm font-semibold tracking-wide text-[#9aa7bd]">{title}</div>}
         <div className={`mt-1 flex items-center justify-center gap-2 font-display text-lg font-bold uppercase tracking-[0.2em] ${tone.text}`}>
-          <span>{SPORT_ICON[sport]}</span><span>{SPORT_LABEL[sport]}</span>
+          <span><SportIcon sport={sport} /></span><span>{SPORT_LABEL[sport]}</span>
         </div>
         <div className={`font-cer font-black tracking-[0.12em] ${S.head}`}
           style={{ backgroundImage: 'linear-gradient(180deg,#ffffff,#f3e2ae 55%,#d9a94a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>

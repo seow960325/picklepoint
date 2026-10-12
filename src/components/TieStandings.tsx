@@ -1,4 +1,5 @@
 import type { Bundle } from '../lib/types'
+import { SportIcon } from './SportIcon'
 import { teamLogo, teamSideName } from '../lib/store'
 import { Emblem } from './ui'
 import { CbStandings } from './CaptainBall'
@@ -26,7 +27,7 @@ export default function TieStandings({ b, big = false }: { b: Bundle; big?: bool
           <section key={ev.id} className="min-w-0">
             {both && (
               <h2 className={`mb-3 flex items-center gap-2 font-display text-xl font-bold uppercase tracking-widest ${tone.text}`}>
-                <span>{SPORT_ICON[sport]}</span><span>{ev.name || SPORT_LABEL[sport]}</span>
+                <span><SportIcon sport={sport} /></span><span>{ev.name || SPORT_LABEL[sport]}</span>
               </h2>
             )}
             <div className={`grid gap-3 ${both ? '' : 'lg:grid-cols-2'}`}>
