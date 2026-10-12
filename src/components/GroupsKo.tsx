@@ -46,7 +46,9 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
   // huge = one category on the whole TV: much larger type, rows stretch to the card's height
   // TV (big / huge): photo logo large, one-line names in a lighter weight, no P column
   const tv = big || huge
-  const cell = huge ? 'py-1.5 text-xl' : big ? 'py-1 text-lg' : 'py-1.5'
+  // every team gets the same fixed row (logo height + a little air), never stretched
+  const cell = huge ? 'py-0 text-xl' : big ? 'py-0 text-lg' : 'py-1.5'
+  const rowH = huge ? 'h-16' : big ? 'h-14' : ''
   const wN = tv ? 'w-9' : 'w-7'
   const logo = huge ? 'h-12 w-[3.75rem]' : big ? 'h-11 w-14' : 'h-7 w-9'
   // a coin toss is only news once the group is over and the tie straddles
@@ -62,7 +64,7 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
     return same.some(k => k < advance) && same.some(k => k >= advance)
   }
   return (
-    <table className={`w-full table-fixed ${huge ? 'h-full text-xl' : big ? 'text-lg' : 'text-sm'}`}>
+    <table className={`w-full table-fixed ${huge ? 'text-xl' : big ? 'text-lg' : 'text-sm'}`}>
       <thead className={`${tv ? 'text-xs' : 'text-[10px]'} uppercase tracking-wider text-fg-subtle`}>
         <tr>
           <th className="w-7 px-1 py-1 text-center">#</th>
@@ -77,7 +79,7 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
         {rows.map((r, i) => {
           const q = i < advance
           return (
-            <tr key={r.team.id} className={i === advance - 1 && i < rows.length - 1 ? 'border-b-2 border-dashed !border-line-strong' : ''}>
+            <tr key={r.team.id} className={`${rowH} ${q ? 'bg-brand/[0.08]' : ''} ${i === advance - 1 && i < rows.length - 1 ? 'border-b-2 border-dashed !border-line-strong' : ''}`}>
               <td className={`tabular px-1 ${cell} text-center ${tv ? 'text-sm' : 'text-xs'} font-bold ${q ? 'text-brand-ink' : 'text-fg-subtle'}`}>{i + 1}</td>
               <td className={`px-1 ${cell}`}>
                 <span className={`flex min-w-0 gap-2 ${tv ? 'items-center' : 'items-start gap-1.5'}`}>

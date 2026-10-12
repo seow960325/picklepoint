@@ -1,6 +1,6 @@
 /** One TV for two sister categories (e.g. /tv/MCMD+MCXD): each code keeps its
  *  own scoring, courts and PINs; this screen only reads both and shows them
- *  together. Panes: Live courts, Group tables, Bracket, or Auto (rotates).
+ *  together. Panes: Live courts, Group tables, Bracket - each a toggle; the TV rotates through the ones switched on (one on = stays on it).
  *  Separate route on purpose — the single-code board and YC2626's
  *  multi-sport TV are untouched. */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
@@ -12,8 +12,11 @@ import { GroupTable, PlayClock } from '../components/GroupsKo'
 import { LiveGrid, PosterBracket, Podium, koPodium } from './Board'
 import { upNext } from '../lib/pool'
 
-type Pane = 'live' | 'groups' | 'bracket' | 'auto'
-const AUTO: Array<Exclude<Pane, 'auto'>> = ['live', 'groups', 'live', 'bracket']
+type Pane = 'live' | 'groups' | 'bracket'
+const PANES: Pane[] = ['live', 'groups', 'bracket']
+/** the rotation for the panes switched on: all three keeps the live courts twice per cycle */
+const rotation = (on: Pane[]): Pane[] =>
+  on.length === 3 ? ['live', 'groups', 'live', 'bracket'] : PANES.filter(p => on.includes(p))
 const AUTO_MS = 20000
 
 // one colour per category, used for its banner strip
@@ -27,7 +30,21 @@ export default function CombinedTv() {
   const list = codes.split(/[+,\s]+/).filter(Boolean).slice(0, 2)
   const one = useCompetition(list[0])
   const two = useCompetition(list[1])
-  const [pane, setPane] = useState<Pane>('auto')
+  const paneKey = `pp.tvpanes.${list.join('+').toUpperCase()}`
+  const [on, setOn] = useState<Pane[]>(() => {
+    try {
+      const v = (localStorage.getItem(paneKey) ?? '').split(',').filter((x): x is Pane => (PANES as string[]).includes(x))
+      if (v.length) return v
+    } catch { /* private mode */ }
+    return PANES
+  })
+  const togglePane = (p: Pane) => {
+    // press to switch a pane on, press again to switch it off; the last one stays on
+    const next = on.includes(p) ? (on.length > 1 ? on.filter(x => x !== p) : on) : PANES.filter(x => x === p || on.includes(x))
+    setOn(next); setStep(0)
+    try { localStorage.setItem(paneKey, next.join(',')) } catch { /* private mode */ }
+  }
+  const seq = rotation(on)
   // which category the TV shows: both (default) or one code — URL ?c= wins, then this device's last pick
   const [params, setParams] = useSearchParams()
   const catKey = `pp.tvcat.${list.join('+').toUpperCase()}`
@@ -42,10 +59,10 @@ export default function CombinedTv() {
   }
   const [step, setStep] = useState(0)
   useEffect(() => {
-    if (pane !== 'auto') return
-    const id = setInterval(() => setStep(s => (s + 1) % AUTO.length), AUTO_MS)
+    if (seq.length < 2) return
+    const id = setInterval(() => setStep(s => (s + 1) % seq.length), AUTO_MS)
     return () => clearInterval(id)
-  }, [pane])
+  }, [seq.join(',')])
 
   if (one.loading || (list[1] && two.loading)) return <Screen><Spinner /></Screen>
   const all = [one.bundle, two.bundle].filter((b): b is Bundle => !!b)
@@ -60,7 +77,7 @@ export default function CombinedTv() {
     )
   }
 
-  const shown: Exclude<Pane, 'auto'> = pane === 'auto' ? AUTO[step] : pane
+  const shown: Pane = seq[step % seq.length]
   // the ceremony replaces a category's bracket once its Final AND 3rd place are in
   const decided = bundles.map(b => koPodium(b))
   const podiumReady = (i: number) => !!decided[i]?.third
@@ -88,9 +105,9 @@ export default function CombinedTv() {
           </div>
         )}
         <div className="flex rounded-lg border border-line bg-surface/70 p-0.5 text-xs">
-          {(['live', 'groups', 'bracket', 'auto'] as const).map(p => (
-            <button key={p} onClick={() => { setPane(p); setStep(0) }}
-              className={`min-h-[30px] whitespace-nowrap rounded-md px-2.5 py-1.5 capitalize ${pane === p ? 'bg-fg text-canvas' : 'text-fg-muted'}`}>
+          {PANES.map(p => (
+            <button key={p} onClick={() => togglePane(p)} aria-pressed={on.includes(p)}
+              className={`min-h-[30px] whitespace-nowrap rounded-md px-2.5 py-1.5 capitalize ${on.includes(p) ? 'bg-fg text-canvas' : 'text-fg-muted'}`}>
               {p}
             </button>
           ))}
@@ -118,7 +135,7 @@ export default function CombinedTv() {
       {shown === 'groups' && (
         <div className="relative min-h-0 flex-1">
           {single
-            ? <Fit fill><div className="flex w-[1840px] flex-1 flex-col"><GroupsBlock b={bundles[0]} tone={toneOf(bundles[0])} fill /></div></Fit>
+            ? <Fit><div className="flex w-[1840px] flex-col"><GroupsBlock b={bundles[0]} tone={toneOf(bundles[0])} fill /></div></Fit>
             : (
               <Fit>
                 <div className="flex w-[1840px] flex-col gap-5">
@@ -210,9 +227,9 @@ function GroupsBlock({ b, tone, fill = false }: { b: Bundle; tone: typeof TONES[
   const advance = ev.advance_per_group ?? 1
   const live = b.matches.filter(m => m.event_id === ev.id && m.status === 'live' && m.bracket_key == null)
   return (
-    <section className={fill ? 'flex flex-1 flex-col' : ''}>
+    <section>
       <Banner b={b} tone={tone} />
-      <div className={`grid grid-cols-4 gap-3 ${fill ? 'flex-1 [grid-auto-rows:minmax(max-content,1fr)]' : ''}`}>
+      <div className="grid grid-cols-4 gap-3">
         {Object.keys(tables).sort().map(g => (
           <div key={g} className="rounded-xl border border-line bg-surface p-2">
             <GroupTable b={b} g={g} rows={tables[g]} advance={advance} big huge={fill} />
