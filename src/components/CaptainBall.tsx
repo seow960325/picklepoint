@@ -93,7 +93,7 @@ function useBoardFont(cap: string | null) {
   return { ref, px, fontSize: cap ? `min(${px}px, ${cap})` : `${px}px` }
 }
 
-const CAP = { card: null, split: '2.1vh', tv: '3vh' } as const
+const CAP = { card: null, split: '2.1vh', tv: '2.8vh' } as const
 
 /** The live scoreboard of one captain-ball game: an official-style LED board
  *  (team names, scores, game clock, period, fouls, team calls). Every number

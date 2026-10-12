@@ -94,7 +94,6 @@ export default function Board() {
 
   // ---- TV mode: dedicated, centred fullscreen presentation ----
   if (tv) {
-    const cbFocus = multi && sv === 'captainball' && tvPane !== 'board' && sportBundle(bundle, 'captainball').courts.some(ct => liveOnCourt(sportBundle(bundle, 'captainball'), ct.id))
     return (
       <div className="fixed inset-0 flex flex-col justify-center gap-5 overflow-auto bg-canvas py-6 text-fg"
         style={{
@@ -131,7 +130,7 @@ export default function Board() {
         </div>
 
         {/* title (left out when one captain-ball game fills the screen) */}
-        {!cbFocus && <div className="shrink-0 px-4 text-center sm:px-8">
+        {(!multi || (sv === 'all' && sports.length > 1)) && <div className="shrink-0 px-4 text-center sm:px-8">
           <div className="font-display text-2xl font-bold tracking-wide sm:text-3xl md:text-4xl">{c.name}</div>
           {c.venue && <div className="mt-0.5 text-xs text-fg-muted sm:text-sm">{c.venue}</div>}
         </div>}
@@ -348,16 +347,20 @@ function SportSwitch({ sports, view, onPick, size = 'md' }: {
   )
 }
 
-function SportBanner({ sport, b, big = false, onOpen }: {
+function SportBanner({ sport, b, big = false, onOpen, title, stage }: {
   sport: Sport; b: Bundle; big?: boolean; onOpen?: () => void
+  title?: string   // TV: competition name folded into the banner
+  stage?: string   // TV: Round robin / Semi-finals / Final / Champions
 }) {
   const t = SPORT_TONE[sport]
   const live = b.courts.filter(ct => liveOnCourt(b, ct.id)).length
   return (
     <div className={`mb-2 flex items-center gap-2 rounded-xl border ${t.border} ${t.soft} ${big ? 'mb-3 px-4 py-2' : 'px-3 py-1.5'}`}>
       <span className={big ? 'text-3xl leading-none' : 'text-lg leading-none'}>{SPORT_ICON[sport]}</span>
-      <span className={`font-display font-bold uppercase tracking-widest ${t.text} ${big ? 'text-3xl' : 'text-base'}`}>
+      <span className={`min-w-0 truncate font-display font-bold uppercase tracking-widest ${t.text} ${big ? 'text-3xl' : 'text-base'}`}>
+        {title && <><span className="text-fg">{title}</span><span className="mx-3 text-fg-subtle">–</span></>}
         {SPORT_LABEL[sport]}
+        {stage && <span className="text-fg"> : {stage}</span>}
       </span>
       <span className="ml-auto flex items-center gap-2">
         {live > 0
@@ -446,6 +449,8 @@ function NextTies({ b, n = 4 }: { b: Bundle; n?: number }) {
   )
 }
 
+const STAGE_TEXT: Record<string, string> = { groups: 'Round Robin', semis: 'Semi-finals', finals: 'Final', done: 'Champions' }
+
 /** TV: one sport full-screen, or both sports split left | right.
  *  Each half shows, by stage: live courts (gold Final strip during the Final),
  *  group tables or the bracket (pane, auto-rotation, or nothing live), and the
@@ -466,7 +471,7 @@ function TvSports({ b, view, code, pane, flip, title }: {
             const showTable = pane === 'board' || (pane === 'auto' && flip) || !cbLive
             return (
               <section key={s} className="min-w-0">
-                {!(!split && !showTable) && <SportBanner sport={s} b={sb} big />}
+                <SportBanner sport={s} b={sb} big title={split ? undefined : title} stage="Round Robin" />
                 {showTable && cbEv
                   ? <CbStandings b={sb} ev={cbEv} big />
                   : <CbLive b={sb} code={code} tv split={split} sound n={split ? 2 : 3} />}
@@ -480,13 +485,13 @@ function TvSports({ b, view, code, pane, flip, title }: {
           if (k.phase === 'done' && pane !== 'board') {
             return (
               <section key={s} className="min-w-0">
-                <ChampionStage b={sb} sport={s} k={k} title="" size={split ? 'md' : 'lg'} />
+                <ChampionStage b={sb} sport={s} k={k} title={split ? '' : title} size={split ? 'md' : 'lg'} />
               </section>
             )
           }
           return (
             <section key={s} className="min-w-0">
-              <SportBanner sport={s} b={sb} big />
+              <SportBanner sport={s} b={sb} big title={split ? undefined : title} stage={STAGE_TEXT[k.phase]} />
               {board
                 ? (k.phase === 'groups'
                   ? <TieStandings b={sb} big />
