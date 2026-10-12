@@ -276,12 +276,12 @@ function CbUpNext({ b, n, big }: { b: Bundle; n: number; big?: boolean }) {
         {ups.map(m => (
           <div key={m.id} className={`grid grid-cols-[3.5rem_minmax(0,1fr)_1.75rem_minmax(0,1fr)] items-center gap-1.5 px-3 ${big ? 'py-3 text-2xl' : 'py-2 text-sm'}`}>
             <span className={`font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>G{m.sequence}</span>
-            <span className="flex min-w-0 items-center justify-end gap-1.5">
-              <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
+            <span className="flex min-w-0 items-center justify-center gap-1.5">
+              <span className="truncate text-center">{teamName(b, m.team_a_id)}</span>
               <Emblem logo={teamLogo(b, m.team_a_id)} className={fl} />
             </span>
             <span className="text-center text-xs text-fg-subtle">vs</span>
-            <span className="flex min-w-0 items-center gap-1.5">
+            <span className="flex min-w-0 items-center justify-center gap-1.5">
               <Emblem logo={teamLogo(b, m.team_b_id)} className={fl} />
               <span className="truncate">{teamName(b, m.team_b_id)}</span>
             </span>
@@ -363,7 +363,7 @@ export function CbMatches({ b, banner }: { b: Bundle; banner?: React.ReactNode }
     const fin = m.status === 'finished'
     const aW = fin && m.score_a > m.score_b, bW = fin && m.score_b > m.score_a
     const nm = (id: string | null, win: boolean, right: boolean) => (
-      <span className={`flex min-w-0 items-center gap-2 text-base leading-tight ${right ? 'justify-end text-right' : 'text-left'} ${win ? 'font-bold text-fg' : fin ? 'font-medium text-fg-muted' : 'font-semibold text-fg'}`}>
+      <span className={`flex min-w-0 items-center gap-2 text-base leading-tight justify-center text-center ${win ? 'font-bold text-fg' : fin ? 'font-medium text-fg-muted' : 'font-semibold text-fg'}`}>
         {right && <span className="line-clamp-2 break-words">{teamName(b, id)}</span>}
         <Emblem logo={teamLogo(b, id)} className="h-6 w-6 shrink-0 rounded-[2px] object-contain" />
         {!right && <span className="line-clamp-2 break-words">{teamName(b, id)}</span>}

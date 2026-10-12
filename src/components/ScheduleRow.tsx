@@ -16,12 +16,12 @@ export function ScheduleRow({ bundle, a, b, meta, status, live, canUp, canDown, 
     <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 px-3 py-2 sm:grid-cols-[2.75rem_minmax(0,1fr)_6.5rem_auto]">
       <span className="row-span-2 min-w-0 text-center text-xs leading-tight text-fg-subtle sm:row-span-1">{meta}</span>
       <span className="col-start-2 row-start-1 grid min-w-0 grid-cols-[minmax(0,1fr)_1.5rem_minmax(0,1fr)] items-center gap-1">
-        <span className="flex min-w-0 items-center justify-end gap-1.5">
-          <span className="truncate text-right">{teamName(bundle, a)}</span>
+        <span className="flex min-w-0 items-center justify-center gap-1.5">
+          <span className="truncate text-center">{teamName(bundle, a)}</span>
           <Emblem logo={teamLogo(bundle, a)} flagName={teamSideName(bundle, a)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
         </span>
         <span className="text-center text-xs text-fg-subtle">vs</span>
-        <span className="flex min-w-0 items-center gap-1.5">
+        <span className="flex min-w-0 items-center justify-center gap-1.5">
           <Emblem logo={teamLogo(bundle, b)} flagName={teamSideName(bundle, b)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
           <span className="truncate">{teamName(bundle, b)}</span>
         </span>

@@ -146,8 +146,8 @@ export function GameRow({ b, code, m, tag }: { b: Bundle; code: string; m: Match
   return (
     <Link to={`/c/${code}/match/${m.id}`}
       className={`grid grid-cols-[minmax(0,1fr)_3.5rem_minmax(0,1fr)_3.25rem] items-center gap-2 border-b border-line/60 px-3 py-2 text-xs last:border-0 active:bg-surface-2 ${live ? 'bg-brand/[0.06]' : ''}`}>
-      <span className={`flex min-w-0 items-center justify-end gap-1.5 ${name(aWin)}`}>
-        <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
+      <span className={`flex min-w-0 items-center justify-center gap-1.5 ${name(aWin)}`}>
+        <span className="truncate text-center">{teamName(b, m.team_a_id)}</span>
         <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-6 w-8 shrink-0 rounded-[2px] object-contain" />
       </span>
       <span className="flex justify-center">
@@ -155,7 +155,7 @@ export function GameRow({ b, code, m, tag }: { b: Bundle; code: string; m: Match
           ? <span className={`tabular whitespace-nowrap font-display text-sm font-bold ${live ? 'text-brand-ink' : 'text-fg'}`}>{m.score_a}–{m.score_b}</span>
           : <span className="text-[10px] font-bold uppercase tracking-widest text-fg-subtle">{tag ?? 'vs'}</span>}
       </span>
-      <span className={`flex min-w-0 items-center gap-1.5 ${name(bWin)}`}>
+      <span className={`flex min-w-0 items-center justify-center gap-1.5 ${name(bWin)}`}>
         <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-6 w-8 shrink-0 rounded-[2px] object-contain" />
         <span className="truncate">{teamName(b, m.team_b_id)}</span>
       </span>

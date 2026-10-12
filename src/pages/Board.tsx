@@ -411,12 +411,12 @@ function NextTies({ b, n = 4 }: { b: Bundle; n?: number }) {
           <div key={t.id} className="px-3 py-2">
             <div className="grid grid-cols-[1.1rem_minmax(0,1fr)_1.75rem_minmax(0,1fr)] items-center gap-1.5 text-sm">
               <span className="text-center font-display text-xs font-bold text-fg-subtle">{i + 1}</span>
-              <span className="flex min-w-0 items-center justify-end gap-1.5">
-                <span className="truncate text-right">{teamName(b, t.a)}</span>
+              <span className="flex min-w-0 items-center justify-center gap-1.5">
+                <span className="truncate text-center">{teamName(b, t.a)}</span>
                 <Emblem logo={teamLogo(b, t.a)} flagName={teamSideName(b, t.a)} className={fl} />
               </span>
               <span className="text-center text-xs text-fg-subtle">vs</span>
-              <span className="flex min-w-0 items-center gap-1.5">
+              <span className="flex min-w-0 items-center justify-center gap-1.5">
                 <Emblem logo={teamLogo(b, t.b)} flagName={teamSideName(b, t.b)} className={fl} />
                 <span className="truncate">{teamName(b, t.b)}</span>
               </span>
@@ -577,9 +577,9 @@ function TieCard({ b, t, code, sport }: { b: Bundle; t: Tie; code: string; sport
     return ct ? (ct.label || `Court ${ct.number}`) : '—'
   }
   const side = (id: string | null, win: boolean, right: boolean) => (
-    <span className={`flex min-w-0 items-center gap-1.5 ${right ? 'justify-end' : ''} ${
+    <span className={`flex min-w-0 items-center gap-1.5 justify-center ${
       win ? 'font-bold text-fg' : t.done ? 'text-fg-muted' : 'text-fg'}`}>
-      {right && <span className="truncate text-right">{teamName(b, id)}</span>}
+      {right && <span className="truncate text-center">{teamName(b, id)}</span>}
       <Emblem logo={teamLogo(b, id)} flagName={teamSideName(b, id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
       {!right && <span className="truncate">{teamName(b, id)}</span>}
     </span>
@@ -826,12 +826,12 @@ function Schedule({ b }: { b: Bundle }) {
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm leading-relaxed">
               <span className="grid grid-cols-[minmax(0,1fr)_1.75rem_minmax(0,1fr)] items-center gap-1">
-                <span className="flex min-w-0 items-center justify-end gap-1">
-                  <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
+                <span className="flex min-w-0 items-center justify-center gap-1">
+                  <span className="truncate text-center">{teamName(b, m.team_a_id)}</span>
                   <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={fl} />
                 </span>
                 <span className="text-center text-xs text-fg-subtle">vs</span>
-                <span className="flex min-w-0 items-center gap-1">
+                <span className="flex min-w-0 items-center justify-center gap-1">
                   <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={fl} />
                   <span className="truncate">{teamName(b, m.team_b_id)}</span>
                 </span>

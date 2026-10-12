@@ -354,9 +354,9 @@ export function FinalBanner({ b, t, big = false }: { b: Bundle; t: Tie; big?: bo
       style={{ background: 'radial-gradient(70% 120% at 50% 0%, rgba(244,205,106,.18), transparent 70%), rgb(var(--surface))' }}>
       <div className={`font-cer font-bold tracking-[0.3em] text-gold ${big ? 'text-base' : 'text-xs'}`}>THE FINAL</div>
       <div className="mt-1 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
-        <span className={`truncate text-right font-display font-bold ${big ? 'text-3xl' : 'text-lg'}`}>{name(t.a)}</span>
+        <span className={`truncate text-center font-display font-bold ${big ? 'text-3xl' : 'text-lg'}`}>{name(t.a)}</span>
         <span className={`tabular font-display font-bold text-gold ${big ? 'text-6xl' : 'text-4xl'}`}>{t.aGames}–{t.bGames}</span>
-        <span className={`truncate text-left font-display font-bold ${big ? 'text-3xl' : 'text-lg'}`}>{name(t.b)}</span>
+        <span className={`truncate text-center font-display font-bold ${big ? 'text-3xl' : 'text-lg'}`}>{name(t.b)}</span>
       </div>
       <div className={`mt-1 flex flex-wrap justify-center gap-x-4 ${big ? 'text-base' : 'text-xs'} text-fg-muted`}>
         {t.units.map(u => (
