@@ -93,7 +93,7 @@ function useBoardFont(cap: string | null) {
   return { ref, px, fontSize: cap ? `min(${px}px, ${cap})` : `${px}px` }
 }
 
-const CAP = { card: null, split: '2.1vh', tv: '2.8vh' } as const
+const CAP = { card: null, split: '2.1vh', tv: '3vh' } as const
 
 /** The live scoreboard of one captain-ball game: an official-style LED board
  *  (team names, scores, game clock, period, fouls, team calls). Every number
@@ -172,8 +172,8 @@ export function CbScoreboard({ b, m, size = 'card', sound = false, courtLabel }:
     <div ref={ref} className="mx-auto w-full" style={{ maxWidth: size === 'card' ? 'none' : `calc(54 * ${CAP[size]})` }}>
       <div className="overflow-hidden rounded-[1em] border-[0.15em] border-[#1c1f25] bg-[#050607] text-white"
         style={{ fontSize, padding: '1em 1.3em 1.1em', boxShadow: 'inset 0 0 3em #000' }}>
-        {/* header */}
-        <div className="flex items-center justify-between" style={{ height: '1.6em' }}>
+        {/* header (card only: on the board the team tiles already show names and status) */}
+        {size === 'card' && <div className="flex items-center justify-between" style={{ height: '1.6em' }}>
           <span className={`truncate ${lbl}`} style={{ fontSize: 'max(1em, 10px)' }}>
             {[courtLabel, cbRound(m), `Game ${m.sequence}`].filter(Boolean).join(' · ')}
           </span>
@@ -182,7 +182,7 @@ export function CbScoreboard({ b, m, size = 'card', sound = false, courtLabel }:
             <span className={`rounded-full ${v.running ? 'animate-pulse' : ''}`} style={{ width: '0.7em', height: '0.7em', background: statusTone }} />
             <span className="whitespace-nowrap">{v.status}</span>
           </span>
-        </div>
+        </div>}
 
         <div className="mt-[0.6em] grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]"
           style={{ columnGap: '1.3em', rowGap: '0.6em', gridTemplateRows: '3.6em 0.28em auto auto' }}>

@@ -733,7 +733,7 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
                     Next: <span className="truncate">{teamName(b, up.team_a_id)}</span> vs <span className="truncate">{teamName(b, up.team_b_id)}</span>
                   </div>
                 )
-                : <CourtUpList b={b} courtId={ct.id} tv={tv} />}
+                : !tv && <CourtUpList b={b} courtId={ct.id} tv={tv} />}
             </>
           return tv ? (
             <div key={ct.id} className="block rounded-2xl border border-line bg-surface p-2 lg:p-3">
