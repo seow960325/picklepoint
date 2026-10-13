@@ -14,7 +14,7 @@ import { fullscreenSupported } from '../lib/fullscreen'
 import TieStandings from '../components/TieStandings'
 import {
   isMultiSport, sportBundle, sportsPresent, SPORT_ICON, SPORT_LABEL, SPORT_TONE,
-  parseSportView, readSportView, saveSportView, tiesOf, tieTitle, koState, koCourtLabel,
+  parseSportView, readSportView, saveSportView, tiesOf, tieTitle, tieRoundNo, roundTag, koState, koCourtLabel,
   type Sport, type SportView, type Tie,
 } from '../lib/multisport'
 import { CbLive, CbMatches, CbStandings } from '../components/CaptainBall'
@@ -211,7 +211,7 @@ export default function Board() {
 
         <div className="mt-3 flex gap-1 overflow-x-auto lg:mt-4 lg:gap-2">
           {(multi
-              ? ['live', 'matches', 'standings', 'knockout']
+              ? (['live', 'matches', 'standings', 'knockout'] as Tab[])
               : ['live', 'matches',
                  ...(bundle.events.some(e => e.format === 'groups_ko' || e.format === 'round_robin') ? ['standings'] : []),
                  ...(bundle.events.some(e => e.format === 'groups_ko') ? ['bracket'] : [])] as Tab[]).map(t => (
@@ -573,7 +573,15 @@ function SportTies({ b, sport, code, banner, wide }: {
 }) {
   const ties = b.events.flatMap(e => tiesOf(b, e.id))
   const isLive = (t: Tie) => t.games.some(g => g.status === 'live')
-  const upcoming = ties.filter(t => !t.done).sort((x, y) => Number(isLive(y)) - Number(isLive(x)))
+  const live = ties.filter(t => !t.done && isLive(t))
+  // every tie still to play, grouped by round so players see rounds 1, 2, 3… and what is coming
+  const rounds: Array<[number, Tie[]]> = []
+  ties.filter(t => !t.done && !isLive(t)).forEach(t => {
+    const r = tieRoundNo(t)
+    const g = rounds.find(x => x[0] === r)
+    if (g) g[1].push(t); else rounds.push([r, [t]])
+  })
+  rounds.sort((x, y) => (x[0] || 99) - (y[0] || 99))
   const done = ties.filter(t => t.done).reverse()
   const head = (txt: string) => (
     <div className="mb-2 px-1 font-display text-base font-bold uppercase tracking-widest text-fg-muted">{txt}</div>
@@ -586,12 +594,19 @@ function SportTies({ b, sport, code, banner, wide }: {
       {banner && <SportBanner sport={sport} b={b} />}
       {ties.length === 0 ? empty('Schedule not drawn yet.') : (
         <div className="space-y-5">
-          <div>
-            {head('Up next')}
-            {upcoming.length
-              ? <FillGrid className="gap-2">{upcoming.map(t => <TieCard key={t.id} b={b} t={t} code={code} sport={sport} />)}</FillGrid>
-              : empty('Every tie has been played.')}
-          </div>
+          {live.length > 0 && (
+            <div>
+              {head(`Now playing · ${live.length}`)}
+              <FillGrid className="gap-2">{live.map(t => <TieCard key={t.id} b={b} t={t} code={code} sport={sport} />)}</FillGrid>
+            </div>
+          )}
+          {rounds.length === 0 && live.length === 0 && <div>{head('Up next')}{empty('Every tie has been played.')}</div>}
+          {rounds.map(([r, list]) => (
+            <div key={r}>
+              {head(`${r ? `Round ${r}` : 'Up next'} · ${list.length} to play`)}
+              <FillGrid className="gap-2">{list.map(t => <TieCard key={t.id} b={b} t={t} code={code} sport={sport} />)}</FillGrid>
+            </div>
+          ))}
           {done.length > 0 && (
             <div>
               {head('Results')}
@@ -742,7 +757,7 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
                     Next: <span className="truncate">{teamName(b, up.team_a_id)}</span> vs <span className="truncate">{teamName(b, up.team_b_id)}</span>
                   </div>
                 )
-                : !tv && <CourtUpList b={b} courtId={ct.id} tv={tv} />}
+                : <CourtUpList b={b} courtId={ct.id} tv={tv} />}
             </>
           return tv ? (
             <div key={ct.id} className="block rounded-2xl border border-line bg-surface p-2 lg:p-3">
@@ -764,34 +779,45 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
   )
 }
 
-/** The next games queued on one court, shown under that court's score. */
+/** Every game still queued on one court, in play order, with how many are left.
+ *  Board lists them all; the TV shows the next few plus the count. */
 function CourtUpList({ b, courtId, tv }: { b: Bundle; courtId: string; tv: boolean }) {
   const mc = !!b.competition.multi_sport
-  const ups = b.matches
+  const all = b.matches
     .filter(m => m.court_id === courtId && (m.status === 'scheduled' || m.status === 'on_deck'))
-    .sort((x, y) => x.sequence - y.sequence).slice(0, 3)
+    .sort((x, y) => x.sequence - y.sequence)
+  const ups = tv ? all.slice(0, 3) : all
   const fl = tv ? 'h-6 w-6' : 'h-5 w-5 lg:h-6 lg:w-6'
+  const tagOf = (m: Match, i: number) => (mc ? roundTag(m.round) : '') || (m.game_label ?? String(i + 1))
   return (
     <div className="mt-3 border-t border-line pt-2 lg:mt-4">
-      <div className={`mb-1 font-display font-bold uppercase tracking-widest text-accent ${tv ? 'text-xl' : 'text-base lg:text-xl'}`}>Up next</div>
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <span className={`font-display font-bold uppercase tracking-widest text-accent ${tv ? 'text-xl' : mc ? 'text-sm lg:text-base' : 'text-base lg:text-xl'}`}>Up next</span>
+        <span className={`shrink-0 whitespace-nowrap font-display font-bold text-fg-muted ${tv ? 'text-xl' : 'text-sm lg:text-base'}`}>
+          {all.length === 0 ? 'last game' : `${all.length} left`}
+        </span>
+      </div>
       {ups.length === 0 ? (
         <div className={`py-1 text-fg-subtle ${tv ? 'text-xl' : 'text-base'}`}>No more games</div>
       ) : (
         <div className="divide-y divide-line/60">
           {ups.map((m, i) => (
-            <div key={m.id} className={`grid items-center ${tv ? 'grid-cols-[2.6rem_minmax(0,1fr)_2.2rem_minmax(0,1fr)] gap-2 py-2 text-2xl' : 'grid-cols-[2.2rem_minmax(0,1fr)_2rem_minmax(0,1fr)] gap-2 py-1.5 text-lg lg:text-2xl'}`}>
-              <span className={`text-center font-display font-bold text-fg-subtle ${tv ? 'text-lg' : 'text-sm'}`}>{m.game_label ?? i + 1}</span>
+            <div key={m.id} className={`grid items-center ${tv ? 'grid-cols-[3.6rem_minmax(0,1fr)_2.2rem_minmax(0,1fr)] gap-2 py-2 text-2xl' : (mc ? 'grid-cols-[2.4rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-1.5 py-1.5 text-sm font-medium leading-tight lg:text-base' : 'grid-cols-[3.1rem_minmax(0,1fr)_2rem_minmax(0,1fr)] gap-2 py-1.5 text-lg lg:text-2xl')}`}>
+              <span className={`whitespace-nowrap text-center font-display font-bold text-fg-subtle ${tv ? 'text-base' : mc ? 'text-[10px]' : 'text-xs'}`}>{tagOf(m, i)}</span>
               <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : 'justify-end'} gap-1.5 text-fg-muted`}>
-                <span className={`truncate ${mc ? 'text-center' : 'text-right'}`}>{teamName(b, m.team_a_id)}</span>
+                <span className={mc ? 'line-clamp-2 break-words text-center' : 'truncate text-right'}>{teamName(b, m.team_a_id)}</span>
                 <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={`${fl} shrink-0 rounded-[2px] object-contain`} />
               </span>
-              <span className="text-center text-base text-fg-subtle">vs</span>
+              <span className={`text-center text-fg-subtle ${mc && !tv ? 'text-xs' : 'text-base'}`}>vs</span>
               <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : ''} gap-1.5 text-fg-muted`}>
                 <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={`${fl} shrink-0 rounded-[2px] object-contain`} />
-                <span className={`truncate ${mc ? 'text-center' : ''}`}>{teamName(b, m.team_b_id)}</span>
+                <span className={mc ? 'line-clamp-2 break-words text-center' : 'truncate'}>{teamName(b, m.team_b_id)}</span>
               </span>
             </div>
           ))}
+          {tv && all.length > ups.length && (
+            <div className="pt-1 text-center text-lg text-fg-subtle">+ {all.length - ups.length} more</div>
+          )}
         </div>
       )}
     </div>
