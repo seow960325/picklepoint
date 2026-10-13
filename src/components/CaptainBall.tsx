@@ -260,23 +260,26 @@ export function CbLive({ b, code, tv = false, split = false, sound = false, n = 
           </div>
         ))}
       </FillGrid>
-      {!tv && <CbUpNext b={b} n={n} big={false} />}
+      <CbUpNext b={b} n={tv ? n : 99} big={tv} />
     </div>
   )
 }
 
 function CbUpNext({ b, n, big }: { b: Bundle; n: number; big?: boolean }) {
-  const ups = b.matches.filter(m => m.status === 'scheduled' || m.status === 'on_deck')
-    .sort((x, y) => x.sequence - y.sequence).slice(0, n)
+  const all = b.matches.filter(m => m.status === 'scheduled' || m.status === 'on_deck')
+    .sort((x, y) => x.sequence - y.sequence)
+  const ups = all.slice(0, n)
   if (!ups.length) return null
   const fl = big ? 'h-7 w-7 shrink-0 rounded-[3px]' : 'h-4 w-4 shrink-0 rounded-[2px]'
   return (
     <div>
-      <div className={`mb-2 px-1 font-display font-bold uppercase tracking-widest text-fg-muted ${big ? 'text-xl' : 'text-base'}`}>Up next</div>
+      <div className={`mb-2 flex items-baseline justify-between gap-2 px-1 font-display font-bold uppercase tracking-widest text-fg-muted ${big ? 'text-xl' : 'text-base'}`}>
+        <span>Up next</span><span>{all.length} left</span>
+      </div>
       <div className="divide-y divide-line/60 rounded-2xl border border-line bg-surface">
         {ups.map(m => (
           <div key={m.id} className={`grid grid-cols-[3.5rem_minmax(0,1fr)_1.75rem_minmax(0,1fr)] items-center gap-1.5 px-3 ${big ? 'py-3 text-2xl' : 'py-2 text-sm'}`}>
-            <span className={`font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>G{m.sequence}</span>
+            <span className={`whitespace-nowrap font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>{(cbRound(m).replace('Round ', 'R')) || `G${m.sequence}`}</span>
             <span className="flex min-w-0 items-center justify-center gap-1.5">
               <span className="truncate text-center">{teamName(b, m.team_a_id)}</span>
               <Emblem logo={teamLogo(b, m.team_a_id)} className={fl} />

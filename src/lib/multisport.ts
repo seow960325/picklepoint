@@ -423,6 +423,18 @@ export function tieStage(round?: string | null): string {
   return round ?? ''
 }
 
+/** "A · R2 · MD1" -> "A·R2" (pool + round, for compact queue rows); '' when not a round label. */
+export function roundTag(round?: string | null): string {
+  const p = (round ?? '').split(' · ')
+  return p.length >= 2 && /^R\d+$/.test(p[1]) ? `${p[0]}·${p[1]}` : ''
+}
+
+/** Round number of a group tie (1, 2, 3…); 0 when it has none (knockout / unlabelled). */
+export function tieRoundNo(t: Tie): number {
+  const r = (t.games[0]?.round ?? '').split(' · ')[1]
+  return r && /^R\d+$/.test(r) ? Number(r.slice(1)) : 0
+}
+
 /** Heading of a tie card: "Semi-final 1" / "Final" / "Group A · Round 2". */
 export const tieTitle = (t: Tie): string => t.stage ? STAGE_LABEL[t.stage] : tieStage(t.games[0]?.round)
 
