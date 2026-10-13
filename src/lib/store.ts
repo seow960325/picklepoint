@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Bundle, EventCfg, Match, Team } from './types'
 import type { DuelTally } from './draw'
 import * as api from './api'
 import { rankByDiff } from './pool'
+import { applyPreviewStage, usePreviewStage } from './previewStage'
 
 const CODE_KEY = 'pp.code'
 export const rememberCode = (c: string) => localStorage.setItem(CODE_KEY, c.toUpperCase())
@@ -11,12 +12,15 @@ export const forgetCode = (c: string) => {
   if (lastCode().toUpperCase() === c.toUpperCase()) localStorage.removeItem(CODE_KEY)
 }
 
-export function useCompetition(code: string | undefined) {
-  const [bundle, setBundle] = useState<Bundle | null>(null)
+export function useCompetition(code: string | undefined, opts?: { preview?: boolean }) {
+  const [rawBundle, setBundle] = useState<Bundle | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const codeRef = useRef(code)
   codeRef.current = code
+  // TEST codes on the public board / TV only: optional viewer-side stage preview
+  const pstage = usePreviewStage(opts?.preview ? code : undefined)
+  const bundle = useMemo(() => (rawBundle && pstage ? applyPreviewStage(rawBundle, pstage) : rawBundle), [rawBundle, pstage])
 
   // a slow, older refresh must never overwrite a newer one (that is what makes scores flash back)
   const reqNo = useRef(0)
@@ -62,9 +66,9 @@ export function useCompetition(code: string | undefined) {
   }, [reload])
 
   useEffect(() => {
-    if (!bundle) return
-    return api.subscribe(bundle, reload)
-  }, [bundle?.competition.id, reload, resubscribeKey])
+    if (!rawBundle) return
+    return api.subscribe(rawBundle, reload)
+  }, [rawBundle?.competition.id, reload, resubscribeKey])
 
   return { bundle, setBundle, error, loading, reload }
 }

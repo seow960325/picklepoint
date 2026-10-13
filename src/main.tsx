@@ -12,8 +12,9 @@ import Owner from './pages/Owner'
 import QuickPlay from './pages/QuickPlay'
 import CombinedTv from './pages/CombinedTv'
 import Register from './pages/Register'
+import { PreviewLayout } from './lib/previewStage'
 
-const router = createBrowserRouter([
+const router = createBrowserRouter([{ element: <PreviewLayout />, children: [
   { path: '/', element: <Join /> },
   { path: '/quick', element: <QuickPlay /> },
   { path: '/register', element: <Register /> },
@@ -25,7 +26,7 @@ const router = createBrowserRouter([
   { path: '/c/:code/admin', element: <Admin /> },
   { path: '/owner', element: <Owner /> },
   { path: '/tv/:codes', element: <CombinedTv /> },
-])
+] }])
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

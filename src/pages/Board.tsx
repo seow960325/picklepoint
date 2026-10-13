@@ -28,7 +28,7 @@ type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
 
 export default function Board() {
   const { code } = useParams()
-  const { bundle, error, loading, reload } = useCompetition(code)
+  const { bundle, error, loading, reload } = useCompetition(code, { preview: true })
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('live')
   const [tv, setTv] = useState(false)

@@ -30,8 +30,8 @@ const TONES = [
 export default function CombinedTv() {
   const { codes = '' } = useParams()
   const list = codes.split(/[+,\s]+/).filter(Boolean).slice(0, 2)
-  const one = useCompetition(list[0])
-  const two = useCompetition(list[1])
+  const one = useCompetition(list[0], { preview: true })
+  const two = useCompetition(list[1], { preview: true })
   const paneKey = `pp.tvpanes.${list.join('+').toUpperCase()}`
   const [on, setOn] = useState<Pane[]>(() => {
     try {
