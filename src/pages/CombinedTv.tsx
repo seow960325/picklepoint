@@ -107,7 +107,7 @@ export default function CombinedTv() {
               return (
                 <button key={c} onClick={() => pickCat(c)}
                   className={`flex min-h-[40px] touch-manipulation items-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 font-display text-sm font-bold uppercase tracking-wider ${
-                    on ? (tone ? `${tone.bar} text-[#0a0e17]` : 'bg-fg text-canvas') : 'text-fg-muted active:bg-surface-2'}`}>
+                    on ? (tone ? `${tone.bar} text-[#0a0e17]` : 'bg-fg text-canvas') : (tone ? `${tone.text} ${tone.soft} active:bg-surface-2` : 'text-fg-muted active:bg-surface-2')}`}>
                   {tone && !on && <span className={`h-3 w-1.5 rounded-full ${tone.bar}`} />}
                   {b ? category(b) : 'Both'}
                 </button>
@@ -125,7 +125,7 @@ export default function CombinedTv() {
         </div>
         <Link to={`/c/${bundles[0].competition.code}`}
           className="flex min-h-[44px] touch-manipulation items-center whitespace-nowrap rounded-lg border border-line bg-surface/70 px-4 text-sm font-semibold text-fg-muted">exit TV</Link>
-        <FullscreenButton className="grid h-11 w-11 place-items-center rounded-lg border border-line bg-surface/70 p-2 text-fg-muted" />
+        <FullscreenButton className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-line bg-surface/70 p-2.5 text-fg-muted" />
       </div>
 
       {shown !== 'live' && (
