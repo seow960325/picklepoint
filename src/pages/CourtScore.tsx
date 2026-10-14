@@ -4,7 +4,7 @@ import { useCompetition, teamName, liveOnCourt, eventOf } from '../lib/store'
 import { applyPoint, applyUndo, displayScores, isGameOver, rulesOf, servingSide, serverCourt as serverCourtOf, scoreCall, activeServerNo, type UndoState } from '../lib/scoring'
 import type { Match } from '../lib/types'
 import * as api from '../lib/api'
-import { enqueue, flush, pending, stalledCount, retryStalled, lastQueueError, isPermanentError } from '../lib/queue'
+import { enqueue, flush, pending, stalledCount, retryStalled, lastQueueError, isPermanentError, peekAll, drop, courtSession, saveCourtSession } from '../lib/queue'
 import { useWakeLockEffect } from '../lib/wakelock'
 import { useLandscape } from '../lib/orientation'
 import { tapPoint, tapFault, tapUndo, hornEnd, chimeSwitch, isSoundOn, setSoundOn } from '../lib/feedback'
@@ -16,12 +16,23 @@ import CbScorer from './CbScorer'
 
 export default function CourtScore() {
   const { code, number } = useParams()
-  const { bundle, reload } = useCompetition(code)
+  const { bundle, refreshLive } = useCompetition(code)
+  const reload = refreshLive
   const court = bundle?.courts.find(c => c.number === Number(number))
-  const [token, setToken] = useState<string | null>(null)
+  const [picked, setTokenState] = useState<string | null>(null)
   const [showRelogin, setShowRelogin] = useState(false)
+  // PIN every time the court is opened — except coming straight back from the point
+  // log in this same tab (short-lived session, see courtSession). Read during render
+  // so the PIN pad never flashes up first.
+  const token = picked ?? (court ? courtSession(court.id) : null)
+  const setToken = (t: string | null) => { setTokenState(t); if (court) saveCourtSession(court.id, t) }
+  // keep the session fresh while the referee is on this screen
+  useEffect(() => {
+    if (!token || !court) return
+    const id = setInterval(() => saveCourtSession(court.id, token), 60000)
+    return () => clearInterval(id)
+  }, [token, court?.id])
 
-  // no cached token — scorer must enter PIN every time they open the court
   useEffect(useWakeLockEffect, [])
 
   if (!bundle) return <Screen><Spinner /></Screen>
@@ -45,12 +56,42 @@ export default function CourtScore() {
     const courtDone = bundle.matches
       .filter(m => m.court_id === court.id && m.status === 'finished')
       .sort((a, b) => (b.finished_at ?? '').localeCompare(a.finished_at ?? ''))
+    // games still to come on this court: its own queue, or (shared-queue events)
+    // a waiting home game that starts as soon as both teams are off court
+    const waiting = bundle.matches
+      .filter(m => m.status === 'scheduled' && (m.court_id === court.id || (m.court_id == null && m.home_court === court.id)))
+      .sort((a, b) => a.sequence - b.sequence)[0]
+    const busyOn = waiting ? bundle.matches.find(x => x.id !== waiting.id
+      && (x.status === 'live' || x.status === 'awaiting_confirm')
+      && [x.team_a_id, x.team_b_id].some(t => t && (t === waiting.team_a_id || t === waiting.team_b_id))) : undefined
+    const busyTeam = busyOn ? [waiting!.team_a_id, waiting!.team_b_id].find(t => t === busyOn.team_a_id || t === busyOn.team_b_id) ?? null : null
+    const busyCourt = busyOn ? bundle.courts.find(c => c.id === busyOn.court_id) : undefined
+    if (waiting) return (
+      <Screen className="flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <div className="font-display text-3xl font-bold text-fg-subtle">{cname}</div>
+        <div className="text-xs font-bold uppercase tracking-[0.2em] text-fg-subtle">Next game</div>
+        <div className="max-w-md font-display text-2xl font-bold">
+          {teamName(bundle, waiting.team_a_id)} <span className="text-fg-subtle">vs</span> {teamName(bundle, waiting.team_b_id)}
+        </div>
+        <div className="flex items-center gap-2 text-sm text-fg-muted">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-brand" />
+          {busyTeam
+            ? <>Waiting for {teamName(bundle, busyTeam)} to finish on {busyCourt?.label && bundle.competition.multi_sport ? busyCourt.label : `Court ${busyCourt?.number ?? ''}`} — starts by itself.</>
+            : <>Starts by itself in a moment.</>}
+        </div>
+        <Link to={`/c/${code}`} className="rounded-xl border border-line px-4 py-2 text-sm">Back to board</Link>
+      </Screen>
+    )
     return (
       <Screen className="flex flex-col items-center justify-center gap-4 px-6">
         <div className="font-display text-3xl font-bold text-fg-subtle">{cname}</div>
         {courtDone.length > 0 ? (
           <>
-            <div className="text-sm text-fg-muted">All matches complete — tap a result to review or reset.</div>
+            <div className="text-center text-sm text-fg-muted">
+              {bundle.matches.some(m => m.status !== 'finished' && (m.bracket_key != null || m.tie_stage != null || m.court_id == null))
+                ? 'No game on this court right now — the next one appears here by itself. Tap a result to review.'
+                : 'All matches complete — tap a result to review or reset.'}
+            </div>
             <div className="w-full max-w-xs space-y-2">
               {courtDone.slice(0, 5).map(fm => (
                 <Link key={fm.id} to={`/c/${code}/match/${fm.id}`}
@@ -241,41 +282,48 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
   const prevToken = useRef(token)
 
   // ---- no flash-back: the screen shows the referee's own taps first ----
-  // Server pushes (realtime refresh) can carry a snapshot taken BEFORE the latest tap,
+  // Server pushes (realtime refresh) can carry a snapshot read BEFORE the latest tap,
   // and responses can arrive out of order. So: requests go out one at a time, only the
-  // newest response is shown, and a pushed copy of the match is adopted only once this
-  // device has been quiet for a moment (nothing in flight, nothing queued).
+  // newest response is shown, and a pushed copy of the match is adopted only when the
+  // read that produced it started AFTER this device's last save came back (so it must
+  // already contain every tap), and nothing is in flight or queued.
   const seq = useRef(0)
   const inflight = useRef(0)
-  const lastLocal = useRef(0)
+  const lastSaved = useRef(0)            // Date.now() when the newest server answer arrived
   const chain = useRef<Promise<unknown>>(Promise.resolve())
-  const latest = useRef(match)
-  latest.current = match
+  const latest = useRef({ match, at: bundle.fetched_at ?? 0 })
+  latest.current = { match, at: bundle.fetched_at ?? 0 }
   const settle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const adopt = () => {
     clearTimeout(settle.current)
-    const quiet = inflight.current === 0 && pending() === 0 && Date.now() - lastLocal.current > 1500
-    if (quiet) setM(latest.current)
-    else settle.current = setTimeout(adopt, 400)
+    if (inflight.current > 0 || pending() > 0) { settle.current = setTimeout(adopt, 300); return }
+    // a copy read before our last save may be missing taps: keep what is on screen
+    if (latest.current.at && latest.current.at < lastSaved.current) return
+    setM(latest.current.match)
   }
   useEffect(() => () => clearTimeout(settle.current), [])
   const curId = useRef(match.id)
   useEffect(() => {
     if (curId.current !== match.id) { curId.current = match.id; clearTimeout(settle.current); setM(match); return }
     adopt()
-  }, [match.id, match.score_a, match.score_b, match.status, match.a_on_left, match.serving_team, match.server_no])
+  }, [match.id, match.score_a, match.score_b, match.status, match.a_on_left, match.serving_team, match.server_no, match.initial_server, bundle.fetched_at])
   /** send one change to the server, in order; show its result only if nothing newer was tapped since */
   const send = (fn: () => Promise<Match>): Promise<Match> => {
     const my = ++seq.current
     inflight.current++
-    lastLocal.current = Date.now()
     const p = chain.current.then(fn)
     chain.current = p.catch(() => {})
-    return p.then(r => { if (my === seq.current) setM(r); return r })
-      .finally(() => { inflight.current--; lastLocal.current = Date.now(); adopt() })
+    return p.then(r => { lastSaved.current = Date.now(); if (my === seq.current) setM(r); return r })
+      .finally(() => { inflight.current--; if (inflight.current === 0) adopt() })
   }
 
+  const syncing = useRef(false)
   const sync = async () => {
+    if (syncing.current) return
+    syncing.current = true
+    try { await flushQueue() } finally { syncing.current = false }
+  }
+  const flushQueue = async () => {
     await flush(async op => {
       if (op.kind === 'score') await api.scorePoint(op.matchId, op.side!, token, op.id)
       if (op.kind === 'undo') await api.undoPoint(op.matchId, token)
@@ -318,6 +366,13 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
     if (next.status === 'awaiting_confirm') hornEnd()
 
     const evId = crypto.randomUUID()
+    // an earlier tap is still waiting to be saved: queue behind it so the server gets them in order
+    if (pending() > 0) {
+      enqueue({ id: evId, kind: 'score', matchId: m.id, side, at: Date.now() })
+      setOffline(true)
+      void sync()
+      return
+    }
     try {
       await send(() => api.scorePoint(m.id, side, token, evId))
       setOffline(pending() > 0)
@@ -335,6 +390,9 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
     const prev = history.current.pop()
     if (prev) setM(applyUndo(m, prev[0], prev[1], rules, prev[2]))
     tapUndo()
+    // the tap being undone never reached the server: just take it out of the queue
+    const queued = peekAll().filter(o => o.matchId === m.id && o.kind === 'score')
+    if (queued.length) { drop(queued[queued.length - 1].id); setOffline(pending() > 0); return }
     try { await send(() => api.undoPoint(m.id, token)) }
     catch {
       // undo_point is not idempotent, so we never queue it — a lost response
@@ -351,12 +409,21 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
     try { await send(() => api.setFirstServer(m.id, side, token)) } catch { /* best-effort */ }
   }
 
+  const [confirming, setConfirming] = useState(false)
   const confirm = async () => {
-    try { await api.confirmMatch(m.id, token); reload() }
+    if (confirming) return
+    setConfirming(true)
+    try {
+      // every point must be on the server before the result is locked
+      await chain.current
+      if (pending() > 0) await sync()
+      await api.confirmMatch(m.id, token); reload()
+    }
     catch (e: any) {
       // server said "already confirmed" -> nothing to retry; only queue real network failures
       if (!isPermanentError(String(e?.message ?? e))) { enqueue({ id: crypto.randomUUID(), kind: 'confirm', matchId: m.id, at: Date.now() }); setOffline(true) }
       reload()
+      setConfirming(false)
     }
   }
 
@@ -440,6 +507,13 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
             {ev.play_clock && <PlayClock m={m} className="text-xs font-semibold tracking-normal text-fg-subtle" />}
           </div>
           <div className="flex shrink-0 items-center gap-2.5 text-[11px]">
+            {/* landscape: swap lives in the header so it never covers the court label */}
+            {!isPortrait && (
+              <button onClick={swap}
+                className="min-h-[30px] whitespace-nowrap rounded-lg border border-line bg-surface/80 px-3 py-1 font-display text-xs font-bold tracking-wide text-fg-muted active:scale-95">
+                ⇄ SWAP
+              </button>
+            )}
             <SoundToggle portrait={isPortrait} />
             {!isPortrait && <FullscreenButton className="-my-1.5 h-8 w-8 shrink-0 p-1.5 text-fg-muted active:text-fg-muted" />}
             {recentDone && (
@@ -500,10 +574,7 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
                 callScore={call}
                 onTap={score} disabled={done}
               />
-              <button onClick={swap}
-                className="absolute left-1/2 top-0.5 min-h-[30px] -translate-x-1/2 whitespace-nowrap rounded-lg border border-line bg-surface/90 px-3 py-1 font-display text-xs font-bold tracking-wide text-fg-muted active:scale-95">
-                ⇄ SWAP
-              </button>
+
             </>
           )}
         </div>
@@ -603,11 +674,11 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
             <div className="text-sm text-fg-muted">
               Both captains check the score before confirming.
             </div>
-            <button onClick={confirm}
-              className="w-full rounded-2xl bg-brand py-4 font-display text-xl font-bold text-brand-fg">
-              CONFIRM
+            <button onClick={confirm} disabled={confirming}
+              className="w-full rounded-2xl bg-brand py-4 font-display text-xl font-bold text-brand-fg disabled:opacity-60">
+              {confirming ? 'SAVING…' : 'CONFIRM'}
             </button>
-            <button onClick={undo}
+            <button onClick={undo} disabled={confirming}
               className="w-full rounded-2xl border border-line py-4 font-display text-xl font-bold text-fg-muted">
               REVIEW
             </button>

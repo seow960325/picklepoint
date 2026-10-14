@@ -22,21 +22,58 @@ export function useCompetition(code: string | undefined, opts?: { preview?: bool
   const pstage = usePreviewStage(opts?.preview ? code : undefined)
   const bundle = useMemo(() => (rawBundle && pstage ? applyPreviewStage(rawBundle, pstage) : rawBundle), [rawBundle, pstage])
 
-  // a slow, older refresh must never overwrite a newer one (that is what makes scores flash back)
-  const reqNo = useRef(0)
-  const reload = useCallback(async () => {
+  // One fetch at a time; changes that arrive meanwhile are folded into one more
+  // fetch right after it. So an older, slower read can never land on top of a
+  // newer one (that is what makes scores flash back), and a burst of realtime
+  // events (a point, a confirm, the next game going live) costs one fetch.
+  const inflight = useRef(false)
+  const again = useRef<null | boolean>(null)         // queued follow-up: true = full
+  const waiters = useRef<Array<() => void>>([])
+  const lastFull = useRef(0)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const run = useCallback(async (full: boolean): Promise<void> => {
     if (!codeRef.current) return
-    const my = ++reqNo.current
-    try { const b = await api.refresh(codeRef.current); if (my === reqNo.current) { setBundle(b); setError(null) } }
-    catch (e: any) { if (my === reqNo.current) setError(e.message) }
+    if (inflight.current) {
+      again.current = (again.current ?? false) || full
+      return new Promise<void>(res => { waiters.current.push(res) })
+    }
+    inflight.current = true
+    const t0 = Date.now()
+    // pictures are re-read on explicit reloads and every few minutes
+    const wantFull = full || t0 - lastFull.current > 180000
+    try {
+      const b = await api.refresh(codeRef.current, { light: !wantFull })
+      b.fetched_at = t0
+      if (wantFull) lastFull.current = t0
+      setBundle(b); setError(null)
+    } catch (e: any) { setError(e.message) }
+    finally {
+      inflight.current = false
+      if (again.current !== null) {
+        const f = again.current; again.current = null
+        await run(f)
+      } else {
+        const w = waiters.current; waiters.current = []
+        w.forEach(r => r())
+      }
+    }
   }, [])
+  /** Full reload (teams + pictures). Use after admin changes. */
+  const reload = useCallback(() => run(true), [run])
+  /** Light reload for live score changes (no pictures). Coalesced. */
+  const refreshLive = useCallback(() => {
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => { void run(false) }, 80)
+  }, [run])
+  useEffect(() => () => clearTimeout(timer.current), [])
 
   useEffect(() => {
     let alive = true
     if (!code) { setLoading(false); return }
     setLoading(true)
+    const t0 = Date.now()
     api.join(code)
-      .then(b => { if (alive) { setBundle(b); setError(null) } })
+      .then(b => { if (alive) { b.fetched_at = t0; lastFull.current = t0; setBundle(b); setError(null) } })
       .catch(e => { if (alive) setError(e.message) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
@@ -47,6 +84,7 @@ export function useCompetition(code: string | undefined, opts?: { preview?: bool
   // an iPad left open as the live board), and the socket doesn't always
   // recover on its own. Whenever the page comes back to the foreground or
   // the device regains network, fetch fresh data and rebuild the channel.
+  // While visible, a light poll every 20 s catches anything realtime missed.
   const [resubscribeKey, setResubscribeKey] = useState(0)
   useEffect(() => {
     const onWake = () => {
@@ -55,22 +93,22 @@ export function useCompetition(code: string | undefined, opts?: { preview?: bool
         setResubscribeKey(k => k + 1)
       }
     }
+    const poll = setInterval(() => { if (document.visibilityState === 'visible') refreshLive() }, 20000)
     document.addEventListener('visibilitychange', onWake)
-    window.addEventListener('focus', onWake)
     window.addEventListener('online', onWake)
     return () => {
+      clearInterval(poll)
       document.removeEventListener('visibilitychange', onWake)
-      window.removeEventListener('focus', onWake)
       window.removeEventListener('online', onWake)
     }
-  }, [reload])
+  }, [reload, refreshLive])
 
   useEffect(() => {
     if (!rawBundle) return
-    return api.subscribe(rawBundle, reload)
-  }, [rawBundle?.competition.id, reload, resubscribeKey])
+    return api.subscribe(rawBundle, refreshLive)
+  }, [rawBundle?.competition.id, refreshLive, resubscribeKey])
 
-  return { bundle, setBundle, error, loading, reload }
+  return { bundle, setBundle, error, loading, reload, refreshLive }
 }
 
 // ------------------------------------------------------------- selectors

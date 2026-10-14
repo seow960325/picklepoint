@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useFullscreen } from '../lib/fullscreen'
 import { useTheme } from '../lib/theme'
@@ -166,4 +166,27 @@ export function Flag({ name, className = '' }: { name?: string | null; className
       <FlagGlyph name={name} />
     </svg>
   )
+}
+
+/** One line of text that shrinks its font (down to `min` of the original) instead of
+ *  breaking a word or cutting it off — for team names on the big screen. */
+export function ShrinkText({ text, className = '', min = 0.55 }: { text: string; className?: string; min?: number }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const fit = () => {
+      el.style.fontSize = ''
+      const base = parseFloat(getComputedStyle(el).fontSize) || 16
+      let f = base
+      while (el.scrollWidth > el.clientWidth + 1 && f > base * min) { f -= base * 0.05; el.style.fontSize = `${f}px` }
+    }
+    fit()
+    const fonts: any = (document as any).fonts
+    fonts?.ready?.then(fit).catch(() => {})
+    const ro = new ResizeObserver(fit)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [text])
+  return <span ref={ref} className={`block overflow-hidden text-ellipsis whitespace-nowrap ${className}`}>{text}</span>
 }

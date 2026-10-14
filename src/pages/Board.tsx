@@ -7,7 +7,7 @@ import {
 } from '../lib/store'
 import { displayScores, rulesOf, servingSide, serverCourt as serverCourtOf, scoreCall, activeServerNo } from '../lib/scoring'
 import type { Bundle, EventCfg, Match } from '../lib/types'
-import { Screen, Pill, Spinner, FullscreenButton, Flag, Emblem, ThemeToggle } from '../components/ui'
+import { Screen, Pill, Spinner, FullscreenButton, Flag, Emblem, ThemeToggle, ShrinkText } from '../components/ui'
 import Court from '../components/Court'
 import { IS_DEMO, demo, refresh as fetchBundle } from '../lib/api'
 import { fullscreenSupported } from '../lib/fullscreen'
@@ -93,6 +93,8 @@ export default function Board() {
     return (
       <div className="fixed inset-0 flex flex-col justify-center gap-5 overflow-auto bg-canvas py-6 text-fg"
         style={{
+          // never cut the top off when the content is taller than the screen
+          justifyContent: 'safe center',
           paddingTop: 'max(var(--pp-top), 1.5rem)',
           paddingBottom: 'max(env(safe-area-inset-bottom), 1.5rem)',
           paddingLeft: 'env(safe-area-inset-left)',
@@ -358,10 +360,13 @@ function SportSwitch({ sports, view, onPick, size = 'md' }: {
         const tone = o === 'all' ? 'bg-fg text-canvas' : SPORT_TONE[o].solid
         return (
           <button key={o} onClick={() => onPick(o)}
-            className={`flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-display font-bold uppercase tracking-wider ${
-              size === 'md' ? 'px-2 py-2 text-[13px] tracking-wide sm:px-3 sm:text-sm sm:tracking-wider lg:text-base' : 'min-h-[40px] px-3.5 py-2 text-sm'} touch-manipulation ${
+            className={`flex min-w-0 items-center justify-center rounded-lg font-display font-bold uppercase ${
+              size === 'md'
+                // phones: icon above a (possibly two-line) name, so "Captain Ball" is never cut off
+                ? 'flex-col gap-0.5 px-1.5 py-1.5 text-[12px] leading-tight tracking-wide sm:flex-row sm:gap-1.5 sm:whitespace-nowrap sm:px-3 sm:py-2 sm:text-sm sm:tracking-wider lg:text-base'
+                : 'min-h-[40px] gap-1.5 whitespace-nowrap px-3.5 py-2 text-sm tracking-wider'} touch-manipulation ${
               on ? tone : 'text-fg-muted active:bg-surface-2'}`}>
-            {o === 'all' ? 'Both' : <><span><SportIcon sport={o} /></span><span className="truncate">{SPORT_LABEL[o]}</span></>}
+            {o === 'all' ? 'Both' : <><span className="leading-none"><SportIcon sport={o} /></span><span className="text-center sm:truncate">{SPORT_LABEL[o]}</span></>}
           </button>
         )
       })}
@@ -369,13 +374,26 @@ function SportSwitch({ sports, view, onPick, size = 'md' }: {
   )
 }
 
-function SportBanner({ sport, b, big = false, onOpen, title, stage }: {
+function SportBanner({ sport, b, big = false, onOpen, title, stage, compact = false }: {
   sport: Sport; b: Bundle; big?: boolean; onOpen?: () => void
   title?: string   // TV: competition name folded into the banner
   stage?: string   // TV: Round robin / Semi-finals / Final / Champions
+  compact?: boolean  // TV, sports side by side: stage on its own line so nothing is cut off
 }) {
   const t = SPORT_TONE[sport]
   const live = b.courts.filter(ct => liveOnCourt(b, ct.id)).length
+  if (big && compact) return (
+    <div className={`mb-3 flex items-center gap-3 rounded-xl border px-4 py-2 ${t.border} ${t.soft}`}>
+      <span className="text-4xl leading-none"><SportIcon sport={sport} /></span>
+      <span className="min-w-0 leading-none">
+        <span className={`block truncate whitespace-nowrap font-display text-3xl font-bold uppercase tracking-widest ${t.text}`}>{SPORT_LABEL[sport]}</span>
+        <span className="mt-1.5 flex items-center gap-3 whitespace-nowrap font-display text-lg font-bold uppercase tracking-[0.18em]">
+          {stage && <span className="truncate text-fg">{stage}</span>}
+          {live > 0 && <span className="flex shrink-0 items-center gap-1.5 text-[#c6ff3d]"><span className="h-2 w-2 animate-pulse rounded-full bg-[#c6ff3d]" />{live} live</span>}
+        </span>
+      </span>
+    </div>
+  )
   return (
     <div className={`mb-2 flex items-center gap-2 rounded-xl border ${t.border} ${t.soft} ${big ? 'mb-3 px-4 py-2' : 'px-3 py-1.5'}`}>
       <span className={big ? 'text-3xl leading-none' : 'text-lg leading-none'}><SportIcon sport={sport} /></span>
@@ -477,55 +495,139 @@ const STAGE_TEXT: Record<string, string> = { groups: 'Round Robin', semis: 'Semi
  *  Each half shows, by stage: live courts (gold Final strip during the Final),
  *  group tables or the bracket (pane, auto-rotation, or nothing live), and the
  *  champions ceremony once the sport is decided. */
+/** Window size, kept current (TV layouts plan their columns from it). */
+function useViewport() {
+  const [v, setV] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }))
+  useEffect(() => {
+    const on = () => setV({ w: window.innerWidth, h: window.innerHeight })
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
+  return v
+}
+
+/** TV with every sport side by side: how many court columns each sport gets and
+ *  how wide each sport's block is, chosen so the courts come out as big as the
+ *  screen allows (6 badminton courts as 2×3 or 3×2, 2 pickleball courts stacked
+ *  or side by side, …) with nothing running off the bottom. A block that is not
+ *  a court grid (captain-ball scoreboard, a table) gets a fixed share. */
+export function planTvSplit(items: Array<{ courts: number; extra?: number } | { block: true }>, W: number, H: number): { cols: number[]; widths: number[] } {
+  const GAP = 32, CGAP = 12, CARD_PAD = 64, ASPECT = 4 / 7, MINW = 330
+  const availW = W - 64 - GAP * (items.length - 1)
+  const availH = H - 200
+  const courtIdx = items.map((x, i) => ('courts' in x && x.courts > 0 ? i : -1)).filter(i => i >= 0)
+  const nOf = (i: number) => (items[i] as { courts: number }).courts
+  const choices = courtIdx.map(i => Array.from({ length: nOf(i) }, (_, k) => k + 1))
+  // widths for a candidate court width; null when it does not fit the screen
+  const layout = (picked: number[], k: number, cw: number): number[] | null => {
+    const widths = items.map((_, i) => {
+      const j = courtIdx.indexOf(i)
+      return j >= 0 ? Math.max(MINW, picked[j] * cw + CGAP * (picked[j] - 1)) : Math.max(MINW, k * cw)
+    })
+    if (widths.reduce((a, w) => a + w, 0) > availW) return null
+    for (let j = 0; j < courtIdx.length; j++) {
+      const c = picked[j], r = Math.ceil(nOf(courtIdx[j]) / c)
+      const tile = (widths[courtIdx[j]] - CGAP * (c - 1)) / c
+      const extra = (items[courtIdx[j]] as { extra?: number }).extra ?? 0   // e.g. the gold Final strip above the courts
+      if (r * ((tile - 24) * ASPECT + CARD_PAD) + (r - 1) * CGAP + extra > availH) return null
+    }
+    items.forEach((_, i) => { if (courtIdx.indexOf(i) < 0 && widths[i] * 0.56 > availH) widths[i] = availH / 0.56 })
+    return widths
+  }
+  let best: { score: number; cols: number[]; widths: number[] } | null = null
+  const walk = (j: number, picked: number[]) => {
+    if (j < choices.length) { for (const c of choices[j]) walk(j + 1, [...picked, c]); return }
+    for (const k of [1.2, 1.5, 1.8]) {
+      let lo = 40, hi = 2000
+      if (!layout(picked, k, lo)) continue
+      for (let it = 0; it < 30; it++) { const mid = (lo + hi) / 2; if (layout(picked, k, mid)) lo = mid; else hi = mid }
+      const widths = layout(picked, k, lo)!
+      // the smallest court tile is what the audience reads: make it as big as possible
+      const tiles = courtIdx.map((i, j2) => (widths[i] - CGAP * (picked[j2] - 1)) / picked[j2])
+      const score = tiles.length ? Math.min(...tiles) : lo
+      if (!best || score > best.score + 0.5) best = { score, cols: picked, widths }
+    }
+  }
+  walk(0, [])
+  if (!best) return { cols: items.map(() => 1), widths: items.map(() => availW / items.length) }
+  const b = best as { score: number; cols: number[]; widths: number[] }
+  return { cols: items.map((_, i) => { const j = courtIdx.indexOf(i); return j >= 0 ? b.cols[j] : 1 }), widths: b.widths }
+}
+
 function TvSports({ b, view, code, pane, flip, title }: {
   b: Bundle; code: string; view: SportView; pane: 'live' | 'board' | 'auto'; flip: boolean; title: string
 }) {
   const sports = view === 'all' ? sportsPresent(b) : [view]
   const split = sports.length > 1
+  const vp = useViewport()
+  type Mode = 'cbTable' | 'cbLive' | 'champion' | 'board' | 'courts'
+  // what each sport shows right now
+  const parts = sports.map(s => {
+    const sb = sportBundle(b, s)
+    if (s === 'captainball') {
+      const cbLive = sb.courts.some(ct => liveOnCourt(sb, ct.id))
+      const mode: Mode = pane === 'board' || (pane === 'auto' && flip) || !cbLive ? 'cbTable' : 'cbLive'
+      return { s, sb, mode, k: null as ReturnType<typeof koState> | null, live: 0 }
+    }
+    const k = koState(sb)
+    const live = sb.courts.filter(ct => liveOnCourt(sb, ct.id)).length
+    const board = pane === 'board' || (pane === 'auto' && flip) || !live
+    const mode: Mode = k.phase === 'done' && pane !== 'board' ? 'champion' : board ? 'board' : 'courts'
+    return { s, sb, mode, k: k as ReturnType<typeof koState> | null, live }
+  })
+  // court grids are planned to the screen (sports side by side, or one sport's courts alone)
+  const plan = split || parts[0]?.mode === 'courts'
+    ? planTvSplit(parts.map(p => (p.mode === 'courts'
+        ? { courts: p.live, extra: p.k?.final?.games.some(g => g.status === 'live') ? 150 : 0 }
+        : { block: true as const })), vp.w, vp.h)
+    : null
+  const body = parts.map((p, i) => {
+    const { s, sb, k } = p
+    if (p.mode === 'cbTable' || p.mode === 'cbLive') {
+      return (
+        <section key={s} className="min-w-0">
+          <SportBanner sport={s} b={sb} big title={split ? undefined : title} stage="Round Robin" compact={split} />
+          {p.mode === 'cbTable'
+            ? <CbStandings b={sb} ev={sb.events[0]} big />
+            : <CbLive b={sb} code={code} tv split={split} sound />}
+        </section>
+      )
+    }
+    if (p.mode === 'champion') {
+      return (
+        <section key={s} className="min-w-0">
+          <ChampionStage b={sb} sport={s} k={k!} title={split ? '' : title} size={split ? 'md' : 'lg'} />
+        </section>
+      )
+    }
+    const finalLive = !!k!.final?.games.some(g => g.status === 'live')
+    return (
+      <section key={s} className="min-w-0">
+        <SportBanner sport={s} b={sb} big title={split ? undefined : title} stage={STAGE_TEXT[k!.phase]} compact={split} />
+        {p.mode === 'board'
+          ? (k!.phase === 'groups'
+            ? <TieStandings b={sb} big />
+            : <KnockoutBracket b={sb} sport={s} big />)
+          : <>
+              {finalLive && k!.final && <FinalBanner b={sb} t={k!.final} big />}
+              <LiveGrid b={sb} code={code} tv split={split} cols={plan?.cols[i]} />
+            </>}
+      </section>
+    )
+  })
+  if (plan) {
+    return (
+      <div className="shrink-0 px-8">
+        <div className="mx-auto grid gap-8"
+          style={{ gridTemplateColumns: plan.widths.map(w => `${Math.floor(w)}px`).join(' '), justifyContent: 'center' }}>
+          {body}
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="shrink-0 px-4 sm:px-8">
-      <FillGrid className={`mx-auto w-full gap-6 ${split ? 'max-w-[1800px] lg:gap-8' : 'max-w-[1600px]'}`}>
-        {sports.map(s => {
-          const sb = sportBundle(b, s)
-          if (s === 'captainball') {
-            const cbEv = sb.events[0]
-            const cbLive = sb.courts.some(ct => liveOnCourt(sb, ct.id))
-            const showTable = pane === 'board' || (pane === 'auto' && flip) || !cbLive
-            return (
-              <section key={s} className="min-w-0">
-                <SportBanner sport={s} b={sb} big title={split ? undefined : title} stage="Round Robin" />
-                {showTable && cbEv
-                  ? <CbStandings b={sb} ev={cbEv} big />
-                  : <CbLive b={sb} code={code} tv split={split} sound n={split ? 2 : 3} />}
-              </section>
-            )
-          }
-          const k = koState(sb)
-          const live = sb.courts.some(ct => liveOnCourt(sb, ct.id))
-          const finalLive = !!k.final?.games.some(g => g.status === 'live')
-          const board = pane === 'board' || (pane === 'auto' && flip) || !live
-          if (k.phase === 'done' && pane !== 'board') {
-            return (
-              <section key={s} className="min-w-0">
-                <ChampionStage b={sb} sport={s} k={k} title={split ? '' : title} size={split ? 'md' : 'lg'} />
-              </section>
-            )
-          }
-          return (
-            <section key={s} className="min-w-0">
-              <SportBanner sport={s} b={sb} big title={split ? undefined : title} stage={STAGE_TEXT[k.phase]} />
-              {board
-                ? (k.phase === 'groups'
-                  ? <TieStandings b={sb} big />
-                  : <KnockoutBracket b={sb} sport={s} big />)
-                : <>
-                    {finalLive && k.final && <FinalBanner b={sb} t={k.final} big />}
-                    <LiveGrid b={sb} code={code} tv split={split} />
-                  </>}
-            </section>
-          )
-        })}
-      </FillGrid>
+      <FillGrid className="mx-auto w-full max-w-[1600px] gap-6">{body}</FillGrid>
     </div>
   )
 }
@@ -711,8 +813,9 @@ function activeCourts(b: Bundle, pool: boolean): Bundle['courts'] {
   return out.length ? out : b.courts
 }
 
-export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck = false }: {
+export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck = false, cols }: {
   b: Bundle; code: string; tv: boolean
+  cols?: number      // TV split: court columns planned by planTvSplit
   split?: boolean    // TV half-screen (multi-sport "both")
   compact?: boolean  // board half-width column (multi-sport "both")
   hideDeck?: boolean // multi-sport: per-court lists replaced by "Next ties"
@@ -722,12 +825,12 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
   const shownCourts = tv && !poolEv ? b.courts.filter(ct => liveOnCourt(b, ct.id)) : activeCourts(b, !!poolEv)
   if (tv && shownCourts.length === 0) return <TvIdle b={b} />
   // court cards and the "on deck" lists share ONE layout rule (FillGrid) so they line up
-  const maxCols = split ? 2 : 4
+  const maxCols = cols ?? (split ? 2 : 4)
   const tvBig = tv && !!poolEv && !split   // MC combined TV: larger wording
   const wrap = tv && !split && shownCourts.length === 1 ? 'mx-auto w-full max-w-[1100px] ' : ''
   return (
     <div className={tv || compact ? '' : 'p-3 lg:p-5'}>
-      <FillGrid max={maxCols} className={`${wrap}gap-2 lg:gap-3`}>
+      <FillGrid max={maxCols} exact={cols != null} className={`${wrap}gap-2 lg:gap-3`}>
         {shownCourts.map(ct => {
           const m = liveOnCourt(b, ct.id)
           const up = nextOnCourt(b, ct.id)
@@ -757,7 +860,7 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
                     Next: <span className="truncate">{teamName(b, up.team_a_id)}</span> vs <span className="truncate">{teamName(b, up.team_b_id)}</span>
                   </div>
                 )
-                : <CourtUpList b={b} courtId={ct.id} tv={tv} />}
+                : !tv && <CourtUpList b={b} courtId={ct.id} tv={tv} />}
             </>
           return tv ? (
             <div key={ct.id} className="block rounded-2xl border border-line bg-surface p-2 lg:p-3">
@@ -1162,7 +1265,7 @@ function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder, tier
   return (
     <div className={`flex items-center ${mc ? (stack ? 'gap-2 pl-4 pr-6' : 'gap-2 pl-4 pr-4') : 'gap-2 px-2.5'} border-l-2 ${py} ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
       <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className={`${logoCls} shrink-0 rounded-[2px] object-contain`} />
-      <span className={`min-w-0 flex-1 ${mc ? 'text-center' : ''} ${stack ? 'line-clamp-2 break-words leading-[1.1]' : 'truncate'} ${tx} ${mc && live ? 'font-extrabold tracking-wide text-white' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-fg' : mc ? 'font-medium text-fg-muted' : 'text-fg-muted'}`}>{stack ? (() => { const parts = teamName(b, teamId).split(' & '); return parts.length === 2 ? <><span className="block truncate">{parts[0]}</span><span className="block truncate">{parts[1]}</span></> : teamName(b, teamId) })() : teamName(b, teamId)}</span>
+      <span className={`min-w-0 flex-1 ${mc ? 'text-center' : ''} ${stack ? 'leading-[1.1]' : 'truncate'} ${tx} ${mc && live ? 'font-extrabold tracking-wide text-white' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-fg' : mc ? 'font-medium text-fg-muted' : 'text-fg-muted'}`}>{stack ? (() => { const parts = teamName(b, teamId).split(' & '); return parts.length === 2 ? <><ShrinkText text={parts[0]} /><ShrinkText text={parts[1]} /></> : <ShrinkText text={teamName(b, teamId)} /> })() : teamName(b, teamId)}</span>
       {medal && <span className="shrink-0 text-xs leading-none" aria-label={medal}>{medal === 'gold' ? '🥇' : medal === 'silver' ? '🥈' : '🥉'}</span>}
       {(finished || (mc && live)) && <span className={`tabular shrink-0 ${mc ? (stack ? 'min-w-[2.5rem]' : 'min-w-[1.75rem]') + ' text-center' : ''} ${tx} ${mc && live ? 'font-extrabold text-brand-ink' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-gold' : 'text-fg-subtle'}`}>{score}</span>}
     </div>

@@ -4,7 +4,7 @@ import { SportIcon } from './SportIcon'
 import { useEffect, useState } from 'react'
 import type { Bundle } from '../lib/types'
 import { teamName, teamLogo, teamSideName } from '../lib/store'
-import { Flag, FlagGlyph, Pill } from './ui'
+import { Flag, FlagGlyph, Pill, ShrinkText } from './ui'
 import {
   koState, semiPlan, finalsPlan, groupEvents, SPORT_ICON, SPORT_LABEL, SPORT_TONE, STAGE_LABEL,
   type Sport, type Tie, type KoState,
@@ -164,8 +164,9 @@ export function ChampionStage({ b, sport, k, title, size = 'md' }: {
             {first && <Laurel px={px * 1.42} />}
             <div className={first ? 'pp-champ-ring rounded-full' : ''}><Medallion b={b} id={id} metal={metal} px={px} /></div>
           </div>
-          <div className={`max-w-full truncate px-1 text-center font-bold leading-tight ${first ? `font-cer ${S.name[0]}` : `font-display ${S.name[1]} text-[#eef2f8]`}`}
-            style={first ? { color: '#f4cd6a' } : undefined}>
+          <div className={`line-clamp-2 shrink-0 break-normal px-1 text-center font-bold leading-tight [text-wrap:balance] ${first ? `font-cer ${S.name[0]}` : `font-display ${S.name[1]} text-[#eef2f8]`}`}
+            // the name may be wider than its plinth (it is centred over it), so long club names stay whole
+            style={{ width: S.w[i] * (first ? 1.6 : 1.15), ...(first ? { color: '#f4cd6a' } : {}) }}>
             {id ? teamName(b, id) : '—'}
           </div>
           <div className="mb-3 mt-0.5 font-display text-xs font-semibold tracking-wide" style={{ color: METAL[metal].c }}>
@@ -354,9 +355,9 @@ export function FinalBanner({ b, t, big = false }: { b: Bundle; t: Tie; big?: bo
       style={{ background: 'radial-gradient(70% 120% at 50% 0%, rgba(244,205,106,.18), transparent 70%), rgb(var(--surface))' }}>
       <div className={`font-cer font-bold tracking-[0.3em] text-gold ${big ? 'text-base' : 'text-xs'}`}>THE FINAL</div>
       <div className="mt-1 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
-        <span className={`truncate text-center font-display font-bold ${big ? 'text-3xl' : 'text-lg'}`}>{name(t.a)}</span>
+        <ShrinkText text={name(t.a)} className={`text-center font-display font-bold ${big ? 'text-3xl' : 'text-lg'}`} />
         <span className={`tabular font-display font-bold text-gold ${big ? 'text-6xl' : 'text-4xl'}`}>{t.aGames}–{t.bGames}</span>
-        <span className={`truncate text-center font-display font-bold ${big ? 'text-3xl' : 'text-lg'}`}>{name(t.b)}</span>
+        <ShrinkText text={name(t.b)} className={`text-center font-display font-bold ${big ? 'text-3xl' : 'text-lg'}`} />
       </div>
       <div className={`mt-1 flex flex-wrap justify-center gap-x-4 ${big ? 'text-base' : 'text-xs'} text-fg-muted`}>
         {t.units.map(u => (

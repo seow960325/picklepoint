@@ -275,10 +275,10 @@ test('fixed bracket: preview labels match the draw that is written later', () =>
   const r16 = ko.filter(m => m.round === 'Round of 16')
   assert.equal(r16.length, 8)
   assert.deepEqual(r16.map(m => [koSlotLabel(b, EV, m, 'a'), koSlotLabel(b, EV, m, 'b')]), [
-    ['Group A #1', 'Group H #2'], ['Group H #1', 'Group A #2'],
-    ['Group D #1', 'Group E #2'], ['Group E #1', 'Group D #2'],
-    ['Group B #1', 'Group G #2'], ['Group G #1', 'Group B #2'],
-    ['Group C #1', 'Group F #2'], ['Group F #1', 'Group C #2'],
+    ['Group A #1', 'Group G #2'], ['Group H #1', 'Group B #2'],
+    ['Group D #1', 'Group F #2'], ['Group E #1', 'Group C #2'],
+    ['Group B #1', 'Group H #2'], ['Group G #1', 'Group A #2'],
+    ['Group C #1', 'Group E #2'], ['Group F #1', 'Group D #2'],
   ])
   assert.equal(koShort(b, r16[2]), 'R16-3')
   const qf = ko.filter(m => m.round === 'Quarter-final')
@@ -298,7 +298,12 @@ test('fixed bracket: preview labels match the draw that is written later', () =>
   const poolOf = id => b.teams.find(t => t.id === id).pool
   const nth = id => tops.flat().indexOf(id) % 2 === 0 ? 1 : 2
   assert.deepEqual(pairs.map(([a, z]) => `${poolOf(a)}${nth(a)}v${poolOf(z)}${nth(z)}`),
-    ['A1vH2', 'H1vA2', 'D1vE2', 'E1vD2', 'B1vG2', 'G1vB2', 'C1vF2', 'F1vC2'])
+    ['A1vG2', 'H1vB2', 'D1vF2', 'E1vC2', 'B1vH2', 'G1vA2', 'C1vE2', 'F1vD2'])
+  // a group's winner and runner-up sit in opposite halves: they can only meet in the final
+  for (const g of 'ABCDEFGH') {
+    const at = n => pairs.findIndex(p => p.some(id => id && poolOf(id) === g && nth(id) === n))
+    assert.notEqual(at(1) < 4, at(2) < 4, `group ${g} winner and runner-up in the same half`)
+  }
 })
 
 // ----------------------------------------------------------------- groups

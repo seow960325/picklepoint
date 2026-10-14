@@ -34,22 +34,67 @@ export async function join(code: string): Promise<Bundle> {
     sb!.from('teams').select('*').in('event_id', eventIds),
     sb!.from('matches').select('*').in('event_id', eventIds).order('sequence'),
   ])
+  for (const t of teams ?? []) logoCache.set(t.id, t.logo ?? null)
   return { ...head, teams: teams ?? [], matches: matches ?? [] }
 }
 
-export async function refresh(code: string): Promise<Bundle> {
-  return IS_DEMO ? demo.refresh() : join(code)
+/** Team pictures are big (cartoon logos up to ~300 kB each, 32 teams per code),
+ *  and the board refetches on every point. So a live refresh reads the teams
+ *  WITHOUT their pictures and reuses the ones this browser already has; only a
+ *  team it has never seen gets its picture fetched. A full join() (first load,
+ *  coming back to the tab, every few minutes, any admin change) refreshes them all. */
+const logoCache = new Map<string, string | null>()
+const TEAM_COLS = 'id,event_id,name,player1,player2,seed,pool,checked_in,side,roster'
+
+async function joinLight(code: string): Promise<Bundle> {
+  const head = await rpc<any>('join_competition', { p_code: code })
+  const eventIds = head.events.map((e: any) => e.id)
+  const [tr, mr] = await Promise.all([
+    sb!.from('teams').select(TEAM_COLS).in('event_id', eventIds),
+    sb!.from('matches').select('*').in('event_id', eventIds).order('sequence'),
+  ])
+  if (tr.error || mr.error) return join(code)          // e.g. a column this database doesn't have yet
+  const teams = (tr.data ?? []) as any[]
+  const unknown = teams.filter(t => !logoCache.has(t.id)).map(t => t.id)
+  if (unknown.length) {
+    const { data, error } = await sb!.from('teams').select('id,logo').in('id', unknown)
+    if (error) return join(code)
+    for (const t of data ?? []) logoCache.set(t.id, (t as any).logo ?? null)
+  }
+  return { ...head, teams: teams.map(t => ({ ...t, logo: logoCache.get(t.id) ?? null })), matches: mr.data ?? [] }
 }
 
-/** Live updates. Demo mode uses BroadcastChannel across tabs. */
+export async function refresh(code: string, opts?: { light?: boolean }): Promise<Bundle> {
+  if (IS_DEMO) return demo.refresh()
+  return opts?.light ? joinLight(code) : join(code)
+}
+
+/** Live updates. Demo mode uses BroadcastChannel across tabs. Only this
+ *  competition's games wake this screen (not every court of every code). */
 export function subscribe(bundle: Bundle, onChange: () => void): () => void {
   if (IS_DEMO) return demo.subscribe(onChange)
 
-  const ch = sb!
-    .channel(`comp:${bundle.competition.id}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, onChange)
-    .subscribe()
-  return () => { sb!.removeChannel(ch) }
+  const ids = bundle.events.map(e => e.id)
+  let ch: ReturnType<SupabaseClient['channel']> | null = null
+  let closed = false
+  const open = (filtered: boolean) => {
+    ch = sb!
+      .channel(`comp:${bundle.competition.id}:${Math.random().toString(36).slice(2, 8)}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'matches',
+        ...(filtered ? { filter: `event_id=in.(${ids.join(',')})` } : {}),
+      }, onChange)
+      .subscribe(status => {
+        // a server that refuses the filter: fall back to every match change (old behaviour)
+        if (filtered && status === 'CHANNEL_ERROR' && !closed) {
+          const old = ch; ch = null
+          if (old) sb!.removeChannel(old)
+          open(false)
+        }
+      })
+  }
+  open(ids.length > 0 && ids.length <= 100)
+  return () => { closed = true; if (ch) sb!.removeChannel(ch) }
 }
 
 export async function unlockCourt(courtId: string, pin: string): Promise<string> {

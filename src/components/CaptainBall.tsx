@@ -239,7 +239,7 @@ export function CbScoreboard({ b, m, size = 'card', sound = false, courtLabel }:
 }
 
 /** Live view of the captain-ball court(s): scoreboard, then the next games. */
-export function CbLive({ b, code, tv = false, split = false, sound = false, n = 4 }: {
+export function CbLive({ b, code, tv = false, split = false, sound = false }: {
   b: Bundle; code: string; tv?: boolean; split?: boolean; sound?: boolean; n?: number
 }) {
   const live = b.courts.map(ct => ({ ct, m: liveOnCourt(b, ct.id) }))
@@ -260,7 +260,7 @@ export function CbLive({ b, code, tv = false, split = false, sound = false, n = 
           </div>
         ))}
       </FillGrid>
-      <CbUpNext b={b} n={tv ? n : 99} big={tv} />
+      {!tv && <CbUpNext b={b} n={99} />}
     </div>
   )
 }

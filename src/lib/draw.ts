@@ -388,8 +388,76 @@ export function repairGroupClashes(
 export function seedBracket(
   qualifiersByGroup: string[][], bracketSize: number,
 ): Array<[string | null, string | null]> {
+  const key = JSON.stringify([qualifiersByGroup, bracketSize])
+  const hit = seedCache.get(key)
+  if (hit) return hit.map(p => [...p] as [string | null, string | null])
   const groupOfTeam = new Map<string, string>()
   qualifiersByGroup.forEach((g, i) => g.forEach(id => groupOfTeam.set(id, GROUP_LETTERS[i] ?? String(i))))
   const pairs = bracketPositions(seedOrder(qualifiersByGroup), bracketSize)
-  return repairGroupClashes(pairs, id => groupOfTeam.get(id))
+  const split = splitGroupMates(pairs, qualifiersByGroup, id => groupOfTeam.get(id))
+  const out = repairGroupClashes(split, id => groupOfTeam.get(id))
+  if (seedCache.size > 50) seedCache.clear()
+  seedCache.set(key, out.map(p => [...p] as [string | null, string | null]))
+  return out
+}
+const seedCache = new Map<string, Array<[string | null, string | null]>>()
+
+/** Standard tournament rule (FIFA / BWF): the winner and runner-up of the same
+ *  group go into opposite halves of the bracket, so they cannot meet again
+ *  before the final. Group winners keep their seeded slots; only the slots of
+ *  the lower-placed qualifiers are re-dealt (exhaustive search, at most 8 of
+ *  them — larger draws keep the plain seeding plus repairGroupClashes). Ties
+ *  are broken towards the original seeding, so the result is deterministic. */
+function splitGroupMates(
+  pairs: Array<[string | null, string | null]>,
+  qualifiersByGroup: string[][],
+  groupOf: (teamId: string) => string | undefined,
+): Array<[string | null, string | null]> {
+  if (pairs.length < 2 || qualifiersByGroup.every(g => g.length < 2)) return pairs
+  const winners = new Set(qualifiersByGroup.map(g => g[0]).filter(Boolean))
+  const slots: Array<[number, 0 | 1]> = []
+  pairs.forEach((p, i) => p.forEach((id, s) => { if (id && !winners.has(id)) slots.push([i, s as 0 | 1]) }))
+  if (slots.length < 2 || slots.length > 8) return pairs
+  const movers = slots.map(([i, s]) => pairs[i][s]!)
+  const half = pairs.length / 2, quarter = pairs.length / 4
+  const others = (i: number, s: 0 | 1, placed: Map<number, string>) => {
+    // every team already fixed in the bracket except the one in this slot
+    const out: Array<[number, string]> = []
+    pairs.forEach((p, k) => p.forEach((id, t) => {
+      if (k === i && t === s) return
+      const key = k * 2 + t
+      const v = placed.has(key) ? placed.get(key)! : (id && winners.has(id) ? id : null)
+      if (v) out.push([k, v])
+    }))
+    return out
+  }
+  const cost = (assign: string[]): number => {
+    const placed = new Map<number, string>()
+    slots.forEach(([i, s], n) => placed.set(i * 2 + s, assign[n]))
+    let c = 0
+    slots.forEach(([i, s], n) => {
+      const g = groupOf(assign[n])
+      for (const [k, v] of others(i, s, placed)) {
+        if (groupOf(v) !== g) continue
+        if (k === i) c += 1_000_000                                   // same first-round match
+        else if (Math.floor(k / half) === Math.floor(i / half)) c += 10_000   // same half
+        else if (quarter >= 1 && Math.floor(k / quarter) === Math.floor(i / quarter)) c += 100
+      }
+      c += Math.abs(movers.indexOf(assign[n]) - n)                    // stay close to the seeding
+    })
+    return c
+  }
+  let best = movers.slice(), bestCost = cost(best)
+  const perm = (arr: string[], k: number) => {
+    if (k === arr.length) { const c = cost(arr); if (c < bestCost) { bestCost = c; best = arr.slice() } return }
+    for (let i = k; i < arr.length; i++) {
+      ;[arr[k], arr[i]] = [arr[i], arr[k]]
+      perm(arr, k + 1)
+      ;[arr[k], arr[i]] = [arr[i], arr[k]]
+    }
+  }
+  perm(movers.slice(), 0)
+  const out = pairs.map(p => [...p] as [string | null, string | null])
+  slots.forEach(([i, s], n) => { out[i][s] = best[n] })
+  return out
 }

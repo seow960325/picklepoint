@@ -36,8 +36,9 @@ export function fillLayout(n: number, cap: number): { grid: CSSProperties; item:
 }
 
 /** Cards laid out by the house rule, sized to the width it actually has. */
-export default function FillGrid({ children, max = 4, className = '', style }: {
+export default function FillGrid({ children, max = 4, className = '', style, exact = false }: {
   children: ReactNode; max?: number; className?: string; style?: CSSProperties
+  exact?: boolean   // use `max` columns as given (a layout already planned to the screen)
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const [w, setW] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280))
@@ -51,7 +52,7 @@ export default function FillGrid({ children, max = 4, className = '', style }: {
     return () => ro.disconnect()
   }, [])
   const items = Children.toArray(children).filter(Boolean)
-  const { grid, item } = fillLayout(items.length, capFor(w, max))
+  const { grid, item } = fillLayout(items.length, exact ? max : capFor(w, max))
   return (
     <div ref={ref} className={className} style={{ ...grid, ...style }}>
       {items.map((c, i) => (

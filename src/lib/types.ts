@@ -106,4 +106,7 @@ export interface Bundle {
   courts: Court[]
   teams: Team[]
   matches: Match[]
+  /** client-only: Date.now() when the fetch that produced this bundle STARTED.
+   *  The scorer uses it to ignore copies that were read before its own last save. */
+  fetched_at?: number
 }

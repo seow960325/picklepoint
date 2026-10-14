@@ -128,19 +128,22 @@ export default function CombinedTv() {
         <FullscreenButton className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-line bg-surface/70 p-2.5 text-fg-muted" />
       </div>
 
-      {shown !== 'live' && (
-        <div className="shrink-0 pb-2 text-center">
-          <div className="line-clamp-1 font-display text-2xl font-bold tracking-wide sm:text-3xl lg:text-4xl">{title}</div>
-          <div className="mt-0.5 text-[11px] uppercase tracking-[0.3em] text-fg-subtle">
+      {/* one header for every pane, outside the scaled blocks, so both categories get the same size */}
+      <div className="shrink-0 pb-2 text-center">
+        <div className="line-clamp-1 font-display text-2xl font-bold tracking-wide sm:text-3xl lg:text-4xl xl:text-5xl">
+          {single ? stripCat(title, category(bundles[0])) : title}
+        </div>
+        {shown !== 'live' && (
+          <div className="mt-0.5 text-[11px] uppercase tracking-[0.3em] text-fg-subtle lg:text-sm">
             {shown === 'groups' ? 'Group tables' : 'Knockout'}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {shown === 'live' && (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
-          {bundles.map((b, i) => (
-            <LiveRow key={b.competition.id} b={b} tone={toneOf(b)} title={i === 0 ? title : undefined} />
+          {bundles.map(b => (
+            <LiveRow key={b.competition.id} b={b} tone={toneOf(b)} />
           ))}
         </div>
       )}
@@ -225,18 +228,21 @@ function Banner({ b, tone, big = false }: { b: Bundle; tone: typeof TONES[number
   )
 }
 
-function LiveRow({ b, tone, title }: { b: Bundle; tone: typeof TONES[number]; title?: string }) {
+function LiveRow({ b, tone }: { b: Bundle; tone: typeof TONES[number] }) {
   const ev = b.events.find(e => e.format === 'groups_ko')
   const next = ev ? upNext(b, ev.id, 4) : []
   const anyLive = b.courts.some(c => liveOnCourt(b, c.id))
+  const podium = anyLive ? null : koPodium(b)
   return (
     <section className="relative min-h-0 flex-1">
       <Fit>
         <div className="w-[1800px]">
-          {title && <div className="mb-3 text-center font-display text-5xl font-bold tracking-wide">{stripCat(title, category(b))}</div>}
           <Banner b={b} tone={tone} big />
           {anyLive || next.length
             ? <LiveGrid b={b} code={b.competition.code} tv />
+            : podium?.third
+            // category decided and nothing on court: the live pane shows its champions
+            ? <div className="flex h-[640px] flex-col"><Podium b={b} champion={podium.champion} runnerUp={podium.runnerUp} third={podium.third} title={category(b)} /></div>
             : <div className="py-24 text-center text-3xl text-fg-subtle">No game on court right now</div>}
         </div>
       </Fit>

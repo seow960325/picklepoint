@@ -5,8 +5,7 @@ import * as api from '../lib/api'
 import type { PointEvent } from '../lib/types'
 import { Screen, TopBar, Spinner } from '../components/ui'
 import { PlayClock } from '../components/GroupsKo'
-
-const tokenKey = (courtId: string) => `pp.token.${courtId}`
+import { courtSession } from '../lib/queue'
 const adminTokKey = (code: string) => `pp.admin.${code}`
 
 export default function MatchDetail() {
@@ -25,7 +24,7 @@ export default function MatchDetail() {
   if (!m) return <Screen><TopBar title="Match not found" back={`/c/${code}`} /></Screen>
 
   const court = bundle.courts.find(c => c.id === m.court_id)
-  const courtToken = court ? localStorage.getItem(tokenKey(court.id)) : null
+  const courtToken = court ? courtSession(court.id) : null
   const adminToken = code ? localStorage.getItem(adminTokKey(code)) : null
   const canReset = m.status === 'finished' && !!(courtToken || adminToken)
 
@@ -56,7 +55,7 @@ export default function MatchDetail() {
       <TopBar
         title={`${teamName(bundle, m.team_a_id)} vs ${teamName(bundle, m.team_b_id)}`}
         sub={`${bundle.competition.multi_sport && court?.label ? court.label : `Court ${court?.number ?? '–'}`} · Match #${m.sequence}${m.round ? ` · ${m.round}` : ''} · ${m.status.replace(/_/g, ' ')}`}
-        back={`/c/${code}`}
+        back={courtToken && court ? `/c/${code}/court/${court.number}` : `/c/${code}`}
       />
 
       <div className="flex items-center justify-center gap-6 border-b border-line py-6">

@@ -13,7 +13,7 @@
  *   tv_partner           code of the sister category for the combined TV
  */
 import type { Bundle, EventCfg, Match, Team } from './types'
-import { roundRobinPairs, standardSeedOrder, type DraftMatch, type DraftTeam } from './draw.ts'
+import { roundRobinPairs, standardSeedOrder, seedBracket, type DraftMatch, type DraftTeam } from './draw.ts'
 
 export const isPoolDispatch = (ev?: EventCfg | null) => ev?.court_dispatch === 'pool'
 
@@ -265,7 +265,6 @@ export function upNext(b: Bundle, eventId: string, n = 6): Array<{ m: Match; wai
 }
 
 // ------------------------------------------------------------ bracket preview
-const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 /** Short names for knockout slots: QF1…, SF1…, 'Final', '3rd'. */
 export function koShort(b: Bundle, m: Match): string {
@@ -294,14 +293,15 @@ export function koSlotLabel(b: Bundle, ev: EventCfg, m: Match, slot: 'a' | 'b'):
   const size = Number(first[1]), j = Number(first[2])
   const groups = [...new Set(b.teams.filter(t => t.event_id === ev.id).map(t => t.pool ?? 'A'))].sort()
   const adv = ev.advance_per_group ?? 1
-  const seedNo = standardSeedOrder(size)[j * 2 + (slot === 'a' ? 0 : 1)]
   if (adv === 1) {
+    const seedNo = standardSeedOrder(size)[j * 2 + (slot === 'a' ? 0 : 1)]
     const g = groups[seedNo - 1]
     return g ? `Group ${g} winner` : 'Bye'
   }
-  const place = Math.ceil(seedNo / groups.length)
-  const g = groups[(seedNo - 1) % groups.length] ?? LETTERS[(seedNo - 1) % 26]
-  return `Group ${g} #${place}`
+  // the exact draw seedBracket() will write, with "Group X #n" placeholders
+  const placeholders = groups.map(g => Array.from({ length: adv }, (_, i) => `Group ${g} #${i + 1}`))
+  const pair = seedBracket(placeholders, size)[j]
+  return pair?.[slot === 'a' ? 0 : 1] ?? 'Bye'
 }
 
 // ------------------------------------------------------------ random groups
@@ -372,6 +372,8 @@ export function stageLabel(b: Bundle, m: Match): { text: string; kind: 'group' |
     if (m.round === 'Final') return { text: 'FINAL', kind: 'final' }
     if (m.round === 'Third place') return { text: '3RD PLACE', kind: 'ko' }
     if (m.round === 'Semi-final') return { text: 'SEMI FINAL', kind: 'ko' }
+    const rn = /^Round of (\d+)$/.exec(m.round ?? '')
+    if (rn) return { text: `R${rn[1]} · ${koShort(b, m).split('-').pop()}`, kind: 'ko' }   // "R16 · 3"
     return { text: koShort(b, m).replace(/(\D+)(\d+)/, '$1 $2'), kind: 'ko' }   // "QF 4"
   }
   // "Group B · Leg 2" -> "LEG 2" (group name is on the game row, not the header)

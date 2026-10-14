@@ -35,11 +35,11 @@ const TONE: Record<Tone, string> = {
   danger: 'bg-transparent text-[#f87171] border border-[#ef4444]/50',
 }
 
-function Btn({ children, onClick, tone = 'base', className = '', disabled = false }: {
-  children: ReactNode; onClick: () => void; tone?: Tone; className?: string; disabled?: boolean
+function Btn({ children, onClick, tone = 'base', className = '', disabled = false, 'aria-label': aria }: {
+  children: ReactNode; onClick: () => void; tone?: Tone; className?: string; disabled?: boolean; 'aria-label'?: string
 }) {
   return (
-    <button type="button" disabled={disabled} onClick={onClick}
+    <button type="button" disabled={disabled} onClick={onClick} aria-label={aria}
       style={{ touchAction: 'manipulation' }}
       className={`flex select-none items-center justify-center rounded-xl font-display font-bold uppercase tracking-wide transition-transform active:scale-[0.97] disabled:opacity-25 ${TONE[tone]} ${className}`}>
       {children}
@@ -138,8 +138,16 @@ export default function CbScorer({ bundle, match, token, courtNo, courtName, cod
     }
   }, [match.cb?.rev, match.started_at])
 
-  const flush = async () => {
-    if (busy.current) return
+  // save passes run one after another; a caller that needs everything on the
+  // server (finish) awaits the pass it queued, which runs after any pass in flight
+  const queue = useRef<Promise<void>>(Promise.resolve())
+  const flush = (): Promise<void> => {
+    const p = queue.current.then(save, save)
+    queue.current = p
+    return p
+  }
+  const save = async () => {
+    if (busy.current || latest.current.st.rev <= sentRev.current) return
     busy.current = true
     try {
       while (latest.current.st.rev > sentRev.current) {
@@ -160,8 +168,9 @@ export default function CbScorer({ bundle, match, token, courtNo, courtName, cod
   }
   useEffect(() => {
     const t = setInterval(() => { if (latest.current.st.rev > sentRev.current) flush() }, 3000)
-    window.addEventListener('online', flush)
-    return () => { clearInterval(t); window.removeEventListener('online', flush) }
+    const on = () => { void flush() }
+    window.addEventListener('online', on)
+    return () => { clearInterval(t); window.removeEventListener('online', on) }
   }, [token])
 
   // the screen updates at once; saving happens behind it
@@ -171,10 +180,14 @@ export default function CbScorer({ bundle, match, token, courtNo, courtName, cod
     latest.current = next; setSnap(next); feel?.(); void flush()
   }
 
+  const [finishing, setFinishing] = useState(false)
   const finish = async () => {
     setConfirm(null)
+    if (finishing) return
+    setFinishing(true)
     await flush()
-    try { await api.cbFinish(match.id, token) } catch { /* reload shows the truth */ }
+    if (latest.current.st.rev > sentRev.current) { setFinishing(false); setOffline(true); return }   // not saved: don't lock an old score
+    try { await api.cbFinish(match.id, token) } catch { setFinishing(false) /* reload shows the truth */ }
     reload()
   }
 
@@ -198,7 +211,8 @@ export default function CbScorer({ bundle, match, token, courtNo, courtName, cod
   const main = (() => {
     const k = 'h-14 w-full text-2xl'
     if (st.phase === 'break') {
-      return <Btn tone="go" className={k} onClick={() => apply(cbNextHalf, chimeSwitch)}>▶ Start {ordinal(st.half + 1)} half</Btn>
+      // ends the rest; the clock then starts with "Start 2nd half" (two different words, so a double tap can't skip a step)
+      return <Btn tone="go" className={k} onClick={() => apply(cbNextHalf, chimeSwitch)}>End rest · {ordinal(st.half + 1)} half ready</Btn>
     }
     if (st.phase === 'over') {
       return level

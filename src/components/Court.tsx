@@ -2,7 +2,7 @@
  *  the referee taps the side the point was won on. The court surface is
  *  drawn full-bleed (fills all available space) with a separate, aspect-
  *  correct overlay for the round score circles so they never distort. */
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { FlagGlyph } from './ui'
 
 // layout constants for the aspect-correct overlay (480 x 240)
@@ -50,6 +50,48 @@ export interface CourtProps {
    *  (court is 2.2:1 not 2:1) so the circles sit at 1/4 and 3/4 of a wider,
    *  shorter box. Omitted = the original 480 x 240 layout, unchanged. */
   wide?: boolean
+}
+
+/** Approximate width (in em) of an upper-case Barlow Condensed Bold string. */
+const capsWidth = (t: string): number => {
+  let w = 0
+  for (const ch of t) w += /[MW]/.test(ch) ? 0.74 : /[IJ1.,'’:;|!]/.test(ch) ? 0.27 : ch === ' ' ? 0.22 : /[A-Z0-9&]/.test(ch) ? 0.55 : /[一-鿿]/.test(ch) ? 1 : 0.5
+  return w
+}
+
+/** A team name that never runs past `room` SVG units: measured after render (whatever
+ *  font the device ended up with) and squeezed only when it really is too long. */
+function FitText({ x, y, room, fs, fill, text }: { x: number; y: number; room: number; fs: number; fill: string; text: string }) {
+  const ref = useRef<SVGTextElement>(null)
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = ref.current
+      if (!el) return
+      el.removeAttribute('textLength'); el.removeAttribute('lengthAdjust'); el.setAttribute('font-size', String(fs))
+      el.setAttribute('stroke-width', String(Math.max(3, Math.round(fs * 0.28))))
+      let w = 0
+      try { w = el.getComputedTextLength() } catch { /* not rendered yet */ }
+      if (w <= room || !w) return
+      // first a smaller font (down to 12), squeeze the letters only if it still doesn't fit
+      const smaller = Math.max(12, Math.floor(fs * room / w))
+      el.setAttribute('font-size', String(smaller))
+      el.setAttribute('stroke-width', String(Math.max(3, Math.round(smaller * 0.28))))
+      try { w = el.getComputedTextLength() } catch { w = 0 }
+      if (w > room) { el.setAttribute('textLength', String(room)); el.setAttribute('lengthAdjust', 'spacingAndGlyphs') }
+    }
+    measure()
+    const fonts: any = (document as any).fonts
+    fonts?.ready?.then(measure).catch(() => {})
+    const t = setTimeout(measure, 800)
+    return () => clearTimeout(t)
+  }, [text, fs, room])
+  return (
+    <text ref={ref} x={x} y={y} textAnchor="middle" dominantBaseline="central"
+      {...HALO} fill={fill} fontSize={fs} fontWeight="700"
+      fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
+      {text}
+    </text>
+  )
 }
 
 const clip = (n: string, max = 17) =>
@@ -336,7 +378,8 @@ export default function Court({
           pointerEvents="all" aria-label={`point ${rightName}`} role="button" />
 
         {label && (
-          <text x={VW / 2} y="19" textAnchor="middle" fill="#f7d774" fontSize="16" fontWeight="700"
+          <text x={VW / 2} y="21" textAnchor="middle" fill="#f7d774" fontSize="16" fontWeight="700"
+            stroke="#0b2145" strokeWidth={4} strokeLinejoin="round" paintOrder="stroke"
             fontFamily="'Barlow Condensed', sans-serif" letterSpacing="2.5">
             {label.toUpperCase()}
           </text>
@@ -359,14 +402,11 @@ export default function Court({
             both serve-ball corners (top ~52 and bottom ~188) and the flag */}
         {nameBelow && ([[CXL, leftName, '#c6ff3d'], [CXR, rightName, '#22d3ee']] as const).map(([cx, nm, col]) => {
           const full = clip(nm, 30)
-          const fs = Math.max(12, Math.min(22, Math.floor(((wide ? 215 : 176) / Math.max(full.length, 1) - 1) / 0.45)))
-          return (
-            <text key={cx} x={cx} y="219" textAnchor="middle" dominantBaseline="central"
-              {...HALO} fill={col} fontSize={fs} fontWeight="700"
-              fontFamily="'Barlow Condensed', sans-serif" letterSpacing="1">
-              {full}
-            </text>
-          )
+          // fit the name inside its own half (never across the net or off the court)
+          const room = (wide ? 236 : 212)
+          const em = capsWidth(full)                       // width at 1px font, without letter spacing
+          const fs = Math.max(11, Math.min(22, Math.floor((room - full.length) / Math.max(em, 0.1))))
+          return <FitText key={cx} x={cx} y={219} room={room} fs={fs} fill={col} text={full} />
         })}
         {!nameBelow && <text x={nameHalo ? 22 : 14} y={MIDY} textAnchor="middle" transform={`rotate(-90 ${nameHalo ? 22 : 14} ${MIDY})`}
           {...(nameHalo ? HALO : {})}

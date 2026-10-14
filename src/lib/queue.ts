@@ -84,3 +84,22 @@ export async function flush(send: (op: QueuedOp) => Promise<void>) {
     }
   }
 }
+
+/** Scorer session kept for this browser tab only, so a referee who opens the point
+ *  LOG (or the previous result) and comes back is not asked for the PIN again
+ *  mid-game. Closing the tab, or 20 minutes off the scoring screen, asks again. */
+const COURT_KEY = (courtId: string) => `pp.court.${courtId}`
+const COURT_TTL = 20 * 60 * 1000
+export function courtSession(courtId: string): string | null {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(COURT_KEY(courtId)) || 'null')
+    if (v?.t && Date.now() - v.at < COURT_TTL) return v.t
+  } catch { /* private mode */ }
+  return null
+}
+export function saveCourtSession(courtId: string, token: string | null) {
+  try {
+    if (token) sessionStorage.setItem(COURT_KEY(courtId), JSON.stringify({ t: token, at: Date.now() }))
+    else sessionStorage.removeItem(COURT_KEY(courtId))
+  } catch { /* private mode */ }
+}

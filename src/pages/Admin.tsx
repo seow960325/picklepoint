@@ -836,8 +836,9 @@ function BracketTab({ bundle, ev, token, run }: any) {
           </ul>
           <p className="mt-3 text-xs text-fg-subtle">
             Top {advance} from each group, seeded so the group winners are kept apart
-            and cannot meet a team from their own group in round one. Byes go to the
-            highest seeds. Nothing is written until you press the button.
+            and nobody meets a team from their own group in round one{advance > 1 ? <> — a
+            group's winner and runner-up sit in opposite halves, so they can only meet again in the Final</> : null}.
+            Byes go to the highest seeds. Nothing is written until you press the button.
           </p>
           {openTosses.length > 0 && (
             <Warn>Coin toss needed in Group {openTosses.join(', ')} — tap the toss winner on that group above.</Warn>
