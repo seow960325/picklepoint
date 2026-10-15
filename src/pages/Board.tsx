@@ -1253,7 +1253,9 @@ function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder, tier
   const tx = mc ? (live ? T.liveTx : T.tx) : tall ? 'text-base' : 'text-xs'
   const logoCls = mc ? T.logo : 'h-4 w-4'
   // semi-final / final (and quarter-final): a long team name stacks on two lines instead of stretching the column
-  const stack = mc && (tier === 'big' || tier === 'xl' || tier === 'xxl')
+  // compact rounds too, when the name is two players ("Ryan & Marcus"): one name per line, so neither gets cut
+  const pair = !!teamId && teamName(b, teamId).split(' & ').length === 2
+  const stack = mc && (tier === 'big' || tier === 'xl' || tier === 'xxl' || pair)
   if (teamId == null && placeholder) {
     return (
       <div className={`flex items-center gap-2 border-l-2 border-transparent px-2.5 ${py}`}>
@@ -1263,11 +1265,11 @@ function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder, tier
     )
   }
   return (
-    <div className={`flex items-center ${mc ? (stack ? 'gap-2 pl-4 pr-6' : 'gap-2 pl-4 pr-4') : 'gap-2 px-2.5'} border-l-2 ${py} ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
+    <div className={`flex items-center ${mc ? (tier === 'compact' || tier === 'std' ? 'gap-1.5 pl-2 pr-2' : stack ? 'gap-2 pl-4 pr-6' : 'gap-2 pl-4 pr-4') : 'gap-2 px-2.5'} border-l-2 ${py} ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
       <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className={`${logoCls} shrink-0 rounded-[2px] object-contain`} />
       <span className={`min-w-0 flex-1 ${mc ? 'text-center' : ''} ${stack ? 'leading-[1.1]' : 'truncate'} ${tx} ${mc && live ? 'font-extrabold tracking-wide text-white' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-fg' : mc ? 'font-medium text-fg-muted' : 'text-fg-muted'}`}>{stack ? (() => { const parts = teamName(b, teamId).split(' & '); return parts.length === 2 ? <><ShrinkText text={parts[0]} /><ShrinkText text={parts[1]} /></> : <ShrinkText text={teamName(b, teamId)} /> })() : teamName(b, teamId)}</span>
       {medal && <span className="shrink-0 text-xs leading-none" aria-label={medal}>{medal === 'gold' ? '🥇' : medal === 'silver' ? '🥈' : '🥉'}</span>}
-      {(finished || (mc && live)) && <span className={`tabular shrink-0 ${mc ? (stack ? 'min-w-[2.5rem]' : 'min-w-[1.75rem]') + ' text-center' : ''} ${tx} ${mc && live ? 'font-extrabold text-brand-ink' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-gold' : 'text-fg-subtle'}`}>{score}</span>}
+      {(finished || (mc && live)) && <span className={`tabular shrink-0 ${mc ? (tier === 'compact' || tier === 'std' ? 'min-w-[1.25rem]' : stack ? 'min-w-[2.5rem]' : 'min-w-[1.75rem]') + ' text-center' : ''} ${tx} ${mc && live ? 'font-extrabold text-brand-ink' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-gold' : 'text-fg-subtle'}`}>{score}</span>}
     </div>
   )
 }
@@ -1374,7 +1376,16 @@ function PodiumSpot({ b, teamId, place }: { b: Bundle; teamId: string | null; pl
         {first && <div className="pp-pop mb-1" style={{ animationDelay: '1.05s' }}><Trophy lit /></div>}
         <div className={`mb-3 rounded-full p-[3px] ${first ? 'pp-champ-ring' : ''}`} style={{ background: `linear-gradient(150deg, ${t.c1}, ${t.c2})` }}>
           <div className={`grid ${t.frame} place-items-center overflow-hidden rounded-full bg-[#0b0e14]`}>
-            <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className="h-3/5 w-3/5 object-contain" />
+            {(() => {
+              const logo = teamLogo(b, teamId), flag = teamSideName(b, teamId)
+              // uploaded team pictures fill the medallion (faces sit on the rim); flags stay small;
+              // no picture at all -> the players' initials, never an empty circle
+              if (logo && !logo.startsWith('data:image/svg'))
+                return <img src={logo} alt="" className="h-[96%] w-[96%] translate-y-[4%] object-contain object-bottom" />
+              if (logo || flag) return <Emblem logo={logo} flagName={flag} className="h-3/5 w-3/5 object-contain" />
+              const ini = teamName(b, teamId).split(/\s*&\s*|\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
+              return <span className={`font-cer font-bold ${first ? 'text-4xl' : 'text-2xl'}`} style={{ color: t.c1 }}>{ini || '—'}</span>
+            })()}
           </div>
         </div>
         <div className={`mb-1 max-w-full truncate text-center font-bold ${first ? 'font-cer text-lg sm:text-2xl' : 'font-display text-base text-fg sm:text-xl'}`}

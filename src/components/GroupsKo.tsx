@@ -26,7 +26,8 @@ export function PlayClock({ m, className = '' }: { m: Match; className?: string 
   const sec = m.status === 'finished'
     ? m.duration_seconds
     : live ? (Date.now() - Date.parse(m.started_at!)) / 1000 : null
-  if (sec == null) return null
+  // a game left open for hours (paused, forgotten) would show a nonsense time on the TV
+  if (sec == null || sec < 0 || sec > 3 * 3600) return null
   return (
     <span className={`tabular inline-flex shrink-0 items-center gap-1 whitespace-nowrap ${className}`}
       title={m.status === 'finished' ? 'Game time (first point to last point)' : 'Time since the first point'}>
