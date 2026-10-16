@@ -167,7 +167,7 @@ export function TieScheduleTab({ bundle, ev, token, run }: any) {
     : teams.length >= 2 && courts.length >= 1
     ? buildTieDraw(
         teams.map((t: any) => ({ name: t.name, pool: t.pool ?? 'A', roster: t.roster ?? 6 })),
-        courts.map((c: any) => c.game_group ?? null))
+        courts.map((c: any) => c.game_group ?? null), { sheet: sport === 'badminton' })
     : []
   const ties = new Set(preview.map(p => p.tie)).size
 
@@ -304,9 +304,10 @@ export function KnockoutTab({ bundle, token, run }: any) {
     <div className="max-w-3xl space-y-6">
       <H>Knockout</H>
       <p className="text-sm text-fg-muted">
-        Group A / B winners and runners-up cross into the semi-finals (A1 v B2, B1 v A2).
-        Semi-final winners play the Final, losers play for 3rd place. Knockout ties never
-        change the group tables.
+        One group: the top four go through — 1st v 4th and 2nd v 3rd in the semi-finals
+        (two groups: A1 v B2, B1 v A2). Semi-final winners play the Final, losers play for
+        3rd place. In 3rd place and the Final the third discipline is skipped once one team
+        has won two. Knockout ties never change the group tables.
       </p>
       {sports.map(s => <SportKnockout key={s} bundle={bundle} sport={s} token={token} run={run} />)}
     </div>

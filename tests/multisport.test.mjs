@@ -208,7 +208,7 @@ test('phase walks groups -> semis -> finals -> done with champion, runner-up, th
   assert.equal(allTies(bundle(teams, ms)).length, 5)
 })
 
-test('badminton knockout uses 2 courts for the semis and 1 for 3rd place + Final', () => {
+test('badminton knockout: semis use every discipline court, 3rd place + Final use 2 courts', () => {
   const mk = (n, grp) => ({ id: 'c' + n, number: n, game_group: grp, sport: 'badminton' })
   const sb = {
     events: [{ id: 'e', sport: 'badminton' }],
@@ -218,14 +218,58 @@ test('badminton knockout uses 2 courts for the semis and 1 for 3rd place + Final
   const A = { id: 'a', roster: 6 }, B = { id: 'b', roster: 6 }
   const sf = koGames(sb, 'SF1', A, B)
   assert.equal(sf.length, 3)
-  assert.ok(sf.every(g => ['c1', 'c2'].includes(g.court)))
-  assert.ok(new Set(sf.map(g => g.court)).size === 2)   // spread over both courts
+  assert.equal(new Set(sf.map(g => g.court)).size, 3)   // all three disciplines side by side
   const th = koGames(sb, '3P', A, B)
-  assert.ok(th.every(g => g.court === 'c1'))
+  assert.ok(th.every(g => ['c1', 'c2'].includes(g.court)))
   const f = koGames(sb, 'F', A, B, { bestOf3: true })
   assert.equal(f.length, 9)
-  assert.ok(f.every(g => g.court === 'c1'))
+  assert.ok(f.every(g => ['c1', 'c2'].includes(g.court)))
   // pickleball is not reduced
   const pb = { ...sb, events: [{ id: 'e', sport: 'pickleball' }] }
   assert.ok(new Set(koGames(pb, 'F', A, B).map(g => g.court)).size > 1)
+})
+
+// ------------------------------------------- badminton sheet 2026 (6 teams, 1 group)
+test('badminton sheet: one group of 6, 15 ties in the organiser order, nobody on two courts per round', () => {
+  const teams = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6'].map(n => ({ name: n, pool: 'A', roster: 6 }))
+  const d = buildTieDraw(teams, ['MD1', 'MD1', 'MD2', 'MD2', 'XD', 'XD'], { sheet: true })
+  const ties = [...new Set(d.map(g => g.tie))]
+  assert.equal(ties.length, 15)
+  assert.equal(d.length, 45)
+  const pair = t => { const g = d.find(x => x.tie === t); return `B${g.aIdx + 1}vB${g.bIdx + 1}` }
+  assert.deepEqual(ties.slice(0, 4).map(pair), ['B1vB6', 'B2vB4', 'B2vB3', 'B4vB5'])
+  assert.equal(pair(ties[14]), 'B3vB5')
+  assert.equal(d.find(g => g.tie === ties[14]).round, 8)
+  // every pair exactly once
+  const pairs = new Set(ties.map(t => { const g = d.find(x => x.tie === t); return [g.aIdx, g.bIdx].sort().join('-') }))
+  assert.equal(pairs.size, 15)
+  // each round: a team appears in one tie only; round 1 ties sit on courts 0/2/4 and 1/3/5
+  for (let r = 1; r <= 8; r++) {
+    const seen = new Set()
+    for (const t of new Set(d.filter(g => g.round === r).map(g => g.tie))) {
+      const g = d.find(x => x.tie === t)
+      for (const i of [g.aIdx, g.bIdx]) { assert.ok(!seen.has(i)); seen.add(i) }
+    }
+  }
+  const r1 = d.filter(g => g.round === 1)
+  assert.deepEqual(r1.filter(g => g.aIdx === 0).map(g => g.courtIdx).sort(), [0, 2, 4])
+  assert.deepEqual(r1.filter(g => g.aIdx === 1).map(g => g.courtIdx).sort(), [1, 3, 5])
+})
+
+test('badminton knockout: semis side by side, 3rd place / Final on 2 courts with XD beside MD1', () => {
+  const mkc = (n, g) => ({ id: `c${n}`, number: n, sport: 'badminton', game_group: g })
+  const sb = {
+    events: [{ id: 'e', sport: 'badminton' }],
+    courts: [mkc(1, 'MD1'), mkc(2, 'MD1'), mkc(3, 'MD2'), mkc(4, 'MD2'), mkc(5, 'XD'), mkc(6, 'XD')],
+    matches: [], teams: [],
+  }
+  const tm = id => ({ id, roster: 6 })
+  const s1 = koGames(sb, 'SF1', tm('a'), tm('d'))
+  const pend = { ...sb, matches: s1.map((g, i) => ({ id: 'p' + i, court_id: g.court, status: 'scheduled' })) }
+  const s2 = koGames(pend, 'SF2', tm('b'), tm('c'))
+  assert.equal(new Set([...s1, ...s2].map(g => g.court)).size, 6)
+  const f = koGames(sb, 'F', tm('a'), tm('b'), { bestOf3: true })
+  assert.deepEqual(f.map(g => g.game).filter((g, i, a) => a.indexOf(g) === i), ['MD1', 'XD', 'MD2'])
+  assert.deepEqual([...new Set(f.map(g => g.court))].sort(), ['c1', 'c2'])
+  assert.notEqual(f.find(g => g.game === 'MD1').court, f.find(g => g.game === 'XD').court)
 })

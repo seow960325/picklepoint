@@ -59,6 +59,24 @@ export interface TieDraftTeam extends DraftTeam { roster: number }
 /** Court group a game is played on: a 4-player tie's single MD uses the MD1 courts. */
 export const gameGroup = (game: string): string => (game === 'MD' ? 'MD1' : game)
 
+/** Organiser's badminton sheet (2026): ONE group of 6 teams, every team plays every
+ *  other team once, 8 rounds, two ties at a time (each tie = MD1 + MD2 + XD on three
+ *  courts). Indexes 0-5 are B1-B6 in team order. The last round has a single tie. */
+export const BADMINTON_SIX_SHEET: Array<Array<[number, number]>> = [
+  [[0, 5], [1, 3]], [[1, 2], [3, 4]], [[0, 2], [4, 5]], [[0, 1], [3, 5]],
+  [[1, 4], [2, 3]], [[0, 4], [2, 5]], [[0, 3], [1, 5]], [[2, 4]],
+]
+
+function sheetFixtures(teams: TieDraftTeam[]): DraftMatch[] {
+  const pool = teams[0]?.pool || 'A'
+  const out: DraftMatch[] = []
+  let seq = 1
+  BADMINTON_SIX_SHEET.forEach((round, r) => round.forEach(([a, b], k) => {
+    out.push({ aIdx: a, bIdx: b, round: r + 1, courtIdx: k, sequence: seq++, pool })
+  }))
+  return out
+}
+
 /** Round robin per pool, every fixture expanded into its games.
  *  `courts` is one entry per court (in courtIds order): the game group that
  *  court hosts (MD1 / MD2 / XD) or null for "any game". A game is placed only
@@ -66,10 +84,14 @@ export const gameGroup = (game: string): string => (game === 'MD' ? 'MD1' : game
  *  every court. A plain number means that many untagged courts. */
 export function buildTieDraw(
   teams: TieDraftTeam[], courts: number | Array<string | null>,
+  opts: { sheet?: boolean } = {},
 ): TieDraftMatch[] {
   const groups = typeof courts === 'number' ? Array<string | null>(courts).fill(null) : courts
   if (groups.length < 1) return []
-  const fixtures = buildDraw(teams, groups.length)
+  const onePool = new Set(teams.map(t => t.pool || 'A')).size === 1
+  const fixtures = opts.sheet && teams.length === 6 && onePool
+    ? sheetFixtures(teams)
+    : buildDraw(teams, groups.length)
   const all = groups.map((_, i) => i)
   const next: Record<string, number> = {}
   const out: TieDraftMatch[] = []
@@ -282,10 +304,11 @@ export const FINAL_PRESETS: Record<Sport, {
   captainball: { target_score: 99, win_by: 1, cap: 99, switch_at: 0, serve_mode: 'winner' },
 }
 
-/** Courts in use per knockout stage (from the organiser: badminton drops to 2
- *  courts for the semi-finals and 1 court for 3rd place + the Final). */
+/** Courts in use per knockout stage (organiser's sheet): both badminton semi-finals
+ *  run at once with all disciplines side by side (no limit); 3rd place and the
+ *  Final use 2 courts — MD1 and XD together, then MD2 only if still needed. */
 export const KO_COURTS: Partial<Record<Sport, Partial<Record<TieStage, number>>>> = {
-  badminton: { SF1: 2, SF2: 2, '3P': 1, F: 1 },
+  badminton: { '3P': 2, F: 2 },
 }
 
 export interface KoGame {
@@ -314,7 +337,13 @@ export function koGames(
   }
   const out: KoGame[] = []
   let seq = 0
-  for (const g of tieGames(a, b)) {
+  // on the reduced courts MD1 and XD go side by side, MD2 follows (sheet order)
+  const order = tieGames(a, b)
+  if (reduced && order.includes('XD') && order.includes('MD2')) {
+    order.splice(order.indexOf('XD'), 1)
+    order.splice(order.indexOf('MD2'), 0, 'XD')
+  }
+  for (const g of order) {
     const mine = reduced ? [] : courts.filter(c => c.game_group === gameGroup(g))
     const pool = mine.length ? mine : courts
     if (!pool.length) continue
