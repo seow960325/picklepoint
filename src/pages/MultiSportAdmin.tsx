@@ -227,6 +227,8 @@ export function TieScheduleTab({ bundle, ev, token, run }: any) {
 
 // ------------------------------------------------------------------ courts
 const GROUPS = ['MD1', 'MD2', 'XD'] as const
+/** Organiser's badminton sheet: each tie takes three neighbouring courts (MD1, XD, MD2). */
+const SHEET_COURT_ORDER: Array<'MD1' | 'MD2' | 'XD'> = ['MD1', 'XD', 'MD2', 'MD1', 'XD', 'MD2']
 const GROUP_HINT: Record<string, string> = {
   MD1: 'Men\'s doubles 1 (also the single MD of a 4-player tie)',
   MD2: 'Men\'s doubles 2',
@@ -269,6 +271,16 @@ export function SportCourts({ bundle, token, run, sport, onApplied }: any) {
         Applying clears this sport's unplayed schedule — press Regenerate schedule afterwards.
       </div>
       {played && <Warn>Games have already been played, so the courts are locked.</Warn>}
+      {sport === 'badminton' && (
+        <button disabled={played}
+          onClick={() => run(async () => {
+            await api.adminSetSportCourts(token, sport, { MD1: 2, MD2: 2, XD: 2, order: SHEET_COURT_ORDER })
+            onApplied?.()
+          }, 'Badminton courts set to the organiser sheet — now regenerate its schedule')}
+          className="rounded-xl border border-line px-4 py-2 text-sm font-bold text-fg-muted disabled:opacity-30">
+          USE SHEET LAYOUT · 6 courts: C1 MD1 · C2 XD · C3 MD2 · C4 MD1 · C5 XD · C6 MD2
+        </button>
+      )}
       <button disabled={total < 1 || played}
         onClick={() => run(async () => {
           await api.adminSetSportCourts(token, sport,

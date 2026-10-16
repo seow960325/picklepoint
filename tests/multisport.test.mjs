@@ -273,3 +273,12 @@ test('badminton knockout: semis side by side, 3rd place / Final on 2 courts with
   assert.deepEqual([...new Set(f.map(g => g.court))].sort(), ['c1', 'c2'])
   assert.notEqual(f.find(g => g.game === 'MD1').court, f.find(g => g.game === 'XD').court)
 })
+
+test('badminton sheet on the sheet court layout: tie 1 on C1-C3, tie 2 on C4-C6', () => {
+  const teams = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6'].map(n => ({ name: n, pool: 'A', roster: 6 }))
+  const d = buildTieDraw(teams, ['MD1', 'XD', 'MD2', 'MD1', 'XD', 'MD2'], { sheet: true })
+  const r1 = d.filter(g => g.round === 1)
+  const on = (a, game) => r1.find(g => g.aIdx === a && g.game === game).courtIdx
+  assert.deepEqual(['MD1', 'XD', 'MD2'].map(g => on(0, g)), [0, 1, 2])
+  assert.deepEqual(['MD1', 'XD', 'MD2'].map(g => on(1, g)), [3, 4, 5])
+})

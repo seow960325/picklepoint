@@ -406,7 +406,8 @@ export async function adminReplaceTieSchedule(
 }
 
 export async function adminSetSportCourts(
-  token: string, sport: string, plan: { MD1: number; MD2: number; XD: number },
+  token: string, sport: string,
+  plan: { MD1: number; MD2: number; XD: number; order?: Array<'MD1' | 'MD2' | 'XD'> },
 ): Promise<void> {
   if (IS_DEMO) throw new Error('Multi-sport needs the live database')
   await rpc('admin_set_sport_courts', { p_token: token, p_sport: sport, p_plan: plan })
