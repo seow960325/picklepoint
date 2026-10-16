@@ -1,9 +1,12 @@
--- 3rd place + Final (multi-sport): once one team has won 2 disciplines the
+-- 3rd place + Final (multi-sport, BADMINTON ONLY): once one team has won 2 disciplines the
 -- third is not played - its queued, unplayed games are removed before
 -- confirm_match advances the court queue. Group stage and semi-finals untouched.
 create or replace function _tie_dead_rubber() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare wa int; wb int; begin
+  if not exists (select 1 from events where id = new.event_id and sport = 'badminton') then
+    return null;
+  end if;
   with unit as (
     select game_label,
            count(*) filter (where status = 'finished' and winner_id = new.team_a_id) as a_g,
