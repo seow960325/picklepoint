@@ -12,7 +12,11 @@ const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 
 export const IS_DEMO = !url || !key || url.includes('YOUR-PROJECT')
 
-const sb: SupabaseClient | null = IS_DEMO ? null : createClient(url!, key!)
+// a screen with no live channel (e.g. a phone left locked) hangs up after 5 s
+// instead of 50 s, so it doesn't hold one of the free plan's 200 live connections
+const sb: SupabaseClient | null = IS_DEMO ? null : createClient(url!, key!, {
+  realtime: { disconnectOnEmptyChannelsAfterMs: 5000 } as any,
+})
 
 const rpc = async <T,>(fn: string, args: Record<string, unknown>): Promise<T> => {
   const { data, error } = await sb!.rpc(fn, args)
@@ -27,74 +31,165 @@ const rpc = async <T,>(fn: string, args: Record<string, unknown>): Promise<T> =>
 
 export async function join(code: string): Promise<Bundle> {
   if (IS_DEMO) return demo.join(code)
-
-  const head = await rpc<any>('join_competition', { p_code: code })
-  const eventIds = head.events.map((e: any) => e.id)
-  const [{ data: teams }, { data: matches }] = await Promise.all([
-    sb!.from('teams').select('*').in('event_id', eventIds),
-    sb!.from('matches').select('*').in('event_id', eventIds).order('sequence'),
-  ])
-  for (const t of teams ?? []) logoCache.set(t.id, t.logo ?? null)
-  return { ...head, teams: teams ?? [], matches: matches ?? [] }
+  return joinLight(code)
 }
 
-/** Team pictures are big (cartoon logos up to ~300 kB each, 32 teams per code),
- *  and the board refetches on every point. So a live refresh reads the teams
- *  WITHOUT their pictures and reuses the ones this browser already has; only a
- *  team it has never seen gets its picture fetched. A full join() (first load,
- *  coming back to the tab, every few minutes, any admin change) refreshes them all. */
-const logoCache = new Map<string, string | null>()
+/** Team pictures are big (full-quality cartoon logos ~150-260 kB each, 32 teams
+ *  per code), so every viewer downloads each picture ONCE: it is kept in this
+ *  browser (memory + IndexedDB, survives reloads) together with the team's
+ *  logo_rev, and only fetched again when an admin or the player changes it
+ *  (the database bumps logo_rev on every change). Pictures are never resized here. */
+type LogoEntry = { rev: number; logo: string | null }
+const logoCache = new Map<string, LogoEntry>()
 const TEAM_COLS = 'id,event_id,name,player1,player2,seed,pool,checked_in,side,roster'
+let hasRev: boolean | null = null                 // false = database without logo_rev yet (old behaviour)
 
-async function joinLight(code: string): Promise<Bundle> {
+const IDB_NAME = 'pp-logos', IDB_STORE = 'logos'
+let idbP: Promise<IDBDatabase | null> | null = null
+function idb(): Promise<IDBDatabase | null> {
+  if (idbP) return idbP
+  idbP = new Promise(res => {
+    try {
+      if (typeof indexedDB === 'undefined') return res(null)
+      const r = indexedDB.open(IDB_NAME, 1)
+      r.onupgradeneeded = () => { try { r.result.createObjectStore(IDB_STORE) } catch { /* exists */ } }
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => res(null)
+      r.onblocked = () => res(null)
+    } catch { res(null) }
+  })
+  return idbP
+}
+async function idbGet(ids: string[]): Promise<Map<string, LogoEntry>> {
+  const out = new Map<string, LogoEntry>()
+  const db = await idb(); if (!db || !ids.length) return out
+  return new Promise(res => {
+    try {
+      const tx = db.transaction(IDB_STORE, 'readonly'), st = tx.objectStore(IDB_STORE)
+      for (const id of ids) {
+        const g = st.get(id)
+        g.onsuccess = () => { const v = g.result; if (v && typeof v.rev === 'number') out.set(id, v) }
+      }
+      tx.oncomplete = () => res(out); tx.onerror = () => res(out); tx.onabort = () => res(out)
+    } catch { res(out) }
+  })
+}
+async function idbPut(entries: Array<[string, LogoEntry]>) {
+  const db = await idb(); if (!db || !entries.length) return
+  try {
+    const tx = db.transaction(IDB_STORE, 'readwrite'), st = tx.objectStore(IDB_STORE)
+    for (const [id, v] of entries) st.put(v, id)
+  } catch { /* storage full / private mode: memory cache still works */ }
+}
+
+async function teamsWithLogos(eventIds: string[]): Promise<any[] | null> {
+  if (hasRev !== false) {
+    const tr = await sb!.from('teams').select(TEAM_COLS + ',logo_rev').in('event_id', eventIds)
+    if (!tr.error) {
+      hasRev = true
+      const teams = (tr.data ?? []) as any[]
+      const stale = (t: any) => { const c = logoCache.get(t.id); return !c || c.rev !== (t.logo_rev ?? 0) }
+      let need = teams.filter(stale)
+      if (need.length) {                                   // this browser may have them from an earlier visit
+        const saved = await idbGet(need.map(t => t.id))
+        for (const t of need) { const s = saved.get(t.id); if (s && s.rev === (t.logo_rev ?? 0)) logoCache.set(t.id, s) }
+        need = need.filter(stale)
+      }
+      for (let i = 0; i < need.length; i += 8) {            // small batches: no single huge response
+        const part = need.slice(i, i + 8)
+        const { data, error } = await sb!.from('teams').select('id,logo,logo_rev').in('id', part.map(t => t.id))
+        if (error) throw new Error(error.message)
+        const put: Array<[string, LogoEntry]> = []
+        for (const t of (data ?? []) as any[]) {
+          const e = { rev: t.logo_rev ?? 0, logo: t.logo ?? null }
+          logoCache.set(t.id, e); put.push([t.id, e])
+        }
+        void idbPut(put)
+      }
+      return teams.map(t => ({ ...t, logo: logoCache.get(t.id)?.logo ?? null }))
+    }
+    if (!/logo_rev/.test(tr.error.message)) throw new Error(tr.error.message)
+    hasRev = false
+  }
+  return null
+}
+
+/** Old databases (no logo_rev column yet): pictures re-read on full loads only. */
+const legacyLogo = new Map<string, string | null>()
+let legacyFull = 0
+
+async function joinLight(code: string, opts?: { full?: boolean }): Promise<Bundle> {
   const head = await rpc<any>('join_competition', { p_code: code })
   const eventIds = head.events.map((e: any) => e.id)
-  const [tr, mr] = await Promise.all([
-    sb!.from('teams').select(TEAM_COLS).in('event_id', eventIds),
+  const [teams, mr] = await Promise.all([
+    teamsWithLogos(eventIds),
     sb!.from('matches').select('*').in('event_id', eventIds).order('sequence'),
   ])
-  if (tr.error || mr.error) return join(code)          // e.g. a column this database doesn't have yet
-  const teams = (tr.data ?? []) as any[]
-  const unknown = teams.filter(t => !logoCache.has(t.id)).map(t => t.id)
-  if (unknown.length) {
-    const { data, error } = await sb!.from('teams').select('id,logo').in('id', unknown)
-    if (error) return join(code)
-    for (const t of data ?? []) logoCache.set(t.id, (t as any).logo ?? null)
+  if (mr.error) throw new Error(mr.error.message)
+  if (teams) return { ...head, teams, matches: mr.data ?? [] }
+  // ---- legacy path
+  const now = Date.now()
+  if (opts?.full || now - legacyFull > 180000 || !legacyLogo.size) {
+    const { data, error } = await sb!.from('teams').select('*').in('event_id', eventIds)
+    if (error) throw new Error(error.message)
+    legacyFull = now
+    for (const t of data ?? []) legacyLogo.set(t.id, t.logo ?? null)
+    return { ...head, teams: data ?? [], matches: mr.data ?? [] }
   }
-  return { ...head, teams: teams.map(t => ({ ...t, logo: logoCache.get(t.id) ?? null })), matches: mr.data ?? [] }
+  const tr = await sb!.from('teams').select(TEAM_COLS).in('event_id', eventIds)
+  if (tr.error) throw new Error(tr.error.message)
+  const tl = (tr.data ?? []) as any[]
+  const unknown = tl.filter(t => !legacyLogo.has(t.id)).map(t => t.id)
+  if (unknown.length) {
+    const { data } = await sb!.from('teams').select('id,logo').in('id', unknown)
+    for (const t of data ?? []) legacyLogo.set(t.id, (t as any).logo ?? null)
+  }
+  return { ...head, teams: tl.map(t => ({ ...t, logo: legacyLogo.get(t.id) ?? null })), matches: mr.data ?? [] }
 }
 
 export async function refresh(code: string, opts?: { light?: boolean }): Promise<Bundle> {
   if (IS_DEMO) return demo.refresh()
-  return opts?.light ? joinLight(code) : join(code)
+  return joinLight(code, { full: !opts?.light })
 }
 
+export type LiveStatus = 'live' | 'down'
+export type RowChange = { type: 'INSERT' | 'UPDATE' | 'DELETE'; row: any; oldId?: string }
+
 /** Live updates. Demo mode uses BroadcastChannel across tabs. Only this
- *  competition's games wake this screen (not every court of every code). */
-export function subscribe(bundle: Bundle, onChange: () => void): () => void {
+ *  competition's games wake this screen (not every court of every code).
+ *  onRow (viewers): the changed match row itself, so the screen can update
+ *  without re-reading the whole competition (200 phones x every point would
+ *  otherwise hammer the free database). onStatus: 'down' when the server
+ *  refuses or drops the channel (e.g. free plan's 200-connection limit) so the
+ *  screen can poll faster until it is back. */
+export function subscribe(
+  bundle: Bundle, onChange: () => void,
+  opts?: { onRow?: (c: RowChange) => void; onStatus?: (s: LiveStatus) => void },
+): () => void {
   if (IS_DEMO) return demo.subscribe(onChange)
 
   const ids = bundle.events.map(e => e.id)
-  let ch: ReturnType<SupabaseClient['channel']> | null = null
   let closed = false
-  const open = (filtered: boolean) => {
-    ch = sb!
-      .channel(`comp:${bundle.competition.id}:${Math.random().toString(36).slice(2, 8)}`)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'matches',
-        ...(filtered ? { filter: `event_id=in.(${ids.join(',')})` } : {}),
-      }, onChange)
-      .subscribe(status => {
-        // a server that refuses the filter: fall back to every match change (old behaviour)
-        if (filtered && status === 'CHANNEL_ERROR' && !closed) {
-          const old = ch; ch = null
-          if (old) sb!.removeChannel(old)
-          open(false)
-        }
-      })
-  }
-  open(ids.length > 0 && ids.length <= 100)
-  return () => { closed = true; if (ch) sb!.removeChannel(ch) }
+  const ch = sb!
+    .channel(`comp:${bundle.competition.id}:${Math.random().toString(36).slice(2, 8)}`)
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'matches',
+      ...(ids.length > 0 && ids.length <= 100 ? { filter: `event_id=in.(${ids.join(',')})` } : {}),
+    }, (p: any) => {
+      if (closed) return
+      if (opts?.onRow) {
+        const row = p?.new && Object.keys(p.new).length ? p.new : null
+        if (p?.eventType === 'DELETE') opts.onRow({ type: 'DELETE', row: null, oldId: p?.old?.id })
+        else if (row && ids.includes(row.event_id)) opts.onRow({ type: p.eventType, row })
+        else onChange()
+      } else onChange()
+    })
+    .subscribe(status => {
+      if (closed) return
+      if (status === 'SUBSCRIBED') { opts?.onStatus?.('live'); onChange() }   // catch up on anything missed while joining
+      else opts?.onStatus?.('down')
+    })
+  return () => { closed = true; void sb!.removeChannel(ch) }
 }
 
 export async function unlockCourt(courtId: string, pin: string): Promise<string> {

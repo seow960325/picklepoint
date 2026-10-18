@@ -12,7 +12,14 @@ export const forgetCode = (c: string) => {
   if (lastCode().toUpperCase() === c.toUpperCase()) localStorage.removeItem(CODE_KEY)
 }
 
-export function useCompetition(code: string | undefined, opts?: { preview?: boolean }) {
+/** opts.preview: TEST-code stage preview (public board / TV).
+ *  opts.viewer: a watch-only screen (board, TV). It applies the changed match rows
+ *  that realtime delivers instead of re-reading the whole competition on every
+ *  point, drops its live connection while hidden (frees one of the free plan's
+ *  200 slots) and polls faster only while the live channel is down. Scorer and
+ *  admin screens keep the exact re-read path (no flash-back logic touched). */
+export function useCompetition(code: string | undefined, opts?: { preview?: boolean; viewer?: boolean }) {
+  const viewer = !!opts?.viewer
   const [rawBundle, setBundle] = useState<Bundle | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -31,6 +38,9 @@ export function useCompetition(code: string | undefined, opts?: { preview?: bool
   const waiters = useRef<Array<() => void>>([])
   const lastFull = useRef(0)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  // viewer row patches: match id -> when it was patched. A fetch that STARTED
+  // before a patch must not overwrite that newer row.
+  const patchedAt = useRef(new Map<string, number>())
   const run = useCallback(async (full: boolean): Promise<void> => {
     if (!codeRef.current) return
     if (inflight.current) {
@@ -39,13 +49,29 @@ export function useCompetition(code: string | undefined, opts?: { preview?: bool
     }
     inflight.current = true
     const t0 = Date.now()
-    // pictures are re-read on explicit reloads and every few minutes
+    // full = explicit reload (admin change) or every few minutes; pictures still
+    // come down only for teams whose picture changed (logo_rev)
     const wantFull = full || t0 - lastFull.current > 180000
     try {
       const b = await api.refresh(codeRef.current, { light: !wantFull })
       b.fetched_at = t0
       if (wantFull) lastFull.current = t0
-      setBundle(b); setError(null)
+      if (viewer && patchedAt.current.size) {
+        setBundle(prev => {
+          if (!prev) return b
+          const keep = new Map(prev.matches.map(m => [m.id, m]))
+          const newer = (id: string) => (patchedAt.current.get(id) ?? 0) > t0
+          const matches = b.matches
+            .filter(m => !newer(m.id) || keep.has(m.id))                  // deleted after this read started
+            .map(m => (newer(m.id) ? keep.get(m.id)! : m))
+          const have = new Set(matches.map(m => m.id))
+          for (const m of prev.matches) if (newer(m.id) && !have.has(m.id)) matches.push(m)   // added after it started
+          matches.sort((x, y) => x.sequence - y.sequence)
+          for (const [id, at] of patchedAt.current) if (at <= t0) patchedAt.current.delete(id)
+          return { ...b, matches }
+        })
+      } else setBundle(b)
+      setError(null)
     } catch (e: any) { setError(e.message) }
     finally {
       inflight.current = false
@@ -84,16 +110,27 @@ export function useCompetition(code: string | undefined, opts?: { preview?: bool
   // an iPad left open as the live board), and the socket doesn't always
   // recover on its own. Whenever the page comes back to the foreground or
   // the device regains network, fetch fresh data and rebuild the channel.
-  // While visible, a light poll every 20 s catches anything realtime missed.
+  // While visible, a light poll catches anything realtime missed (see below).
   const [resubscribeKey, setResubscribeKey] = useState(0)
+  const [visible, setVisible] = useState(() => typeof document === 'undefined' || document.visibilityState === 'visible')
+  const liveOk = useRef(false)
+  const lastLiveFetch = useRef(Date.now())
   useEffect(() => {
     const onWake = () => {
-      if (document.visibilityState === 'visible') {
+      const v = document.visibilityState === 'visible'
+      setVisible(v)
+      if (v) {
         reload()
         setResubscribeKey(k => k + 1)
       }
     }
-    const poll = setInterval(() => { if (document.visibilityState === 'visible') refreshLive() }, 20000)
+    // viewers: 60 s while the live channel is healthy, 12 s while it is down
+    // (refused at the connection limit, dropped, reconnecting). Others: 20 s.
+    const poll = setInterval(() => {
+      if (document.visibilityState !== 'visible') return
+      const gap = !viewer ? 20000 : liveOk.current ? 60000 : 12000
+      if (Date.now() - lastLiveFetch.current >= gap - 500) { lastLiveFetch.current = Date.now(); refreshLive() }
+    }, 4000)
     document.addEventListener('visibilitychange', onWake)
     window.addEventListener('online', onWake)
     return () => {
@@ -101,12 +138,48 @@ export function useCompetition(code: string | undefined, opts?: { preview?: bool
       document.removeEventListener('visibilitychange', onWake)
       window.removeEventListener('online', onWake)
     }
-  }, [reload, refreshLive])
+  }, [reload, refreshLive, viewer])
+
+  const onRow = useCallback((c: api.RowChange) => {
+    const now = Date.now()
+    // games added / removed = an admin rebuilt the schedule or draw: re-read once
+    // (team pools and names may have changed with it); score changes never do
+    if (c.type !== 'UPDATE') refreshLive()
+    setBundle(prev => {
+      if (!prev) return prev
+      if (c.type === 'DELETE') {
+        if (!c.oldId) return prev
+        patchedAt.current.set(c.oldId, now)
+        return { ...prev, matches: prev.matches.filter(m => m.id !== c.oldId) }
+      }
+      const row = c.row as Match
+      patchedAt.current.set(row.id, now)
+      const i = prev.matches.findIndex(m => m.id === row.id)
+      const matches = i >= 0
+        ? prev.matches.map((m, k) => (k === i ? { ...m, ...row } : m))
+        : [...prev.matches, row].sort((x, y) => x.sequence - y.sequence)
+      return { ...prev, matches }
+    })
+  }, [refreshLive])
+
+  // viewers hidden for a while give their live connection back (screen locked,
+  // phone in pocket); coming back re-reads and re-subscribes (onWake above)
+  const [parked, setParked] = useState(false)
+  useEffect(() => {
+    if (!viewer) return
+    if (visible) { setParked(false); return }
+    const t = setTimeout(() => setParked(true), 45000)
+    return () => clearTimeout(t)
+  }, [viewer, visible])
 
   useEffect(() => {
-    if (!rawBundle) return
-    return api.subscribe(rawBundle, refreshLive)
-  }, [rawBundle?.competition.id, refreshLive, resubscribeKey])
+    if (!rawBundle || parked) return
+    liveOk.current = false
+    return api.subscribe(rawBundle, () => { lastLiveFetch.current = Date.now(); refreshLive() }, viewer ? {
+      onRow,
+      onStatus: s => { liveOk.current = s === 'live' },
+    } : { onStatus: s => { liveOk.current = s === 'live' } })
+  }, [rawBundle?.competition.id, refreshLive, resubscribeKey, parked, viewer, onRow])
 
   return { bundle, setBundle, error, loading, reload, refreshLive }
 }

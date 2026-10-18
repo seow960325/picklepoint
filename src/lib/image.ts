@@ -164,18 +164,51 @@ function plainScale(file: File, max: number): Promise<string> {
   })
 }
 
+/** Same picture, smaller file: re-encode a PNG data URL as lossless WebP at the
+ *  SAME width and height. Kept only if the decoded result is the same picture
+ *  (identical transparency, colour within 2/255 on any visible pixel); browsers
+ *  that cannot write WebP (older iPhone Safari) simply keep the PNG. */
+export async function sameSizeWebp(png: string): Promise<string> {
+  try {
+    const load = async (src: string) => { const i = new Image(); i.src = src; await i.decode(); return i }
+    const a = await load(png)
+    const W = a.naturalWidth, H = a.naturalHeight
+    const c = document.createElement('canvas'); c.width = W; c.height = H
+    const x = c.getContext('2d'); if (!x) return png
+    x.drawImage(a, 0, 0)
+    const webp = c.toDataURL('image/webp', 1)
+    if (!webp.startsWith('data:image/webp') || webp.length >= png.length) return png
+    const b = await load(webp)
+    if (b.naturalWidth !== W || b.naturalHeight !== H) return png
+    const pa = x.getImageData(0, 0, W, H).data
+    const c2 = document.createElement('canvas'); c2.width = W; c2.height = H
+    const x2 = c2.getContext('2d'); if (!x2) return png
+    x2.drawImage(b, 0, 0)
+    const pb = x2.getImageData(0, 0, W, H).data
+    for (let p = 0; p < pa.length; p += 4) {
+      if (pa[p + 3] !== pb[p + 3]) return png
+      const al = pa[p + 3] / 255
+      for (let k = 0; k < 3; k++) if (Math.abs(pa[p + k] - pb[p + k]) * al > 2) return png
+    }
+    return webp
+  } catch { return png }
+}
+
 /** Cleanup first (transparent background, tight trim); if that fails for any reason
  *  (huge phone photo, odd format, everything erased) fall back to a plain resize so an
- *  upload never ends in "nothing happens". Too-large files are still refused. */
-export async function resizeLogoSafe(file: File, max = 400, dropSpecks = false): Promise<string> {
+ *  upload never ends in "nothing happens". Too-large files are still refused.
+ *  opts.webp (default on): store the same-size lossless WebP when it is the same picture. */
+export async function resizeLogoSafe(file: File, max = 400, dropSpecks = false, opts?: { webp?: boolean }): Promise<string> {
   // the database refuses pictures over 400 000 characters: shrink until it fits (detailed art can be bigger)
   const LIMIT = 330000
   const make = async (m: number) => {
-    try { return await resizeLogoTight(file, m, dropSpecks) }
+    let png: string
+    try { png = await resizeLogoTight(file, m, dropSpecks) }
     catch (e: any) {
       if (e?.message === 'IMAGE_TOO_LARGE') throw e
-      return plainScale(file, m)
+      png = await plainScale(file, m)
     }
+    return opts?.webp === false ? png : sameSizeWebp(png)
   }
   let out = await make(max)
   for (const m of [340, 280, 230, 180, 140]) {

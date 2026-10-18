@@ -41,7 +41,7 @@ const phoneToken = (c: string) => {
 }
 const download = (dataUrl: string, name: string) => {
   const a = document.createElement('a')
-  a.href = dataUrl; a.download = `${name.replace(/[^A-Za-z0-9]+/g, '_') || 'team'}.png`
+  a.href = dataUrl; a.download = `${name.replace(/[^A-Za-z0-9]+/g, '_') || 'team'}.${dataUrl.startsWith('data:image/webp') ? 'webp' : 'png'}`
   document.body.appendChild(a); a.click(); a.remove()
 }
 async function copyText(t: string) {
@@ -120,9 +120,11 @@ export default function Register() {
   }
 
   // the free way: the player made the picture in their own Gemini app
+  const lastFile = useRef<File | null>(null)
   const onOwnPicture = async (file: File | undefined) => {
     if (!file) return
     setErr(null); setBusy('pic')
+    lastFile.current = file
     try { setLogo(await resizeLogoSafe(file, 400, true)) }
     catch (e: any) {
       console.error('picture upload failed', e)
@@ -138,7 +140,15 @@ export default function Register() {
     setErr(null); setBusy('save')
     try {
       const token = mine?.token ?? phoneToken(code)
-      const r = await registerTeam(code, oneWord(p1), oneWord(p2), logo, token, myPin)
+      let pic = logo
+      let r
+      try { r = await registerTeam(code, oneWord(p1), oneWord(p2), pic, token, myPin) }
+      catch (e: any) {
+        // a server not yet updated for WebP pictures: send the same picture as PNG
+        if (e?.message !== 'BAD_LOGO' || !pic.startsWith('data:image/webp') || !lastFile.current) throw e
+        pic = await resizeLogoSafe(lastFile.current, 400, true, { webp: false })
+        r = await registerTeam(code, oneWord(p1), oneWord(p2), pic, token, myPin)
+      }
       const m = { token, name: r.name, pin: myPin }
       writeMine(code, m); writeDraft(code, null); setMine(m); setEditing(false); setLogo(null)
       load()

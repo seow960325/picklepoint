@@ -28,7 +28,7 @@ type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
 
 export default function Board() {
   const { code } = useParams()
-  const { bundle, error, loading, reload } = useCompetition(code, { preview: true })
+  const { bundle, error, loading, reload } = useCompetition(code, { preview: true, viewer: true })
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('live')
   const [tv, setTv] = useState(false)
@@ -298,7 +298,7 @@ function SportGate({ b, sports, onPick }: { b: Bundle; sports: Sport[]; onPick: 
         </div>
         <button onClick={() => onPick('all')}
           className="mt-3 w-full rounded-2xl border border-line py-3 font-display text-base font-bold uppercase tracking-wider text-fg-muted active:bg-surface-2">
-          Show both sports
+          {sports.length > 2 ? 'Show all sports' : 'Show both sports'}
         </button>
         <div className="mt-6 text-center text-xs text-fg-subtle">You can switch any time at the top of the board.</div>
         <div className="mt-4 text-center">
@@ -366,7 +366,7 @@ function SportSwitch({ sports, view, onPick, size = 'md' }: {
                 ? 'flex-col gap-0.5 px-1.5 py-1.5 text-[12px] leading-tight tracking-wide sm:flex-row sm:gap-1.5 sm:whitespace-nowrap sm:px-3 sm:py-2 sm:text-sm sm:tracking-wider lg:text-base'
                 : 'min-h-[40px] gap-1.5 whitespace-nowrap px-3.5 py-2 text-sm tracking-wider'} touch-manipulation ${
               on ? tone : 'text-fg-muted active:bg-surface-2'}`}>
-            {o === 'all' ? 'Both' : <><span className="leading-none"><SportIcon sport={o} /></span><span className="text-center sm:truncate">{SPORT_LABEL[o]}</span></>}
+            {o === 'all' ? (sports.length > 2 ? 'All' : 'Both') : <><span className="leading-none"><SportIcon sport={o} /></span><span className="text-center sm:truncate">{SPORT_LABEL[o]}</span></>}
           </button>
         )
       })}
