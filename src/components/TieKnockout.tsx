@@ -6,7 +6,7 @@ import type { Bundle } from '../lib/types'
 import { teamName, teamLogo, teamSideName } from '../lib/store'
 import { Flag, FlagGlyph, Pill, ShrinkText } from './ui'
 import {
-  koState, semiPlan, finalsPlan, groupEvents, SPORT_ICON, SPORT_LABEL, SPORT_TONE, STAGE_LABEL,
+  koState, semiPlan, finalsPlan, groupEvents, groupStageDone, tieStandings, SPORT_ICON, SPORT_LABEL, SPORT_TONE, STAGE_LABEL,
   type Sport, type Tie, type KoState,
 } from '../lib/multisport'
 
@@ -292,6 +292,44 @@ function TieNode({ b, sport, title, tie, slots, metal, big }: {
   )
 }
 
+/** One-group events: the group table that feeds the semi-finals (top 4 go
+ *  through: 1st v 4th, 2nd v 3rd). Shown above the bracket on the board. */
+function GroupFeed({ b, sport, eventId }: { b: Bundle; sport: Sport; eventId: string }) {
+  const pools = tieStandings(b, eventId)
+  const keys = Object.keys(pools)
+  if (keys.length !== 1) return null
+  const rows = pools[keys[0]]
+  if (rows.length < 4) return null
+  const tone = SPORT_TONE[sport]
+  const done = groupStageDone(b, eventId)
+  const tag = ['SF1', 'SF2', 'SF2', 'SF1']
+  return (
+    <div className="overflow-hidden rounded-xl border border-line">
+      <div className={`flex items-center justify-between gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest ${tone.soft}`}>
+        <span className={tone.text}>Group stage</span>
+        <span className="normal-case tracking-normal text-fg-subtle">
+          {done ? 'top 4 through' : 'top 4 reach the semi-finals · 1st v 4th, 2nd v 3rd'}
+        </span>
+      </div>
+      <div className="grid grid-cols-[1.6rem_minmax(0,1fr)_2.6rem_2.2rem_2.6rem] items-center gap-x-2 px-3 py-1 text-[10px] uppercase tracking-wider text-fg-subtle">
+        <span>#</span><span>Team</span><span className="text-right">W–L</span><span className="text-right">Pts</span><span />
+      </div>
+      <div className="divide-y divide-line/60">
+        {rows.map((r, i) => (
+          <div key={r.team.id}
+            className={`grid grid-cols-[1.6rem_minmax(0,1fr)_2.6rem_2.2rem_2.6rem] items-center gap-x-2 px-3 py-1.5 text-sm ${i === 3 && rows.length > 4 ? 'border-b-2 border-dashed !border-line-strong' : ''}`}>
+            <span className={`text-xs font-bold ${i < 4 ? tone.text : 'text-fg-subtle'}`}>{i + 1}</span>
+            <span className={`truncate ${i < 4 ? 'font-semibold text-fg' : 'text-fg-subtle'}`}>{r.team.name}</span>
+            <span className="tabular text-right text-fg-muted">{r.tieW}–{r.tieL}</span>
+            <span className={`tabular text-right font-bold ${tone.text}`}>{r.pts}</span>
+            <span className="text-right text-[10px] font-bold text-fg-subtle">{i < 4 ? `→ ${tag[i]}` : 'out'}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /** Semi-finals feeding the Final, with the 3rd-place tie under it. Before a
  *  stage is drawn its slots show who would be there (provisional). */
 export function KnockoutBracket({ b, sport, big = false }: { b: Bundle; sport: Sport; big?: boolean }) {
@@ -320,6 +358,8 @@ export function KnockoutBracket({ b, sport, big = false }: { b: Bundle; sport: S
   const cols = big ? 'grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)]' : 'lg:grid-cols-[minmax(0,1fr)_2.5rem_minmax(0,1fr)]'
   const line = big ? 'block' : 'hidden lg:block'
   return (
+    <div className="space-y-4">
+    {!big && gev && <GroupFeed b={b} sport={sport} eventId={gev.id} />}
     <div className={`grid gap-x-0 gap-y-4 ${cols}`}>
       <div className="space-y-4">
         <TieNode b={b} sport={sport} big={big} title={STAGE_LABEL.SF1} tie={k.sf1} slots={sfSlots(0)} />
@@ -343,6 +383,7 @@ export function KnockoutBracket({ b, sport, big = false }: { b: Bundle; sport: S
         <TieNode b={b} sport={sport} big={big} title={STAGE_LABEL['3P']} metal="bronze" tie={k.third}
           slots={later(k.third, fp.third, ['Loser semi-final 1', 'Loser semi-final 2'])} />
       </div>
+    </div>
     </div>
   )
 }

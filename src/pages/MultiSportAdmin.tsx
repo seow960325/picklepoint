@@ -9,7 +9,7 @@ import { validateRules } from '../lib/draw'
 import { Field, Stepper, Choice, Warn, inputFull } from '../components/form'
 import { ScheduleRow, scheduleStatus } from '../components/ScheduleRow'
 import {
-  SPORTS, SPORT_LABEL, SPORT_PRESETS, SPORT_ICON, SPORT_TONE, FINAL_PRESETS, sportOf, buildTieDraw,
+  SPORTS, SPORT_LABEL, SPORT_PRESETS, SPORT_ICON, SPORT_TONE, FINAL_PRESETS, sportOf, buildTieDraw, sheetOrderOf,
   sportBundle, sportsPresent, isCb, groupEvents, finalEventOf, koState, semiPlan, finalsPlan, koGames, koCourtLabel,
   type Sport, type KoGame,
 } from '../lib/multisport'
@@ -157,10 +157,28 @@ export function SportsTab({ bundle, token, run, onAdded }: any) {
 // ---------------------------------------------------------------- schedule
 export function TieScheduleTab({ bundle, ev, token, run }: any) {
   const sport = sportOf(ev)
-  const teams = bundle.teams.filter((t: any) => t.event_id === ev.id)
+  const listed = bundle.teams.filter((t: any) => t.event_id === ev.id)
   const courts = bundle.courts.filter((c: any) => sportOf(c) === sport)
   const mine = bundle.matches.filter((m: any) => m.event_id === ev.id)
   const started = mine.some((m: any) => m.status === 'finished' || m.score_a > 0 || m.score_b > 0)
+  // organiser's badminton sheet: 6 teams in one group, numbered B1..B6
+  const sheet = sport === 'badminton' && listed.length === 6 &&
+    new Set(listed.map((t: any) => t.pool ?? 'A')).size === 1
+  const [bOrder, setBOrder] = useState<string[]>(() =>
+    sheetOrderOf(bundle, ev.id) ?? listed.map((t: any) => t.id))
+  const ordered = sheet && bOrder.length === 6 && bOrder.every(id => listed.some((t: any) => t.id === id))
+    ? bOrder.map(id => listed.find((t: any) => t.id === id))
+    : listed
+  const teams = ordered
+  const current = sheet ? sheetOrderOf(bundle, ev.id) : null
+  const changed = !!current && current.some((id, i) => id !== ordered[i]?.id)
+  const move = (i: number, d: number) => setBOrder(o => {
+    const base = o.length === 6 ? [...o] : listed.map((t: any) => t.id)
+    const j = i + d
+    if (j < 0 || j >= base.length) return base
+    ;[base[i], base[j]] = [base[j], base[i]]
+    return base
+  })
 
   const preview = teams.length >= 2 && courts.length >= 1 && isCb(sport)
     ? buildCbDraw(teams.map((t: any) => ({ name: t.name, pool: t.pool ?? 'A' })), courts.length)
@@ -183,6 +201,28 @@ export function TieScheduleTab({ bundle, ev, token, run }: any) {
           {courts.length} {SPORT_LABEL[sport]} court{courts.length === 1 ? '' : 's'} — {isCb(sport) ? `${preview.length} games` : `${ties} ties, ${preview.length} games`}.
         </div>
       </div>
+      {sheet && (
+        <div className="rounded-xl border border-line bg-surface p-4">
+          <div className="text-sm font-bold">Team numbers on the organiser's sheet</div>
+          <div className="mb-2 text-xs text-fg-subtle">
+            {current ? (changed ? 'Changed — press Regenerate to apply.' : 'The schedule follows this order.') : 'Set the order, then press Regenerate.'}
+          </div>
+          <div className="divide-y divide-line">
+            {ordered.map((t: any, i: number) => (
+              <div key={t.id} className="flex items-center gap-3 py-1.5 text-sm">
+                <span className="w-8 font-display font-bold text-accent">B{i + 1}</span>
+                <span className="min-w-0 flex-1 truncate">{t.name}</span>
+                {!started && (<>
+                  <button disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up"
+                    className="h-8 w-8 rounded-lg border border-line text-fg-muted disabled:opacity-30">↑</button>
+                  <button disabled={i === ordered.length - 1} onClick={() => move(i, 1)} aria-label="Move down"
+                    className="h-8 w-8 rounded-lg border border-line text-fg-muted disabled:opacity-30">↓</button>
+                </>)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {courts.length === 0 && <Warn>This sport has no courts yet.</Warn>}
       {started ? (
         <Warn>Games have already been played, so the schedule is locked.</Warn>
@@ -362,6 +402,16 @@ function SportKnockout({ bundle, sport, token, run }: any) {
     }
   }, `${SPORT_LABEL[sport as Sport]} semi-finals drawn`)
 
+  // badminton (organiser's sheet): 3rd place first on Courts 1-2, the Final once it is decided
+  const thirdFirst = sport === 'badminton'
+  const createThird = () => run(async () => {
+    if (fp.third && !k.third) await api.adminAddTieStage(token, gev.id, '3P', koGames(sb, '3P', team(fp.third[0]), team(fp.third[1])))
+  }, `${SPORT_LABEL[sport as Sport]} 3rd place created`)
+  const createFinalOnly = () => run(async () => {
+    const finalEv = await api.adminTieFinalEvent(token, gev.id, rules)
+    if (!k.final) await api.adminAddTieStage(token, finalEv, 'F',
+      koGames(sb, 'F', team(fp.final![0]), team(fp.final![1]), { bestOf3: bo3 }))
+  }, `${SPORT_LABEL[sport as Sport]} Final created`)
   const createFinals = () => run(async () => {
     const finalEv = await api.adminTieFinalEvent(token, gev.id, rules)
     const third = fp.third && !k.third ? koGames(sb, '3P', team(fp.third[0]), team(fp.third[1])) : []
@@ -438,7 +488,10 @@ function SportKnockout({ bundle, sport, token, run }: any) {
           <>
             {k.third && row('3rd place', name(k.third.a), name(k.third.b), `${k.third.aGames}–${k.third.bGames}`)}
             {k.final && row('Final', name(k.final.a), name(k.final.b), `${k.final.aGames}–${k.final.bGames}`)}
-            {!started(k.final) && !started(k.third) && (
+            {thirdFirst && k.final && !started(k.final) ? (
+              <button onClick={() => run(() => api.adminClearTieStage(token, gev.id, 'F'), 'Final removed')}
+                className="mt-1 text-xs text-fg-subtle underline underline-offset-4">undo final</button>
+            ) : !started(k.final) && !started(k.third) && (
               <button onClick={() => run(async () => {
                 await api.adminClearTieStage(token, gev.id, '3P')
                 await api.adminClearTieStage(token, gev.id, 'F')
@@ -493,7 +546,28 @@ function SportKnockout({ bundle, sport, token, run }: any) {
           )}
         </div>
 
-        {(!k.final || !k.third) && fp.ready && (
+        {thirdFirst ? (
+          <>
+            {!k.third && fp.ready && (
+              <button onClick={createThird}
+                className="mt-3 rounded-xl bg-brand px-5 py-2.5 font-display font-bold text-brand-fg">
+                CREATE 3RD PLACE
+              </button>
+            )}
+            {k.third && !k.final && fp.ready && (
+              <>
+                <button disabled={!!bad || !k.third.winner} onClick={createFinalOnly}
+                  className="mt-3 rounded-xl bg-brand px-5 py-2.5 font-display font-bold text-brand-fg disabled:opacity-30">
+                  CREATE FINAL
+                </button>
+                {!k.third.winner && <div className="mt-1 text-xs text-fg-subtle">The Final opens once 3rd place is decided (Courts 1–2 are in use).</div>}
+              </>
+            )}
+            <div className="mt-2 text-xs text-fg-subtle">
+              3rd place and Final: MD1 Court 1 + XD Court 2 together; MD2 on Court 1 only at 1–1.
+            </div>
+          </>
+        ) : (!k.final || !k.third) && fp.ready && (
           <button disabled={!!bad} onClick={createFinals}
             className="mt-3 rounded-xl bg-brand px-5 py-2.5 font-display font-bold text-brand-fg disabled:opacity-30">
             CREATE FINAL &amp; 3RD PLACE

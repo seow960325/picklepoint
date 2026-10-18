@@ -282,3 +282,35 @@ test('badminton sheet on the sheet court layout: tie 1 on C1-C3, tie 2 on C4-C6'
   assert.deepEqual(['MD1', 'XD', 'MD2'].map(g => on(0, g)), [0, 1, 2])
   assert.deepEqual(['MD1', 'XD', 'MD2'].map(g => on(1, g)), [3, 4, 5])
 })
+
+test('badminton 3rd place / Final: MD1 Court 1, XD Court 2, MD2 back on Court 1', () => {
+  const mk = (n, grp) => ({ id: 'c' + n, number: n, game_group: grp, sport: 'badminton' })
+  const sb = {
+    events: [{ id: 'e', sport: 'badminton' }],
+    courts: [mk(1, 'MD1'), mk(2, 'XD'), mk(3, 'MD2'), mk(4, 'MD1'), mk(5, 'XD'), mk(6, 'MD2')],
+    matches: [{ id: 'x', court_id: 'c1', status: 'scheduled' }, { id: 'y', court_id: 'c1', status: 'scheduled' }],
+  }
+  const A = { id: 'a', roster: 6 }, B = { id: 'b', roster: 6 }
+  for (const [stage, opts] of [['3P', {}], ['F', { bestOf3: true }]]) {
+    const g = koGames(sb, stage, A, B, opts)
+    const at = d => [...new Set(g.filter(x => x.game === d).map(x => x.court))]
+    assert.deepEqual(at('MD1'), ['c1'])
+    assert.deepEqual(at('XD'), ['c2'])
+    assert.deepEqual(at('MD2'), ['c1'])
+    // MD2 queued after MD1 on Court 1
+    const seqOf = d => Math.min(...g.filter(x => x.game === d).map(x => x.seq))
+    assert.ok(seqOf('MD2') > seqOf('MD1'))
+  }
+})
+
+import { sheetOrderOf } from '../src/lib/multisport.ts'
+test('B1-B6 read back from a sheet schedule (any team order)', () => {
+  const ids = ['t3', 't0', 't5', 't1', 't4', 't2']          // B1..B6
+  const teams = ids.map(id => ({ id, event_id: 'e', name: id, pool: 'A', roster: 6 }))
+  const d = buildTieDraw(teams.map(t => ({ name: t.name, pool: 'A', roster: 6 })), ['MD1', 'XD', 'MD2', 'MD1', 'XD', 'MD2'], { sheet: true })
+  const matches = d.map((g, i) => ({ id: 'm' + i, event_id: 'e', tie_id: 'k' + g.tie, sequence: g.sequence,
+    team_a_id: ids[g.aIdx], team_b_id: ids[g.bIdx], score_a: 0, score_b: 0, status: 'scheduled', game_label: g.game, round: g.label }))
+  const b = { events: [{ id: 'e', sport: 'badminton' }], teams, matches, courts: [] }
+  assert.deepEqual(sheetOrderOf(b, 'e'), ids)
+  assert.equal(sheetOrderOf({ ...b, matches: matches.slice(3) }, 'e'), null)
+})

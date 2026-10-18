@@ -67,6 +67,25 @@ export const BADMINTON_SIX_SHEET: Array<Array<[number, number]>> = [
   [[1, 4], [2, 3]], [[0, 4], [2, 5]], [[0, 3], [1, 5]], [[2, 4]],
 ]
 
+/** Reads B1..B6 back from a schedule built from the sheet: team ids in B order,
+ *  or null when the event's group games do not follow the sheet. */
+export function sheetOrderOf(b: Bundle, eventId: string): string[] | null {
+  const ties = tiesOf(b, eventId).filter(t => !t.stage)
+  const flat = BADMINTON_SIX_SHEET.flat()
+  if (ties.length !== flat.length) return null
+  const order: Array<string | null> = Array(6).fill(null)
+  for (let k = 0; k < flat.length; k++) {
+    const [ia, ib] = flat[k]
+    const { a, b: bb } = ties[k]
+    if (!a || !bb) return null
+    for (const [i, id] of [[ia, a], [ib, bb]] as Array<[number, string]>) {
+      if (order[i] == null) order[i] = id
+      else if (order[i] !== id) return null
+    }
+  }
+  return new Set(order).size === 6 && order.every(Boolean) ? order as string[] : null
+}
+
 function sheetFixtures(teams: TieDraftTeam[]): DraftMatch[] {
   const pool = teams[0]?.pool || 'A'
   const out: DraftMatch[] = []
@@ -343,11 +362,14 @@ export function koGames(
     order.splice(order.indexOf('XD'), 1)
     order.splice(order.indexOf('MD2'), 0, 'XD')
   }
-  for (const g of order) {
+  order.forEach((g, gi) => {
     const mine = reduced ? [] : courts.filter(c => c.game_group === gameGroup(g))
     const pool = mine.length ? mine : courts
-    if (!pool.length) continue
-    const court = pool.reduce((best, c) => (load.get(c.id)! < load.get(best.id)! ? c : best), pool[0])
+    if (!pool.length) return
+    // reduced courts follow the sheet: 1st discipline Court 1, 2nd Court 2, 3rd back on Court 1
+    const court = reduced
+      ? courts[gi % courts.length]
+      : pool.reduce((best, c) => (load.get(c.id)! < load.get(best.id)! ? c : best), pool[0])
     const sets = opts.bestOf3 ? [1, 2, 3] : [null]
     for (const s of sets) {
       out.push({
@@ -356,7 +378,7 @@ export function koGames(
       })
       load.set(court.id, load.get(court.id)! + 1)
     }
-  }
+  })
   return out
 }
 
