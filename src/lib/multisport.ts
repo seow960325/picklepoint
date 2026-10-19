@@ -234,9 +234,14 @@ export interface TieRow {
   pf: number; pa: number
 }
 
+/** Sweep bonus (+1 for winning every game of a tie). Badminton (YC2626 organiser):
+ *  1 point per game won only, so a 3-0 is 3 points. */
+export const sweepBonus = (sport?: string | null): boolean => sport !== 'badminton'
+
 /** Pool table: points, then tie wins, then game difference, then point difference.
  *  Knockout ties never count here. */
 export function tieStandings(b: Bundle, eventId: string): Record<string, TieRow[]> {
+  const bonusOn = sweepBonus(b.events.find(e => e.id === eventId)?.sport)
   const rows = new Map<string, TieRow>()
   b.teams.filter(t => t.event_id === eventId).forEach(team => rows.set(team.id, {
     team, ties: 0, tieW: 0, tieL: 0, gw: 0, gl: 0, bonus: 0, pts: 0, pf: 0, pa: 0,
@@ -256,8 +261,8 @@ export function tieStandings(b: Bundle, eventId: string): Record<string, TieRow[
     A.pts += t.aGames; B.pts += t.bGames
     if (t.done) {
       A.ties++; B.ties++
-      if (t.aGames === t.units.length) { A.bonus++; A.pts++ }
-      if (t.bGames === t.units.length) { B.bonus++; B.pts++ }
+      if (bonusOn && t.aGames === t.units.length) { A.bonus++; A.pts++ }
+      if (bonusOn && t.bGames === t.units.length) { B.bonus++; B.pts++ }
       if (t.aPts > t.bPts) { A.tieW++; B.tieL++ } else if (t.bPts > t.aPts) { B.tieW++; A.tieL++ }
     }
   }

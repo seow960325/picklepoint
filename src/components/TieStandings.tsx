@@ -4,7 +4,7 @@ import { SportIcon } from './SportIcon'
 import { teamLogo, teamSideName } from '../lib/store'
 import { Emblem } from './ui'
 import { CbStandings } from './CaptainBall'
-import { sportOf, SPORTS, SPORT_ICON, SPORT_LABEL, SPORT_TONE, tieStandings, groupEvents, groupStageDone } from '../lib/multisport'
+import { sportOf, SPORTS, SPORT_ICON, SPORT_LABEL, SPORT_TONE, tieStandings, groupEvents, groupStageDone, sweepBonus } from '../lib/multisport'
 
 /** Multi-sport competitions only: per-sport group tables (tie points).
  *  One sport -> its groups side by side; both sports -> one column each.
@@ -37,7 +37,7 @@ export default function TieStandings({ b, big = false }: { b: Bundle; big?: bool
                   <div className={`flex items-center justify-between gap-2 px-3 py-1.5 text-xs font-bold uppercase tracking-widest ${tone.soft}`}>
                     <span className={`shrink-0 ${tone.text}`}>Group {pool}</span>
                     <span className="min-w-0 truncate whitespace-nowrap text-[10px] font-semibold normal-case tracking-normal text-fg-subtle">
-                      {qual ? (done ? 'semi-finalists decided' : `top ${qual} reach the semi-finals`) : 'win a game +1 · sweep +1'}
+                      {qual ? (done ? 'semi-finalists decided' : `top ${qual} reach the semi-finals`) : sweepBonus(sport) ? 'win a game +1 · sweep +1' : 'win a game +1'}
                     </span>
                   </div>
                   <table className={`w-full table-fixed ${big ? 'text-lg' : 'text-sm'}`}>

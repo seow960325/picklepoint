@@ -314,3 +314,13 @@ test('B1-B6 read back from a sheet schedule (any team order)', () => {
   assert.deepEqual(sheetOrderOf(b, 'e'), ids)
   assert.equal(sheetOrderOf({ ...b, matches: matches.slice(3) }, 'e'), null)
 })
+
+test('badminton group points: 1 per game won, no sweep bonus (3-0 = 3 pts); pickleball keeps the bonus', () => {
+  const teams = [T('a', 'A', 'A'), T('b', 'B', 'A')]
+  const games = [M('1', 't', 1, 'a', 'b', 21, 5, 'finished', 'MD1'), M('2', 't', 2, 'a', 'b', 21, 5, 'finished', 'MD2'), M('3', 't', 3, 'a', 'b', 21, 5, 'finished', 'XD')]
+  const bm = { ...bundle(teams, games), events: [{ id: 'e', sport: 'badminton' }] }
+  const rb = tieStandings(bm, 'e').A
+  assert.equal(rb[0].pts, 3); assert.equal(rb[0].bonus, 0); assert.equal(rb[0].tieW, 1)
+  const pb = { ...bundle(teams, games), events: [{ id: 'e', sport: 'pickleball' }] }
+  assert.equal(tieStandings(pb, 'e').A[0].pts, 4)
+})

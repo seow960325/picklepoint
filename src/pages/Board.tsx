@@ -16,6 +16,7 @@ import {
   isMultiSport, sportBundle, sportsPresent, SPORT_ICON, SPORT_LABEL, SPORT_TONE,
   parseSportView, readSportView, saveSportView, tiesOf, tieTitle, tieRoundNo, roundTag, koState, koCourtLabel,
   type Sport, type SportView, type Tie,
+  sweepBonus,
 } from '../lib/multisport'
 import { CbLive, CbMatches, CbStandings } from '../components/CaptainBall'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide } from '../components/TieKnockout'
@@ -727,7 +728,7 @@ function TieCard({ b, t, code, sport }: { b: Bundle; t: Tie; code: string; sport
   const started = live || t.games.some(g => g.status === 'finished')
   const aWin = t.stage ? t.winner === t.a && !!t.winner : t.done && t.aPts > t.bPts
   const bWin = t.stage ? t.winner === t.b && !!t.winner : t.done && t.bPts > t.aPts
-  const sweep = !t.stage && t.done && (t.aGames === t.units.length || t.bGames === t.units.length)
+  const sweep = sweepBonus(sport) && !t.stage && t.done && (t.aGames === t.units.length || t.bGames === t.units.length)
   const court = (id: string | null) => {
     const ct = b.courts.find(c => c.id === id)
     return ct ? (ct.label || `Court ${ct.number}`) : '—'
