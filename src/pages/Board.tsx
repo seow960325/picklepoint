@@ -16,7 +16,7 @@ import {
   isMultiSport, sportBundle, sportsPresent, SPORT_ICON, SPORT_LABEL, SPORT_TONE,
   parseSportView, readSportView, saveSportView, tiesOf, tieTitle, tieRoundNo, roundTag, koState, koCourtLabel, singlePool,
   type Sport, type SportView, type Tie,
-  sweepBonus,
+  sweepBonus, sheetOrderOf,
 } from '../lib/multisport'
 import { CbLive, CbMatches, CbStandings } from '../components/CaptainBall'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide } from '../components/TieKnockout'
@@ -686,6 +686,10 @@ function SportTies({ b, sport, code, banner, wide }: {
   })
   rounds.sort((x, y) => (x[0] || 99) - (y[0] || 99))
   const done = ties.filter(t => t.done).reverse()
+  // organiser's B1–B6 numbers (only when the schedule follows the sheet) so players can match the printed grid
+  const bnum: Record<string, number> = {}
+  b.events.forEach(e => sheetOrderOf(b, e.id)?.forEach((id, i) => { bnum[id] = i + 1 }))
+  const hasB = Object.keys(bnum).length > 0
   const head = (txt: string) => (
     <div className="mb-2 px-1 font-display text-base font-bold uppercase tracking-widest text-fg-muted">{txt}</div>
   )
@@ -700,20 +704,27 @@ function SportTies({ b, sport, code, banner, wide }: {
           {live.length > 0 && (
             <div>
               {head(`Now playing · ${live.length}`)}
-              <FillGrid className="gap-2">{live.map(t => <TieCard key={t.id} b={b} t={t} code={code} sport={sport} />)}</FillGrid>
+              <FillGrid className="gap-2">{live.map(t => <TieCard key={t.id} b={b} t={t} code={code} sport={sport} bnum={hasB ? bnum : undefined} />)}</FillGrid>
             </div>
           )}
           {rounds.length === 0 && live.length === 0 && <div>{head('Up next')}{empty('Every tie has been played.')}</div>}
-          {rounds.map(([r, list]) => (
-            <div key={r}>
-              {head(`${r ? `Round ${r}` : 'Up next'} · ${list.length} to play`)}
-              <FillGrid className="gap-2">{list.map(t => <TieCard key={t.id} b={b} t={t} code={code} sport={sport} />)}</FillGrid>
-            </div>
-          ))}
+          {rounds.map(([r, list], i) => {
+            const cards = <FillGrid className="gap-2">{list.map(t => <TieCard key={t.id} b={b} t={t} code={code} sport={sport} bnum={hasB ? bnum : undefined} />)}</FillGrid>
+            const title = `${i === 0 ? 'Up next · ' : ''}${r ? `Round ${r}` : 'Next'} · ${list.length} to play`
+            // only the very next round is open; later rounds fold away so "what is next" stays obvious
+            return i === 0 || rounds.length <= 2 ? (
+              <div key={r}>{head(title)}{cards}</div>
+            ) : (
+              <details key={r} className="group rounded-xl border border-line/60 px-3 py-2">
+                <summary className="cursor-pointer font-display text-sm font-bold uppercase tracking-widest text-fg-subtle">{title}</summary>
+                <div className="mt-2">{cards}</div>
+              </details>
+            )
+          })}
           {done.length > 0 && (
             <div>
               {head('Results')}
-              <FillGrid className="gap-2">{done.map(t => <TieCard key={t.id} b={b} t={t} code={code} sport={sport} />)}</FillGrid>
+              <FillGrid className="gap-2">{done.map(t => <TieCard key={t.id} b={b} t={t} code={code} sport={sport} bnum={hasB ? bnum : undefined} />)}</FillGrid>
             </div>
           )}
         </div>
@@ -722,7 +733,7 @@ function SportTies({ b, sport, code, banner, wide }: {
   )
 }
 
-function TieCard({ b, t, code, sport }: { b: Bundle; t: Tie; code: string; sport: Sport }) {
+function TieCard({ b, t, code, sport, bnum }: { b: Bundle; t: Tie; code: string; sport: Sport; bnum?: Record<string, number> }) {
   const tone = SPORT_TONE[sport]
   const live = t.games.some(g => g.status === 'live')
   const started = live || t.games.some(g => g.status === 'finished')
@@ -731,13 +742,21 @@ function TieCard({ b, t, code, sport }: { b: Bundle; t: Tie; code: string; sport
   const sweep = sweepBonus(sport) && !t.stage && t.done && (t.aGames === t.units.length || t.bGames === t.units.length)
   const court = (id: string | null) => {
     const ct = b.courts.find(c => c.id === id)
-    return ct ? (ct.label || `Court ${ct.number}`) : '—'
+    if (!ct) return '—'
+    // sheet layout: "C1" like the organiser's grid instead of "Badminton 1"
+    const n = /(\d+)\s*$/.exec(ct.label || '')?.[1]
+    return bnum && n ? `C${n}` : (ct.label || `Court ${ct.number}`)
   }
+  const bTag = (id: string | null) => bnum && id && bnum[id] ? (
+    <span className={`shrink-0 rounded px-1 font-display text-[11px] font-bold ${tone.soft} ${tone.text}`}>B{bnum[id]}</span>
+  ) : null
   const side = (id: string | null, win: boolean, right: boolean) => (
     <span className={`flex min-w-0 items-center gap-1.5 justify-center ${
       win ? 'font-bold text-fg' : t.done ? 'text-fg-muted' : 'text-fg'}`}>
       {right && <span className="truncate text-center">{teamName(b, id)}</span>}
+      {right && bTag(id)}
       <Emblem logo={teamLogo(b, id)} flagName={teamSideName(b, id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
+      {!right && bTag(id)}
       {!right && <span className="truncate">{teamName(b, id)}</span>}
     </span>
   )
