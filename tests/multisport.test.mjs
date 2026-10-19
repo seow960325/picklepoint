@@ -324,3 +324,15 @@ test('badminton group points: 1 per game won, no sweep bonus (3-0 = 3 pts); pick
   const pb = { ...bundle(teams, games), events: [{ id: 'e', sport: 'pickleball' }] }
   assert.equal(tieStandings(pb, 'e').A[0].pts, 4)
 })
+
+import { singlePool, tieStage, roundTag } from '../src/lib/multisport.ts'
+test('one group: the word "Group" and the pool letter are dropped; two groups keep them', () => {
+  const one = bundle([T('a', 'A', 'A'), T('b', 'B', 'A')], [])
+  const two = bundle([T('a', 'A', 'A'), T('b', 'B', 'B')], [])
+  assert.equal(singlePool(one, 'e'), true)
+  assert.equal(singlePool(two, 'e'), false)
+  assert.equal(tieStage('A · R3 · MD1', true), 'Round 3')
+  assert.equal(tieStage('A · R3 · MD1', false), 'Group A · Round 3')
+  assert.equal(roundTag('A · R2 · MD1', true), 'R2')
+  assert.equal(roundTag('A · R2 · MD1', false), 'A·R2')
+})

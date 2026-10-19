@@ -306,7 +306,7 @@ function GroupFeed({ b, sport, eventId }: { b: Bundle; sport: Sport; eventId: st
   return (
     <div className="overflow-hidden rounded-xl border border-line">
       <div className={`flex items-center justify-between gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest ${tone.soft}`}>
-        <span className={tone.text}>Group stage</span>
+        <span className={tone.text}>Round robin</span>
         <span className="normal-case tracking-normal text-fg-subtle">
           {done ? 'top 4 through' : 'top 4 reach the semi-finals · 1st v 4th, 2nd v 3rd'}
         </span>

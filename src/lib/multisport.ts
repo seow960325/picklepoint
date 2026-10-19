@@ -472,17 +472,22 @@ export function saveSportView(code: string, v: SportView) {
   try { localStorage.setItem(viewKey(code), v) } catch { /* private mode */ }
 }
 
-/** "A · R1 · MD1" -> "Group A · Round 1" */
-export function tieStage(round?: string | null): string {
+/** True when an event's teams are all in one group — then "Group A" means nothing and is not shown. */
+export function singlePool(b: Bundle, eventId: string): boolean {
+  return new Set(b.teams.filter(t => t.event_id === eventId).map(t => t.pool ?? 'A')).size === 1
+}
+
+/** "A · R1 · MD1" -> "Group A · Round 1" ("Round 1" when there is only one group). */
+export function tieStage(round?: string | null, single = false): string {
   const p = (round ?? '').split(' · ')
-  if (p.length >= 2 && /^R\d+$/.test(p[1])) return `Group ${p[0]} · Round ${p[1].slice(1)}`
+  if (p.length >= 2 && /^R\d+$/.test(p[1])) return single ? `Round ${p[1].slice(1)}` : `Group ${p[0]} · Round ${p[1].slice(1)}`
   return round ?? ''
 }
 
-/** "A · R2 · MD1" -> "A·R2" (pool + round, for compact queue rows); '' when not a round label. */
-export function roundTag(round?: string | null): string {
+/** "A · R2 · MD1" -> "A·R2" (pool + round, for compact queue rows; "R2" with one group); '' when not a round label. */
+export function roundTag(round?: string | null, single = false): string {
   const p = (round ?? '').split(' · ')
-  return p.length >= 2 && /^R\d+$/.test(p[1]) ? `${p[0]}·${p[1]}` : ''
+  return p.length >= 2 && /^R\d+$/.test(p[1]) ? (single ? p[1] : `${p[0]}·${p[1]}`) : ''
 }
 
 /** Round number of a group tie (1, 2, 3…); 0 when it has none (knockout / unlabelled). */
@@ -492,7 +497,7 @@ export function tieRoundNo(t: Tie): number {
 }
 
 /** Heading of a tie card: "Semi-final 1" / "Final" / "Group A · Round 2". */
-export const tieTitle = (t: Tie): string => t.stage ? STAGE_LABEL[t.stage] : tieStage(t.games[0]?.round)
+export const tieTitle = (t: Tie, single = false): string => t.stage ? STAGE_LABEL[t.stage] : tieStage(t.games[0]?.round, single)
 
 /** Court-art label for a knockout game, e.g. "FINAL · MD1 · G2"; undefined otherwise. */
 export function koCourtLabel(m: Match): string | undefined {

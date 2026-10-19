@@ -14,7 +14,7 @@ import { fullscreenSupported } from '../lib/fullscreen'
 import TieStandings from '../components/TieStandings'
 import {
   isMultiSport, sportBundle, sportsPresent, SPORT_ICON, SPORT_LABEL, SPORT_TONE,
-  parseSportView, readSportView, saveSportView, tiesOf, tieTitle, tieRoundNo, roundTag, koState, koCourtLabel,
+  parseSportView, readSportView, saveSportView, tiesOf, tieTitle, tieRoundNo, roundTag, koState, koCourtLabel, singlePool,
   type Sport, type SportView, type Tie,
   sweepBonus,
 } from '../lib/multisport'
@@ -481,7 +481,7 @@ function NextTies({ b, n = 4 }: { b: Bundle; n?: number }) {
               </span>
             </div>
             <div className="mt-0.5 text-center text-[10px] uppercase tracking-wider text-fg-subtle">
-              {tieTitle(t)} · {t.units.map(u => u.label).join(' · ')}
+              {tieTitle(t, singlePool(b, t.games[0]?.event_id))} · {t.units.map(u => u.label).join(' · ')}
             </div>
           </div>
         ))}
@@ -746,7 +746,7 @@ function TieCard({ b, t, code, sport }: { b: Bundle; t: Tie; code: string; sport
       t.stage === 'F' ? 'border-[#c99a3c]' : live ? tone.border : 'border-line'}`}>
       <div className={`flex items-center justify-between gap-2 px-3 pt-2 text-xs font-bold uppercase tracking-widest ${
         t.stage === 'F' ? 'font-cer text-gold' : t.stage ? tone.text : 'text-fg-subtle'}`}>
-        <span className="truncate">{tieTitle(t)}</span>
+        <span className="truncate">{tieTitle(t, singlePool(b, t.games[0]?.event_id))}</span>
         {live ? <Pill tone="live">● live</Pill> : t.done ? <Pill tone="done">final</Pill> : null}
       </div>
       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 py-2 text-sm">
@@ -892,7 +892,7 @@ function CourtUpList({ b, courtId, tv }: { b: Bundle; courtId: string; tv: boole
     .sort((x, y) => x.sequence - y.sequence)
   const ups = tv ? all.slice(0, 3) : all
   const fl = tv ? 'h-6 w-6' : 'h-5 w-5 lg:h-6 lg:w-6'
-  const tagOf = (m: Match, i: number) => (mc ? roundTag(m.round) : '') || (m.game_label ?? String(i + 1))
+  const tagOf = (m: Match, i: number) => (mc ? roundTag(m.round, singlePool(b, m.event_id)) : '') || (m.game_label ?? String(i + 1))
   return (
     <div className="mt-3 border-t border-line pt-2 lg:mt-4">
       <div className="mb-1 flex items-baseline justify-between gap-2">

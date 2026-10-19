@@ -34,8 +34,8 @@ export default function TieStandings({ b, big = false }: { b: Bundle; big?: bool
             <FillGrid className="gap-3">
               {Object.keys(pools).sort().map(pool => (
                 <div key={pool} className="overflow-hidden rounded-xl border border-line">
-                  <div className={`flex items-center justify-between gap-2 px-3 py-1.5 text-xs font-bold uppercase tracking-widest ${tone.soft}`}>
-                    <span className={`shrink-0 ${tone.text}`}>Group {pool}</span>
+                  <div className={`flex items-center ${nPools > 1 ? 'justify-between' : 'justify-start'} gap-2 px-3 py-1.5 text-xs font-bold uppercase tracking-widest ${tone.soft}`}>
+                    {nPools > 1 ? <span className={`shrink-0 ${tone.text}`}>Group {pool}</span> : <span />}
                     <span className="min-w-0 truncate whitespace-nowrap text-[10px] font-semibold normal-case tracking-normal text-fg-subtle">
                       {qual ? (done ? 'semi-finalists decided' : `top ${qual} reach the semi-finals`) : sweepBonus(sport) ? 'win a game +1 · sweep +1' : 'win a game +1'}
                     </span>
