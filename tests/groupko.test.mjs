@@ -184,3 +184,16 @@ test('byes fall to the top seeds and never collide in the next round', () => {
   pairs.forEach((p, i) => { if (p[1] == null) qfOf.push(Math.floor(i / 2)) })
   assert.equal(new Set(qfOf).size, 4, 'two bye seeds were drawn into the same quarter-final')
 })
+
+// ---- 6-team format: 2 groups of 3, all advance, group winners bye to SF
+import { validateGroupKo as _v6, seedBracket as _s6, buildGroupKoDraw as _b6 } from '../src/lib/draw.ts'
+test('six-team playoff: valid, seeds A1/B1 to semis, playoff = A3 v B2 and B3 v A2', () => {
+  assert.equal(_v6(6, 3, 3), null)
+  assert.notEqual(_v6(9, 3, 3), null)
+  assert.deepEqual(_s6([['A1','A2','A3'],['B1','B2','B3']], 8),
+    [['A1', null], ['B2', 'A3'], ['B1', null], ['A2', 'B3']])
+  const d = _b6(['a','b','c','d','e','f'], 2, { groupSize: 3, advancePerGroup: 3 })
+  assert.equal(d.groupMatches.length, 6)
+  assert.equal(d.byes, 2)
+  assert.equal(d.bracket.filter(m => m.round === 'Playoff').length, 4)
+})

@@ -274,7 +274,7 @@ export function koShort(b: Bundle, m: Match): string {
     .sort((x, y) => x.sequence - y.sequence)
   const i = same.findIndex(x => x.id === m.id) + 1
   const rn = /^Round of (\d+)$/.exec(m.round ?? '')
-  const tag = m.round === 'Quarter-final' ? 'QF' : m.round === 'Semi-final' ? 'SF' : rn ? `R${rn[1]}-` : (m.round ?? 'R')
+  const tag = m.round === 'Quarter-final' ? 'QF' : m.round === 'Semi-final' ? 'SF' : m.round === 'Playoff' ? 'PO' : rn ? `R${rn[1]}-` : (m.round ?? 'R')
   return `${tag}${i}`
 }
 

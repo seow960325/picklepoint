@@ -419,7 +419,7 @@ export default function NewCompetition() {
                   <Stepper value={groupSize} min={3} max={8} onChange={setGroupSize} />
                 </Field>
                 <Field label="Advance">
-                  <Stepper value={advancePerGroup} min={1} max={Math.max(1, groupSize - 1)}
+                  <Stepper value={advancePerGroup} min={1} max={koTeamCount === 6 && groupSize === 3 ? 3 : Math.max(1, groupSize - 1)}
                     onChange={setAdvancePerGroup} />
                 </Field>
                 <Field label="3rd place">

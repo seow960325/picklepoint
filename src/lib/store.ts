@@ -264,8 +264,16 @@ export function standings(b: Bundle, eventId: string): Record<string, Standing[]
   const ev = b.events.find(e => e.id === eventId)
   for (const p of Object.keys(byPool)) {
     if (ev?.tiebreak === 'diff') byPool[p] = rankByDiff(byPool[p], done)
-    else byPool[p].sort((a, z) =>
-      z.won - a.won || h2h(a.team.id, z.team.id) || z.diff - a.diff || z.pf - a.pf)
+    else {
+      // head-to-head only settles a tie between exactly two teams; with three
+      // level teams (a 1-1-1 cycle) it is circular, so go straight to diff
+      const level = new Map<number, number>()
+      byPool[p].forEach(r => level.set(r.won, (level.get(r.won) ?? 0) + 1))
+      byPool[p].sort((a, z) =>
+        z.won - a.won
+        || (level.get(a.won) === 2 ? h2h(a.team.id, z.team.id) : 0)
+        || z.diff - a.diff || z.pf - a.pf)
+    }
   }
   return byPool
 }

@@ -228,7 +228,10 @@ export function validateGroupKo(
   if (groupCount > GROUP_LETTERS.length) return 'Too many groups — 26 is the maximum.'
   const smallest = Math.floor(teamCount / groupCount)
   if (advancePerGroup < 1) return 'At least one team per group must advance.'
-  if (advancePerGroup >= smallest)
+  // 2 groups of 3 where everyone advances = the 6-team playoff format
+  // (group winners get a bye to the semi-finals, the rest play a Playoff round)
+  const sixTeam = groupCount === 2 && smallest === 3 && advancePerGroup === 3
+  if (advancePerGroup >= smallest && !sixTeam)
     return `Only ${smallest} teams in the smallest group — advancing ${advancePerGroup} would qualify everyone.`
   if (groupCount * advancePerGroup < 2) return 'The bracket needs at least 2 qualifiers.'
   return null
@@ -254,6 +257,7 @@ export function drawGroups(
 export function buildBracketSkeleton(
   bracketSize: number, courtCount: number, startSequence: number,
   thirdPlacePlayoff = true,
+  qualifiers = bracketSize,
 ): DraftKoMatch[] {
   const out: DraftKoMatch[] = []
   let seq = startSequence
@@ -265,7 +269,9 @@ export function buildBracketSkeleton(
       const isFinal = size === 2
       out.push({
         key: `KO-${size}-${j}`,
-        round: koRoundName(size),
+        // 6 qualifiers in an 8-slot bracket: the first round is a "Playoff"
+        // (two games, group winners have a bye), not quarter-finals
+        round: size === 8 && qualifiers === 6 ? 'Playoff' : koRoundName(size),
         teamsInRound: size,
         nextKey: isFinal ? null : `KO-${size / 2}-${Math.floor(j / 2)}`,
         nextSlot: isFinal ? null : (j % 2 === 0 ? 'a' : 'b'),
@@ -306,7 +312,7 @@ export function buildGroupKoDraw(
   const qualifiers = groupCount * advancePerGroup
   const bracketSize = nextPowerOfTwo(qualifiers)
   const bracket = buildBracketSkeleton(
-    bracketSize, courtCount, groupMatches.length + 1, thirdPlacePlayoff,
+    bracketSize, courtCount, groupMatches.length + 1, thirdPlacePlayoff, qualifiers,
   )
 
   return {
