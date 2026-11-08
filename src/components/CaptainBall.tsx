@@ -1,6 +1,7 @@
 /** Captain ball (multi-sport, migration 0031): the basketball-style
  *  scoreboard, the round-robin table, the games list and the admin rules
  *  panel. Only rendered for events whose sport is 'captainball'. */
+import { SportIcon } from './SportIcon'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import FillGrid from './FillGrid'
 import { Link } from 'react-router-dom'
@@ -358,7 +359,7 @@ export function CbStandings({ b, ev, big = false, heading = false }: {
     <section className="min-w-0 space-y-3">
       {heading && (
         <h2 className={`mb-3 flex items-center gap-2 font-display text-xl font-bold uppercase tracking-widest ${tone}`}>
-          <span>🏐</span><span>{ev.name || 'Captain Ball'}</span>
+          <SportIcon sport="captainball" /><span>{ev.name || 'Captain Ball'}</span>
         </h2>
       )}
       {grouped

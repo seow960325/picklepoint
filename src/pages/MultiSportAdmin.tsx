@@ -618,7 +618,7 @@ function CbKnockoutAdmin({ bundle, token, run }: any) {
   const canUndo = last.length > 0 && undoStages.every(s => !started(s))
   return (
     <section className="space-y-3 rounded-xl border border-[#fb923c]/40 bg-surface p-4">
-      <div className="font-display text-xl font-bold uppercase tracking-widest text-[#fdba74]">🏐 Captain Ball</div>
+      <div className="font-display text-xl font-bold uppercase tracking-widest text-[#fdba74]"><SportIcon sport="captainball" /> Captain Ball</div>
       <p className="text-sm text-fg-muted">
         Group winners go straight to the semi-finals. Playoff: A 3rd v B 2nd and B 3rd v A 2nd.
         Semi-finals: A 1st v Playoff 1 winner, B 1st v Playoff 2 winner. Then 3rd place and the Final.
