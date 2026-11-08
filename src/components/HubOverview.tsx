@@ -60,33 +60,9 @@ export default function HubOverview({ hub, self, onOpenSelf }: { hub: Hub; self:
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-5 lg:px-6">
-      <LiveNext hub={hub} bundleOf={bundleOf} onOpenSelf={onOpenSelf} />
+      <LiveNext hub={hub} bundleOf={bundleOf} onOpen={c => (c === hub.code ? onOpenSelf() : undefined)} />
 
-      {/* total champion */}
-      <section>
-        <div className="mb-2 flex items-baseline justify-between gap-2">
-          <h2 className="text-[11px] font-bold uppercase tracking-[0.25em] text-fg-subtle">Total Champion</h2>
-          <span className="text-[11px] text-fg-subtle">most 🥇, then 🥈, then 🥉 · {results.filter(r => r.done).length}/{hub.cats.length} decided</span>
-        </div>
-        <div className="overflow-hidden rounded-xl border border-line bg-surface">
-          <div className="grid grid-cols-[2rem_1fr_2.75rem_2.75rem_2.75rem] items-center gap-2 border-b border-line px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
-            <div>#</div><div>Church</div><div className="text-center">🥇</div><div className="text-center">🥈</div><div className="text-center">🥉</div>
-          </div>
-          {table.length === 0 && <div className="p-5 text-center text-sm text-fg-muted">Medals appear as each category finishes.</div>}
-          {table.map((r, i) => (
-            <div key={r.key} className={`grid grid-cols-[2rem_1fr_2.75rem_2.75rem_2.75rem] items-center gap-2 border-b border-line/60 px-3 py-2 last:border-0 ${i === 0 ? 'bg-gold/10' : ''}`}>
-              <div className="font-display text-lg font-black text-fg-muted">{i + 1}</div>
-              <div className="flex min-w-0 items-center gap-2">
-                <Emblem logo={r.logo} flagName={r.name} className="h-6 w-6 shrink-0 rounded-[3px]" />
-                <span className="truncate font-bold">{r.name}</span>
-              </div>
-              <div className="text-center font-display text-xl font-black">{r.gold}</div>
-              <div className="text-center font-display text-xl font-bold text-fg-muted">{r.silver}</div>
-              <div className="text-center font-display text-xl font-bold text-fg-muted">{r.bronze}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <MedalTable hub={hub} bundleOf={bundleOf} />
     </div>
   )
 }
@@ -96,7 +72,7 @@ const MINE = 'pp.hub.church'
 
 /** Every category's games on court and coming up, in one list. A player picks
  *  their church once (kept on this phone) to see only their games. */
-function LiveNext({ hub, bundleOf, onOpenSelf }: { hub: Hub; bundleOf: (code: string) => Bundle | null; onOpenSelf: () => void }) {
+export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code: string) => Bundle | null; onOpen: (code: string) => void }) {
   const [mine, setMine] = useState<string>(() => { try { return localStorage.getItem(MINE + hub.code) ?? '' } catch { return '' } })
   const pick = (c: string) => { setMine(c); try { localStorage.setItem(MINE + hub.code, c) } catch { /* private mode */ } }
   const cats = hub.cats.map(cat => ({ cat, b: bundleOf(cat.code) })).filter((x): x is { cat: typeof x.cat; b: Bundle } => !!x.b)
@@ -167,11 +143,41 @@ function LiveNext({ hub, bundleOf, onOpenSelf }: { hub: Hub; bundleOf: (code: st
           )
           // flex column, top-aligned: a <button> centres its content vertically by default
           const cls = 'flex w-full flex-col justify-start rounded-xl border border-line bg-surface p-3 text-left active:bg-surface-2'
-          return cat.code === hub.code
-            ? <button key={cat.code} onClick={onOpenSelf} className={cls}>{body}</button>
-            : <Link key={cat.code} to={`/c/${cat.code}`} className={cls}>{body}</Link>
+          return <button key={cat.code} onClick={() => onOpen(cat.code)} className={cls}>{body}</button>
         })}
       </div>
     </section>
+  )
+}
+
+/** Total Champion: most gold, then silver, then bronze, across every category. */
+export function MedalTable({ hub, bundleOf }: { hub: Hub; bundleOf: (code: string) => Bundle | null }) {
+  const results = hub.cats.map(c => bundleOf(c.code)).filter((b): b is Bundle => !!b).map(categoryResult)
+  const table = medalTable(results)
+  return (
+      <section>
+        <div className="mb-2 flex items-baseline justify-between gap-2">
+          <h2 className="text-[11px] font-bold uppercase tracking-[0.25em] text-fg-subtle">Total Champion</h2>
+          <span className="text-[11px] text-fg-subtle">most 🥇, then 🥈, then 🥉 · {results.filter(r => r.done).length}/{hub.cats.length} decided</span>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-line bg-surface">
+          <div className="grid grid-cols-[2rem_1fr_2.75rem_2.75rem_2.75rem] items-center gap-2 border-b border-line px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
+            <div>#</div><div>Church</div><div className="text-center">🥇</div><div className="text-center">🥈</div><div className="text-center">🥉</div>
+          </div>
+          {table.length === 0 && <div className="p-5 text-center text-sm text-fg-muted">Medals appear as each category finishes.</div>}
+          {table.map((r, i) => (
+            <div key={r.key} className={`grid grid-cols-[2rem_1fr_2.75rem_2.75rem_2.75rem] items-center gap-2 border-b border-line/60 px-3 py-2 last:border-0 ${i === 0 ? 'bg-gold/10' : ''}`}>
+              <div className="font-display text-lg font-black text-fg-muted">{i + 1}</div>
+              <div className="flex min-w-0 items-center gap-2">
+                <Emblem logo={r.logo} flagName={r.name} className="h-6 w-6 shrink-0 rounded-[3px]" />
+                <span className="truncate font-bold">{r.name}</span>
+              </div>
+              <div className="text-center font-display text-xl font-black">{r.gold}</div>
+              <div className="text-center font-display text-xl font-bold text-fg-muted">{r.silver}</div>
+              <div className="text-center font-display text-xl font-bold text-fg-muted">{r.bronze}</div>
+            </div>
+          ))}
+        </div>
+      </section>
   )
 }

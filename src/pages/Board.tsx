@@ -22,7 +22,7 @@ import { CbLive, CbMatches, CbStandings, CbKnockoutView } from '../components/Ca
 import FlowChart from '../components/FlowChart'
 import { flowOf } from '../lib/flow'
 import { hubOf, parentHub } from '../lib/hub'
-import HubOverview from '../components/HubOverview'
+import HubBoard from './HubBoard'
 import { finalSeries } from '../lib/finals'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide } from '../components/TieKnockout'
 import { CourtQueues, GroupCardPro, GroupTable, PlayClock } from '../components/GroupsKo'
@@ -30,7 +30,7 @@ import FillGrid from '../components/FillGrid'
 import { useAutoHide } from '../lib/useAutoHide'
 import { isPoolDispatch, koSlotLabel, stageLabel } from '../lib/pool'
 
-type Tab = 'overview' | 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
+type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
 
 export default function Board() {
   const { code } = useParams()
@@ -40,7 +40,7 @@ export default function Board() {
   // a hub code shows only its own sport (YC2626 = Captain Ball); the other sports are their own codes
   const bundle = raw && hub?.onlySport ? sportBundle(raw, hub.onlySport) : raw
   const navigate = useNavigate()
-  const [tab, setTab] = useState<Tab>(hub ? 'overview' : 'live')
+  const [tab, setTab] = useState<Tab>('live')
   const [tv, setTv] = useState(false)
   // TV controls stay hidden; a touch / mouse move shows them for a few seconds
   const { shown: tvCtl, guard: tvGuard } = useAutoHide(tv, 5000)
@@ -75,6 +75,9 @@ export default function Board() {
       <Link to="/" className="rounded-xl border border-line px-4 py-2 text-sm">Try again</Link>
     </Screen>
   )
+
+  // multi-category event front page (YC2626): its own simple page
+  if (hub) return <HubBoard hub={hub} self={bundle} />
 
   const c = bundle.competition
   const duelEvent = bundle.events.find(e => e.format === 'duel')
@@ -191,17 +194,16 @@ export default function Board() {
               ←<span className="hidden font-semibold sm:inline"> {parent ? parent.code : 'Lobby'}</span>
             </Link>
             <div className="min-w-0">
-              <div className={`${multi || twoCat ? 'line-clamp-2 leading-tight' : 'truncate'} font-display text-2xl font-bold tracking-wide lg:text-3xl`}>{hub ? hub.title : twoCat ? stripSuffix(c.name, koEv!.name) : c.name}</div>
+              <div className={`${multi || twoCat ? 'line-clamp-2 leading-tight' : 'truncate'} font-display text-2xl font-bold tracking-wide lg:text-3xl`}>{twoCat ? stripSuffix(c.name, koEv!.name) : c.name}</div>
               <div className="truncate text-xs text-fg-muted lg:text-sm">
                 {[twoCat ? koEv!.name : c.venue].filter(Boolean).map(x => <span key="v">{x} · </span>)}code <span className="font-bold text-brand-ink">{c.code}</span>
               </div>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 lg:gap-2">
-            <Link to={hub ? `/c/${code}/referee` : `/c/${code}/admin`}
+            <Link to={`/c/${code}/admin`}
               className="flex h-8 items-center rounded-lg border border-line px-3 text-xs text-fg-muted active:bg-surface-2 lg:h-10 lg:px-4 lg:text-sm">
-              {hub ? 'Referee' : <>
-              {multi || twoCat ? <><span className="sm:hidden">⚙</span><span className="hidden sm:inline">Settings</span></> : 'Settings'}</>}
+              {multi || twoCat ? <><span className="sm:hidden">⚙</span><span className="hidden sm:inline">Settings</span></> : 'Settings'}
             </Link>
             <button onClick={() => koEv?.tv_partner
                 ? navigate(`/tv/${c.code}+${koEv.tv_partner}`)
@@ -226,7 +228,7 @@ export default function Board() {
         )}
 
         <div className="mt-3 flex gap-1 overflow-x-auto lg:mt-4 lg:gap-2">
-          {[...(hub ? ['overview' as Tab] : []), ...(multi
+          {[...(multi
               ? (['live', 'matches', 'standings', 'knockout'] as Tab[])
               : ['live', 'matches',
                  ...(bundle.events.some(e => e.format === 'groups_ko' || e.format === 'round_robin') ? ['standings'] : []),
@@ -234,7 +236,7 @@ export default function Board() {
             <button key={t} onClick={() => setTab(t)}
               className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider lg:px-4 lg:text-sm ${
                 tab === t ? activeTab : 'text-fg-muted'}`}>
-              {hub && t !== 'overview' ? '🏐 ' : ''}{t === 'knockout' ? 'bracket' : t}
+              {t === 'knockout' ? 'bracket' : t}
             </button>
           ))}
         </div>
@@ -244,7 +246,6 @@ export default function Board() {
         ? <MultiLive b={bundle} code={code!} view={sv} onPick={pickSport} title={c.name} wide={wide} />
         : <LiveGrid b={bundle} code={code!} tv={false} />)}
       {tab === 'standings' && (multi ? <TieStandings b={vb} /> : <Standings b={bundle} />)}
-      {tab === 'overview' && hub && <HubOverview hub={hub} self={bundle} onOpenSelf={() => setTab('live')} />}
       {/* bracket = the full picture (groups -> knockout -> medals) whenever the format has one */}
       {tab === 'knockout' && multi && (flow ? <FlowChart b={flowB} flow={flow} /> : <MultiKnockout b={bundle} view={sv} title={c.name} wide={wide} />)}
       {tab === 'bracket' && (flow ? <FlowChart b={flowB} flow={flow} /> : <PosterBracket b={bundle} />)}
@@ -1661,7 +1662,7 @@ function BracketSide(
 }
 
 // ------------------------------------------------------------- standings
-function Standings({ b }: { b: Bundle }) {
+export function Standings({ b }: { b: Bundle }) {
   return (
     <div className="space-y-5 p-3 lg:p-5">
       {b.events.map(ev => {
@@ -1756,7 +1757,7 @@ function IphoneHomeTip() {
   )
 }
 
-function Matches({ b, code }: { b: Bundle; code: string }) {
+export function Matches({ b, code }: { b: Bundle; code: string }) {
   const koEv = b.events.find(e => e.format === 'groups_ko')
   if (!koEv) return <FlatMatches b={b} code={code} />
 
