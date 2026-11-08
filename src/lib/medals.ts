@@ -55,7 +55,11 @@ export function categoryResult(b: Bundle): CategoryResult {
   return out
 }
 
-const keyOf = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ')
+/** Church of a team: "MEGA CMC TEAM A", "Mega CMC 2", "PJ State CMC B" -> the church name.
+ *  A church with several teams in one category is still one church on the table. */
+export const churchOf = (s: string) =>
+  s.trim().replace(/\s+/g, ' ').replace(/(\s+-)?\s+\(?(team\s+)?([A-Z]|\d{1,2})\)?$/i, '').replace(/\s+team$/i, '').trim() || s.trim()
+const keyOf = (s: string) => churchOf(s).toLowerCase()
 
 /** Gold, then silver, then bronze, then name. Churches are matched by team name. */
 export function medalTable(results: CategoryResult[]): MedalRow[] {
@@ -63,7 +67,7 @@ export function medalTable(results: CategoryResult[]): MedalRow[] {
   const add = (cr: CategoryResult, name: string | null, medal: 'gold' | 'silver' | 'bronze') => {
     if (!name) return
     const k = keyOf(name)
-    const r = rows.get(k) ?? { key: k, name: name.trim(), logo: null, gold: 0, silver: 0, bronze: 0 }
+    const r = rows.get(k) ?? { key: k, name: churchOf(name), logo: null, gold: 0, silver: 0, bronze: 0 }
     r[medal]++
     r.logo = r.logo ?? cr.logos[name] ?? null
     rows.set(k, r)
