@@ -80,7 +80,7 @@ export interface Match {
   tie_id?: string | null
   game_label?: string | null
   // multi-sport knockout only (migration 0025): null = group tie
-  tie_stage?: 'SF1' | 'SF2' | '3P' | 'F' | null
+  tie_stage?: 'P1' | 'P2' | 'SF1' | 'SF2' | '3P' | 'F' | null
   // multi-sport Final only: game 1/2/3 of a best-of-3 discipline
   set_no?: number | null
   // shared-queue events (migration 0026): the court this queued game waits for

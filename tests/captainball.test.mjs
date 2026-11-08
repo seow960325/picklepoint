@@ -169,3 +169,34 @@ test('table: win 3 / draw 1, then point difference', () => {
   assert.deepEqual([x.pts, y.pts, z.pts], [3, 1, 4])
   assert.equal(x.diff, 3); assert.equal(x.p, 2)             // live game ignored
 })
+
+// ---- groups A/B -> playoff -> semis -> 3rd + final
+import { cbKo as _cbKo, cbStandings as _cbSt } from '../src/lib/captainball.ts'
+test('captain ball church format: stages follow the sheet', () => {
+  const ev = { id: 'e', sport: 'captainball' }
+  const mk = (n, pool) => ({ id: n, event_id: 'e', name: n, pool })
+  const teams = [mk('A1','A'), mk('A2','A'), mk('A3','A'), mk('B1','B'), mk('B2','B'), mk('B3','B')]
+  let seq = 0
+  const g = (a, b, sa, sb, stage = null, status = 'finished') =>
+    ({ id: `m${++seq}`, event_id: 'e', team_a_id: a, team_b_id: b, score_a: sa, score_b: sb, status, tie_stage: stage, court_id: 'c', sequence: seq })
+  const b = { events: [ev], teams, courts: [{ id: 'c', number: 1 }], matches: [
+    g('A1','A2',10,5), g('A1','A3',8,2), g('A2','A3',6,4),     // A: A1 2-0, A2 1-1, A3 0-2
+    g('B1','B2',3,9), g('B1','B3',7,4), g('B2','B3',5,1),      // B: B2 2-0, B1 1-1, B3 0-2
+  ] }
+  let k = _cbKo(b, ev)
+  assert.equal(k.supported, true); assert.equal(k.groupsDone, true)
+  assert.deepEqual(k.next.pairs.map(p => [p.stage, p.a.id, p.b.id]),
+    [['P1', 'A3', 'B1'], ['P2', 'B3', 'A2']])   // A last v B 2nd place, B last v A 2nd place
+  b.matches.push(g('A3','B1',2,5,'P1'), g('B3','A2',3,4,'P2'))
+  k = _cbKo(b, ev)
+  assert.deepEqual(k.next.pairs.map(p => [p.stage, p.a.id, p.b.id]),
+    [['SF1', 'A1', 'B1'], ['SF2', 'B2', 'A2']])  // A1 v W(P1), B-winner v W(P2)
+  b.matches.push(g('A1','B1',9,6,'SF1'), g('B2','A2',4,7,'SF2'))
+  k = _cbKo(b, ev)
+  assert.deepEqual(k.next.pairs.map(p => [p.stage, p.a.id, p.b.id]),
+    [['3P', 'B1', 'B2'], ['F', 'A1', 'A2']])
+  b.matches.push(g('B1','B2',5,3,'3P'), g('A1','A2',6,2,'F'))
+  k = _cbKo(b, ev)
+  assert.equal(k.podium.first.id, 'A1'); assert.equal(k.podium.second.id, 'A2'); assert.equal(k.podium.third.id, 'B1')
+  assert.equal(_cbSt(b, 'e', 'A')[0].team.id, 'A1')   // knockout games never touch the group table
+})

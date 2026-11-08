@@ -216,10 +216,13 @@ export default function CbScorer({ bundle, match, token, courtNo, courtName, cod
     }
     if (st.phase === 'over') {
       return level
-        ? <div className="grid h-14 grid-cols-2 gap-2">
+        ? (match.tie_stage
+          // knockout games need a winner: extra time again until someone leads
+          ? <Btn tone="go" className={k} onClick={() => apply(cbExtraTime)}>Level · extra time {st.r.extra_min}:00</Btn>
+          : <div className="grid h-14 grid-cols-2 gap-2">
             <Btn tone="go" className="text-lg" onClick={() => apply(cbExtraTime)}>Extra time {st.r.extra_min}:00</Btn>
             <Btn tone="warn" className="text-lg" onClick={() => setConfirm('finish')}>Finish · draw</Btn>
-          </div>
+          </div>)
         : <Btn tone="go" className={k} onClick={() => setConfirm('finish')}>Finish game · {sc[left]}–{sc[right]}</Btn>
     }
     if (v.expired) return <Btn tone="warn" className={`${k} animate-pulse`} onClick={() => apply(cbEndHalf)}>{endWord}</Btn>

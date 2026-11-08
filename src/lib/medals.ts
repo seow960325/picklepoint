@@ -2,7 +2,7 @@
 // captain ball) is its own competition code. This reads them all and builds
 // the overall medal table: most gold, then silver, then bronze.
 import type { Bundle } from './types.ts'
-import { cbStandings } from './captainball.ts'
+import { cbStandings, cbKo } from './captainball.ts'
 
 export interface Podium3 { first: string | null; second: string | null; third: string | null }
 export interface CategoryResult {
@@ -37,6 +37,14 @@ export function categoryResult(b: Bundle): CategoryResult {
   }
   const cb = b.events.find(e => e.sport === 'captainball')
   if (cb) {
+    const k = cbKo(b, cb)
+    if (k.supported) {
+      if (k.podium) {
+        out.podium = { first: put(k.podium.first.id), second: put(k.podium.second.id), third: put(k.podium.third?.id ?? null) }
+        out.done = true
+      }
+      return out
+    }
     const games = b.matches.filter(m => m.event_id === cb.id && !m.tie_stage)
     if (games.length && games.every(m => m.status === 'finished')) {
       const t = cbStandings(b, cb.id)

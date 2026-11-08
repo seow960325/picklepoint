@@ -18,7 +18,7 @@ import {
   type Sport, type SportView, type Tie,
   sweepBonus, sheetOrderOf,
 } from '../lib/multisport'
-import { CbLive, CbMatches, CbStandings } from '../components/CaptainBall'
+import { CbLive, CbMatches, CbStandings, CbKnockoutView } from '../components/CaptainBall'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide } from '../components/TieKnockout'
 import { CourtQueues, GroupCardPro, GroupTable, PlayClock } from '../components/GroupsKo'
 import FillGrid from '../components/FillGrid'
@@ -636,9 +636,7 @@ function TvSports({ b, view, code, pane, flip, title }: {
 /** Knockout tab: ceremony (once decided) above each sport's bracket. */
 function MultiKnockout({ b, view, title, wide }: { b: Bundle; view: SportView; title: string; wide: boolean }) {
   const sports = (view === 'all' ? sportsPresent(b) : [view]).filter(s => s !== 'captainball')
-  if (sports.length === 0) return (
-    <div className="p-4 text-sm text-fg-subtle">Captain Ball is a round robin — the table is on the Standings tab.</div>
-  )
+  if (sports.length === 0) return <CbKnockoutView b={sportBundle(b, 'captainball')} />
   const both = sports.length > 1
   return (
     <FillGrid className="gap-8 p-3 lg:p-5">

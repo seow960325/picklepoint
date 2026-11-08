@@ -12,7 +12,7 @@ import * as api from '../lib/api'
 import { hornEnd } from '../lib/feedback'
 import { SevenSeg, segClock, segScore } from './SevenSeg'
 import {
-  cbStateOf, cbView, cbScore, cbRulesOf, cbStandings, cbRound, fmtClock, toLeft, toAllowed, ordinal,
+  cbStateOf, cbView, cbScore, cbRulesOf, cbStandings, cbKo, CB_STAGE_LABEL, type CbStage, cbRound, fmtClock, toLeft, toAllowed, ordinal,
   type CbRules, type CbState, type Side,
 } from '../lib/captainball'
 
@@ -296,63 +296,112 @@ function CbUpNext({ b, n, big }: { b: Bundle; n: number; big?: boolean }) {
   )
 }
 
-/** Round-robin table for one captain-ball event. */
+/** Round-robin table(s) for one captain-ball event: one table per group. */
 export function CbStandings({ b, ev, big = false, heading = false }: {
   b: Bundle; ev: EventCfg; big?: boolean; heading?: boolean
 }) {
-  const rows = cbStandings(b, ev.id)
   const r = cbRulesOf(ev)
+  const pools = [...new Set(b.teams.filter(t => t.event_id === ev.id).map(t => t.pool ?? 'A'))].sort()
+  const grouped = pools.length > 1
+  const ko = cbKo(b, ev)
   const cell = big ? 'py-3 text-lg' : 'py-2'
   const tone = 'text-[#c2410c] dark:text-[#fdba74]'
+  const table = (rows: ReturnType<typeof cbStandings>, label: string) => (
+    <div key={label} className="overflow-hidden rounded-xl border border-line">
+      <div className="flex items-center justify-between gap-2 bg-[#fb923c]/[0.08] px-3 py-1.5 text-xs font-bold uppercase tracking-widest">
+        <span className={tone}>{label}</span>
+        <span className="truncate text-[10px] font-semibold normal-case tracking-normal text-fg-subtle">
+          win {r.win} · draw {r.draw} · loss {r.loss}
+        </span>
+      </div>
+      <table className={`w-full table-fixed ${big ? 'text-lg' : 'text-sm'}`}>
+        <thead className="text-[10px] uppercase tracking-wider text-fg-subtle">
+          <tr>
+            <th className="w-7 px-2 py-1.5 text-center">#</th>
+            <th className="px-1 py-1.5 text-left">Team</th>
+            <th className="w-7 px-1 py-1.5 text-right">P</th>
+            <th className="w-7 px-1 py-1.5 text-right">W</th>
+            <th className="w-7 px-1 py-1.5 text-right">D</th>
+            <th className="w-7 px-1 py-1.5 text-right">L</th>
+            <th className="w-10 px-1 py-1.5 text-right">+/−</th>
+            <th className="w-10 px-2 py-1.5 text-right">Pts</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {rows.map((x, i) => (
+            <tr key={x.team.id}>
+              <td className={`tabular px-2 ${cell} text-center text-xs font-bold ${i < 1 && x.p ? tone : 'text-fg-subtle'}`}>{i + 1}</td>
+              <td className={`px-1 ${cell}`}>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <Emblem logo={teamLogo(b, x.team.id)} className="h-4 w-4 shrink-0 rounded-[2px]" />
+                  <span className={`min-w-0 ${big ? 'line-clamp-2 break-words leading-tight' : 'truncate'}`}>{x.team.name}</span>
+                  {grouped && ko.supported && ko.groupsDone && (
+                    <span className="shrink-0 rounded bg-[#fb923c]/20 px-1 text-[9px] font-bold uppercase text-[#fdba74]">
+                      {i === 0 ? 'Semi' : 'Playoff'}
+                    </span>
+                  )}
+                </span>
+              </td>
+              <td className={`tabular px-1 ${cell} text-right text-fg-muted`}>{x.p}</td>
+              <td className={`tabular px-1 ${cell} text-right text-fg-muted`}>{x.w}</td>
+              <td className={`tabular px-1 ${cell} text-right text-fg-muted`}>{x.d}</td>
+              <td className={`tabular px-1 ${cell} text-right text-fg-muted`}>{x.l}</td>
+              <td className={`tabular px-1 ${cell} text-right text-fg-muted`}>{x.diff > 0 ? `+${x.diff}` : x.diff}</td>
+              <td className={`tabular px-2 ${cell} text-right font-bold ${tone}`}>{x.pts}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
   return (
-    <section className="min-w-0">
+    <section className="min-w-0 space-y-3">
       {heading && (
         <h2 className={`mb-3 flex items-center gap-2 font-display text-xl font-bold uppercase tracking-widest ${tone}`}>
           <span>🏐</span><span>{ev.name || 'Captain Ball'}</span>
         </h2>
       )}
-      <div className="overflow-hidden rounded-xl border border-line">
-        <div className="flex items-center justify-between gap-2 bg-[#fb923c]/[0.08] px-3 py-1.5 text-xs font-bold uppercase tracking-widest">
-          <span className={tone}>Round robin</span>
-          <span className="truncate text-[10px] font-semibold normal-case tracking-normal text-fg-subtle">
-            win {r.win} · draw {r.draw} · loss {r.loss}
-          </span>
-        </div>
-        <table className={`w-full table-fixed ${big ? 'text-lg' : 'text-sm'}`}>
-          <thead className="text-[10px] uppercase tracking-wider text-fg-subtle">
-            <tr>
-              <th className="w-7 px-2 py-1.5 text-center">#</th>
-              <th className="px-1 py-1.5 text-left">Team</th>
-              <th className="w-7 px-1 py-1.5 text-right">P</th>
-              <th className="w-7 px-1 py-1.5 text-right">W</th>
-              <th className="w-7 px-1 py-1.5 text-right">D</th>
-              <th className="w-7 px-1 py-1.5 text-right">L</th>
-              <th className="w-10 px-1 py-1.5 text-right">+/−</th>
-              <th className="w-10 px-2 py-1.5 text-right">Pts</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {rows.map((x, i) => (
-              <tr key={x.team.id}>
-                <td className={`tabular px-2 ${cell} text-center text-xs font-bold ${i < 1 && x.p ? tone : 'text-fg-subtle'}`}>{i + 1}</td>
-                <td className={`px-1 ${cell}`}>
-                  <span className="flex min-w-0 items-center gap-1.5">
-                    <Emblem logo={teamLogo(b, x.team.id)} className="h-4 w-4 shrink-0 rounded-[2px]" />
-                    <span className={`min-w-0 ${big ? 'line-clamp-2 break-words leading-tight' : 'truncate'}`}>{x.team.name}</span>
-                  </span>
-                </td>
-                <td className={`tabular px-1 ${cell} text-right text-fg-muted`}>{x.p}</td>
-                <td className={`tabular px-1 ${cell} text-right text-fg-muted`}>{x.w}</td>
-                <td className={`tabular px-1 ${cell} text-right text-fg-muted`}>{x.d}</td>
-                <td className={`tabular px-1 ${cell} text-right text-fg-muted`}>{x.l}</td>
-                <td className={`tabular px-1 ${cell} text-right text-fg-muted`}>{x.diff > 0 ? `+${x.diff}` : x.diff}</td>
-                <td className={`tabular px-2 ${cell} text-right font-bold ${tone}`}>{x.pts}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {grouped
+        ? pools.map(p => table(cbStandings(b, ev.id, p), `Group ${p}`))
+        : table(cbStandings(b, ev.id), 'Round robin')}
     </section>
+  )
+}
+
+/** Knockout stages of a captain-ball code (playoff, semi-finals, 3rd place, Final). */
+export function CbKnockoutView({ b }: { b: Bundle }) {
+  const ev = b.events.find(e => e.sport === 'captainball')
+  if (!ev) return null
+  const ko = cbKo(b, ev)
+  if (!ko.supported) return <div className="p-4 text-sm text-fg-subtle">Captain Ball is a round robin — the table is on the Standings tab.</div>
+  const order: CbStage[] = ['P1', 'P2', 'SF1', 'SF2', '3P', 'F']
+  const rows = order.filter(s => ko.games[s])
+  return (
+    <div className="mx-auto max-w-xl space-y-3 p-4">
+      {ko.podium && (
+        <div className="rounded-xl border border-[#fb923c]/40 bg-[#fb923c]/10 p-4 text-center">
+          <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-fg-subtle">Champions</div>
+          <div className="font-display text-3xl font-black">🥇 {ko.podium.first.name}</div>
+          <div className="mt-1 text-lg">🥈 {ko.podium.second.name}</div>
+          {ko.podium.third && <div className="text-lg">🥉 {ko.podium.third.name}</div>}
+        </div>
+      )}
+      {rows.length === 0 && <div className="text-sm text-fg-subtle">The knockout starts once Group A and Group B are finished.</div>}
+      {rows.map(s => {
+        const m = ko.games[s]!
+        const fin = m.status === 'finished'
+        return (
+          <div key={s} className="rounded-xl border border-line bg-surface p-3">
+            <div className="mb-1 text-[11px] font-bold uppercase tracking-widest text-fg-subtle">{CB_STAGE_LABEL[s]}</div>
+            <div className="flex items-center justify-between gap-2 text-base">
+              <span className={`min-w-0 flex-1 truncate text-right ${fin && m.score_a > m.score_b ? 'font-bold' : ''}`}>{teamName(b, m.team_a_id)}</span>
+              <span className="tabular shrink-0 font-display text-xl font-bold">{m.status === 'scheduled' ? 'v' : `${m.score_a} – ${m.score_b}`}</span>
+              <span className={`min-w-0 flex-1 truncate ${fin && m.score_b > m.score_a ? 'font-bold' : ''}`}>{teamName(b, m.team_b_id)}</span>
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 

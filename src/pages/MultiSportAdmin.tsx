@@ -4,7 +4,7 @@ import { SportIcon } from '../components/SportIcon'
 import { useState } from 'react'
 import * as api from '../lib/api'
 import { teamName } from '../lib/store'
-import { buildCbDraw } from '../lib/captainball'
+import { buildCbDraw, cbKo, cbKoGame, CB_STAGE_LABEL, type CbStage } from '../lib/captainball'
 import { validateRules } from '../lib/draw'
 import { Field, Stepper, Choice, Warn, inputFull } from '../components/form'
 import { ScheduleRow, scheduleStatus } from '../components/ScheduleRow'
@@ -57,7 +57,7 @@ export function SportsTab({ bundle, token, run, onAdded }: any) {
     return {
       name: n,
       roster: r === '4' ? 4 : 6,
-      pool: isCb(sport) ? 'A' : (p || POOLS[i % 2]).toUpperCase().slice(0, 2),
+      pool: isCb(sport) ? (r && /^[A-Za-z]$/.test(r) ? r.toUpperCase() : (p || POOLS[i % 2]).toUpperCase().slice(0, 2)) : (p || POOLS[i % 2]).toUpperCase().slice(0, 2),
     }
   })
 
@@ -94,7 +94,7 @@ export function SportsTab({ bundle, token, run, onAdded }: any) {
         <Field label="Event name">
           <input className={`${inputFull} max-w-sm`} value={name} onChange={e => setName(e.target.value)} />
         </Field>
-        {isCb(sport) && <p className="text-xs text-fg-subtle">Captain Ball is timed (halves, clock, time-outs). Set its rules in Settings → Scoring after adding it. All teams go in one group.</p>}
+        {isCb(sport) && <p className="text-xs text-fg-subtle">Captain Ball is timed (halves, clock, time-outs). Set its rules in Settings → Scoring after adding it. Put the team's group at the end of each line (Name, A) — 6 teams in groups A and B of 3 runs groups, playoff, semi-finals, 3rd place and Final.</p>}
         {!isCb(sport) && <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-4">
           <Field label="Winning score">
             <Stepper value={rules.target_score} min={1} max={99}
@@ -118,7 +118,7 @@ export function SportsTab({ bundle, token, run, onAdded }: any) {
         <Field label={`${SPORT_LABEL[sport]} courts`}>
           <Stepper value={courtCount} min={1} max={16} onChange={setCourtCount} />
         </Field>
-        <Field label={isCb(sport) ? 'Teams — one per line' : 'Teams — one per line: Name, players (6 or 4), group'}>
+        <Field label={isCb(sport) ? 'Teams — one per line: Name, group (A or B)' : 'Teams — one per line: Name, players (6 or 4), group'}>
           <textarea className={`${inputFull} h-40 font-mono text-sm`} value={text}
             placeholder={'Team Alpha, 6, A\nTeam Beta, 4, B\nTeam Gamma'}
             onChange={e => setText(e.target.value)} />
@@ -197,7 +197,7 @@ export function TieScheduleTab({ bundle, ev, token, run }: any) {
           {mine.length} games · {mine.filter((m: any) => m.status === 'finished').length} played
         </div>
         <div className="mt-1 text-xs text-fg-subtle">
-          {isCb(sport) ? 'Regenerating builds one round robin: every team plays every other team once, over the ' : 'Regenerating builds a round robin per group, each tie split into its games, spread over the '}
+          {isCb(sport) ? 'Regenerating builds a round robin per group (one round robin when there is only one group), over the ' : 'Regenerating builds a round robin per group, each tie split into its games, spread over the '}
           {courts.length} {SPORT_LABEL[sport]} court{courts.length === 1 ? '' : 's'} — {isCb(sport) ? `${preview.length} games` : `${ties} ties, ${preview.length} games`}.
         </div>
       </div>
@@ -352,9 +352,11 @@ export function RosterToggle({ t, token, run }: any) {
  *  previous stage is decided; an unplayed stage can be undone. */
 export function KnockoutTab({ bundle, token, run }: any) {
   const sports = sportsPresent(bundle).filter(s => !isCb(s))
+  const hasCb = sportsPresent(bundle).some(s => isCb(s))
   return (
     <div className="max-w-3xl space-y-6">
       <H>Knockout</H>
+      {hasCb && <CbKnockoutAdmin bundle={bundle} token={token} run={run} />}
       <p className="text-sm text-fg-muted">
         One group: the top four go through — 1st v 4th and 2nd v 3rd in the semi-finals
         (two groups: A1 v B2, B1 v A2). Semi-final winners play the Final, losers play for
@@ -586,6 +588,63 @@ function SportKnockout({ bundle, sport, token, run }: any) {
               </div>
             ))}
         </div>
+      )}
+    </section>
+  )
+}
+
+
+/** Captain ball: groups A/B -> playoff -> semi-finals -> 3rd place + Final.
+ *  One button per step, available once the previous stage is decided. */
+function CbKnockoutAdmin({ bundle, token, run }: any) {
+  const sb = sportBundle(bundle, 'captainball')
+  const ev = sb.events[0]
+  if (!ev) return null
+  const ko = cbKo(sb, ev)
+  if (!ko.supported) {
+    return <Warn>Captain Ball: groups → playoff → final needs exactly two groups of three teams (put "A" / "B" after each team name). Otherwise it stays one round robin.</Warn>
+  }
+  const nm = (t: any) => t.name
+  const create = () => run(async () => {
+    let pending = 0
+    for (const p of ko.next!.pairs) {
+      const g = cbKoGame({ ...sb, matches: [...sb.matches] }, p.stage, p.a, p.b, 0)
+      await api.adminAddTieStage(token, ev.id, p.stage, [{ ...g, seq: ++pending }])
+    }
+  }, `Captain Ball ${ko.next?.label.toLowerCase()} created`)
+  const started = (s: CbStage) => { const m = ko.games[s]; return !!m && (m.status === 'finished' || m.score_a > 0 || m.score_b > 0 || !!m.started_at) }
+  const last = (['F', '3P', 'SF1', 'SF2', 'P1', 'P2'] as CbStage[]).filter(s => ko.games[s])
+  const undoStages: CbStage[] = last.some(s => s === 'F' || s === '3P') ? ['F', '3P'] : last.some(s => s === 'SF1' || s === 'SF2') ? ['SF1', 'SF2'] : ['P1', 'P2']
+  const canUndo = last.length > 0 && undoStages.every(s => !started(s))
+  return (
+    <section className="space-y-3 rounded-xl border border-[#fb923c]/40 bg-surface p-4">
+      <div className="font-display text-xl font-bold uppercase tracking-widest text-[#fdba74]">🏐 Captain Ball</div>
+      <p className="text-sm text-fg-muted">
+        Group winners go straight to the semi-finals. Playoff: A 3rd v B 2nd and B 3rd v A 2nd.
+        Semi-finals: A 1st v Playoff 1 winner, B 1st v Playoff 2 winner. Then 3rd place and the Final.
+        A level knockout game goes to extra time until someone leads.
+      </p>
+      {ko.next ? (
+        <div>
+          <div className="mb-1 text-xs font-bold uppercase tracking-widest text-fg-muted">Next · {ko.next.label}</div>
+          {ko.next.pairs.map(p => (
+            <div key={p.stage} className="grid grid-cols-[7rem_minmax(0,1fr)] gap-2 py-1 text-sm">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-fg-subtle">{CB_STAGE_LABEL[p.stage]}</span>
+              <span className="truncate">{ko.next!.ready ? `${nm(p.a)} v ${nm(p.b)}` : '—'}</span>
+            </div>
+          ))}
+          {!ko.next.ready && <div className="text-xs text-amber-400">Waiting for the previous stage to finish.</div>}
+          <button disabled={!ko.next.ready} onClick={create}
+            className="mt-2 rounded-xl bg-brand px-5 py-2.5 font-display font-bold text-brand-fg disabled:opacity-30">
+            CREATE {ko.next.label.toUpperCase()}
+          </button>
+        </div>
+      ) : (
+        <div className="text-sm text-fg-muted">{ko.podium ? 'Complete — champions decided.' : 'All stages created.'}</div>
+      )}
+      {canUndo && (
+        <button onClick={() => run(() => Promise.all(undoStages.filter(s => ko.games[s]).map(s => api.adminClearTieStage(token, ev.id, s))), 'Stage removed')}
+          className="block text-xs text-fg-subtle underline underline-offset-4">undo last stage (nothing played yet)</button>
       )}
     </section>
   )

@@ -242,11 +242,11 @@ export interface CbRow {
 
 /** Round-robin table: points, then point difference, then points for,
  *  then head-to-head result. Draws count (win 3 / draw 1 by default). */
-export function cbStandings(b: Bundle, eventId: string): CbRow[] {
+export function cbStandings(b: Bundle, eventId: string, pool?: string): CbRow[] {
   const ev = b.events.find(e => e.id === eventId)
   const r = cbRulesOf(ev)
   const rows = new Map<string, CbRow>()
-  b.teams.filter(t => t.event_id === eventId).forEach(team =>
+  b.teams.filter(t => t.event_id === eventId && (!pool || (t.pool ?? 'A') === pool)).forEach(team =>
     rows.set(team.id, { team, p: 0, w: 0, d: 0, l: 0, pf: 0, pa: 0, diff: 0, pts: 0 }))
   const games = b.matches.filter(m => m.event_id === eventId && m.status === 'finished' && !m.tie_stage)
   for (const m of games) {
@@ -286,4 +286,78 @@ export function buildCbDraw(teams: Array<{ name: string; pool: string }>, courts
 export const cbRound = (m: Match): string => {
   const r = (m.round ?? '').split(' · ')[1]
   return r && /^R\d+$/.test(r) ? `Round ${r.slice(1)}` : (m.round ?? '')
+}
+
+
+// ------------------------------------------------ groups -> playoff -> final
+// Church format: 6 teams in groups A and B (3 each, round robin), then
+//   Playoff 1: A 3rd v B 2nd      Playoff 2: B 3rd v A 2nd
+//   Semi-final 1: A 1st v W(P1)   Semi-final 2: B 1st v W(P2)
+//   3rd place: losers of the semis   Final: winners of the semis
+export type CbStage = 'P1' | 'P2' | 'SF1' | 'SF2' | '3P' | 'F'
+export const CB_STAGE_LABEL: Record<CbStage, string> = {
+  P1: 'Playoff 1', P2: 'Playoff 2', SF1: 'Semi-final 1', SF2: 'Semi-final 2', '3P': '3rd place', F: 'Final',
+}
+export interface CbPair { stage: CbStage; a: Team; b: Team }
+export interface CbKo {
+  /** exactly two groups of three */
+  supported: boolean
+  groups: Record<string, CbRow[]>
+  groupsDone: boolean
+  games: Partial<Record<CbStage, Match>>
+  /** the stage(s) that can be created next, with their teams; null when nothing is due */
+  next: { label: string; pairs: CbPair[]; ready: boolean } | null
+  podium: { first: Team; second: Team; third: Team | null } | null
+}
+
+const winnerOf = (m?: Match): string | null =>
+  m && m.status === 'finished' ? (m.score_a > m.score_b ? m.team_a_id : m.score_b > m.score_a ? m.team_b_id : null) : null
+const loserOf = (m?: Match): string | null => {
+  const w = winnerOf(m)
+  return w && m ? (m.team_a_id === w ? m.team_b_id : m.team_a_id) : null
+}
+
+export function cbKo(b: Bundle, ev: EventCfg): CbKo {
+  const teams = b.teams.filter(t => t.event_id === ev.id)
+  const pools = [...new Set(teams.map(t => t.pool ?? 'A'))].sort()
+  const supported = pools.length === 2 && pools.every(p => teams.filter(t => (t.pool ?? 'A') === p).length === 3)
+  const groups: Record<string, CbRow[]> = {}
+  pools.forEach(p => { groups[p] = cbStandings(b, ev.id, p) })
+  const own = b.matches.filter(m => m.event_id === ev.id)
+  const gm = own.filter(m => !m.tie_stage)
+  const groupsDone = gm.length > 0 && gm.every(m => m.status === 'finished')
+  const games: Partial<Record<CbStage, Match>> = {}
+  for (const m of own) if (m.tie_stage) games[m.tie_stage] = m
+  const out: CbKo = { supported, groups, groupsDone, games, next: null, podium: null }
+  if (!supported) return out
+
+  const [A, B] = pools.map(p => groups[p])
+  const t = (id: string | null) => teams.find(x => x.id === id)
+  const fin = (m?: Match) => !!m && m.status === 'finished' && winnerOf(m) != null
+  if (!games.P1 && !games.P2) {
+    out.next = { label: 'Playoff', ready: groupsDone, pairs: [
+      { stage: 'P1', a: A[2].team, b: B[1].team }, { stage: 'P2', a: B[2].team, b: A[1].team }] }
+  } else if (!games.SF1 && !games.SF2) {
+    const w1 = t(winnerOf(games.P1)), w2 = t(winnerOf(games.P2))
+    out.next = { label: 'Semi-finals', ready: !!w1 && !!w2, pairs: [
+      { stage: 'SF1', a: A[0].team, b: w1 ?? A[0].team }, { stage: 'SF2', a: B[0].team, b: w2 ?? B[0].team }] }
+  } else if (!games.F && !games['3P']) {
+    const w1 = t(winnerOf(games.SF1)), w2 = t(winnerOf(games.SF2))
+    const l1 = t(loserOf(games.SF1)), l2 = t(loserOf(games.SF2))
+    out.next = { label: '3rd place + Final', ready: !!w1 && !!w2 && !!l1 && !!l2, pairs: [
+      { stage: '3P', a: l1 ?? A[0].team, b: l2 ?? A[0].team }, { stage: 'F', a: w1 ?? A[0].team, b: w2 ?? A[0].team }] }
+  }
+  if (fin(games.F) && fin(games['3P'])) {
+    const first = t(winnerOf(games.F)), second = t(loserOf(games.F)), third = t(winnerOf(games['3P']))
+    if (first && second) out.podium = { first, second, third: third ?? null }
+  }
+  return out
+}
+
+/** Least-busy captain-ball court for a knockout game. */
+export function cbKoGame(b: Bundle, stage: CbStage, a: Team, bt: Team, pending = 0, tag = '') {
+  const courts = [...b.courts].sort((x, y) => x.number - y.number)
+  const load = (id: string) => b.matches.filter(m => m.court_id === id && m.status !== 'finished').length
+  const court = courts.reduce((best, c) => (load(c.id) < load(best.id) ? c : best), courts[0])
+  return { a: a.id, b: bt.id, court: court.id, seq: pending + 1, game: 'CB', set: null as number | null, round: tag || CB_STAGE_LABEL[stage] }
 }
