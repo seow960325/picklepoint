@@ -128,7 +128,7 @@ function LiveNext({ hub, bundleOf, onOpenSelf }: { hub: Hub; bundleOf: (code: st
           {churches.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid items-start gap-3 lg:grid-cols-2">
         {blocks.map(({ cat, b, live, next }) => {
           const st = b ? statusOf(b) : null
           const head = (
@@ -165,7 +165,8 @@ function LiveNext({ hub, bundleOf, onOpenSelf }: { hub: Hub; bundleOf: (code: st
               </div>}
             </>
           )
-          const cls = 'block w-full rounded-xl border border-line bg-surface p-3 text-left active:bg-surface-2'
+          // flex column, top-aligned: a <button> centres its content vertically by default
+          const cls = 'flex w-full flex-col justify-start rounded-xl border border-line bg-surface p-3 text-left active:bg-surface-2'
           return cat.code === hub.code
             ? <button key={cat.code} onClick={onOpenSelf} className={cls}>{body}</button>
             : <Link key={cat.code} to={`/c/${cat.code}`} className={cls}>{body}</Link>
