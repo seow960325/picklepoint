@@ -12,6 +12,7 @@
  *  (the "STOP / RESUME lags" bug). */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { FullscreenButton } from '../components/ui'
 import type { Bundle, Match } from '../lib/types'
 import { teamName, eventOf } from '../lib/store'
 import * as api from '../lib/api'
@@ -273,8 +274,11 @@ export default function CbScorer({ bundle, match, token, courtNo, courtName, cod
         <div className="truncate text-center font-display text-sm font-bold uppercase tracking-[0.12em] text-white/60">
           {courtName ?? `Court ${courtNo}`} · Game {matchNo || match.sequence}
         </div>
-        <span className={`inline-block w-16 text-right text-[11px] ${offline ? 'font-bold text-[#fbbf24]' : 'text-white/40'}`}>
-          {offline ? '● saving…' : '● synced'}
+        <span className="flex items-center justify-end gap-2">
+          <span className={`inline-block w-16 text-right text-[11px] ${offline ? 'font-bold text-[#fbbf24]' : 'text-white/40'}`}>
+            {offline ? '● saving…' : '● synced'}
+          </span>
+          <FullscreenButton className="h-8 w-8 shrink-0 rounded-lg border border-white/15 p-1.5 text-white/70" />
         </span>
       </div>
 

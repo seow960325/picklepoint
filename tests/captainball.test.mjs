@@ -223,3 +223,14 @@ test('flow chart: captain ball fills in group places, playoff, semis, final', ()
   b.matches.push(g('A1','A2',6,2,'F'))
   assert.equal(_flowOf(b).champion, 'A1')
 })
+
+import { buildCbDraw as _bcd } from '../src/lib/captainball.ts'
+test('captain ball: 3-3-3 group decided on net points; poster game order', () => {
+  const tm = ['X', 'Y', 'Z'].map(n => ({ id: n, event_id: 'e', name: n, pool: 'A' }))
+  const g = (a, b, sa, sb) => ({ event_id: 'e', team_a_id: a, team_b_id: b, score_a: sa, score_b: sb, status: 'finished', tie_stage: null })
+  const b = { events: [{ id: 'e' }], teams: tm, matches: [g('X', 'Y', 10, 8), g('Y', 'Z', 12, 4), g('Z', 'X', 9, 8)] }
+  assert.deepEqual(_cbSt(b, 'e', 'A').map(r => r.team.id), ['Y', 'X', 'Z'])   // +6, +1, -7
+  const d = _bcd(['A1', 'A2', 'A3', 'B1', 'B2', 'B3'].map(n => ({ name: n, pool: n[0] })), 1)
+  const nm = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3']
+  assert.deepEqual(d.map(m => `${nm[m.aIdx]}v${nm[m.bIdx]}`), ['A1vA2', 'B1vB2', 'A1vA3', 'B1vB3', 'A2vA3', 'B2vB3'])
+})

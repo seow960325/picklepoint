@@ -277,6 +277,19 @@ export interface CbDraftMatch extends DraftMatch { tie: string; game: string }
 /** Round robin, one game per fixture (no MD/XD split). */
 export function buildCbDraw(teams: Array<{ name: string; pool: string }>, courts: number): CbDraftMatch[] {
   if (courts < 1) return []
+  // two groups of three: the organiser's order A1vA2, B1vB2, A1vA3, B1vB3, A2vA3, B2vB3
+  const pools = [...new Set(teams.map(t => t.pool))].sort()
+  const idx = (p: string) => teams.map((t, i) => (t.pool === p ? i : -1)).filter(i => i >= 0)
+  if (pools.length === 2 && pools.every(p => idx(p).length === 3)) {
+    const out: CbDraftMatch[] = []
+    const pairs: Array<[number, number]> = [[0, 1], [0, 2], [1, 2]]
+    pairs.forEach(([x, y], r) => pools.forEach(p => {
+      const g = idx(p), n = out.length
+      out.push({ aIdx: g[x], bIdx: g[y], round: r + 1, courtIdx: n % courts, sequence: n + 1, pool: p,
+        tie: String(n + 1), game: 'CB', label: `${p} · R${r + 1}` })
+    }))
+    return out
+  }
   return buildDraw(teams, courts).map((f, i) => ({
     ...f, tie: String(i + 1), game: 'CB', label: `${f.pool} · R${f.round}`,
   }))
