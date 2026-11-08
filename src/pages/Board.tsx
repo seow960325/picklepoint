@@ -3,7 +3,7 @@ import { SportIcon } from '../components/SportIcon'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   useCompetition, teamName, teamSideName, teamLogo, liveOnCourt, nextOnCourt, onDeck, results, standings,
-  eventOf, duelTally, duelPods, groupStandings, bracketRounds, bracketSeeded, isKoMatch,
+  eventOf, duelTally, duelPods, groupStandings, groupStageComplete, bracketRounds, bracketSeeded, isKoMatch,
 } from '../lib/store'
 import { displayScores, rulesOf, servingSide, serverCourt as serverCourtOf, scoreCall, activeServerNo } from '../lib/scoring'
 import type { Bundle, EventCfg, Match } from '../lib/types'
@@ -19,13 +19,15 @@ import {
   sweepBonus, sheetOrderOf,
 } from '../lib/multisport'
 import { CbLive, CbMatches, CbStandings, CbKnockoutView } from '../components/CaptainBall'
+import FlowChart from '../components/FlowChart'
+import { flowOf } from '../lib/flow'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide } from '../components/TieKnockout'
 import { CourtQueues, GroupCardPro, GroupTable, PlayClock } from '../components/GroupsKo'
 import FillGrid from '../components/FillGrid'
 import { useAutoHide } from '../lib/useAutoHide'
 import { isPoolDispatch, koSlotLabel, stageLabel } from '../lib/pool'
 
-type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
+type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout' | 'flow'
 
 export default function Board() {
   const { code } = useParams()
@@ -86,6 +88,9 @@ export default function Board() {
   if (view === null) return <SportGate b={bundle} sports={sports} onPick={pickSport} />
   const sv: SportView = view
   const vb = multi && sv !== 'all' ? sportBundle(bundle, sv) : bundle
+  // full-picture flow tab: 6-team codes (2 groups of 3); multi-sport codes use their captain ball
+  const flowB = multi && bundle.events.some(e => e.sport === 'captainball') ? sportBundle(bundle, 'captainball') : bundle
+  const flow = flowOf(flowB, { groupStandings, groupStageComplete })
   const activeTab = multi && sv !== 'all' ? SPORT_TONE[sv].solid : 'bg-brand text-brand-fg'
   const anyKo = multi && sports.some(s => koState(sportBundle(bundle, s)).phase !== 'groups')
 
@@ -213,11 +218,12 @@ export default function Board() {
         )}
 
         <div className="mt-3 flex gap-1 overflow-x-auto lg:mt-4 lg:gap-2">
-          {(multi
+          {[...(multi
               ? (['live', 'matches', 'standings', 'knockout'] as Tab[])
               : ['live', 'matches',
                  ...(bundle.events.some(e => e.format === 'groups_ko' || e.format === 'round_robin') ? ['standings'] : []),
-                 ...(bundle.events.some(e => e.format === 'groups_ko') ? ['bracket'] : [])] as Tab[]).map(t => (
+                 ...(bundle.events.some(e => e.format === 'groups_ko') ? ['bracket'] : [])] as Tab[]),
+              ...(flow ? ['flow' as Tab] : [])].map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider lg:px-4 lg:text-sm ${
                 tab === t ? activeTab : 'text-fg-muted'}`}>
@@ -233,6 +239,7 @@ export default function Board() {
       {tab === 'standings' && (multi ? <TieStandings b={vb} /> : <Standings b={bundle} />)}
       {tab === 'knockout' && multi && <MultiKnockout b={bundle} view={sv} title={c.name} wide={wide} />}
       {tab === 'bracket' && <PosterBracket b={bundle} />}
+      {tab === 'flow' && flow && <FlowChart b={flowB} flow={flow} />}
       {tab === 'matches' && (multi
         ? <TieMatches b={bundle} code={code!} view={sv} />
         : <Matches b={bundle} code={code!} />)}
