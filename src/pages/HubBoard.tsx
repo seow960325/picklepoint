@@ -3,6 +3,7 @@
  *  category; a category chip narrows any tab to one category (and then that
  *  category updates live, point by point). Scoring stays per category code
  *  behind the scenes; referees start from the Referee button. */
+import { SportIcon } from '../components/SportIcon'
 import { useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import type { Bundle } from '../lib/types'
@@ -64,7 +65,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle }) {
           <div className="mx-auto mt-2 flex max-w-6xl gap-1.5 overflow-x-auto pb-1">
             <Chip on={!cat} onClick={() => set('cat', null)}>All</Chip>
             {hub.cats.map(c => (
-              <Chip key={c.code} on={cat?.code === c.code} onClick={() => set('cat', c.code)}>{c.icon} {c.short}</Chip>
+              <Chip key={c.code} on={cat?.code === c.code} onClick={() => set('cat', c.code)}><SportIcon sport={c.sport} /> {c.short}</Chip>
             ))}
           </div>
         )}
@@ -110,7 +111,7 @@ function CatView({ cat, hub, self, polled, single, onOpen, children }: {
     <section className="border-b border-line/60">
       {!single && (
         <button onClick={onOpen} className="flex w-full items-center gap-2 px-4 pb-1 pt-5 text-left">
-          <span className="text-xl">{cat.icon}</span>
+          <span className="text-xl"><SportIcon sport={cat.sport} /></span>
           <span className="flex-1 font-display text-xl font-bold uppercase tracking-wide">{cat.label}</span>
           <span className="text-xs text-fg-subtle">only this ›</span>
         </button>

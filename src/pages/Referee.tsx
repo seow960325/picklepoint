@@ -1,5 +1,6 @@
 /** /c/HUB/referee — the one place referees (and the organiser) start: every
  *  court of every category of the event. Each court still asks for its PIN. */
+import { SportIcon } from '../components/SportIcon'
 import { Link, useParams } from 'react-router-dom'
 import { useCompetition } from '../lib/store'
 import { hubOf } from '../lib/hub'
@@ -35,7 +36,7 @@ export default function Referee() {
             return (
               <section key={cat.code} className="rounded-xl border border-line bg-surface p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <div className="font-display text-lg font-bold">{cat.icon} {cat.label}</div>
+                  <div className="font-display text-lg font-bold"><SportIcon sport={cat.sport} /> {cat.label}</div>
                   <Link to={`/c/${cat.code}/admin`} className="text-xs text-fg-subtle underline underline-offset-4">organiser settings</Link>
                 </div>
                 {!b ? <div className="text-sm text-fg-muted">Loading…</div> : (

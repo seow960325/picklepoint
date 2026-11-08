@@ -2,7 +2,7 @@
 // front page (overview + Total Champion) and hosts Captain Ball itself; each
 // pickleball / badminton category is its own code. Everything else in the
 // app is untouched: codes not listed here behave exactly as before.
-export interface HubCat { code: string; label: string; short: string; icon: string }
+export interface HubCat { code: string; label: string; short: string; sport: 'pickleball' | 'badminton' | 'captainball' }
 export interface Hub { code: string; title: string; onlySport?: 'captainball'; cats: HubCat[] }
 
 export const HUBS: Hub[] = [{
@@ -11,11 +11,11 @@ export const HUBS: Hub[] = [{
   // the old badminton / pickleball ties inside YC2626 are replaced by the category codes
   onlySport: 'captainball',
   cats: [
-    { code: 'YC2626', label: 'Captain Ball', short: 'Captain Ball', icon: '🏐' },
-    { code: 'BMMD', label: "Badminton Men's Doubles", short: 'Badminton MD', icon: '🏸' },
-    { code: 'BMXD', label: 'Badminton Mixed Doubles', short: 'Badminton XD', icon: '🏸' },
-    { code: 'PBMD', label: "Pickleball Men's Doubles", short: 'Pickleball MD', icon: '🏓' },
-    { code: 'PBXD', label: 'Pickleball Mixed Doubles', short: 'Pickleball XD', icon: '🏓' },
+    { code: 'YC2626', label: 'Captain Ball', short: 'Captain Ball', sport: 'captainball' },
+    { code: 'BMMD', label: "Badminton Men's Doubles", short: 'Badminton MD', sport: 'badminton' },
+    { code: 'BMXD', label: 'Badminton Mixed Doubles', short: 'Badminton XD', sport: 'badminton' },
+    { code: 'PBMD', label: "Pickleball Men's Doubles", short: 'Pickleball MD', sport: 'pickleball' },
+    { code: 'PBXD', label: 'Pickleball Mixed Doubles', short: 'Pickleball XD', sport: 'pickleball' },
   ],
 }]
 

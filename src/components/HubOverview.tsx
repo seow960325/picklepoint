@@ -1,6 +1,7 @@
 /** Hub front page: Total Champion medal table + one card per category with
  *  where it stands right now. Category codes are read once and every 30 s
  *  (no live channel each, so 200 phones don't open 5 connections apiece). */
+import { SportIcon } from './SportIcon'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Bundle } from '../lib/types'
@@ -109,7 +110,7 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
           const st = b ? statusOf(b) : null
           const head = (
             <div className="flex items-center gap-2">
-              <span className="text-xl leading-none">{cat.icon}</span>
+              <span className="text-xl leading-none"><SportIcon sport={cat.sport} /></span>
               <span className="min-w-0 flex-1 font-display text-base font-bold uppercase leading-tight tracking-wide">{cat.label}</span>
               {st && st.live > 0 && <span className="shrink-0 animate-pulse rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{st.live} LIVE</span>}
               <span className="shrink-0 text-fg-subtle">›</span>
