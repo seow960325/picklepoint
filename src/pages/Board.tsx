@@ -198,9 +198,10 @@ export default function Board() {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 lg:gap-2">
-            <Link to={`/c/${code}/admin`}
+            <Link to={hub ? `/c/${code}/referee` : `/c/${code}/admin`}
               className="flex h-8 items-center rounded-lg border border-line px-3 text-xs text-fg-muted active:bg-surface-2 lg:h-10 lg:px-4 lg:text-sm">
-              {multi || twoCat ? <><span className="sm:hidden">⚙</span><span className="hidden sm:inline">Settings</span></> : 'Settings'}
+              {hub ? 'Referee' : <>
+              {multi || twoCat ? <><span className="sm:hidden">⚙</span><span className="hidden sm:inline">Settings</span></> : 'Settings'}</>}
             </Link>
             <button onClick={() => koEv?.tv_partner
                 ? navigate(`/tv/${c.code}+${koEv.tv_partner}`)

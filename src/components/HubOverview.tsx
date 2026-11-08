@@ -10,15 +10,16 @@ import type { Hub } from '../lib/hub'
 import { categoryResult, medalTable } from '../lib/medals'
 import { finalSeries } from '../lib/finals'
 import { cbKo } from '../lib/captainball'
+import { churchOf } from '../lib/draw'
 
-function useOthers(codes: string[]) {
+export function useOthers(codes: string[], everyMs = 30000) {
   const [got, setGot] = useState<Record<string, Bundle | null>>({})
   useEffect(() => {
     let alive = true
     const load = () => Promise.all(codes.map(c => api.refresh(c, { light: true }).then(b => [c, b] as const, () => [c, null] as const)))
       .then(rows => { if (alive) setGot(Object.fromEntries(rows)) })
     load()
-    const id = setInterval(load, 30000)
+    const id = setInterval(load, everyMs)
     return () => { alive = false; clearInterval(id) }
   }, [codes.join(',')])
   return got
@@ -52,40 +53,14 @@ function statusOf(b: Bundle): { text: string; live: number; champ: string | null
 }
 
 export default function HubOverview({ hub, self, onOpenSelf }: { hub: Hub; self: Bundle; onOpenSelf: () => void }) {
-  const others = useOthers(hub.cats.map(c => c.code).filter(c => c !== hub.code))
+  const others = useOthers(hub.cats.map(c => c.code).filter(c => c !== hub.code), 15000)
   const bundleOf = (code: string) => (code === hub.code ? self : others[code] ?? null)
   const results = hub.cats.map(c => bundleOf(c.code)).filter((b): b is Bundle => !!b).map(categoryResult)
   const table = medalTable(results)
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-5 lg:px-6">
-      {/* categories */}
-      <section>
-        <h2 className="mb-2 text-[11px] font-bold uppercase tracking-[0.25em] text-fg-subtle">Categories</h2>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {hub.cats.map(cat => {
-            const b = bundleOf(cat.code)
-            const st = b ? statusOf(b) : null
-            const body = (
-              <>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl leading-none">{cat.icon}</span>
-                  <span className="min-w-0 flex-1 font-display text-lg font-bold leading-tight">{cat.label}</span>
-                  {st && st.live > 0 && <span className="shrink-0 animate-pulse rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{st.live} LIVE</span>}
-                  <span className="shrink-0 text-fg-subtle">›</span>
-                </div>
-                <div className="mt-1.5 text-sm text-fg-muted">
-                  {!b ? 'Loading…' : st!.champ ? <>🏆 <span className="font-bold text-fg">{st!.champ}</span></> : st!.text}
-                </div>
-              </>
-            )
-            const cls = 'block rounded-xl border border-line bg-surface p-3 text-left active:bg-surface-2'
-            return cat.code === hub.code
-              ? <button key={cat.code} onClick={onOpenSelf} className={`${cls} w-full`}>{body}</button>
-              : <Link key={cat.code} to={`/c/${cat.code}`} className={cls}>{body}</Link>
-          })}
-        </div>
-      </section>
+      <LiveNext hub={hub} bundleOf={bundleOf} onOpenSelf={onOpenSelf} />
 
       {/* total champion */}
       <section>
@@ -113,5 +88,89 @@ export default function HubOverview({ hub, self, onOpenSelf }: { hub: Hub; self:
         </div>
       </section>
     </div>
+  )
+}
+
+// ------------------------------------------------------------ live & up next
+const MINE = 'pp.hub.church'
+
+/** Every category's games on court and coming up, in one list. A player picks
+ *  their church once (kept on this phone) to see only their games. */
+function LiveNext({ hub, bundleOf, onOpenSelf }: { hub: Hub; bundleOf: (code: string) => Bundle | null; onOpenSelf: () => void }) {
+  const [mine, setMine] = useState<string>(() => { try { return localStorage.getItem(MINE + hub.code) ?? '' } catch { return '' } })
+  const pick = (c: string) => { setMine(c); try { localStorage.setItem(MINE + hub.code, c) } catch { /* private mode */ } }
+  const cats = hub.cats.map(cat => ({ cat, b: bundleOf(cat.code) })).filter((x): x is { cat: typeof x.cat; b: Bundle } => !!x.b)
+  const churches = [...new Set(cats.flatMap(x => x.b.teams.map(t => churchOf(t.name))))].sort()
+  const name = (b: Bundle, id: string | null) => b.teams.find(t => t.id === id)?.name ?? '—'
+  const ours = (b: Bundle, m: Bundle['matches'][number]) => !mine
+    || [m.team_a_id, m.team_b_id].some(id => churchOf(name(b, id)).toLowerCase() === mine.toLowerCase())
+  const court = (b: Bundle, id: string | null) => {
+    const c = b.courts.find(x => x.id === id)
+    if (!c) return ''
+    return `Ct ${/(\d+)\s*$/.exec(c.label ?? '')?.[1] ?? c.number}`
+  }
+  const blocks = hub.cats.map(cat => ({ cat, b: bundleOf(cat.code) })).map(({ cat, b }) => {
+    if (!b) return { cat, b, live: [], next: [] }
+    const live = b.matches.filter(m => (m.status === 'live' || m.status === 'awaiting_confirm') && m.team_a_id && m.team_b_id && ours(b, m))
+      .sort((x, y) => x.sequence - y.sequence)
+    const next = b.matches.filter(m => (m.status === 'scheduled' || m.status === 'on_deck') && m.team_a_id && m.team_b_id && ours(b, m))
+      .sort((x, y) => x.sequence - y.sequence).slice(0, mine ? 6 : 3)
+    return { cat, b, live, next }
+  })
+
+  return (
+    <section>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.25em] text-fg-subtle">Categories · on court & up next</h2>
+        <select value={mine} onChange={e => pick(e.target.value)}
+          className="rounded-lg border border-line bg-surface px-2 py-1.5 text-sm text-fg">
+          <option value="">All churches</option>
+          {churches.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {blocks.map(({ cat, b, live, next }) => {
+          const st = b ? statusOf(b) : null
+          const head = (
+            <div className="flex items-center gap-2">
+              <span className="text-xl leading-none">{cat.icon}</span>
+              <span className="min-w-0 flex-1 font-display text-base font-bold uppercase leading-tight tracking-wide">{cat.label}</span>
+              {st && st.live > 0 && <span className="shrink-0 animate-pulse rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{st.live} LIVE</span>}
+              <span className="shrink-0 text-fg-subtle">›</span>
+            </div>
+          )
+          const body = (
+            <>
+              {head}
+              <div className="mt-0.5 text-xs text-fg-muted">
+                {!b ? 'Loading…' : st!.champ ? <>🏆 Champion: <span className="font-bold text-fg">{st!.champ}</span></> : st!.text}
+              </div>
+              {(live.length > 0 || next.length > 0) && <div className="mt-2 border-t border-line/60 pt-1.5">
+                {live.map(m => (
+                  <div key={m.id} className="grid grid-cols-[3rem_minmax(0,1fr)_3rem_minmax(0,1fr)] items-center gap-1.5 py-1 text-sm">
+                    <span className="truncate text-[11px] font-bold uppercase text-red-400">● {court(b!, m.court_id)}</span>
+                    <span className="truncate text-right font-semibold">{name(b!, m.team_a_id)}</span>
+                    <span className="tabular text-center font-display font-bold">{m.score_a}–{m.score_b}</span>
+                    <span className="truncate font-semibold">{name(b!, m.team_b_id)}</span>
+                  </div>
+                ))}
+                {next.map((m, i) => (
+                  <div key={m.id} className="grid grid-cols-[3rem_minmax(0,1fr)_3rem_minmax(0,1fr)] items-center gap-1.5 py-1 text-sm text-fg-muted">
+                    <span className="truncate text-[11px] font-bold uppercase text-fg-subtle">{i === 0 ? 'Next' : `+${i}`}</span>
+                    <span className="truncate text-right">{name(b!, m.team_a_id)}</span>
+                    <span className="text-center text-xs text-fg-subtle">vs</span>
+                    <span className="truncate">{name(b!, m.team_b_id)}</span>
+                  </div>
+                ))}
+              </div>}
+            </>
+          )
+          const cls = 'block w-full rounded-xl border border-line bg-surface p-3 text-left active:bg-surface-2'
+          return cat.code === hub.code
+            ? <button key={cat.code} onClick={onOpenSelf} className={cls}>{body}</button>
+            : <Link key={cat.code} to={`/c/${cat.code}`} className={cls}>{body}</Link>
+        })}
+      </div>
+    </section>
   )
 }

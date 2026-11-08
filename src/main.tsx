@@ -13,6 +13,7 @@ import QuickPlay from './pages/QuickPlay'
 import CombinedTv from './pages/CombinedTv'
 import Register from './pages/Register'
 import Medals from './pages/Medals'
+import Referee from './pages/Referee'
 import { PreviewLayout } from './lib/previewStage'
 
 const router = createBrowserRouter([{ element: <PreviewLayout />, children: [
@@ -23,6 +24,7 @@ const router = createBrowserRouter([{ element: <PreviewLayout />, children: [
   { path: '/new', element: <NewCompetition /> },
   { path: '/c/:code', element: <Board /> },
   { path: '/c/:code/court/:number', element: <CourtScore /> },
+  { path: '/c/:code/referee', element: <Referee /> },
   { path: '/c/:code/match/:id', element: <MatchDetail /> },
   { path: '/c/:code/admin', element: <Admin /> },
   { path: '/owner', element: <Owner /> },
