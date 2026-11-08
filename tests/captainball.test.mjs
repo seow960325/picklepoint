@@ -202,6 +202,7 @@ test('captain ball church format: stages follow the sheet', () => {
 })
 
 import { flowOf as _flowOf } from '../src/lib/flow.ts'
+const G = f => Object.fromEntries(f.stages.flatMap(s => s.games).map(g => [g.key, g]))
 test('flow chart: captain ball fills in group places, playoff, semis, final', () => {
   const ev = { id: 'e', sport: 'captainball' }
   const mk = (n, pool) => ({ id: n, event_id: 'e', name: n, pool })
@@ -211,14 +212,14 @@ test('flow chart: captain ball fills in group places, playoff, semis, final', ()
     ({ id: `m${++seq}`, event_id: 'e', team_a_id: a, team_b_id: b, score_a: sa, score_b: sb, status: 'finished', tie_stage: stage, court_id: 'c', sequence: seq })
   const b = { events: [ev], teams, courts: [{ id: 'c', number: 1 }], matches: [] }
   let f = _flowOf(b)
-  assert.equal(f.games.P1.a.id, null)                       // nothing played: empty slots
+  assert.equal(G(f).P1.a.id, null)                       // nothing played: empty slots
   b.matches.push(g('A1','A2',10,5), g('A1','A3',8,2), g('A2','A3',6,4), g('B1','B2',3,9), g('B1','B3',7,4), g('B2','B3',5,1))
   f = _flowOf(b)
-  assert.deepEqual([f.games.P1.a.id, f.games.P1.b.id, f.games.P2.a.id, f.games.P2.b.id], ['A3','B1','B3','A2'])
-  assert.equal(f.games.SF1.a.id, 'A1'); assert.equal(f.games.SF1.b.id, null)
+  assert.deepEqual([G(f).P1.a.id, G(f).P1.b.id, G(f).P2.a.id, G(f).P2.b.id], ['A3','B1','B3','A2'])
+  assert.equal(G(f).SF1.a.id, 'A1'); assert.equal(G(f).SF1.b.id, null)
   b.matches.push(g('A3','B1',2,5,'P1'), g('B3','A2',3,4,'P2'), g('A1','B1',9,6,'SF1'), g('B2','A2',4,7,'SF2'))
   f = _flowOf(b)
-  assert.deepEqual([f.games.F.a.id, f.games.F.b.id, f.games['3P'].a.id, f.games['3P'].b.id], ['A1','A2','B1','B2'])
+  assert.deepEqual([G(f).F.a.id, G(f).F.b.id, G(f)['3P'].a.id, G(f)['3P'].b.id], ['A1','A2','B1','B2'])
   b.matches.push(g('A1','A2',6,2,'F'))
   assert.equal(_flowOf(b).champion, 'A1')
 })

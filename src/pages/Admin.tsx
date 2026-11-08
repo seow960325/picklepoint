@@ -734,11 +734,14 @@ function BracketTab({ bundle, ev, token, run }: any) {
   const pairs = seedBracket(groupIds, size)
   const firstRound = rounds[0]
 
+  // 4-team round robin: Final = 1st v 2nd, 3rd place = 3rd v 4th
+  const rrFinal = flat.length === 4 && groupIds.length === 1 && rounds.every(r => r.round === 'Final' || r.round === 'Third place')
+  const seedRows = rrFinal
+    ? [{ key: 'KO-2-0', a: flat[0], b: flat[1] }, { key: 'KO-3P', a: flat[2], b: flat[3] }]
+    : pairs.map((pr, i) => ({ key: firstRound?.matches[i]?.bracket_key ?? '', a: pr[0], b: pr[1] }))
+  const shownPairs: Array<[string | null, string | null]> = rrFinal ? seedRows.map(r => [r.a, r.b]) : pairs
   const lock = () => run(async () => {
-    await api.adminSeedBracket(token, ev.id, pairs.map((pr, i) => ({
-      key: firstRound.matches[i]?.bracket_key ?? '',
-      a: pr[0], b: pr[1],
-    })))
+    await api.adminSeedBracket(token, ev.id, seedRows)
   }, 'Bracket seeded — knockout matches are on court')
 
   const unlock = () => run(
@@ -815,10 +818,10 @@ function BracketTab({ bundle, ev, token, run }: any) {
       {complete && !seeded && firstRound && (
         <div className="rounded-xl border border-line bg-surface p-4">
           <div className="mb-2 truncate whitespace-nowrap text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
-            {firstRound.round} — this is what will be written
+            {rrFinal ? 'Final (1st v 2nd) and 3rd place (3rd v 4th)' : firstRound.round} — this is what will be written
           </div>
           <ul className="space-y-1 text-sm">
-            {pairs.map((pr, i) => (
+            {shownPairs.map((pr, i) => (
               <li key={i} className="grid grid-cols-[minmax(0,1fr)_2.75rem_minmax(0,1fr)] items-center gap-2 border-b border-line/60 pb-1">
                 <span className="flex min-w-0 items-center justify-end gap-1.5 truncate text-right">
                   <span className="truncate">{nm(pr[0]) ?? '—'}</span>

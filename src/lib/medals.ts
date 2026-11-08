@@ -3,6 +3,7 @@
 // the overall medal table: most gold, then silver, then bronze.
 import type { Bundle } from './types.ts'
 import { cbStandings, cbKo } from './captainball.ts'
+import { churchOf } from './draw.ts'
 
 export interface Podium3 { first: string | null; second: string | null; third: string | null }
 export interface CategoryResult {
@@ -55,10 +56,7 @@ export function categoryResult(b: Bundle): CategoryResult {
   return out
 }
 
-/** Church of a team: "MEGA CMC TEAM A", "Mega CMC 2", "PJ State CMC B" -> the church name.
- *  A church with several teams in one category is still one church on the table. */
-export const churchOf = (s: string) =>
-  s.trim().replace(/\s+/g, ' ').replace(/(\s+-)?\s+\(?(team\s+)?([A-Z]|\d{1,2})\)?$/i, '').replace(/\s+team$/i, '').trim() || s.trim()
+export { churchOf }
 const keyOf = (s: string) => churchOf(s).toLowerCase()
 
 /** Gold, then silver, then bronze, then name. Churches are matched by team name. */

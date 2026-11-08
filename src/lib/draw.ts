@@ -194,6 +194,10 @@ export interface GroupKoDraw {
 
 const GROUP_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
+/** Church of a team: "MEGA CMC TEAM A", "Mega CMC 2", "PJ State CMC B" -> the church name. */
+export const churchOf = (s: string) =>
+  s.trim().replace(/\s+/g, ' ').replace(/(\s+-)?\s+\(?(team\s+)?([A-Z]|\d{1,2})\)?$/i, '').replace(/\s+team$/i, '').trim() || s.trim()
+
 export function nextPowerOfTwo(n: number): number {
   let p = 1
   while (p < n) p *= 2
@@ -218,10 +222,16 @@ export function shuffled<T>(items: T[], rng: () => number = Math.random): T[] {
   return out
 }
 
+/** 4 teams, one group of 4, all 4 "advance": round robin, then Final (1v2) + 3rd place (3v4). */
+export const isRrFinal = (teamCount: number, groupSize: number, advancePerGroup: number) =>
+  teamCount === 4 && groupSize >= 4 && advancePerGroup === 4
+
 /** Reject rule sets that cannot produce a sane bracket, before anyone books a court. */
 export function validateGroupKo(
   teamCount: number, groupSize: number, advancePerGroup: number,
 ): string | null {
+  // one group of 4, everyone in the table: round robin, then 1st v 2nd Final + 3rd v 4th
+  if (isRrFinal(teamCount, groupSize, advancePerGroup)) return null
   if (groupSize < 3) return 'Groups need at least 3 teams.'
   if (teamCount < groupSize * 2) return `Need at least ${groupSize * 2} teams to fill two groups.`
   const groupCount = Math.ceil(teamCount / groupSize)
@@ -244,7 +254,13 @@ export function drawGroups(
   names: string[], groupSize: number, rng: () => number = Math.random,
 ): DraftTeam[] {
   const groupCount = Math.ceil(names.length / groupSize)
-  const order = shuffled(names.map((name, i) => ({ name, i })), rng)
+  const mixed = shuffled(names.map((name, i) => ({ name, i })), rng)
+  // teams of the same church ("Mega CMC 1", "Mega CMC 2") are dealt one after
+  // another, so they land in different groups whenever there are enough groups
+  const firstAt = new Map<string, number>()
+  mixed.forEach((t, k) => { const ch = churchOf(t.name).toLowerCase(); if (!firstAt.has(ch)) firstAt.set(ch, k) })
+  const order = mixed.map((t, k) => ({ t, k, f: firstAt.get(churchOf(t.name).toLowerCase())! }))
+    .sort((x, y) => x.f - y.f || x.k - y.k).map(x => x.t)
   const out: DraftTeam[] = names.map(name => ({ name, pool: 'A' }))
   order.forEach((t, dealt) => {
     out[t.i] = { name: t.name, pool: GROUP_LETTERS[dealt % groupCount] }
@@ -309,6 +325,15 @@ export function buildGroupKoDraw(
   const groupCount = new Set(teams.map(t => t.pool)).size
   const groupMatches = buildDraw(teams, courtCount)
 
+  if (isRrFinal(names.length, groupSize, advancePerGroup)) {
+    const seq = groupMatches.length + 1
+    const one = (key: string, round: string, sequence: number): DraftKoMatch => ({
+      key, round, teamsInRound: key === 'KO-2-0' ? 2 : 0, nextKey: null, nextSlot: null,
+      loserNextKey: null, loserNextSlot: null, courtIdx: 0, sequence })
+    // 3rd place first, the Final last
+    const bracket = [one('KO-3P', 'Third place', seq), one('KO-2-0', 'Final', seq + 1)]
+    return { teams, groupMatches, bracket, groupCount: 1, qualifiers: 4, bracketSize: 2, byes: 0 }
+  }
   const qualifiers = groupCount * advancePerGroup
   const bracketSize = nextPowerOfTwo(qualifiers)
   const bracket = buildBracketSkeleton(

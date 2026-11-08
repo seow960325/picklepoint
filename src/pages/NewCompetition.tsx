@@ -413,13 +413,13 @@ export default function NewCompetition() {
             <div className="space-y-5">
               <div className="flex flex-wrap items-end gap-4">
                 <Field label="How many teams">
-                  <Stepper value={koTeamCount} min={6} max={64} onChange={setKoCount} />
+                  <Stepper value={koTeamCount} min={4} max={64} onChange={setKoCount} />
                 </Field>
                 <Field label="Per group">
                   <Stepper value={groupSize} min={3} max={8} onChange={setGroupSize} />
                 </Field>
                 <Field label="Advance">
-                  <Stepper value={advancePerGroup} min={1} max={koTeamCount === 6 && groupSize === 3 ? 3 : Math.max(1, groupSize - 1)}
+                  <Stepper value={advancePerGroup} min={1} max={koTeamCount === 6 && groupSize === 3 ? 3 : koTeamCount === 4 && groupSize >= 4 ? 4 : Math.max(1, groupSize - 1)}
                     onChange={setAdvancePerGroup} />
                 </Field>
                 <Field label="3rd place">

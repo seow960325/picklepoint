@@ -2,7 +2,7 @@
 import type { Bundle } from '../lib/types'
 import { teamName, teamLogo } from '../lib/store'
 import { Emblem } from './ui'
-import type { Flow, FlowGame, FlowSlot } from '../lib/flow'
+import type { Flow, FlowGame, FlowSlot, FlowStage } from '../lib/flow'
 
 const C = {
   group: ['border-[#f472b6]/40 bg-[#f472b6]/10', 'border-[#5aa9ff]/40 bg-[#5aa9ff]/10'],
@@ -59,8 +59,11 @@ const Arrow = () => (
   </div>
 )
 
+const TONE: Record<FlowStage['tone'], string> = { playoff: C.playoff, qf: C.playoff, semi: C.semi, medal: C.final }
+
 export default function FlowChart({ b, flow }: { b: Bundle; flow: Flow }) {
-  const g = flow.games
+  const hasPlaces = flow.groups.some(g => g.places)
+  const many = flow.groups.length > 2
   return (
     <div className="px-3 py-4 lg:overflow-x-auto lg:px-6">
       {flow.champion && (
@@ -70,45 +73,57 @@ export default function FlowChart({ b, flow }: { b: Bundle; flow: Flow }) {
         </div>
       )}
       <div className="mx-auto flex max-w-xl flex-col lg:w-max lg:max-w-none lg:flex-row lg:items-stretch">
-        <Col title="Groups">
+        <Col title={flow.groups.length === 1 ? 'Round robin' : 'Groups'}>
           {flow.groups.map((gr, i) => (
-            <div key={gr.pool} className={`rounded-xl border p-2.5 ${C.group[i]}`}>
-              <div className="mb-1 font-display text-lg font-bold">Group {gr.pool}</div>
-              <div className="space-y-1 text-sm">{gr.ids.map(id => <Name key={id} b={b} id={id} />)}</div>
+            <div key={gr.pool} className={`rounded-xl border p-2.5 ${C.group[i % 2]} ${flow.groups.length === 1 ? 'col-span-2' : ''}`}>
+              {flow.groups.length > 1 && <div className="mb-1 font-display text-lg font-bold">Group {gr.pool}</div>}
+              {gr.ranked ? (
+                <div className="space-y-1 text-sm">
+                  {gr.ranked.map((r, k) => (
+                    <div key={r.id} className={`min-w-0 ${r.to ? '' : 'opacity-60'}`}>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-3 shrink-0 text-[11px] font-bold text-fg-subtle">{k + 1}</span>
+                        <div className="min-w-0 flex-1"><Name b={b} id={r.id} prov={r.prov && !!r.to} /></div>
+                      </div>
+                      {r.to && <div className={`pl-[18px] text-[10px] font-semibold text-[#34d399] ${many ? 'hidden lg:block' : ''}`}>→ {r.to}</div>}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-1 text-sm">{gr.ids.map(id => <Name key={id} b={b} id={id} />)}</div>
+              )}
               <div className="mt-1 text-[10px] text-fg-subtle">round robin</div>
             </div>
           ))}
         </Col>
-        <Arrow />
-        <Col title="Group places">
-          {flow.groups.map(gr => (
-            <div key={gr.pool} className="space-y-1.5">
-              {gr.places.map((p, i) => (
-                <div key={p.label} className={`rounded-lg border px-2 py-1.5 ${C.place[i]}`}>
-                  <div className="flex justify-between gap-1 text-[10px] font-semibold uppercase tracking-wider text-fg-subtle">
-                    <span>{p.label}</span><span className="hidden normal-case tracking-normal lg:inline">→ {p.to}</span>
+        {hasPlaces && <>
+          <Arrow />
+          <Col title="Group places">
+            {flow.groups.map(gr => (
+              <div key={gr.pool} className="space-y-1.5">
+                {gr.places!.map((p, i) => (
+                  <div key={p.label} className={`rounded-lg border px-2 py-1.5 ${C.place[i]}`}>
+                    <div className="flex justify-between gap-1 text-[10px] font-semibold uppercase tracking-wider text-fg-subtle">
+                      <span>{p.label}</span><span className="hidden normal-case tracking-normal lg:inline">→ {p.to}</span>
+                    </div>
+                    <div className="text-sm"><Name b={b} id={p.id} prov={p.prov} /></div>
                   </div>
-                  <div className="text-sm"><Name b={b} id={p.id} prov={p.prov} /></div>
-                </div>
+                ))}
+              </div>
+            ))}
+          </Col>
+        </>}
+        {flow.stages.map(st => (
+          <div key={st.title} className="contents">
+            <Arrow />
+            <Col title={st.title}>
+              {st.games.map(g => (
+                <Game key={g.key} b={b} g={g} icon={g.icon}
+                  tone={st.tone === 'medal' ? (g.icon === '🥉' ? C.third : C.final) : TONE[st.tone]} />
               ))}
-            </div>
-          ))}
-        </Col>
-        <Arrow />
-        <Col title="Playoff">
-          <Game b={b} g={g.P1} tone={C.playoff} />
-          <Game b={b} g={g.P2} tone={C.playoff} />
-        </Col>
-        <Arrow />
-        <Col title="Semi-finals">
-          <Game b={b} g={g.SF1} tone={C.semi} />
-          <Game b={b} g={g.SF2} tone={C.semi} />
-        </Col>
-        <Arrow />
-        <Col title="Medals">
-          <Game b={b} g={g.F} tone={C.final} icon="🏆" />
-          <Game b={b} g={g['3P']} tone={C.third} icon="🥉" />
-        </Col>
+            </Col>
+          </div>
+        ))}
       </div>
       <div className="mt-3 text-center text-[11px] text-fg-subtle">
         SO FAR = current group position, not final yet. ✓ = winner.
