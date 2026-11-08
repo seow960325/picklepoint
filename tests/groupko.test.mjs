@@ -197,3 +197,13 @@ test('six-team playoff: valid, seeds A1/B1 to semis, playoff = A3 v B2 and B3 v 
   assert.equal(d.byes, 2)
   assert.equal(d.bracket.filter(m => m.round === 'Playoff').length, 4)
 })
+
+import { medalTable as _mt } from '../src/lib/medals.ts'
+test('medal table: gold, then silver, then bronze', () => {
+  const r = (first, second, third) => ({ code: 'X', name: 'X', done: true, podium: { first, second, third }, logos: {} })
+  const t = _mt([r('Grace', 'Zion', 'Life'), r('Zion', 'Grace', null), r('Grace', 'Life', 'Zion'), r('Zion', 'Life', 'Grace')])
+  assert.deepEqual(t.map(x => [x.name, x.gold, x.silver, x.bronze]),
+    [['Grace', 2, 1, 1], ['Zion', 2, 1, 1], ['Life', 0, 2, 1]])
+  const t2 = _mt([r('Zion', 'Grace', 'Life'), r('Grace', 'Zion', 'Life'), r('Zion', 'Life', 'Grace')])
+  assert.equal(t2[0].name, 'Zion')   // 2 gold beats 1
+})

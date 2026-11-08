@@ -12,6 +12,7 @@ import Owner from './pages/Owner'
 import QuickPlay from './pages/QuickPlay'
 import CombinedTv from './pages/CombinedTv'
 import Register from './pages/Register'
+import Medals from './pages/Medals'
 import { PreviewLayout } from './lib/previewStage'
 
 const router = createBrowserRouter([{ element: <PreviewLayout />, children: [
@@ -26,6 +27,7 @@ const router = createBrowserRouter([{ element: <PreviewLayout />, children: [
   { path: '/c/:code/admin', element: <Admin /> },
   { path: '/owner', element: <Owner /> },
   { path: '/tv/:codes', element: <CombinedTv /> },
+  { path: '/medals/:codes', element: <Medals /> },
 ] }])
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
