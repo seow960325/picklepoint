@@ -528,6 +528,14 @@ export async function adminAddTieStage(
   await rpc('admin_add_tie_stage', { p_token: token, p_event_id: eventId, p_stage: stage, p_games: games })
 }
 
+/** Final of a group+knockout event: own scoring + best of N (migration 0037). */
+export async function adminSetFinalRules(
+  token: string, r: { target_score: number; win_by: number; cap: number; best_of: number },
+): Promise<void> {
+  if (IS_DEMO) return
+  await rpc('admin_set_final_rules', { p_token: token, p_target: r.target_score, p_win_by: r.win_by, p_cap: r.cap, p_best_of: r.best_of })
+}
+
 export async function adminClearTieStage(token: string, eventId: string, stage: string): Promise<void> {
   if (IS_DEMO) throw new Error('Multi-sport needs the live database')
   await rpc('admin_clear_tie_stage', { p_token: token, p_event_id: eventId, p_stage: stage })

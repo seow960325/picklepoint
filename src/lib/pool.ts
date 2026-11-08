@@ -13,6 +13,7 @@
  *   tv_partner           code of the sister category for the combined TV
  */
 import type { Bundle, EventCfg, Match, Team } from './types'
+import { finalGameNo } from './finals.ts'
 import { roundRobinPairs, standardSeedOrder, seedBracket, type DraftMatch, type DraftTeam } from './draw.ts'
 
 export const isPoolDispatch = (ev?: EventCfg | null) => ev?.court_dispatch === 'pool'
@@ -268,7 +269,7 @@ export function upNext(b: Bundle, eventId: string, n = 6): Array<{ m: Match; wai
 
 /** Short names for knockout slots: QF1…, SF1…, 'Final', '3rd'. */
 export function koShort(b: Bundle, m: Match): string {
-  if (m.round === 'Final') return 'Final'
+  if (m.round === 'Final') return (b.events.find(e => e.id === m.event_id)?.final_best_of ?? 1) > 1 ? `Final G${finalGameNo(m)}` : 'Final'
   if (m.round === 'Third place') return '3rd place'
   const same = b.matches.filter(x => x.event_id === m.event_id && x.bracket_key != null && x.round === m.round)
     .sort((x, y) => x.sequence - y.sequence)
@@ -369,7 +370,7 @@ export function rankByDiff<S extends RankRow>(rows: S[], done: Match[]): S[] {
  *  "3RD PLACE", "FINAL". `kind` picks the glow colour. */
 export function stageLabel(b: Bundle, m: Match): { text: string; kind: 'group' | 'ko' | 'final' } {
   if (m.bracket_key != null) {
-    if (m.round === 'Final') return { text: 'FINAL', kind: 'final' }
+    if (m.round === 'Final') return { text: (b.events.find(e => e.id === m.event_id)?.final_best_of ?? 1) > 1 ? `FINAL · G${finalGameNo(m)}` : 'FINAL', kind: 'final' }
     if (m.round === 'Third place') return { text: '3RD PLACE', kind: 'ko' }
     if (m.round === 'Semi-final') return { text: 'SEMI FINAL', kind: 'ko' }
     const rn = /^Round of (\d+)$/.exec(m.round ?? '')

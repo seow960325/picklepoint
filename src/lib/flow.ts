@@ -5,10 +5,13 @@
 import type { Bundle, Match } from './types.ts'
 import { cbKo } from './captainball.ts'
 import { seedBracket } from './draw.ts'
+import { finalSeries, isFinalKey, type FinalSeries } from './finals.ts'
 
 export type FlowKey = 'P1' | 'P2' | 'SF1' | 'SF2' | 'F' | '3P'
 export interface FlowSlot { label: string; id: string | null; prov: boolean }
-export interface FlowGame { key: string; title: string; a: FlowSlot; b: FlowSlot; winner: string | null; live: boolean; icon?: string }
+export interface FlowGame { key: string; title: string; a: FlowSlot; b: FlowSlot; winner: string | null; live: boolean; icon?: string
+  /** best-of-3 Final: winner of each game played so far */
+  series?: Array<string | null> }
 export interface FlowStage { title: string; tone: 'playoff' | 'qf' | 'semi' | 'medal'; games: FlowGame[] }
 export interface FlowPlace { label: string; to: string; id: string | null; prov: boolean }
 export interface FlowGroup {
@@ -102,9 +105,10 @@ export function flowOf(b: Bundle, h?: FlowHelpers): Flow | null {
     const tables = Object.fromEntries(Object.entries(st).map(([g, rows]) => [g, rows.map(r => r.team.id)]))
     const own = b.matches.filter(m => m.event_id === ko.id)
     const byKey = (k: string) => own.find(m => m.bracket_key === k)
-    return buildFlow(pools, tables, groupStageComplete(b, ko.id),
+    return withSeries(buildFlow(pools, tables, groupStageComplete(b, ko.id),
       own.some(m => !m.bracket_key && m.status === 'finished'),
-      { P1: byKey('KO-8-1'), P2: byKey('KO-8-3'), SF1: byKey('KO-4-0'), SF2: byKey('KO-4-1'), F: byKey('KO-2-0'), '3P': byKey('KO-3P') })
+      { P1: byKey('KO-8-1'), P2: byKey('KO-8-3'), SF1: byKey('KO-4-0'), SF2: byKey('KO-4-1'), F: byKey('KO-2-0'), '3P': byKey('KO-3P') }),
+      finalSeries(b, ko.id))
   }
   const cb = b.events.find(e => e.sport === 'captainball')
   if (cb) {
@@ -127,7 +131,8 @@ function genericKo(b: Bundle, evId: string, adv: number,
   st: Record<string, Array<{ team: { id: string } }>>, done: boolean): Flow | null {
   const own = b.matches.filter(m => m.event_id === evId)
   const played = own.some(m => !m.bracket_key && m.status === 'finished')
-  const ko = own.filter(m => m.bracket_key).sort((x, y) => x.sequence - y.sequence)
+  // Final games 2 / 3 (best of 3) are shown inside the Final card, not as extra games
+  const ko = own.filter(m => m.bracket_key && (!isFinalKey(m.bracket_key) || m.bracket_key === 'KO-2-0')).sort((x, y) => x.sequence - y.sequence)
   if (!ko.length) return null
   const pools = Object.keys(st).sort()
   const tables = Object.fromEntries(pools.map(g => [g, st[g].map(r => r.team.id)]))
@@ -206,5 +211,19 @@ function genericKo(b: Bundle, evId: string, adv: number,
     pool: g, ids: tables[g] ?? [],
     ranked: (tables[g] ?? []).map((id, i) => ({ id, to: qualTo.get(label(g, i)) ?? null, prov })),
   }))
-  return { groups, stages, champion: fin ? winOf(fin) : null }
+  return withSeries({ groups, stages, champion: fin ? winOf(fin) : null }, finalSeries(b, evId))
+}
+
+/** Best-of-3 Final: the card's winner / live / title follow the whole series. */
+function withSeries(f: Flow, fs: FinalSeries | null): Flow {
+  if (!fs || fs.bestOf < 2) return f
+  for (const st of f.stages) for (const g of st.games) {
+    if (g.key !== 'F' && g.title !== 'Final') continue
+    g.title = `Final · best of ${fs.bestOf}`
+    g.winner = fs.winner
+    g.live = fs.live
+    g.series = fs.games.filter(x => x.status === 'finished').map(x =>
+      x.winner_id ?? (x.score_a > x.score_b ? x.team_a_id : x.team_b_id))
+  }
+  return { ...f, champion: fs.winner }
 }

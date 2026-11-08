@@ -29,6 +29,7 @@ export const rulesOf = (e: EventCfg, m?: Pick<Match, 'bracket_key'> | null): Rul
   // knockout games of an event with its own knockout rules (migration 0026);
   // ko_target_score is null on every other event, so they never get here
   m?.bracket_key != null && e.ko_target_score != null
+    && (!e.ko_final_only || m.bracket_key === 'KO-2-0' || m.bracket_key.startsWith('KO-2-0-'))
     ? {
         target_score: e.ko_target_score,
         win_by: e.ko_win_by ?? e.win_by,

@@ -258,3 +258,19 @@ test('draw: same church never shares a group when groups allow it', () => {
     for (const x of t) { const k = x.name.replace(/ \d+$/, '') + '|' + x.pool; assert.ok(!seen.has(k), `seed ${seed}: ${k}`); seen.add(k) }
   }
 })
+
+import { finalSeries as _fs } from '../src/lib/finals.ts'
+test('legs: twice = every group pair twice, sides swapped', () => {
+  const d1 = _bd(['a','b','c','d','e','f','g','h'], 2, { groupSize: 4, advancePerGroup: 2 })
+  const d2 = _bd(['a','b','c','d','e','f','g','h'], 3, { groupSize: 4, advancePerGroup: 2, legs: 2 })
+  assert.equal(d1.groupMatches.length, 12); assert.equal(d2.groupMatches.length, 24)
+  assert.ok(Math.min(...d2.bracket.map(k => k.sequence)) > 24)
+})
+test('final series: best of 3 needs 2 wins', () => {
+  const g = (k, w, st = 'finished') => ({ id: k, event_id: 'e', bracket_key: k, team_a_id: 'X', team_b_id: 'Y', winner_id: w, status: st, score_a: 0, score_b: 0 })
+  const b = (ms, bo = 3) => ({ events: [{ id: 'e', final_best_of: bo }], matches: ms })
+  assert.equal(_fs(b([g('KO-2-0', 'X')]), 'e').winner, null)
+  assert.equal(_fs(b([g('KO-2-0', 'X'), g('KO-2-0-2', 'X')]), 'e').winner, 'X')
+  assert.equal(_fs(b([g('KO-2-0', 'X'), g('KO-2-0-2', 'Y'), g('KO-2-0-3', 'Y')]), 'e').winner, 'Y')
+  assert.equal(_fs(b([g('KO-2-0', 'X')], 1), 'e').winner, 'X')
+})

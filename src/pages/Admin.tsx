@@ -371,7 +371,8 @@ function ScoringTab({ ev, token, run }: any) {
         onClick={() => run(() => api.adminUpdateEvent(token, ev.id, name,
           { target_score: t, win_by: w, cap, switch_at: sw, side_a_name: aName, side_b_name: bName, serve_mode: serveMode }),
           'Scoring updated')} />
-      {ev.ko_target_score != null && <KoRules ev={ev} token={token} run={run} />}
+      {ev.ko_target_score != null && !ev.ko_final_only && <KoRules ev={ev} token={token} run={run} />}
+      {ev.format === 'groups_ko' && <FinalRules ev={ev} token={token} run={run} />}
     </div>
   )
 }
@@ -406,6 +407,43 @@ function KoRules({ ev, token, run }: any) {
       </p>
       <Save disabled={!!bad} label="SAVE KNOCKOUT RULES"
         onClick={() => run(() => api.adminSetKoRules(token, ev.id, { target_score: t, win_by: w, cap, switch_at: sw }), 'Knockout scoring updated')} />
+    </div>
+  )
+}
+
+/** The Final only: own scoring + best of N (migration 0037). Group games,
+ *  semi-finals and 3rd place keep the rules above. Locked once the Final starts. */
+function FinalRules({ ev, token, run }: any) {
+  const own = !!ev.ko_final_only
+  const [t, setT] = useState<number>(own ? ev.ko_target_score : 11)
+  const [w, setW] = useState<number>(own ? (ev.ko_win_by ?? ev.win_by) : ev.win_by)
+  const [cap, setCap] = useState<number>(own ? (ev.ko_cap ?? ev.ko_target_score) : 11)
+  const [bo, setBo] = useState<number>(ev.final_best_of ?? 1)
+  const bad = validateRules({ target_score: t, win_by: w, cap, switch_at: 0 })
+  return (
+    <div className="mt-8 space-y-4 rounded-xl border border-line bg-surface p-4">
+      <div>
+        <div className="font-display text-lg font-bold tracking-wide">The Final</div>
+        <p className="text-xs text-fg-subtle">
+          {own ? `Now: first to ${ev.ko_target_score}, win by ${ev.ko_win_by}, cap ${ev.ko_cap} · ${ev.final_best_of > 1 ? `best of ${ev.final_best_of}` : 'one game'}.`
+            : 'Now: same rules as above, one game.'} Semi-finals and 3rd place keep the rules above.
+        </p>
+      </div>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-4">
+        <Field label="Winning score"><Stepper value={t} min={1} max={99} onChange={v => { setT(v); if (cap < v) setCap(v) }} /></Field>
+        <Field label="Win by"><Stepper value={w} min={1} max={5} onChange={setW} /></Field>
+        <Field label="Hard cap"><Stepper value={cap} min={1} max={120} onChange={setCap} /></Field>
+        <Field label="Games">
+          <Choice value={bo} onChange={setBo} options={[{ label: '1', value: 1 }, { label: 'Best of 3', value: 3 }]} />
+        </Field>
+      </div>
+      {bad && <Warn>{bad}</Warn>}
+      <p className="text-xs text-fg-subtle">
+        {w === 1 && cap === t ? `Sudden death — first to ${t}.` : `First to ${t}, win by ${w}, capped at ${cap}.`}
+        {bo === 3 ? ' 2 game wins take the title; game 3 is played only at 1–1.' : ''}
+      </p>
+      <Save disabled={!!bad} label="SAVE FINAL RULES"
+        onClick={() => run(() => api.adminSetFinalRules(token, { target_score: t, win_by: w, cap, best_of: bo }), 'Final rules updated')} />
     </div>
   )
 }

@@ -41,6 +41,9 @@ export interface EventCfg {
   court_dispatch?: 'fixed' | 'pool' | null
   bracket_preview?: boolean | null
   tv_partner?: string | null
+  // migration 0037: ko_* rules apply to the Final only; Final = best of N
+  ko_final_only?: boolean | null
+  final_best_of?: number | null
 }
 export interface Court { id: string; number: number; label: string | null; sport?: 'pickleball' | 'badminton' | 'captainball'
   // multi-sport only: which game type (MD1 / MD2 / XD) this court hosts; null = any

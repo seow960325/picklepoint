@@ -165,6 +165,7 @@ export interface GroupKoOptions {
   groupSize?: number         // teams per group (default 4)
   advancePerGroup?: number   // qualifiers per group (default 2)
   thirdPlacePlayoff?: boolean// default true
+  legs?: number              // 2 = every pair in a group plays twice (default 1)
   rng?: () => number         // injectable for deterministic tests
 }
 
@@ -323,7 +324,13 @@ export function buildGroupKoDraw(
 
   const teams = drawGroups(names, groupSize, opts.rng ?? Math.random)
   const groupCount = new Set(teams.map(t => t.pool)).size
-  const groupMatches = buildDraw(teams, courtCount)
+  const leg1 = buildDraw(teams, courtCount)
+  // second leg: same fixtures again, sides swapped, after the whole first leg
+  const lastRound = Math.max(0, ...leg1.map(m => m.round))
+  const groupMatches = (opts.legs ?? 1) >= 2
+    ? [...leg1, ...leg1.map(m => ({ ...m, aIdx: m.bIdx, bIdx: m.aIdx,
+        round: m.round + lastRound, sequence: m.sequence + leg1.length }))]
+    : leg1
 
   if (isRrFinal(names.length, groupSize, advancePerGroup)) {
     const seq = groupMatches.length + 1

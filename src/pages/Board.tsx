@@ -21,6 +21,7 @@ import {
 import { CbLive, CbMatches, CbStandings, CbKnockoutView } from '../components/CaptainBall'
 import FlowChart from '../components/FlowChart'
 import { flowOf } from '../lib/flow'
+import { finalSeries } from '../lib/finals'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide } from '../components/TieKnockout'
 import { CourtQueues, GroupCardPro, GroupTable, PlayClock } from '../components/GroupsKo'
 import FillGrid from '../components/FillGrid'
@@ -1164,7 +1165,7 @@ export function PosterBracket({ b, broadcast = false, tall = false }: { b: Bundl
   const rightCols = play.map(r => ({ round: r.round, matches: r.matches.slice(half(r.matches.length)) }))
   const finalM = finalR?.matches[0]
   const thirdM = thirdR?.matches[0]
-  const champId = finalM?.winner_id ?? null
+  const champId = finalSeries(b, ev.id)?.winner ?? null
   const podium = koPodium(b)
 
   return (
@@ -1358,10 +1359,10 @@ function Trophy({ lit, fight }: { lit?: boolean; fight?: boolean }) {
 export function koPodium(b: Bundle): { champion: string; runnerUp: string | null; third: string | null } | null {
   const ev = b.events.find(e => e.format === 'groups_ko')
   if (!ev) return null
-  const finalM = b.matches.find(m => m.event_id === ev.id && m.bracket_key != null && m.round === 'Final')
-  if (!finalM || finalM.status !== 'finished' || !finalM.winner_id) return null
-  const champion = finalM.winner_id
-  const runnerUp = finalM.team_a_id === champion ? finalM.team_b_id : finalM.team_a_id
+  const fs = finalSeries(b, ev.id)
+  if (!fs?.winner) return null
+  const champion = fs.winner
+  const runnerUp = fs.loser
   const thirdM = b.matches.find(m => m.event_id === ev.id && m.bracket_key != null && m.round === 'Third place')
   const third = thirdM && thirdM.status === 'finished' ? thirdM.winner_id : null
   return { champion, runnerUp, third }

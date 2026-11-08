@@ -4,6 +4,7 @@
 import type { Bundle } from './types.ts'
 import { cbStandings, cbKo } from './captainball.ts'
 import { churchOf } from './draw.ts'
+import { finalSeries } from './finals.ts'
 
 export interface Podium3 { first: string | null; second: string | null; third: string | null }
 export interface CategoryResult {
@@ -26,12 +27,11 @@ export function categoryResult(b: Bundle): CategoryResult {
 
   const ko = b.events.find(e => e.format === 'groups_ko')
   if (ko) {
-    const fin = b.matches.find(m => m.event_id === ko.id && m.bracket_key != null && m.round === 'Final')
+    const fs = finalSeries(b, ko.id)
     const thirdM = b.matches.find(m => m.event_id === ko.id && m.bracket_key != null && m.round === 'Third place')
-    if (fin?.status === 'finished' && fin.winner_id) {
-      const ru = fin.team_a_id === fin.winner_id ? fin.team_b_id : fin.team_a_id
+    if (fs?.winner) {
       const third = thirdM ? (thirdM.status === 'finished' ? thirdM.winner_id : undefined) : null
-      out.podium = { first: put(fin.winner_id), second: put(ru), third: third ? put(third) : null }
+      out.podium = { first: put(fs.winner), second: put(fs.loser), third: third ? put(third) : null }
       out.done = third !== undefined
     }
     return out

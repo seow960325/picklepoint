@@ -248,12 +248,14 @@ export function standings(b: Bundle, eventId: string): Record<string, Standing[]
   }
   rows.forEach(r => { r.diff = r.pf - r.pa })
 
+  // head-to-head over every meeting (two legs = two games): more wins first
   const h2h = (x: string, y: string): number => {
-    const m = done.find(d =>
-      (d.team_a_id === x && d.team_b_id === y) || (d.team_a_id === y && d.team_b_id === x))
-    if (!m) return 0
-    const xWon = (m.team_a_id === x) === (m.score_a > m.score_b)
-    return xWon ? -1 : 1
+    let s = 0
+    for (const m of done) {
+      if (!((m.team_a_id === x && m.team_b_id === y) || (m.team_a_id === y && m.team_b_id === x))) continue
+      s += (m.team_a_id === x) === (m.score_a > m.score_b) ? -1 : 1
+    }
+    return Math.sign(s)
   }
 
   const byPool: Record<string, Standing[]> = {}

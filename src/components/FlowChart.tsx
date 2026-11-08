@@ -28,7 +28,10 @@ function Name({ b, id, prov, win, lose }: { b: Bundle; id: string | null; prov?:
 function Game({ b, g, tone, icon }: { b: Bundle; g: FlowGame; tone: string; icon?: string }) {
   const row = (s: FlowSlot) => (
     <div className="min-w-0">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-subtle">{s.label}</div>
+      <div className="flex justify-between text-[10px] font-semibold uppercase tracking-wider text-fg-subtle">
+        <span>{s.label}</span>
+        {g.series && s.id && <span className="text-[#34d399]">{'●'.repeat(g.series.filter(w => w === s.id).length)}</span>}
+      </div>
       <Name b={b} id={s.id} prov={s.prov} win={!!g.winner && g.winner === s.id} lose={!!g.winner && !!s.id && g.winner !== s.id} />
     </div>
   )

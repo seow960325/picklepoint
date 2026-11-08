@@ -105,6 +105,14 @@ export default function NewCompetition() {
   const [groupSize, setGroupSize] = useState(4)
   const [advancePerGroup, setAdvancePerGroup] = useState(2)
   const [thirdPlace, setThirdPlace] = useState(true)
+  // group games: once or twice per pair. Unset = follows the courts (3+ courts -> twice)
+  const [legsPick, setLegsPick] = useState<number | null>(null)
+  // the Final: own rules + best of N (0 = same as the other games, one game)
+  const [finalOwn, setFinalOwn] = useState(false)
+  const [fTarget, setFTarget] = useState(11)
+  const [fWinBy, setFWinBy] = useState(2)
+  const [fCap, setFCap] = useState(20)
+  const [fBestOf, setFBestOf] = useState(3)
   const [koTeamCount, setKoTeamCount] = useState(16)
   const [koTeamNames, setKoTeamNames] = useState<string[]>(
     () => Array.from({ length: 16 }, () => ''))
@@ -147,6 +155,8 @@ export default function NewCompetition() {
   const duelError = format === 'duel'
     ? validateDuelSquads(sideANames.length, sideBNames.length) : null
 
+  const legs = legsPick ?? (courtCount >= 3 ? 2 : 1)
+  const finalBad = finalOwn ? validateRules({ target_score: fTarget, win_by: fWinBy, cap: fCap, switch_at: 0 }) : null
   const koNames = useMemo(
     () => koTeamNames.map(s => s.trim()).filter(Boolean), [koTeamNames])
   const koError = format === 'groups_ko'
@@ -154,9 +164,9 @@ export default function NewCompetition() {
   const ko = useMemo(
     () => format === 'groups_ko' && !koError
       ? buildGroupKoDraw(koNames, courtCount,
-          { groupSize, advancePerGroup, thirdPlacePlayoff: thirdPlace })
+          { groupSize, advancePerGroup, thirdPlacePlayoff: thirdPlace, legs })
       : null,
-    [format, koError, koNames, courtCount, groupSize, advancePerGroup, thirdPlace])
+    [format, koError, koNames, courtCount, groupSize, advancePerGroup, thirdPlace, legs])
 
   const teams = format === 'duel' ? duelTeams : (ko?.teams ?? [])
   const draw = useMemo(() => {
@@ -173,7 +183,7 @@ export default function NewCompetition() {
   const canStep: Record<number, boolean> = {
     1: true,                                     // format — always valid, one is always selected
     2: !codeError,                               // details — code is the only thing that can be wrong
-    3: !ruleError,                               // scoring
+    3: !ruleError && !finalBad,                  // scoring
     4: true,                                     // courts — always valid
     5: format === 'duel'
       ? (!duelError && !busy)
@@ -201,6 +211,9 @@ export default function NewCompetition() {
         teams, matches: draw,
         ...(format === 'groups_ko' ? { bracket: ko?.bracket ?? [] } : {}),
       })
+      if (format === 'groups_ko' && finalOwn) {
+        await api.adminSetFinalRules(res.admin_token, { target_score: fTarget, win_by: fWinBy, cap: fCap, best_of: fBestOf })
+      }
       rememberCode(res.code)
       setResult(res)
     } catch (e: any) {
@@ -331,6 +344,30 @@ export default function NewCompetition() {
                   ? 'Winner — every rally scores a point, for whoever wins it.'
                   : 'Serve — real doubles side-out scoring: only the serving team can score. Losing a rally while serving passes serve to your partner, then to the other team.'}
               </p>
+              {format === 'groups_ko' && (
+                <div className="space-y-3 rounded-xl border border-line bg-surface p-3">
+                  <Field label="The Final">
+                    <Choice value={finalOwn ? 1 : 0} onChange={v => setFinalOwn(v === 1)}
+                      options={[{ label: 'Same as above', value: 0 }, { label: 'Own rules', value: 1 }]} />
+                  </Field>
+                  {finalOwn && (<>
+                    <div className="flex flex-wrap items-end gap-4">
+                      <Field label="Winning score"><Stepper value={fTarget} min={1} max={99} onChange={v => { setFTarget(v); if (fCap < v) setFCap(v) }} /></Field>
+                      <Field label="Win by"><Stepper value={fWinBy} min={1} max={5} onChange={setFWinBy} /></Field>
+                      <Field label="Hard cap"><Stepper value={fCap} min={1} max={120} onChange={setFCap} /></Field>
+                      <Field label="Games">
+                        <Choice value={fBestOf} onChange={setFBestOf}
+                          options={[{ label: '1', value: 1 }, { label: 'Best of 3', value: 3 }]} />
+                      </Field>
+                    </div>
+                    {finalBad && <Warn>{finalBad}</Warn>}
+                    <p className="text-xs leading-relaxed text-fg-subtle">
+                      Final: first to {fTarget}{fWinBy === 1 && fCap === fTarget ? ', sudden death' : `, win by ${fWinBy}, capped at ${fCap}`}.
+                      {fBestOf === 3 ? ' Best of 3 — 2 game wins take the title; game 3 only at 1–1.' : ''} Semi-finals and 3rd place use the rules above.
+                    </p>
+                  </>)}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -425,6 +462,10 @@ export default function NewCompetition() {
                 <Field label="3rd place">
                   <Choice value={thirdPlace ? 1 : 0} onChange={v => setThirdPlace(v === 1)}
                     options={[{ label: 'Yes', value: 1 }, { label: 'No', value: 0 }]} />
+                </Field>
+                <Field label="Each pair plays">
+                  <Choice value={legs} onChange={v => setLegsPick(v)}
+                    options={[{ label: 'Once', value: 1 }, { label: 'Twice', value: 2 }]} />
                 </Field>
               </div>
 
