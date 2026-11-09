@@ -30,6 +30,8 @@ export const rulesOf = (e: EventCfg, m?: Pick<Match, 'bracket_key'> | null): Rul
   // ko_target_score is null on every other event, so they never get here
   m?.bracket_key != null && e.ko_target_score != null
     && (!e.ko_final_only || m.bracket_key === 'KO-2-0' || m.bracket_key.startsWith('KO-2-0-'))
+    // migration 0038: ko_from_sf = own rules for semi-finals, 3rd place and Final only
+    && (!e.ko_from_sf || /^KO-(4|2)-|^KO-3P/.test(m.bracket_key))
     ? {
         target_score: e.ko_target_score,
         win_by: e.ko_win_by ?? e.win_by,

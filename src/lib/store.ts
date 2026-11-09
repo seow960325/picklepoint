@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Bundle, EventCfg, Match, Team } from './types'
 import type { DuelTally } from './draw'
 import * as api from './api'
-import { rankByDiff } from './pool'
+import { rankByDiff, isDiffTiebreak } from './pool'
 import { applyPreviewStage, usePreviewStage } from './previewStage'
 
 const CODE_KEY = 'pp.code'
@@ -265,7 +265,7 @@ export function standings(b: Bundle, eventId: string): Record<string, Standing[]
   }
   const ev = b.events.find(e => e.id === eventId)
   for (const p of Object.keys(byPool)) {
-    if (ev?.tiebreak === 'diff') byPool[p] = rankByDiff(byPool[p], done)
+    if (isDiffTiebreak(ev)) byPool[p] = rankByDiff(byPool[p], done, ev?.tiebreak === 'diff')
     else {
       // head-to-head only settles a tie between exactly two teams; with three
       // level teams (a 1-1-1 cycle) it is circular, so go straight to diff

@@ -32,7 +32,7 @@ export interface EventCfg {
   stage?: string | null
   // groups_ko opt-ins (migration 0026) — unset everywhere else; see lib/pool.ts
   legs?: number | null
-  tiebreak?: 'h2h' | 'diff' | null
+  tiebreak?: 'h2h' | 'diff' | 'diff_only' | null
   ko_target_score?: number | null
   ko_win_by?: number | null
   ko_cap?: number | null
@@ -44,6 +44,11 @@ export interface EventCfg {
   // migration 0037: ko_* rules apply to the Final only; Final = best of N
   ko_final_only?: boolean | null
   final_best_of?: number | null
+  // migration 0038 (opt-in): ko_* rules from the semi-finals on; fixed
+  // knockout courts by bracket key; shared queue in strict printed order
+  ko_from_sf?: boolean | null
+  ko_court_plan?: Record<string, number> | null
+  pool_strict?: boolean | null
 }
 export interface Court { id: string; number: number; label: string | null; sport?: 'pickleball' | 'badminton' | 'captainball'
   // multi-sport only: which game type (MD1 / MD2 / XD) this court hosts; null = any

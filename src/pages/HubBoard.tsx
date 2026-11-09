@@ -22,9 +22,10 @@ const TABS: Array<{ id: HubTab; label: string }> = [
   { id: 'bracket', label: 'Bracket' }, { id: 'medals', label: 'Medals' },
 ]
 
-export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle }) {
+export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null }) {
   const [params, setParams] = useSearchParams()
-  const tab = (TABS.find(t => t.id === params.get('t'))?.id ?? 'live') as HubTab
+  const tabs = hub.noChurch ? TABS.filter(t => t.id !== 'medals') : TABS
+  const tab = (tabs.find(t => t.id === params.get('t'))?.id ?? 'live') as HubTab
   const cat = hub.cats.find(c => c.code === (params.get('cat') ?? '').toUpperCase()) ?? null
   const set = (k: string, v: string | null) => {
     const next = new URLSearchParams(params)
@@ -53,7 +54,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle }) {
         </div>
         {/* tabs */}
         <div className="mx-auto mt-3 flex max-w-6xl gap-1 overflow-x-auto">
-          {TABS.map(t => (
+          {tabs.map(t => (
             <button key={t.id} onClick={() => set('t', t.id === 'live' ? null : t.id)}
               className={`shrink-0 rounded-lg px-2.5 py-2 text-xs font-semibold uppercase tracking-wide sm:px-3 lg:px-4 lg:text-sm ${tab === t.id ? 'bg-brand text-brand-fg' : 'text-fg-muted'}`}>
               {t.label}
@@ -99,11 +100,11 @@ const Chip = ({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 /** One category's block. When it is the only one shown it reads its code
  *  live (point by point); in the "All" lists it uses the 10 s copy. */
 function CatView({ cat, hub, self, polled, single, onOpen, children }: {
-  cat: HubCat; hub: Hub; self: Bundle; polled: Bundle | null; single: boolean; onOpen: () => void
+  cat: HubCat; hub: Hub; self: Bundle | null; polled: Bundle | null; single: boolean; onOpen: () => void
   children: (b: Bundle) => ReactNode
 }) {
   const own = cat.code === hub.code
-  const body = own ? children(self)
+  const body = own && self ? children(self)
     : single ? <LiveCat code={cat.code} render={children} />
     : polled ? children(polled)
     : <div className="px-4 py-3 text-sm text-fg-muted">Loading…</div>

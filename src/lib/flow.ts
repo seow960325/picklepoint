@@ -5,6 +5,7 @@
 import type { Bundle, Match } from './types.ts'
 import { cbKo } from './captainball.ts'
 import { seedBracket } from './draw.ts'
+import { koPlanOf, planDraw, tokenLabel } from './koplan.ts'
 import { finalSeries, isFinalKey, type FinalSeries } from './finals.ts'
 
 export type FlowKey = 'P1' | 'P2' | 'SF1' | 'SF2' | 'F' | '3P'
@@ -164,11 +165,24 @@ function genericKo(b: Bundle, evId: string, adv: number,
   // first round: the exact draw seeding will write, as group-place labels
   const first = main[0] ? byRound.get(main[0])! : []
   const firstLabels = new Map<string, [string, string]>()
+  const qualId = new Map<string, string>()   // printed plan: team id -> its cross-pool label
   const rrFinal = single && main.length === 0
   if (rrFinal) {
     const f = ko.find(m => m.round === 'Final'), t = ko.find(m => m.round === 'Third place')
     if (f) firstLabels.set(f.id, [label(pools[0], 0), label(pools[0], 1)])
     if (t) firstLabels.set(t.id, [label(pools[0], 2), label(pools[0], 3)])
+  } else if (first.length && koPlanOf(b.competition?.code)) {
+    // printed plan (MCMD / MCXD fundraiser): fixed pairings, cross-pool places
+    const pd = planDraw(koPlanOf(b.competition.code)!, st as any)
+    first.forEach(m => {
+      const j = Number(/-(\d+)$/.exec(m.bracket_key ?? '')?.[1] ?? -1)
+      const tk = pd.tokens[j], ids = pd.pairs[j]
+      if (!tk) return
+      const lbs = tk.map(t => /^[WR]\d/.test(t) ? tokenLabel(t) : label(t[0], Number(t[1]) - 1)) as [string, string]
+      firstLabels.set(m.id, lbs)
+      lbs.forEach((lb, s) => { if (!idOf.has(lb)) idOf.set(lb, done || played ? ids?.[s] ?? null : null) })
+      lbs.forEach((lb, s) => { const id = ids?.[s]; if (id && (done || played)) qualId.set(id, lb) })
+    })
   } else if (first.length) {
     const grid = pools.map(g => Array.from({ length: adv }, (_, i) => label(g, i)))
     const pairs = seedBracket(grid, first.length * 2)
@@ -209,7 +223,7 @@ function genericKo(b: Bundle, evId: string, adv: number,
 
   const groups: FlowGroup[] = pools.map(g => ({
     pool: g, ids: tables[g] ?? [],
-    ranked: (tables[g] ?? []).map((id, i) => ({ id, to: qualTo.get(label(g, i)) ?? null, prov })),
+    ranked: (tables[g] ?? []).map((id, i) => ({ id, to: qualTo.get(label(g, i)) ?? (qualId.has(id) ? qualTo.get(qualId.get(id)!) ?? null : null), prov })),
   }))
   return withSeries({ groups, stages, champion: fin ? winOf(fin) : null }, finalSeries(b, evId))
 }

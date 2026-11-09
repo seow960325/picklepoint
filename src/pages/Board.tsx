@@ -21,21 +21,22 @@ import {
 import { CbLive, CbMatches, CbStandings, CbKnockoutView } from '../components/CaptainBall'
 import FlowChart from '../components/FlowChart'
 import { flowOf } from '../lib/flow'
-import { hubOf, parentHub } from '../lib/hub'
+import { hubOf, parentHub, pageOnly } from '../lib/hub'
 import HubBoard from './HubBoard'
 import { finalSeries } from '../lib/finals'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide } from '../components/TieKnockout'
 import { CourtQueues, GroupCardPro, GroupTable, PlayClock } from '../components/GroupsKo'
 import FillGrid from '../components/FillGrid'
 import { useAutoHide } from '../lib/useAutoHide'
-import { isPoolDispatch, koSlotLabel, stageLabel } from '../lib/pool'
+import { isPoolDispatch, isDiffTiebreak, koSlotLabel, stageLabel } from '../lib/pool'
 
 type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
 
 export default function Board() {
   const { code } = useParams()
-  const { bundle: raw, error, loading, reload } = useCompetition(code, { preview: true, viewer: true })
   const hub = hubOf(code)
+  // a front-page-only hub (XMAS26) has no competition of its own to load
+  const { bundle: raw, error, loading, reload } = useCompetition(hub && pageOnly(hub) ? undefined : code, { preview: true, viewer: true })
   const parent = parentHub(code)
   // a hub code shows only its own sport (YC2626 = Captain Ball); the other sports are their own codes
   const bundle = raw && hub?.onlySport ? sportBundle(raw, hub.onlySport) : raw
@@ -66,6 +67,8 @@ export default function Board() {
     setParams(next, { replace: true })
   }
 
+  // front-page-only hub (XMAS26): no competition of its own to load
+  if (hub && pageOnly(hub)) return <HubBoard hub={hub} self={null} />
   if (loading) return <Screen><Spinner /></Screen>
   if (error || !bundle) return (
     <Screen className="flex flex-col items-center justify-center gap-4 px-6">
@@ -1827,7 +1830,7 @@ export function Matches({ b, code }: { b: Bundle; code: string }) {
         <div className="mb-2 px-1 font-display text-base font-bold uppercase tracking-widest text-fg-muted">Groups</div>
         <FillGrid className="gap-3">
           {Object.keys(tables).sort().map(g => (
-            koEv.tiebreak === 'diff'
+            isDiffTiebreak(koEv)
               ? <GroupCardPro key={g} b={b} code={code} g={g} rows={tables[g]} advance={advance}
                   matches={b.matches
                     .filter(m => m.event_id === koEv.id && !isKoMatch(m) && poolOf(m.team_a_id) === g)

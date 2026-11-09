@@ -79,7 +79,7 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
   const cats = hub.cats.map(cat => ({ cat, b: bundleOf(cat.code) })).filter((x): x is { cat: typeof x.cat; b: Bundle } => !!x.b)
   const churches = [...new Set(cats.flatMap(x => x.b.teams.map(t => churchOf(t.name))))].sort()
   const name = (b: Bundle, id: string | null) => b.teams.find(t => t.id === id)?.name ?? '—'
-  const ours = (b: Bundle, m: Bundle['matches'][number]) => !mine
+  const ours = (b: Bundle, m: Bundle['matches'][number]) => !mine || hub.noChurch
     || [m.team_a_id, m.team_b_id].some(id => churchOf(name(b, id)).toLowerCase() === mine.toLowerCase())
   const court = (b: Bundle, id: string | null) => {
     const c = b.courts.find(x => x.id === id)
@@ -99,11 +99,11 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
     <section>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-[11px] font-bold uppercase tracking-[0.25em] text-fg-subtle">Categories · on court & up next</h2>
-        <select value={mine} onChange={e => pick(e.target.value)}
+        {!hub.noChurch && <select value={mine} onChange={e => pick(e.target.value)}
           className="rounded-lg border border-line bg-surface px-2 py-1.5 text-sm text-fg">
           <option value="">All churches</option>
           {churches.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+        </select>}
       </div>
       <div className="grid items-start gap-3 lg:grid-cols-2">
         {blocks.map(({ cat, b, live, next }) => {

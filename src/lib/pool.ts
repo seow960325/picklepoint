@@ -7,6 +7,9 @@
  *                        court that frees up takes the next match whose two
  *                        teams are both idle (keeps waiting time even)
  *   tiebreak = 'diff'    wins → point difference → head-to-head → coin toss
+ *   tiebreak = 'diff_only'  wins → point difference → coin toss (no head-to-head)
+ *   pool_strict          shared queue: each court plays its home games in the
+ *                        printed order, waiting while a team is still on court
  *   ko_*                 knockout games use their own scoring rules
  *   play_clock           game time = first point → last point
  *   bracket_preview      the fixed bracket is shown before the groups finish
@@ -14,9 +17,12 @@
  */
 import type { Bundle, EventCfg, Match, Team } from './types'
 import { finalGameNo } from './finals.ts'
+import { koPlanOf, slotName } from './koplan.ts'
 import { roundRobinPairs, standardSeedOrder, seedBracket, type DraftMatch, type DraftTeam } from './draw.ts'
 
 export const isPoolDispatch = (ev?: EventCfg | null) => ev?.court_dispatch === 'pool'
+/** wins → point difference ranking (with or without head-to-head after it) */
+export const isDiffTiebreak = (ev?: EventCfg | null) => ev?.tiebreak === 'diff' || ev?.tiebreak === 'diff_only'
 
 const BUSY = new Set(['live', 'awaiting_confirm'])
 
@@ -246,8 +252,18 @@ export function poolDispatch(b: Bundle, eventId: string, now = Date.now()): Matc
     const occupied = b.matches.some(m => m.court_id === c.id
       && (BUSY.has(m.status) || m.status === 'scheduled' || m.status === 'on_deck'))
     if (occupied) continue
-    const free = poolQueue(b, eventId)
-      .filter(m => (m.home_court == null || m.home_court === c.id) && !teamsBusy(b, m))
+    const mine = poolQueue(b, eventId).filter(m => m.home_court == null || m.home_court === c.id)
+    // pool_strict (migration 0038): the printed order — the court's next game
+    // only, and it waits while one of its teams is still on another court
+    if (b.events.find(e => e.id === eventId)?.pool_strict) {
+      const first = mine[0]
+      if (!first || teamsBusy(b, first)) continue
+      first.court_id = c.id
+      first.status = 'live'
+      placed.push(first)
+      continue
+    }
+    const free = mine.filter(m => !teamsBusy(b, m))
     if (!free.length) continue
     const rest = (m: Match) => now - Math.max(lastFinish(b, m.team_a_id), lastFinish(b, m.team_b_id))
     const next = free.find(m => rest(m) >= MIN_REST_MS)
@@ -292,6 +308,9 @@ export function koSlotLabel(b: Bundle, ev: EventCfg, m: Match, slot: 'a' | 'b'):
   const first = /^KO-(\d+)-(\d+)$/.exec(m.bracket_key ?? '')
   if (!first) return 'TBD'
   const size = Number(first[1]), j = Number(first[2])
+  // printed knockout plan (MCMD / MCXD fundraiser)
+  const plan = koPlanOf(b.competition?.code)
+  if (plan) { const tk = plan.pairs[j]; return tk ? slotName(tk[slot === 'a' ? 0 : 1]) : 'TBD' }
   const groups = [...new Set(b.teams.filter(t => t.event_id === ev.id).map(t => t.pool ?? 'A'))].sort()
   const adv = ev.advance_per_group ?? 1
   if (adv === 1) {
@@ -336,7 +355,7 @@ export interface RankRow { team: Team; won: number; diff: number; tieGroup?: num
  *  minus points lost, all group games) → head-to-head wins among the teams
  *  still level → coin toss. Teams level after head-to-head get the same
  *  `tieGroup` number so the admin can settle it with a toss. */
-export function rankByDiff<S extends RankRow>(rows: S[], done: Match[]): S[] {
+export function rankByDiff<S extends RankRow>(rows: S[], done: Match[], h2h = true): S[] {
   const sorted = rows.slice().sort((a, z) => z.won - a.won || z.diff - a.diff)
   const out: S[] = []
   let tieNo = 0
@@ -347,7 +366,7 @@ export function rankByDiff<S extends RankRow>(rows: S[], done: Match[]): S[] {
     if (level.length === 1) { out.push({ ...level[0], tieGroup: null }); i = j; continue }
     const ids = new Set(level.map(r => r.team.id))
     const h2hWins = new Map<string, number>(level.map(r => [r.team.id, 0]))
-    for (const m of done) {
+    for (const m of h2h ? done : []) {
       if (!ids.has(m.team_a_id!) || !ids.has(m.team_b_id!)) continue
       const w = m.score_a > m.score_b ? m.team_a_id! : m.team_b_id!
       h2hWins.set(w, (h2hWins.get(w) ?? 0) + 1)

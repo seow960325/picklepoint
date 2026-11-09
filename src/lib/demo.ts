@@ -71,13 +71,18 @@ function koFlow(b: Bundle, m: Match): void {
     const pending = (courtId: string) => b.matches.filter(
       x => x.court_id === courtId && (x.status === 'scheduled' || x.status === 'live'
         || x.status === 'on_deck')).length
-    const court = [...b.courts].sort(
+    // migration 0038: a planned court for this bracket key wins over the quietest
+    const plan = b.events.find(e => e.id === m.event_id)?.ko_court_plan
+    const planned = plan && m.bracket_key in plan ? b.courts.find(c => c.number === plan[m.bracket_key!]) : undefined
+    const court = planned ?? [...b.courts].sort(
       (x, y) => pending(x.id) - pending(y.id) || x.number - y.number)[0]
     if (court) {
       m.court_id = court.id
       const busy = b.matches.some(
         x => x.court_id === court.id
-          && (x.status === 'live' || x.status === 'awaiting_confirm'))
+          && (x.status === 'live' || x.status === 'awaiting_confirm'
+            // 0038: on a planned court an earlier queued game goes first
+            || (!!planned && x.id !== m.id && (x.status === 'scheduled' || x.status === 'on_deck') && x.sequence < m.sequence)))
       m.status = busy ? 'scheduled' : 'live'
     }
   }

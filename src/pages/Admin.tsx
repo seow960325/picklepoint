@@ -18,7 +18,8 @@ import { ScheduleRow, scheduleStatus } from '../components/ScheduleRow'
 import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts, KnockoutTab } from './MultiSportAdmin'
 import { sportsPresent, isCb } from '../lib/multisport'
 import { CbRulesPanel } from '../components/CaptainBall'
-import { isPoolDispatch, shuffleMap, eventUntouched } from '../lib/pool'
+import { isPoolDispatch, isDiffTiebreak, shuffleMap, eventUntouched } from '../lib/pool'
+import { koPlanOf, planDraw, tokenLabel } from '../lib/koplan'
 import { GroupTable } from '../components/GroupsKo'
 
 const TOKEN_TTL_MS = 4 * 60 * 60 * 1000
@@ -751,32 +752,41 @@ function BracketTab({ bundle, ev, token, run }: any) {
   // tiebreak 'diff': teams still level after head-to-head on the qualifying
   // line are settled by a coin toss — the admin records the toss winner here
   const [picks, setPicks] = useState<Record<string, string>>({})
-  const diffMode = ev.tiebreak === 'diff'
-  const tosses = diffMode ? coinTosses(tables, advance) : {}
+  const diffMode = isDiffTiebreak(ev)
+  // printed knockout plan (MCMD / MCXD fundraiser): fixed pairings, so a tie
+  // anywhere in a group's top places matters, not only on the qualifying line
+  const plan = koPlanOf(bundle.competition.code)
+  const tosses = diffMode ? coinTosses(tables, advance, !!plan) : {}
   const openTosses = Object.keys(tosses).filter(g => !tosses[g].some((r: any) => r.team.id === picks[g]))
 
+  const ordered: Record<string, any[]> = Object.fromEntries(Object.keys(tables).sort().map(g => {
+    const rows = tables[g].slice()
+    const pick = picks[g]
+    if (diffMode && tosses[g] && pick) {
+      const i = rows.findIndex((r: any) => r.team.id === pick)
+      const first = rows.findIndex((r: any) => r.tieGroup === rows[i].tieGroup)
+      rows.splice(first, 0, rows.splice(i, 1)[0])
+    }
+    return [g, rows]
+  }))
   const groupIds = diffMode
-    ? Object.keys(tables).sort().map(g => {
-        const rows = tables[g].slice()
-        const pick = picks[g]
-        if (tosses[g] && pick) {
-          const i = rows.findIndex((r: any) => r.team.id === pick)
-          const first = rows.findIndex((r: any) => r.tieGroup === rows[i].tieGroup)
-          rows.splice(first, 0, rows.splice(i, 1)[0])
-        }
-        return rows.slice(0, advance).map((r: any) => r.team.id)
-      })
+    ? Object.keys(ordered).map(g => ordered[g].slice(0, advance).map((r: any) => r.team.id))
     : qualifiers(bundle, ev.id, advance)
-  const flat = groupIds.flat()
-  const size = nextPowerOfTwo(flat.length)
-  const pairs = seedBracket(groupIds, size)
+  // cross-pool order after the organiser's coin tosses (winners W1-W6, runners-up R1-R2)
+  const [xOrder, setXOrder] = useState<{ W?: string[]; R?: string[] }>({})
+  const pd = plan ? planDraw(plan, ordered as any, xOrder) : null
+  const cross = !!plan && plan.pairs.flat().some(t => /^[WR]\d/.test(t))
+  const crossTies = pd && cross ? [...pd.winners.level, ...pd.runners.level].filter(Boolean).length : 0
+  const flat = pd ? pd.pairs.flat().filter((x): x is string => !!x) : groupIds.flat()
+  const size = pd ? pd.pairs.length * 2 : nextPowerOfTwo(flat.length)
+  const pairs = pd ? pd.pairs : seedBracket(groupIds, size)
   const firstRound = rounds[0]
 
   // 4-team round robin: Final = 1st v 2nd, 3rd place = 3rd v 4th
   const rrFinal = flat.length === 4 && groupIds.length === 1 && rounds.every(r => r.round === 'Final' || r.round === 'Third place')
   const seedRows = rrFinal
     ? [{ key: 'KO-2-0', a: flat[0], b: flat[1] }, { key: 'KO-3P', a: flat[2], b: flat[3] }]
-    : pairs.map((pr, i) => ({ key: firstRound?.matches[i]?.bracket_key ?? '', a: pr[0], b: pr[1] }))
+    : pairs.map((pr, i) => ({ key: pd ? `KO-${size}-${i}` : firstRound?.matches[i]?.bracket_key ?? '', a: pr[0], b: pr[1] }))
   const shownPairs: Array<[string | null, string | null]> = rrFinal ? seedRows.map(r => [r.a, r.b]) : pairs
   const lock = () => run(async () => {
     await api.adminSeedBracket(token, ev.id, seedRows)
@@ -875,16 +885,58 @@ function BracketTab({ bundle, ev, token, run }: any) {
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-xs text-fg-subtle">
+          {pd && (
+            <p className="mt-3 text-xs text-fg-subtle">
+              The printed draw: {pd.tokens.map(([a, b], i) => `QF${i + 1} ${tokenLabel(a)} v ${tokenLabel(b)}`).join(' · ')}.
+              {pd.swapped ? ' Runner-up 1 and 2 were swapped so nobody meets a team from their own pool.' : ''}
+              {' '}Nothing is written until you press the button.
+            </p>
+          )}
+          {!pd && <p className="mt-3 text-xs text-fg-subtle">
             Top {advance} from each group, seeded so the group winners are kept apart
             and nobody meets a team from their own group in round one{advance > 1 ? <> — a
             group's winner and runner-up sit in opposite halves, so they can only meet again in the Final</> : null}.
             Byes go to the highest seeds. Nothing is written until you press the button.
-          </p>
+          </p>}
           {openTosses.length > 0 && (
             <Warn>Coin toss needed in Group {openTosses.join(', ')} — tap the toss winner on that group above.</Warn>
           )}
           <Save label="LOCK & DRAW BRACKET" onClick={lock} disabled={openTosses.length > 0} />
+        </div>
+      )}
+
+      {/* printed plan with cross-pool places: winners W1-W6 and the best runners-up */}
+      {pd && cross && (
+        <div className="rounded-xl border border-line bg-surface p-4">
+          <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
+            Ranking across pools — wins, then point difference
+          </div>
+          {([['W', 'Pool winners', pd.winners], ['R', 'Runners-up (best 2 go through)', pd.runners]] as const).map(([k, title, x]) => (
+            <div key={k} className="mb-3">
+              <div className="mb-1 text-xs font-semibold text-fg-muted">{title}</div>
+              <ol className="space-y-1 text-sm">
+                {x.ranked.map((r: any, i: number) => (
+                  <li key={r.team.id} className={`flex items-center gap-2 ${k === 'R' && i >= 2 ? 'text-fg-subtle' : ''}`}>
+                    <span className="w-8 shrink-0 font-bold tabular">{k}{i + 1}</span>
+                    <span className="min-w-0 flex-1 truncate">{r.team.name} <span className="text-fg-subtle">· {r.team.pool}</span></span>
+                    <span className="tabular text-xs text-fg-subtle">{r.won}W {r.diff > 0 ? '+' : ''}{r.diff}</span>
+                    {complete && !seeded && x.level[i] && (
+                      <button onClick={() => {
+                        const ids = x.ranked.map((q: any) => q.team.id)
+                        ;[ids[i], ids[i + 1]] = [ids[i + 1], ids[i]]
+                        setXOrder(o => ({ ...o, [k]: ids }))
+                      }} className="shrink-0 rounded-lg border border-gold px-2 py-0.5 text-[11px] font-bold text-gold">
+                        level · coin toss ⇅
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+          {crossTies > 0 && complete && !seeded && (
+            <p className="text-xs text-gold">Teams marked “level” have the same wins and point difference: toss a coin and tap ⇅ if the toss winner is below.</p>
+          )}
         </div>
       )}
 
@@ -938,10 +990,16 @@ function BracketTab({ bundle, ev, token, run }: any) {
 
 /** Groups whose qualifying line runs through a tie that head-to-head could
  *  not break: group -> the level teams. */
-function coinTosses(tables: Record<string, any[]>, advance: number): Record<string, any[]> {
+function coinTosses(tables: Record<string, any[]>, advance: number, top = false): Record<string, any[]> {
   const out: Record<string, any[]> = {}
   for (const g of Object.keys(tables)) {
     const rows = tables[g]
+    // printed plan: 1st v 2nd matters too — any tie touching the top places
+    if (top) {
+      const hit = rows.slice(0, advance).find((r: any) => r.tieGroup != null)
+      if (hit) out[g] = rows.filter((r: any) => r.tieGroup === hit.tieGroup)
+      continue
+    }
     const edge = rows[advance - 1]
     if (!edge || edge.tieGroup == null) continue
     const level = rows.filter((r: any) => r.tieGroup === edge.tieGroup)

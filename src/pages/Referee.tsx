@@ -3,7 +3,7 @@
 import { SportIcon } from '../components/SportIcon'
 import { Link, useParams } from 'react-router-dom'
 import { useCompetition } from '../lib/store'
-import { hubOf } from '../lib/hub'
+import { hubOf, pageOnly } from '../lib/hub'
 import { sportBundle } from '../lib/multisport'
 import { useOthers } from '../components/HubOverview'
 import { Screen, Spinner } from '../components/ui'
@@ -11,10 +11,10 @@ import { Screen, Spinner } from '../components/ui'
 export default function Referee() {
   const { code = '' } = useParams()
   const hub = hubOf(code)
-  const self = useCompetition(code)
+  const self = useCompetition(hub && pageOnly(hub) ? undefined : code)
   const others = useOthers(hub ? hub.cats.map(c => c.code).filter(c => c !== hub.code) : [], 60000)
   if (!hub) return <Screen className="p-6 text-center text-fg-muted">No referee page for {code}.</Screen>
-  if (self.loading) return <Screen><Spinner /></Screen>
+  if (!pageOnly(hub) && self.loading) return <Screen><Spinner /></Screen>
   const own = self.bundle && hub.onlySport ? sportBundle(self.bundle, hub.onlySport) : self.bundle
   const bundleOf = (c: string) => (c === hub.code ? own : others[c] ?? null)
 

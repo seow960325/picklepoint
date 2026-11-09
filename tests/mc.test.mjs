@@ -47,7 +47,7 @@ function makeBundle(seed = 1) {
     const first = matches.filter(m => m.court_id === c.id).sort((a, b) => a.sequence - b.sequence)[0]
     if (first) first.status = 'live'
   }
-  return { competition: { id: 'c', code: 'MCMD', name: 'x', venue: null, event_date: '', status: 'live' },
+  return { competition: { id: 'c', code: 'MCTEST', name: 'x', venue: null, event_date: '', status: 'live' },
     events: [EV], courts, teams: T, matches }
 }
 
