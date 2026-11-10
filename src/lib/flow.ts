@@ -176,7 +176,8 @@ function genericKo(b: Bundle, evId: string, adv: number,
     const pd = planDraw(koPlanOf(b.competition.code)!, st as any)
     first.forEach(m => {
       const j = Number(/-(\d+)$/.exec(m.bracket_key ?? '')?.[1] ?? -1)
-      const tk = pd.tokens[j], ids = pd.pairs[j]
+      // before any result the printed labels; the same-pool swap only once teams are known
+      const tk = (done || played ? pd.tokens : koPlanOf(b.competition.code)!.pairs)[j], ids = pd.pairs[j]
       if (!tk) return
       const lbs = tk.map(t => /^[WR]\d/.test(t) ? tokenLabel(t) : label(t[0], Number(t[1]) - 1)) as [string, string]
       firstLabels.set(m.id, lbs)

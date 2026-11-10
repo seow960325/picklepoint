@@ -93,6 +93,8 @@ export interface Match {
   set_no?: number | null
   // shared-queue events (migration 0026): the court this queued game waits for
   home_court?: string | null
+  // migration 0039: printed time slot of a group game (pool_strict events)
+  slot?: number | null
   loser_match_id?: string | null
   loser_slot?: 'a' | 'b' | null
   // captain ball only (migration 0031): clock, fouls, time-outs, score log

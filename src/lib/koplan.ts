@@ -11,13 +11,14 @@
 
 export interface KoPlan {
   pairs: Array<[string, string]>
-  /** a winner drawn against the runner-up of its own pool: swap R1 and R2 */
+  /** a winner drawn against the runner-up of its own pool: swap that runner-up
+   *  with another one (R1/R2, then R2/R3, then R1/R3 — the first swap that works) */
   swapSamePool?: boolean
 }
 
 export const KO_PLANS: Record<string, KoPlan> = {
-  // Men's Doubles, 14 teams, pools A/B of 4 and C/D of 3
-  MCMD: { pairs: [['A1', 'C2'], ['C1', 'A2'], ['B1', 'D2'], ['D1', 'B2']] },
+  // Men's Doubles, 15 teams, 5 pools of 3: 5 winners + 3 best runners-up
+  MCMD: { pairs: [['W1', 'R3'], ['W4', 'W5'], ['W3', 'R1'], ['W2', 'R2']], swapSamePool: true },
   // Mixed Doubles, 24 teams, 6 pools of 4: 6 winners + 2 best runners-up
   MCXD: { pairs: [['W1', 'R2'], ['W4', 'W5'], ['W3', 'W6'], ['W2', 'R1']], swapSamePool: true },
 }
@@ -84,9 +85,12 @@ export function planDraw<R extends PlanRow>(plan: KoPlan, tables: Record<string,
   })
   let swapped = false
   if (plan.swapSamePool && samePool(tokens)) {
-    const sw = (t: string) => t === 'R1' ? 'R2' : t === 'R2' ? 'R1' : t
-    const trial = tokens.map(([a, b]) => [sw(a), sw(b)] as [string, string])
-    if (!samePool(trial)) { tokens = trial; swapped = true }
+    for (const [x, y] of [['R1', 'R2'], ['R2', 'R3'], ['R1', 'R3']]) {
+      if (!plan.pairs.flat().includes(y)) continue
+      const sw = (t: string) => t === x ? y : t === y ? x : t
+      const trial = tokens.map(([a, b]) => [sw(a), sw(b)] as [string, string])
+      if (!samePool(trial)) { tokens = trial; swapped = true; break }
+    }
   }
   const pairs = tokens.map(([a, b]) => [resolve(a)?.team.id ?? null, resolve(b)?.team.id ?? null] as [string | null, string | null])
   const nR = Math.max(0, ...plan.pairs.flat().map(t => /^R(\d+)$/.exec(t)).map(m => m ? Number(m[1]) : 0))

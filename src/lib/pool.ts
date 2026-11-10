@@ -258,6 +258,9 @@ export function poolDispatch(b: Bundle, eventId: string, now = Date.now()): Matc
     if (b.events.find(e => e.id === eventId)?.pool_strict) {
       const first = mine[0]
       if (!first || teamsBusy(b, first)) continue
+      // migration 0039: and every group game of the earlier slots is finished
+      if (first.slot != null && b.matches.some(x => x.event_id === eventId && x.bracket_key == null
+        && x.slot != null && x.slot < first.slot! && x.status !== 'finished')) continue
       first.court_id = c.id
       first.status = 'live'
       placed.push(first)

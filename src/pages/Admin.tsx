@@ -888,7 +888,7 @@ function BracketTab({ bundle, ev, token, run }: any) {
           {pd && (
             <p className="mt-3 text-xs text-fg-subtle">
               The printed draw: {pd.tokens.map(([a, b], i) => `QF${i + 1} ${tokenLabel(a)} v ${tokenLabel(b)}`).join(' · ')}.
-              {pd.swapped ? ' Runner-up 1 and 2 were swapped so nobody meets a team from their own pool.' : ''}
+              {pd.swapped ? ' Runners-up were swapped so nobody meets a team from their own pool.' : ''}
               {' '}Nothing is written until you press the button.
             </p>
           )}
@@ -911,12 +911,12 @@ function BracketTab({ bundle, ev, token, run }: any) {
           <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
             Ranking across pools — wins, then point difference
           </div>
-          {([['W', 'Pool winners', pd.winners], ['R', 'Runners-up (best 2 go through)', pd.runners]] as const).map(([k, title, x]) => (
+          {([['W', 'Pool winners', pd.winners], ['R', `Runners-up (best ${plan!.pairs.flat().filter(t => /^R\d/.test(t)).length} go through)`, pd.runners]] as const).map(([k, title, x]) => (
             <div key={k} className="mb-3">
               <div className="mb-1 text-xs font-semibold text-fg-muted">{title}</div>
               <ol className="space-y-1 text-sm">
                 {x.ranked.map((r: any, i: number) => (
-                  <li key={r.team.id} className={`flex items-center gap-2 ${k === 'R' && i >= 2 ? 'text-fg-subtle' : ''}`}>
+                  <li key={r.team.id} className={`flex items-center gap-2 ${k === 'R' && i >= plan!.pairs.flat().filter(t => /^R\d/.test(t)).length ? 'text-fg-subtle' : ''}`}>
                     <span className="w-8 shrink-0 font-bold tabular">{k}{i + 1}</span>
                     <span className="min-w-0 flex-1 truncate">{r.team.name} <span className="text-fg-subtle">· {r.team.pool}</span></span>
                     <span className="tabular text-xs text-fg-subtle">{r.won}W {r.diff > 0 ? '+' : ''}{r.diff}</span>

@@ -13,8 +13,8 @@ const names = n => Array.from({ length: n }, (_, i) => `T${i + 1}`)
 for (const cfg of [MD, MX]) {
   test(`${cfg.code}: printed schedule is complete and fair`, () => {
     const { teams, games, bracket } = build(cfg, names(Object.values(cfg.pools).reduce((a, b) => a + b)))
-    assert.equal(games.length, 36)
-    assert.equal(games.length + bracket.length, 44)
+    assert.equal(games.length, cfg === MD ? 30 : 36)
+    assert.equal(games.length + bracket.length, cfg === MD ? 38 : 44)
     // every pair in a pool meets exactly `legs` times
     const meet = new Map()
     for (const g of games) {
@@ -32,9 +32,10 @@ for (const cfg of [MD, MX]) {
     const slots = new Map()
     for (const g of games) (slots.get(g.slot) ?? slots.set(g.slot, []).get(g.slot)).push(g)
     for (const [s, gs] of slots) {
-      assert.deepEqual(gs.map(g => g.court), cfg.courts)
+      assert.deepEqual(gs.map(g => g.court), cfg.courts.slice(0, gs.length))
+      assert.ok(gs.length === 3 || (cfg === MD && gs.length === 2))
       const busy = gs.flatMap(g => [g.a, g.b])
-      assert.equal(new Set(busy).size, 6, `slot ${s}`)
+      assert.equal(new Set(busy).size, gs.length * 2, `slot ${s}`)
       const next = (slots.get(s + 1) ?? []).flatMap(g => [g.a, g.b])
       assert.ok(!next.some(t => busy.includes(t)), `back-to-back after slot ${s}`)
     }
@@ -43,10 +44,18 @@ for (const cfg of [MD, MX]) {
   })
 }
 
-test('MD slot 1 is A 1v2, A 3v4, C 1v2 and slot 7 repeats it with ends swapped', () => {
-  const { teams, games } = build(MD, names(14))
+test('MD slot 1 is A/B/C 1v2, slot 2 D/E 1v2 on Courts 1-2, slot 7 repeats slot 1 with ends swapped', () => {
+  const { teams, games } = build(MD, names(15))
   const s1 = games.filter(g => g.slot === 1).map(g => `${teams[g.a].name}-${teams[g.b].name}`)
-  assert.deepEqual(s1, ['T1-T2', 'T3-T4', 'T9-T10'])
+  assert.deepEqual(s1, ['T1-T2', 'T4-T5', 'T7-T8'])
+  const s2 = games.filter(g => g.slot === 2)
+  assert.deepEqual(s2.map(g => `${teams[g.a].name}-${teams[g.b].name}@${g.court}`), ['T10-T11@1', 'T13-T14@2'])
+  // every team plays 4 games, never in two consecutive slots
+  for (let t = 0; t < 15; t++) {
+    const sl = games.filter(g => g.a === t || g.b === t).map(g => g.slot)
+    assert.equal(sl.length, 4)
+    for (let i = 1; i < sl.length; i++) assert.ok(sl[i] - sl[i - 1] >= 2)
+  }
   const s7 = games.filter(g => g.slot === 7).map(g => `${teams[g.b].name}-${teams[g.a].name}`)
   assert.deepEqual(s7, s1)
   assert.equal(games.find(g => g.slot === 7).round, 'Group A · Leg 2')
@@ -57,18 +66,31 @@ const row = (id, pool, won, diff) => ({ team: { id, pool }, won, diff })
 const tablesOf = spec => Object.fromEntries(Object.entries(spec).map(([p, rows]) =>
   [p, rows.map(([id, w, d]) => row(id, p, w, d))]))
 
-test('MD printed quarter-finals: A1vC2, C1vA2, B1vD2, D1vB2', () => {
+test('MD printed quarter-finals: 5 winners + 3 best runners-up, W1vR3 W4vW5 W3vR1 W2vR2', () => {
   const t = tablesOf({
-    A: [['a1', 5, 30], ['a2', 4, 10], ['a3', 2, -5], ['a4', 1, -35]],
-    B: [['b1', 6, 40], ['b2', 3, 0], ['b3', 2, -10], ['b4', 1, -30]],
-    C: [['c1', 3, 12], ['c2', 1, 0], ['c3', 0, -12]],
-    D: [['d1', 4, 20], ['d2', 2, 0], ['d3', 0, -20]],
+    A: [['A1', 4, 30], ['A2', 2, 10], ['A3', 0, -40]],
+    B: [['B1', 4, 25], ['B2', 2, 8], ['B3', 0, -33]],
+    C: [['C1', 3, 20], ['C2', 2, 6], ['C3', 1, -26]],
+    D: [['D1', 3, 15], ['D2', 2, 4], ['D3', 1, -19]],
+    E: [['E1', 3, 10], ['E2', 1, 2], ['E3', 2, -12]],
   })
   const pd = planDraw(koPlanOf('MCMD'), t)
-  assert.deepEqual(pd.pairs, [['a1', 'c2'], ['c1', 'a2'], ['b1', 'd2'], ['d1', 'b2']])
-  assert.equal(pd.swapped, false)
-  assert.equal(koPlanOf('mcmd') != null, true)
+  // W: A1 B1 C1 D1 E1; R: A2(2,10) B2(2,8) C2(2,6) | D2 E2 out
+  // unswapped W2 B1 would meet R2 B2 (same pool) -> R1/R2 swap fixes it
+  assert.deepEqual(pd.pairs, [['A1', 'C2'], ['D1', 'E1'], ['C1', 'B2'], ['B1', 'A2']])
+  assert.equal(pd.swapped, true)
   assert.equal(koPlanOf('PBMD'), null)
+})
+
+test('MD: no same-pool quarter-final needs no swap', () => {
+  const t = tablesOf({
+    A: [['A1', 4, 30], ['A2', 2, 1]], B: [['B1', 4, 25], ['B2', 2, 10]], C: [['C1', 3, 20], ['C2', 2, 6]],
+    D: [['D1', 3, 15], ['D2', 2, 8]], E: [['E1', 3, 10], ['E2', 1, 2]],
+  })
+  // R: B2(2,10) D2(2,8) C2(2,6); W1 A1 v R3 C2, W4 D1 v W5 E1, W3 C1 v R1 B2, W2 B1 v R2 D2
+  const pd = planDraw(koPlanOf('MCMD'), t)
+  assert.deepEqual(pd.pairs, [['A1', 'C2'], ['D1', 'E1'], ['C1', 'B2'], ['B1', 'D2']])
+  assert.equal(pd.swapped, false)
 })
 
 test('MX: winners ranked across pools, best 2 runners-up, W1vR2 W4vW5 W3vW6 W2vR1', () => {
@@ -148,7 +170,7 @@ function bundleOf(cfg, n) {
   const M = games.map(g => {
     const first = !placed.has(g.court); placed.add(g.court)
     return { id: `g${g.sequence}`, event_id: 'ev', sequence: g.sequence, round: g.round, bracket_key: null,
-      team_a_id: `t${g.a}`, team_b_id: `t${g.b}`, court_id: first ? `ct${g.court}` : null, home_court: `ct${g.court}`,
+      team_a_id: `t${g.a}`, team_b_id: `t${g.b}`, court_id: first ? `ct${g.court}` : null, home_court: `ct${g.court}`, slot: g.slot,
       status: first ? 'live' : 'scheduled', score_a: 0, score_b: 0, finished_at: null }
   })
   const keyId = Object.fromEntries(bracket.map(b => [b.key, `k${b.key}`]))
@@ -159,42 +181,56 @@ function bundleOf(cfg, n) {
   return { competition: { id: 'c', code: cfg.code }, events: [ev], courts, teams: T, matches: M }
 }
 
-test('pool_strict: every court plays its printed order and waits for a busy team', () => {
-  const b = bundleOf(MD, 14)
+test('pool_strict + printed slots: courts keep printed order, a slot starts only after the previous one', () => {
+  const b = bundleOf(MD, 15)
   const order = []
-  // finish whatever is live on a court, in the given court order each round
-  for (let round = 0; round < 40; round++) {
-    const live = b.matches.filter(m => m.status === 'live').sort((x, y) => x.sequence - y.sequence)
+  const startedAt = new Map(), finishedAt = new Map()
+  let clock = 0
+  // finish ONE live game at a time, in random court order, so courts drift
+  let seed = 3; const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32)
+  for (const m of b.matches) if (m.status === 'live') startedAt.set(m.sequence, 0)
+  for (let step = 0; step < 200; step++) {
+    const live = b.matches.filter(m => m.status === 'live' && !m.bracket_key)
     if (!live.length) break
-    for (const m of live) { m.status = 'finished'; m.score_a = 15; m.finished_at = new Date(round * 1e6).toISOString(); order.push(m.sequence) }
-    poolDispatch(b, 'ev', round * 1e6 + 1)
+    const m = live[Math.floor(rnd() * live.length)]
+    m.status = 'finished'; m.score_a = 15; m.finished_at = new Date(++clock * 1e6).toISOString()
+    finishedAt.set(m.sequence, clock); order.push(m.sequence)
+    for (const x of poolDispatch(b, 'ev', clock * 1e6 + 1)) startedAt.set(x.sequence, clock)
   }
-  assert.equal(order.length, 36)
-  // per court, the games went in sequence (printed) order
+  assert.equal(order.length, 30)
   for (const ct of MD.courts) {
     const seqs = order.filter(s => b.matches.find(m => m.sequence === s).home_court === `ct${ct}`)
     assert.deepEqual(seqs, seqs.slice().sort((x, y) => x - y))
   }
+  // a game of slot k never started before every game of slot k-1 had finished
+  const g = b.matches.filter(m => !m.bracket_key)
+  for (const m of g) for (const x of g) if (x.slot === m.slot - 1)
+    assert.ok(startedAt.get(m.sequence) >= finishedAt.get(x.sequence), `slot ${m.slot} #${m.sequence} before #${x.sequence}`)
+
   // a court whose next game has a team still on court waits
-  const c = bundleOf(MD, 14)
-  const g1 = c.matches.find(m => m.sequence === 1)       // A1 v A2 on court 1
-  const g2 = c.matches.find(m => m.sequence === 2)       // A3 v A4 on court 2
-  g1.status = 'finished'
-  // court 1 is free; its next game is B1vB2 (slot 2) — fine. Pretend it were A1v3 by moving A3 into it
-  const next1 = c.matches.filter(m => m.home_court === 'ct1' && m.status === 'scheduled').sort((x, y) => x.sequence - y.sequence)[0]
-  next1.team_a_id = g2.team_a_id
+  const c = bundleOf(MD, 15)
+  for (const m of c.matches.filter(x => x.slot === 1)) m.status = 'finished'
+  const next1 = c.matches.find(m => m.sequence === 4)      // slot 2, Court 1
+  const other = c.matches.find(m => m.sequence === 5)      // slot 2, Court 2
   poolDispatch(c, 'ev', 1)
-  assert.equal(next1.status, 'scheduled')                // waits: its team is on court 2
-  assert.equal(c.matches.filter(m => m.court_id === 'ct1' && m.status === 'live').length, 0)
+  assert.equal(next1.status, 'live')
+  assert.equal(other.status, 'live')
+  // Court 3 has nothing in slot 2: its slot-3 game waits for slot 2 to finish
+  const c3 = c.matches.find(m => m.sequence === 8)         // slot 3, Court 3
+  assert.equal(c3.status, 'scheduled')
+  next1.status = 'finished'; poolDispatch(c, 'ev', 2)
+  assert.equal(c3.status, 'scheduled')
+  other.status = 'finished'; poolDispatch(c, 'ev', 3)
+  assert.equal(c3.status, 'live')
 })
 
 test('bracket preview + flow chart show the printed draw before any result', () => {
-  const md = bundleOf(MD, 14)
+  const md = bundleOf(MD, 15)
   const ev = md.events[0]
   const qf = key => md.matches.find(m => m.bracket_key === key)
-  assert.equal(koSlotLabel(md, ev, qf('KO-8-0'), 'a'), 'Group A winner')
-  assert.equal(koSlotLabel(md, ev, qf('KO-8-0'), 'b'), 'Group C runner-up')
-  assert.equal(koSlotLabel(md, ev, qf('KO-8-3'), 'a'), 'Group D winner')
+  assert.equal(koSlotLabel(md, ev, qf('KO-8-0'), 'a'), 'Winner 1')
+  assert.equal(koSlotLabel(md, ev, qf('KO-8-0'), 'b'), 'Runner-up 3')
+  assert.equal(koSlotLabel(md, ev, qf('KO-8-3'), 'b'), 'Runner-up 2')
   assert.equal(koSlotLabel(md, ev, md.matches.find(m => m.bracket_key === 'KO-4-0'), 'a'), 'Winner QF1')
   const mx = bundleOf(MX, 24)
   assert.equal(koSlotLabel(mx, mx.events[0], mx.matches.find(m => m.bracket_key === 'KO-8-1'), 'b'), 'Winner 5')
@@ -214,5 +250,5 @@ test('bracket preview + flow chart show the printed draw before any result', () 
   assert.deepEqual(qfs, [['Winner 1', 'Runner-up 2'], ['Winner 4', 'Winner 5'], ['Winner 3', 'Winner 6'], ['Winner 2', 'Runner-up 1']])
   const fm = flowOf(md, helpers)
   assert.deepEqual(fm.stages[0].games.map(g => [g.a.label, g.b.label]),
-    [['A winner', 'C 2nd'], ['C winner', 'A 2nd'], ['B winner', 'D 2nd'], ['D winner', 'B 2nd']])
+    [['Winner 1', 'Runner-up 3'], ['Winner 4', 'Winner 5'], ['Winner 3', 'Runner-up 1'], ['Winner 2', 'Runner-up 2']])
 })

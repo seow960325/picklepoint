@@ -66,6 +66,11 @@ export default function CourtScore() {
       && [x.team_a_id, x.team_b_id].some(t => t && (t === waiting.team_a_id || t === waiting.team_b_id))) : undefined
     const busyTeam = busyOn ? [waiting!.team_a_id, waiting!.team_b_id].find(t => t === busyOn.team_a_id || t === busyOn.team_b_id) ?? null : null
     const busyCourt = busyOn ? bundle.courts.find(c => c.id === busyOn.court_id) : undefined
+    // printed slots (migration 0039): the game waits for the earlier slot to finish
+    const slotWait = !busyTeam && waiting?.slot != null
+      ? bundle.matches.filter(x => x.event_id === waiting.event_id && x.bracket_key == null && x.slot != null
+          && x.slot < waiting.slot! && x.status !== 'finished').sort((x, y) => x.slot! - y.slot!)[0]
+      : undefined
     if (waiting) return (
       <Screen className="flex flex-col items-center justify-center gap-4 px-6 text-center">
         <div className="font-display text-3xl font-bold text-fg-subtle">{cname}</div>
@@ -77,6 +82,7 @@ export default function CourtScore() {
           <span className="h-2 w-2 animate-pulse rounded-full bg-brand" />
           {busyTeam
             ? <>Waiting for {teamName(bundle, busyTeam)} to finish on {busyCourt?.label && bundle.competition.multi_sport ? busyCourt.label : `Court ${busyCourt?.number ?? ''}`} — starts by itself.</>
+            : slotWait ? <>Starts by itself when slot {slotWait.slot} has finished (Court {bundle.courts.find(c => c.id === slotWait.court_id)?.number ?? '–'} still playing).</>
             : <>Starts by itself in a moment.</>}
         </div>
         <Link to={`/c/${code}`} className="rounded-xl border border-line px-4 py-2 text-sm">Back to board</Link>
