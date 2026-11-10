@@ -405,3 +405,29 @@ export function stageLabel(b: Bundle, m: Match): { text: string; kind: 'group' |
   if (/round\s*robin/i.test(r)) return { text: 'ROUND ROBIN', kind: 'group' }
   return { text: leg ? `LEG ${leg[1]}` : (r.replace(/^group\s+/i, '') || 'GROUP').toUpperCase(), kind: 'group' }
 }
+
+// ------------------------------------------------- referee: pick another game
+/** Games a court's referee may play instead of the one on court (migration
+ *  0040): still waiting, both teams known, on this court's own list. `busy`
+ *  = a team of that game is on another court right now (cannot be picked). */
+export function courtChoices(b: Bundle, courtId: string, curId?: string | null): Array<{ m: Match; busy: string | null }> {
+  const on = b.matches.filter(x => BUSY.has(x.status) && x.id !== curId)
+  return b.matches
+    .filter(m => m.status === 'scheduled' && m.id !== curId && m.team_a_id && m.team_b_id
+      && (m.court_id === courtId || (m.court_id == null && m.home_court === courtId)))
+    .sort((x, y) => x.sequence - y.sequence)
+    .map(m => {
+      const clash = on.find(x => [x.team_a_id, x.team_b_id].some(t => t === m.team_a_id || t === m.team_b_id))
+      const t = clash ? [m.team_a_id, m.team_b_id].find(id => id === clash.team_a_id || id === clash.team_b_id) ?? null : null
+      return { m, busy: t }
+    })
+}
+
+/** "Group A · Slot 3", "QF 2", "Final": what a referee or player calls this game. */
+export function gameTitle(b: Bundle, m: Match): string {
+  if (m.bracket_key != null) return koShort(b, m).replace(/^(QF|SF|PO)(\d+)$/, '$1 $2')
+  if (m.tie_stage) return m.game_label ?? m.round ?? 'Game'
+  const pool = b.teams.find(t => t.id === m.team_a_id)?.pool
+  const base = pool && pool !== '—' ? `Group ${pool}` : (m.round ?? 'Game')
+  return m.game_label ? `${base} · ${m.game_label}` : m.slot != null ? `${base} · Slot ${m.slot}` : base
+}

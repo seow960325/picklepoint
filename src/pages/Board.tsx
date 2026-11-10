@@ -28,7 +28,7 @@ import { KnockoutBracket, ChampionStage, FinalBanner, useWide } from '../compone
 import { CourtQueues, GroupCardPro, GroupTable, PlayClock } from '../components/GroupsKo'
 import FillGrid from '../components/FillGrid'
 import { useAutoHide } from '../lib/useAutoHide'
-import { isPoolDispatch, isDiffTiebreak, koSlotLabel, stageLabel } from '../lib/pool'
+import { isPoolDispatch, isDiffTiebreak, koSlotLabel, stageLabel, courtChoices } from '../lib/pool'
 
 type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
 
@@ -850,8 +850,9 @@ function activeCourts(b: Bundle, pool: boolean): Bundle['courts'] {
   return out.length ? out : b.courts
 }
 
-export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck = false, cols }: {
+export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck = false, cols, noLink = false }: {
   b: Bundle; code: string; tv: boolean
+  noLink?: boolean   // event front page: spectators get no link to the referee PIN pad
   cols?: number      // TV split: court columns planned by planTvSplit
   split?: boolean    // TV half-screen (multi-sport "both")
   compact?: boolean  // board half-width column (multi-sport "both")
@@ -888,9 +889,16 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
                   {m ? <Pill tone="live" big={tvBig}>● live</Pill> : <Pill big={tvBig}>open</Pill>}
                 </span>
               </div>
-              {m ? <CourtScoreRow b={b} m={m} tv={tv} /> : (
-                <div className="py-6 text-center text-sm text-fg-subtle lg:py-10">No match running</div>
-              )}
+              {m ? <CourtScoreRow b={b} m={m} tv={tv} /> : (() => {
+                const w = !tv && poolEv ? courtChoices(b, ct.id)[0]?.m : undefined
+                return w ? (
+                  <div className="px-2 py-5 text-center lg:py-8">
+                    <div className="text-[11px] font-bold uppercase tracking-widest text-fg-subtle">Next on this court</div>
+                    <div className="mt-1 truncate font-display text-lg font-bold">{teamName(b, w.team_a_id)} <span className="font-normal text-fg-subtle">vs</span> {teamName(b, w.team_b_id)}</div>
+                    <div className="mt-0.5 text-xs text-fg-muted">Starts when the games before it finish.</div>
+                  </div>
+                ) : <div className="py-6 text-center text-sm text-fg-subtle lg:py-10">No match running</div>
+              })()}
               {poolEv
                 ? !tv && up && (
                   <div className={`mt-3 border-t border-line pt-2 text-fg-muted lg:mt-4 lg:pt-3 ${tvBig ? 'text-xl' : 'text-[11px] lg:text-sm'}`}>
@@ -899,7 +907,7 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
                 )
                 : !tv && <CourtUpList b={b} courtId={ct.id} tv={tv} />}
             </>
-          return tv ? (
+          return tv || noLink ? (
             <div key={ct.id} className="block rounded-2xl border border-line bg-surface p-2 lg:p-3">
               {cardBody}
             </div>

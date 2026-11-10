@@ -751,21 +751,26 @@ function BracketTab({ bundle, ev, token, run }: any) {
   const rounds = bracketRounds(bundle, ev.id)
   // tiebreak 'diff': teams still level after head-to-head on the qualifying
   // line are settled by a coin toss — the admin records the toss winner here
-  const [picks, setPicks] = useState<Record<string, string>>({})
+  const [picks, setPicks] = useState<Record<string, string[]>>({})
   const diffMode = isDiffTiebreak(ev)
   // printed knockout plan (MCMD / MCXD fundraiser): fixed pairings, so a tie
   // anywhere in a group's top places matters, not only on the qualifying line
   const plan = koPlanOf(bundle.competition.code)
   const tosses = diffMode ? coinTosses(tables, advance, !!plan) : {}
-  const openTosses = Object.keys(tosses).filter(g => !tosses[g].some((r: any) => r.team.id === picks[g]))
+  // printed plan: 1st AND 2nd place both matter, so three level teams need two tosses (tap in order)
+  const tossNeed = (g: string) => (plan ? Math.max(1, tosses[g].length - 1) : 1)
+  const tossPicks = (g: string) => (picks[g] ?? []).filter(id => tosses[g]?.some((r: any) => r.team.id === id))
+  const openTosses = Object.keys(tosses).filter(g => tossPicks(g).length < tossNeed(g))
 
   const ordered: Record<string, any[]> = Object.fromEntries(Object.keys(tables).sort().map(g => {
     const rows = tables[g].slice()
-    const pick = picks[g]
-    if (diffMode && tosses[g] && pick) {
-      const i = rows.findIndex((r: any) => r.team.id === pick)
-      const first = rows.findIndex((r: any) => r.tieGroup === rows[i].tieGroup)
-      rows.splice(first, 0, rows.splice(i, 1)[0])
+    if (diffMode && tosses[g]) {
+      // toss winners go to the front of the level teams, in the order tapped
+      tossPicks(g).forEach((pick, k) => {
+        const i = rows.findIndex((r: any) => r.team.id === pick)
+        const first = rows.findIndex((r: any) => r.tieGroup === rows[i].tieGroup)
+        rows.splice(first + k, 0, rows.splice(i, 1)[0])
+      })
     }
     return [g, rows]
   }))
@@ -817,12 +822,16 @@ function BracketTab({ bundle, ev, token, run }: any) {
               <GroupTable b={bundle} g={g} rows={tables[g]} advance={advance} />
               {tosses[g] && complete && !seeded && (
                 <div className="mt-2 border-t border-line pt-2">
-                  <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-gold">Coin toss — who goes through?</div>
+                  <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-gold">{tossNeed(g) > 1 ? 'Coin toss — tap the teams in toss order (1st, then 2nd)' : plan ? 'Coin toss — who is placed higher?' : 'Coin toss — who goes through?'}</div>
                   <div className="flex flex-wrap gap-1.5">
                     {tosses[g].map((r: any) => (
-                      <button key={r.team.id} onClick={() => setPicks(p => ({ ...p, [g]: r.team.id }))}
+                      <button key={r.team.id} onClick={() => setPicks(p => {
+                        const cur = (p[g] ?? []).filter(id => id !== r.team.id)
+                        return { ...p, [g]: cur.length >= tossNeed(g) ? [r.team.id] : [...cur, r.team.id] }
+                      })}
                         className={`flex min-h-[32px] max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold ${
-                          picks[g] === r.team.id ? 'border-gold bg-gold/20 text-fg' : 'border-line text-fg-muted'}`}>
+                          tossPicks(g).includes(r.team.id) ? 'border-gold bg-gold/20 text-fg' : 'border-line text-fg-muted'}`}>
+                        {tossPicks(g).includes(r.team.id) && tossNeed(g) > 1 && <span className="font-bold text-gold">{tossPicks(g).indexOf(r.team.id) + 1}</span>}
                         <Emblem logo={teamLogo(bundle, r.team.id)} flagName={teamSideName(bundle, r.team.id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
                         <span className="truncate">{r.team.name}</span>
                       </button>

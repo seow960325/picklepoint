@@ -3,6 +3,7 @@
  *  the shared "up next" court queue, and the game clock. Nothing here is
  *  rendered for an event that didn't opt in. */
 import { useEffect, useState } from 'react'
+import { usePinned } from '../lib/pin'
 import { Link } from 'react-router-dom'
 import FillGrid from './FillGrid'
 import type { Bundle, EventCfg, Match } from '../lib/types'
@@ -48,6 +49,7 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
   // huge = one category on the whole TV: much larger type, rows stretch to the card's height
   // TV (big / huge): photo logo large, one-line names in a lighter weight, no P column
   const tv = big || huge
+  const pins = usePinned()
   // every team gets the same fixed row (logo height + a little air), never stretched
   const cell = huge ? 'py-0 align-middle text-lg' : big ? 'py-0 align-middle text-base' : 'py-1.5'
   const rowH = huge ? 'h-16' : big ? 'h-14' : ''
@@ -81,7 +83,7 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
         {rows.map((r, i) => {
           const q = i < advance
           return (
-            <tr key={r.team.id} className={`${rowH} ${q ? 'bg-brand/[0.08]' : ''} ${i === advance - 1 && i < rows.length - 1 ? 'border-b-2 border-dashed !border-line-strong' : ''}`}>
+            <tr key={r.team.id} className={`${rowH} ${q ? 'bg-brand/[0.08]' : ''} ${pins.has(r.team.id) ? 'outline outline-2 -outline-offset-2 outline-gold/70' : ''} ${i === advance - 1 && i < rows.length - 1 ? 'border-b-2 border-dashed !border-line-strong' : ''}`}>
               <td className={`tabular px-1 ${cell} text-center ${tv ? 'text-sm' : 'text-xs'} ${tv ? 'font-medium' : 'font-bold'} ${q ? 'text-brand-ink' : 'text-fg-subtle'}`}>{i + 1}</td>
               <td className={`px-1 ${cell}`}>
                 <span className={`flex min-w-0 gap-2 ${tv ? 'items-center' : 'items-start gap-1.5'}`}>

@@ -12,6 +12,7 @@ import { Screen, Spinner, FullscreenButton, Flag, Emblem } from '../components/u
 import Court from '../components/Court'
 import { PlayClock } from '../components/GroupsKo'
 import { koCourtLabel, isCb } from '../lib/multisport'
+import { courtChoices, gameTitle } from '../lib/pool'
 import CbScorer from './CbScorer'
 
 export default function CourtScore() {
@@ -21,6 +22,7 @@ export default function CourtScore() {
   const court = bundle?.courts.find(c => c.number === Number(number))
   const [picked, setTokenState] = useState<string | null>(null)
   const [showRelogin, setShowRelogin] = useState(false)
+  const [picking, setPicking] = useState(false)
   // PIN every time the court is opened — except coming straight back from the point
   // log in this same tab (short-lived session, see courtSession). Read during render
   // so the PIN pad never flashes up first.
@@ -85,7 +87,17 @@ export default function CourtScore() {
             : slotWait ? <>Starts by itself when slot {slotWait.slot} has finished (Court {bundle.courts.find(c => c.id === slotWait.court_id)?.number ?? '–'} still playing).</>
             : <>Starts by itself in a moment.</>}
         </div>
-        <Link to={`/c/${code}`} className="rounded-xl border border-line px-4 py-2 text-sm">Back to board</Link>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {courtChoices(bundle, court.id).length > 1 && (
+            <button onClick={() => setPicking(true)}
+              className="flex min-h-[40px] items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold active:bg-surface-2">
+              <PickIcon className="h-4 w-4" /> Play a different game
+            </button>
+          )}
+          <Link to={`/c/${code}`} className="flex min-h-[40px] items-center rounded-xl border border-line px-4 py-2 text-sm">Back to board</Link>
+        </div>
+        {picking && <GamePicker bundle={bundle} courtId={court.id} courtName={cname} token={token}
+          onClose={() => setPicking(false)} onDone={() => { setPicking(false); reload() }} />}
       </Screen>
     )
     return (
@@ -125,7 +137,9 @@ export default function CourtScore() {
     <>
       <Sc key={match.id} bundle={bundle} match={match} token={token}
         courtNo={court.number} courtName={cname} courtShort={cshort} code={code!} reload={reload}
-        onRelogin={() => setShowRelogin(true)} />
+        onRelogin={() => setShowRelogin(true)} onPick={() => setPicking(true)} />
+      {picking && <GamePicker bundle={bundle} courtId={court.id} courtName={cname} token={token} current={match}
+        onClose={() => setPicking(false)} onDone={() => { setPicking(false); reload() }} />}
       {showRelogin && (
         <PinModal courtId={court.id} courtNo={court.number} courtName={cname}
           onUnlock={t => { setToken(t); setShowRelogin(false) }}
@@ -263,9 +277,9 @@ function PinModal({ courtId, courtNo, courtName, onUnlock, onCancel }: {
 }
 
 // ----------------------------------------------------------------- scorer
-function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRelogin }: {
+function Scorer({ bundle, match, token, courtNo, courtName, courtShort, code, reload, onRelogin, onPick }: {
   bundle: any; match: Match; token: string; courtNo: number; courtName?: string; courtShort?: string; code: string; reload: () => void
-  onRelogin: () => void
+  onRelogin: () => void; onPick?: () => void
 }) {
   const rules = useMemo(() => rulesOf(eventOf(bundle, match), match), [bundle, match.event_id, match.bracket_key])
   const [m, setM] = useState<Match>(match)
@@ -486,6 +500,11 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
     [bundle.matches, m.court_id]
   )
 
+  const title = gameTitle(bundle, m)
+  const canPick = courtChoices(bundle, m.court_id!, m.id).length > 0
+  // what this court plays after this game (its own list, in order)
+  const upAfter = courtChoices(bundle, m.court_id!, m.id)[0]?.m as Match | undefined
+
   if (!landscape && !ignoreRotate) return <RotatePrompt onIgnore={() => setIgnoreRotate(true)} />
 
   const isPortrait = !landscape
@@ -518,6 +537,12 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
               <button onClick={swap}
                 className="min-h-[30px] whitespace-nowrap rounded-lg border border-line bg-surface/80 px-3 py-1 font-display text-xs font-bold tracking-wide text-fg-muted active:scale-95">
                 ⇄ SWAP
+              </button>
+            )}
+            {notStarted && canPick && onPick && (
+              <button onClick={onPick} aria-label="Play a different game" title="Play a different game"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-line bg-surface/80 text-fg-muted active:scale-95">
+                <PickIcon className="h-4 w-4" />
               </button>
             )}
             <SoundToggle portrait={isPortrait} />
@@ -634,21 +659,35 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
       </div>
 
       {notStarted && !serverPicked && (
-        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-6 bg-canvas px-8">
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 overflow-y-auto bg-canvas px-6 py-4">
           <div className="text-center">
-            <div className="font-display text-3xl font-bold tracking-wide">WHO SERVES FIRST?</div>
-            <div className="mt-1 text-sm text-fg-muted">Referee picks before the game starts.</div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-fg-subtle">{courtName ?? `Court ${courtNo}`} · next game</div>
+            <div className="mt-1 font-display text-2xl font-bold uppercase tracking-wide text-brand-ink">{title}</div>
           </div>
-          <div className="flex w-full max-w-sm gap-3">
-            <button type="button" onClick={() => pickFirstServer('left')}
-              className="flex-1 rounded-2xl bg-brand py-6 font-display text-xl font-bold text-brand-fg active:scale-[0.98]">
-              {leftName}
-            </button>
-            <button type="button" onClick={() => pickFirstServer('right')}
-              className="flex-1 rounded-2xl bg-brand py-6 font-display text-xl font-bold text-brand-fg active:scale-[0.98]">
-              {rightName}
-            </button>
+          <div className="grid w-full max-w-xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
+            <NextTeam name={leftName} logo={teamLogoOf(leftTeamId)} flag={sideName(leftTeamId)} />
+            <span className="font-display text-lg font-bold text-fg-subtle">VS</span>
+            <NextTeam name={rightName} logo={teamLogoOf(rightTeamId)} flag={sideName(rightTeamId)} />
           </div>
+          <div className="w-full max-w-xl">
+            <div className="mb-2 text-center text-sm font-semibold text-fg-muted">Both teams here? Tap who serves first to start.</div>
+            <div className="grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => pickFirstServer('left')}
+                className="min-w-0 rounded-2xl bg-brand px-3 py-4 font-display text-xl font-bold text-brand-fg active:scale-[0.98]">
+                <span className="line-clamp-2 break-words">{leftName}</span>
+              </button>
+              <button type="button" onClick={() => pickFirstServer('right')}
+                className="min-w-0 rounded-2xl bg-brand px-3 py-4 font-display text-xl font-bold text-brand-fg active:scale-[0.98]">
+                <span className="line-clamp-2 break-words">{rightName}</span>
+              </button>
+            </div>
+          </div>
+          {canPick && onPick && (
+            <button type="button" onClick={onPick}
+              className="flex min-h-[40px] items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-fg-muted active:bg-surface-2">
+              <PickIcon className="h-4 w-4" /> A team is not here? Play a different game
+            </button>
+          )}
         </div>
       )}
 
@@ -669,28 +708,131 @@ function Scorer({ bundle, match, token, courtNo, courtShort, code, reload, onRel
       )}
 
       {done && (
-        <div className={`absolute inset-0 z-30 flex items-center justify-center bg-canvas ${
-          isPortrait ? 'flex-col gap-6 px-8' : 'gap-10 px-10'}`}>
-          <div className={`space-y-2 ${isPortrait ? 'w-full max-w-xs' : 'w-full max-w-sm'}`}>
-            <div className="mb-3 font-display text-xl font-bold tracking-widest text-fg-muted">GAME</div>
+        <div className={`absolute inset-0 z-30 flex items-center justify-center overflow-y-auto bg-canvas py-4 ${
+          isPortrait ? 'flex-col gap-5 px-6' : 'gap-8 px-8'}`}>
+          <div className={`space-y-2 ${isPortrait ? 'w-full max-w-sm' : 'w-full max-w-md'}`}>
+            <div className="mb-2">
+              <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-fg-subtle">{courtName ?? `Court ${courtNo}`} · {title}</div>
+              <div className="font-display text-3xl font-bold tracking-wide">GAME OVER</div>
+            </div>
             <ResultRow name={leftName} flag={sideName(leftTeamId)} logo={teamLogoOf(leftTeamId)} score={s.left} win={s.left > s.right} />
             <ResultRow name={rightName} flag={sideName(rightTeamId)} logo={teamLogoOf(rightTeamId)} score={s.right} win={s.right > s.left} />
           </div>
-          <div className={`space-y-3 ${isPortrait ? 'w-full max-w-xs' : 'w-56'}`}>
+          <div className={`space-y-3 ${isPortrait ? 'w-full max-w-sm' : 'w-64 shrink-0'}`}>
             <div className="text-sm text-fg-muted">
-              Both captains check the score before confirming.
+              Both captains check the score, then end the game.
             </div>
             <button onClick={confirm} disabled={confirming}
-              className="w-full rounded-2xl bg-brand py-4 font-display text-xl font-bold text-brand-fg disabled:opacity-60">
-              {confirming ? 'SAVING…' : 'CONFIRM'}
+              className="w-full rounded-2xl bg-brand px-3 py-4 font-display text-xl font-bold text-brand-fg disabled:opacity-60">
+              {confirming ? 'SAVING…' : upAfter ? 'END GAME · NEXT ›' : 'END GAME'}
             </button>
             <button onClick={undo} disabled={confirming}
-              className="w-full rounded-2xl border border-line py-4 font-display text-xl font-bold text-fg-muted">
-              REVIEW
+              className="w-full rounded-2xl border border-line px-3 py-3 font-display text-base font-bold text-fg-muted">
+              UNDO LAST POINT
             </button>
+            <div className="rounded-xl border border-line bg-surface px-3 py-2 text-xs text-fg-muted">
+              <div className="font-bold uppercase tracking-widest text-fg-subtle">Next on this court</div>
+              {upAfter
+                ? <div className="mt-0.5 truncate text-sm text-fg">{teamName(bundle, upAfter.team_a_id)} <span className="text-fg-subtle">vs</span> {teamName(bundle, upAfter.team_b_id)}</div>
+                : <div className="mt-0.5 text-sm">Shown after you end this game.</div>}
+            </div>
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function NextTeam({ name, logo, flag }: { name: string; logo?: string | null; flag?: string | null }) {
+  return (
+    <div className="flex min-w-0 flex-col items-center gap-1.5 text-center">
+      <Emblem logo={logo} flagName={flag} className="h-14 w-auto max-w-full rounded-[3px]" />
+      <span className="line-clamp-2 break-words font-display text-xl font-bold leading-tight">{name}</span>
+    </div>
+  )
+}
+
+/** two rows trading places: "play a different game" */
+function PickIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 4v16M7 4 3.5 7.5M7 4l3.5 3.5" /><path d="M17 20V4m0 16 3.5-3.5M17 20l-3.5-3.5" />
+    </svg>
+  )
+}
+
+const PICK_ERR: Record<string, string> = {
+  GAME_STARTED: 'The game on court already has points. Finish it, or RESET it first.',
+  TEAM_BUSY: 'A team of that game is playing on another court right now.',
+  NOT_SCHEDULED: 'That game has already started or finished.',
+  NO_COURT_SESSION: 'Court PIN expired — go back and enter the PIN again.',
+}
+
+/** Sheet: the other games waiting for this court. Picking one puts it on court
+ *  now; the game it replaces goes back into the list and is played after. */
+function GamePicker({ bundle, courtId, courtName, token, current, onClose, onDone }: {
+  bundle: any; courtId: string; courtName: string; token: string; current?: Match
+  onClose: () => void; onDone: () => void
+}) {
+  const [sel, setSel] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const list = courtChoices(bundle, courtId, current?.id).slice(0, 12)
+  const started = !!current && (current.status !== 'live' || current.score_a > 0 || current.score_b > 0)
+  const go = async () => {
+    if (!sel || busy) return
+    setBusy(true); setErr(null)
+    try { await api.courtPickMatch(sel, courtId, token); onDone() }
+    catch (e: any) {
+      const msg = String(e?.message ?? e)
+      setErr(PICK_ERR[msg] ?? (/court_pick_match|schema cache|PGRST202/i.test(msg)
+        ? 'Not switched on yet — the organiser needs to run database update 0040.'
+        : `Could not change the game (${msg}).`))
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center" onClick={onClose}>
+      <div onClick={e => e.stopPropagation()}
+        className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-2xl border border-line bg-canvas sm:rounded-2xl"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
+          <div className="min-w-0">
+            <div className="text-[11px] font-bold uppercase tracking-[0.25em] text-fg-subtle">{courtName}</div>
+            <div className="font-display text-xl font-bold">Play a different game</div>
+            {current && !started && (
+              <div className="mt-0.5 truncate text-xs text-fg-muted">
+                Instead of {teamName(bundle, current.team_a_id)} vs {teamName(bundle, current.team_b_id)} — that game is played after.
+              </div>
+            )}
+          </div>
+          <button onClick={onClose} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-fg-muted">✕</button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
+          {started && <div className="rounded-xl border border-line bg-surface p-3 text-sm text-fg-muted">{PICK_ERR.GAME_STARTED}</div>}
+          {!started && list.length === 0 && <div className="p-3 text-sm text-fg-muted">No other game is waiting for this court.</div>}
+          {!started && list.map(({ m, busy: bt }) => (
+            <button key={m.id} disabled={!!bt} onClick={() => setSel(m.id)}
+              className={`mb-1.5 block w-full rounded-xl border px-3 py-2 text-left ${
+                sel === m.id ? 'border-brand-ink bg-brand/10' : 'border-line bg-surface'} ${bt ? 'opacity-50' : 'active:bg-surface-2'}`}>
+              <span className="block truncate text-[11px] font-bold uppercase tracking-wide text-fg-subtle">{gameTitle(bundle, m)}</span>
+              <span className="block min-w-0">
+                <span className="block truncate text-sm font-semibold">{teamName(bundle, m.team_a_id)} <span className="font-normal text-fg-subtle">vs</span> {teamName(bundle, m.team_b_id)}</span>
+                {bt && <span className="block truncate text-[11px] text-fg-subtle">{teamName(bundle, bt)} is on another court now</span>}
+              </span>
+            </button>
+          ))}
+        </div>
+        {err && <div className="px-4 pb-2 text-sm font-semibold text-red-400">{err}</div>}
+        {!started && list.length > 0 && (
+          <div className="border-t border-line px-3 py-3">
+            <button onClick={go} disabled={!sel || busy}
+              className="w-full rounded-2xl bg-brand py-3.5 font-display text-lg font-bold text-brand-fg disabled:opacity-40">
+              {busy ? 'CHANGING…' : sel ? 'PLAY THIS GAME NOW' : 'CHOOSE A GAME'}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

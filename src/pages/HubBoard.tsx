@@ -4,7 +4,7 @@
  *  category updates live, point by point). Scoring stays per category code
  *  behind the scenes; referees start from the Referee button. */
 import { SportIcon } from '../components/SportIcon'
-import { useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import type { Bundle } from '../lib/types'
 import type { Hub, HubCat } from '../lib/hub'
@@ -15,6 +15,9 @@ import { CbLive, CbMatches, CbStandings } from '../components/CaptainBall'
 import FlowChart from '../components/FlowChart'
 import { flowOf } from '../lib/flow'
 import { LiveGrid, Matches, Standings, PosterBracket } from './Board'
+import MyTeamBar, { resolvePin } from '../components/MyTeam'
+import { HubGames, HubStandings } from '../components/HubViews'
+import { PinCtx, usePins } from '../lib/pin'
 
 type HubTab = 'live' | 'matches' | 'standings' | 'bracket' | 'medals'
 const TABS: Array<{ id: HubTab; label: string }> = [
@@ -34,8 +37,12 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
   }
   const others = useOthers(hub.cats.map(c => c.code).filter(c => c !== hub.code), 10000)
   const bundleOf = (code: string) => (code === hub.code ? self : others[code] ?? null)
+  const { pins } = usePins(hub.code)
+  const pinned = useMemo(() => new Set(pins.map(p => resolvePin(bundleOf(p.code), p)).filter((x): x is string => !!x)),
+    [pins, others, self])
 
   return (
+    <PinCtx.Provider value={pinned}>
     <div className="min-h-screen bg-canvas text-fg">
       <div className="border-b border-line px-4 pb-2 pt-3 lg:px-6" style={{ paddingTop: 'max(var(--pp-top), 0.75rem)' }}>
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
@@ -53,17 +60,17 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
           </div>
         </div>
         {/* tabs */}
-        <div className="mx-auto mt-3 flex max-w-6xl gap-1 overflow-x-auto">
+        <div className="mx-auto mt-3 grid max-w-6xl gap-1 sm:flex" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
           {tabs.map(t => (
             <button key={t.id} onClick={() => set('t', t.id === 'live' ? null : t.id)}
-              className={`shrink-0 rounded-lg px-2.5 py-2 text-xs font-semibold uppercase tracking-wide sm:px-3 lg:px-4 lg:text-sm ${tab === t.id ? 'bg-brand text-brand-fg' : 'text-fg-muted'}`}>
+              className={`min-h-[38px] whitespace-nowrap rounded-lg px-0.5 py-2 text-[10px] font-bold uppercase min-[390px]:text-[11px] sm:shrink-0 sm:px-3 sm:text-xs sm:tracking-wide lg:px-4 lg:text-sm ${tab === t.id ? 'bg-brand text-brand-fg' : 'bg-surface text-fg-muted sm:bg-transparent'}`}>
               {t.label}
             </button>
           ))}
         </div>
         {/* category filter (not on Medals: medals are always the whole event) */}
         {tab !== 'medals' && (
-          <div className="mx-auto mt-2 flex max-w-6xl gap-1.5 overflow-x-auto pb-1">
+          <div className="mx-auto mt-2 flex max-w-6xl flex-wrap gap-1.5 pb-1">
             <Chip on={!cat} onClick={() => set('cat', null)}>All</Chip>
             {hub.cats.map(c => (
               <Chip key={c.code} on={cat?.code === c.code} onClick={() => set('cat', c.code)}><SportIcon sport={c.sport} /> {c.short}</Chip>
@@ -73,6 +80,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
       </div>
 
       <div className="mx-auto max-w-6xl pb-10">
+        {tab !== 'medals' && <MyTeamBar hub={hub} bundleOf={bundleOf} compact={tab !== 'live'} onOpen={c => set('cat', c)} />}
         {tab === 'medals' && <div className="px-4 py-5"><MedalTable hub={hub} bundleOf={bundleOf} /></div>}
         {tab === 'live' && !cat && (
           <div className="px-4 py-5"><LiveNext hub={hub} bundleOf={bundleOf} onOpen={c => set('cat', c)} /></div>
@@ -87,6 +95,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
         )}
       </div>
     </div>
+    </PinCtx.Provider>
   )
 }
 
@@ -132,9 +141,10 @@ function LiveCat({ code, render }: { code: string; render: (b: Bundle) => ReactN
 /** The tab's content for one category, using the screens the category code already has. */
 function Section({ tab, b, code }: { tab: HubTab; b: Bundle; code: string }) {
   const cb = b.events.find(e => e.sport === 'captainball')
-  if (tab === 'live') return cb ? <CbLive b={b} code={code} /> : <LiveGrid b={b} code={code} tv={false} />
-  if (tab === 'matches') return cb ? <div className="p-3 lg:p-5"><CbMatches b={b} /></div> : <Matches b={b} code={code} />
-  if (tab === 'standings') return cb ? <div className="mx-auto max-w-2xl p-3 lg:p-5"><CbStandings b={b} ev={cb} /></div> : <Standings b={b} />
+  if (tab === 'live') return cb ? <CbLive b={b} code={code} /> : <LiveGrid b={b} code={code} tv={false} noLink />
+  const ko = b.events.find(e => e.format === 'groups_ko')
+  if (tab === 'matches') return cb ? <div className="p-3 lg:p-5"><CbMatches b={b} /></div> : ko ? <HubGames b={b} code={code} /> : <Matches b={b} code={code} />
+  if (tab === 'standings') return cb ? <div className="mx-auto max-w-2xl p-3 lg:p-5"><CbStandings b={b} ev={cb} /></div> : <HubStandings b={b} ev={ko} fallback={<Standings b={b} />} />
   const flow = flowOf(b, { groupStandings, groupStageComplete })
   return flow ? <FlowChart b={b} flow={flow} /> : <PosterBracket b={b} />
 }

@@ -582,6 +582,36 @@ export const demo = {
     save(s)
   },
 
+  /** court_pick_match twin (migration 0040): play another waiting game of this
+   *  court first; the postponed game goes back to the queue. */
+  pickMatch(matchId: string, courtId: string): Match {
+    const s = load()
+    const ms = s.bundle.matches
+    const pick = ms.find(m => m.id === matchId)
+    if (!pick) throw new Error('NO_MATCH')
+    if (pick.status !== 'scheduled') throw new Error('NOT_SCHEDULED')
+    const cur = ms.find(m => m.court_id === courtId && (m.status === 'live' || m.status === 'awaiting_confirm'))
+    if (cur && (cur.status !== 'live' || cur.score_a || cur.score_b)) throw new Error('GAME_STARTED')
+    const busy = ms.some(x => x !== cur && (x.status === 'live' || x.status === 'awaiting_confirm')
+      && [x.team_a_id, x.team_b_id].some(t => t === pick.team_a_id || t === pick.team_b_id))
+    if (busy) throw new Error('TEAM_BUSY')
+    const ref = cur ?? ms.filter(m => m.status === 'scheduled' && m.id !== pick.id && !m.bracket_key && m.event_id === pick.event_id
+      && (m.court_id === courtId || (m.court_id == null && m.home_court === courtId))).sort((a, b) => a.sequence - b.sequence)[0]
+    if (cur) {
+      const ev = s.bundle.events.find(e => e.id === cur.event_id)
+      cur.status = 'scheduled'; cur.started_at = null
+      if (isPoolDispatch(ev) && !cur.bracket_key) cur.court_id = null
+    }
+    if (ref && ref.slot != null && pick.slot != null && pick.slot > ref.slot) {
+      const [sl, sq] = [ref.slot, ref.sequence]
+      ref.slot = pick.slot; ref.sequence = pick.sequence
+      pick.slot = sl; pick.sequence = sq
+    }
+    pick.court_id = courtId; pick.status = 'live'
+    save(s)
+    return pick
+  },
+
   flipSides(matchId: string): Match {
     const s = load()
     const i = s.bundle.matches.findIndex(m => m.id === matchId)
