@@ -23,9 +23,9 @@ export const HUBS: Hub[] = [{
   ],
 }, {
   // Christmas Outreach Pickleball Fundraiser, 14 Nov 2026: one entry for players and
-  // supporters. XMAS26 is only the front page (no competition of its own);
+  // supporters. MC26 is only the front page (no competition of its own);
   // Men's Doubles = MCMD (courts 1-3), Mixed Doubles = MCXD (courts 4-6).
-  code: 'XMAS26',
+  code: 'MC26',
   title: 'Christmas Outreach',
   noChurch: true,
   cats: [

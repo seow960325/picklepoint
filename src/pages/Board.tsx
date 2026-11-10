@@ -35,7 +35,7 @@ type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
 export default function Board() {
   const { code } = useParams()
   const hub = hubOf(code)
-  // a front-page-only hub (XMAS26) has no competition of its own to load
+  // a front-page-only hub (MC26) has no competition of its own to load
   const { bundle: raw, error, loading, reload } = useCompetition(hub && pageOnly(hub) ? undefined : code, { preview: true, viewer: true })
   const parent = parentHub(code)
   // a hub code shows only its own sport (YC2626 = Captain Ball); the other sports are their own codes
@@ -67,7 +67,7 @@ export default function Board() {
     setParams(next, { replace: true })
   }
 
-  // front-page-only hub (XMAS26): no competition of its own to load
+  // front-page-only hub (MC26): no competition of its own to load
   if (hub && pageOnly(hub)) return <HubBoard hub={hub} self={null} />
   if (loading) return <Screen><Spinner /></Screen>
   if (error || !bundle) return (
