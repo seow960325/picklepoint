@@ -50,7 +50,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
             const id = resolvePin(b, p)
             const ev = b?.events.find(e => e.format === 'groups_ko')
             const st = b && id ? teamStatus(b, id, ev ? groupStandings(b, ev.id) : undefined) : null
-            const tone = st?.state === 'playing' ? 'border-red-500/60 bg-red-500/10'
+            const tone = st?.state === 'playing' ? 'border-emerald-500/60 bg-emerald-500/10'
               : st?.state === 'next' && (st.ahead ?? 9) <= 1 ? 'border-gold/70 bg-gold/10'
               : 'border-brand-ink/40 bg-brand/[0.07]'
             return (
@@ -63,7 +63,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                     <span className="truncate">{p.name}{cat ? ` · ${cat.short}` : ''}</span>
                   </span>
                   <span className="block truncate font-display text-xl font-bold leading-tight">
-                    {st?.state === 'playing' && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-red-500 align-middle" />}
+                    {st?.state === 'playing' && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-400 align-middle" />}
                     {!b ? 'Loading…' : st ? st.head : 'Team not found'}
                   </span>
                   {st && <span className="line-clamp-2 text-xs leading-snug text-fg-muted">{st.sub}</span>}

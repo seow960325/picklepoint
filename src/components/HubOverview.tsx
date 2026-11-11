@@ -165,7 +165,7 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
             <div className="flex items-center gap-2">
               <span className="text-xl leading-none"><SportIcon sport={cat.sport} /></span>
               <span className="min-w-0 flex-1 font-display text-base font-bold uppercase leading-tight tracking-wide">{cat.label}</span>
-              {st && st.live > 0 && <span className="shrink-0 animate-pulse rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{st.live} LIVE</span>}
+              {st && st.live > 0 && <span className="shrink-0 animate-pulse rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-emerald-950">{st.live} LIVE</span>}
               <span className="shrink-0 text-fg-subtle">›</span>
             </div>
           )

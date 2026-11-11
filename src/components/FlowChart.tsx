@@ -39,7 +39,7 @@ function Game({ b, g, tone, icon }: { b: Bundle; g: FlowGame; tone: string; icon
     <div className={`rounded-xl border p-2.5 ${tone}`}>
       <div className="mb-1.5 flex items-center justify-between font-display text-sm font-bold uppercase tracking-wider">
         <span>{icon} {g.title}</span>
-        {g.live && <span className="animate-pulse rounded bg-red-500 px-1.5 text-[10px] text-white">LIVE</span>}
+        {g.live && <span className="animate-pulse rounded bg-emerald-500 px-1.5 text-[10px] font-bold text-emerald-950">LIVE</span>}
       </div>
       {row(g.a)}
       <div className="my-0.5 text-center text-[10px] text-fg-subtle">vs</div>

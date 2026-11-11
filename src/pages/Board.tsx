@@ -765,7 +765,7 @@ function TieCard({ b, t, code, sport, bnum }: { b: Bundle; t: Tie; code: string;
     if (!ct) return '—'
     // sheet layout: "C1" like the organiser's grid instead of "Badminton 1"
     const n = /(\d+)\s*$/.exec(ct.label || '')?.[1]
-    return bnum && n ? `C${n}` : (ct.label || `Court ${ct.number}`)
+    return n ? `Court ${n}` : (ct.label || `Court ${ct.number}`)
   }
   const bTag = (id: string | null) => bnum && id && bnum[id] ? (
     <span className={`shrink-0 rounded px-1 font-display text-[11px] font-bold ${tone.soft} ${tone.text}`}>B{bnum[id]}</span>

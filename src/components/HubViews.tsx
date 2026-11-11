@@ -39,7 +39,7 @@ function Row({ b, code, m, left }: { b: Bundle; code: string; m: Match; left: Re
       </span>
       <span className="text-center">
         {live || done
-          ? <span className={`tabular whitespace-nowrap font-display text-lg font-bold leading-none ${live ? 'text-red-400' : 'text-fg'}`}>{m.score_a}–{m.score_b}</span>
+          ? <span className={`tabular whitespace-nowrap font-display text-lg font-bold leading-none ${live ? 'text-emerald-400' : 'text-fg'}`}>{m.score_a}–{m.score_b}</span>
           : <span className="text-xs text-fg-subtle">vs</span>}
       </span>
       <span className={`flex min-w-0 items-center justify-center gap-1.5 text-center ${cls(m.team_b_id)}`}>
@@ -95,7 +95,7 @@ export function HubGames({ b, code }: { b: Bundle; code: string }) {
         <H right={live.length ? `${live.length} on court` : undefined}>On court now</H>
         <div className={box}>
           {live.length === 0 && <div className="px-3 py-4 text-center text-sm text-fg-muted">No game on court right now.</div>}
-          {live.map(m => <Row key={m.id} b={b} code={code} m={m} left={<Tag top={`● ${ct(m.court_id)}`} sub={short(m)} tone="text-red-400" />} />)}
+          {live.map(m => <Row key={m.id} b={b} code={code} m={m} left={<Tag top={`● ${ct(m.court_id)}`} sub={short(m)} tone="text-emerald-400" />} />)}
         </div>
       </section>
       <section>
