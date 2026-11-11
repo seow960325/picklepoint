@@ -9,7 +9,7 @@ import * as api from '../lib/api'
 import { Emblem } from './ui'
 import { teamLogo, teamSideName } from '../lib/store'
 import type { Hub } from '../lib/hub'
-import { categoryResult, medalTable } from '../lib/medals'
+import { categoryResult, medalTable, needsFourth, type MedalRow } from '../lib/medals'
 import { finalSeries } from '../lib/finals'
 import { cbKo } from '../lib/captainball'
 import { churchOf } from '../lib/draw'
@@ -238,23 +238,48 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
   )
 }
 
+/** Total Champion podium: shown once every category has its medals. 2nd - 1st - 3rd. */
+export function TotalPodium({ table }: { table: MedalRow[] }) {
+  const [a, b, c] = table
+  if (!a) return null
+  const col = (r: MedalRow | undefined, rank: 1 | 2 | 3) => r && (
+    <div className="flex min-w-0 flex-1 flex-col items-center">
+      <Emblem logo={r.logo} flagName={r.name} className={`${rank === 1 ? 'h-16 w-16' : 'h-12 w-12'} rounded-full`} />
+      <div className="mt-1 max-w-full truncate text-center text-sm font-bold">{r.name}</div>
+      <div className="text-[11px] text-fg-subtle">{r.gold}🥇 {r.silver}🥈 {r.bronze}🥉</div>
+      <div className={`mt-1 grid w-full place-items-center rounded-t-lg font-display text-2xl font-black ${rank === 1 ? 'h-20 bg-gold/30 text-gold' : rank === 2 ? 'h-14 bg-fg-muted/20 text-fg-muted' : 'h-10 bg-amber-700/25 text-amber-600'}`}>{rank}</div>
+    </div>
+  )
+  return (
+    <div className="mb-3 rounded-xl border border-gold/40 bg-gold/5 p-3">
+      <div className="mb-2 text-center text-[11px] font-bold uppercase tracking-[0.25em] text-gold">🏆 Total Champion</div>
+      <div className="flex items-end gap-2">{col(b, 2)}{col(a, 1)}{col(c, 3)}</div>
+    </div>
+  )
+}
+
 /** Total Champion: most gold, then silver, then bronze, across every category. */
 export function MedalTable({ hub, bundleOf }: { hub: Hub; bundleOf: (code: string) => Bundle | null }) {
-  const results = hub.cats.map(c => bundleOf(c.code)).filter((b): b is Bundle => !!b).map(categoryResult)
-  const table = medalTable(results)
+  const bundles = hub.cats.map(c => bundleOf(c.code)).filter((b): b is Bundle => !!b)
+  const results = bundles.map(categoryResult)
+  const table = medalTable(results, bundles)
+  const four = needsFourth(table)
+  const cols = four ? 'grid-cols-[2rem_1fr_2.5rem_2.5rem_2.5rem_2.5rem]' : 'grid-cols-[2rem_1fr_2.75rem_2.75rem_2.75rem]'
+  const allDone = results.length === hub.cats.length && results.every(r => r.done)
   return (
       <section>
+        {allDone && <TotalPodium table={table} />}
         <div className="mb-2 flex items-baseline justify-between gap-2">
           <h2 className="text-[11px] font-bold uppercase tracking-[0.25em] text-fg-subtle">Total Champion</h2>
-          <span className="text-[11px] text-fg-subtle">most 🥇, then 🥈, then 🥉 · {results.filter(r => r.done).length}/{hub.cats.length} decided</span>
+          <span className="text-[11px] text-fg-subtle">most 🥇, then 🥈, then 🥉{four ? ', then 4th places' : ''} · {results.filter(r => r.done).length}/{hub.cats.length} decided</span>
         </div>
         <div className="overflow-hidden rounded-xl border border-line bg-surface">
-          <div className="grid grid-cols-[2rem_1fr_2.75rem_2.75rem_2.75rem] items-center gap-2 border-b border-line px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
-            <div>#</div><div>Church</div><div className="text-center">🥇</div><div className="text-center">🥈</div><div className="text-center">🥉</div>
+          <div className={`grid ${cols} items-center gap-2 border-b border-line px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle`}>
+            <div>#</div><div>Church</div><div className="text-center">🥇</div><div className="text-center">🥈</div><div className="text-center">🥉</div>{four && <div className="text-center">4th</div>}
           </div>
           {table.length === 0 && <div className="p-5 text-center text-sm text-fg-muted">Medals appear as each category finishes.</div>}
           {table.map((r, i) => (
-            <div key={r.key} className={`grid grid-cols-[2rem_1fr_2.75rem_2.75rem_2.75rem] items-center gap-2 border-b border-line/60 px-3 py-2 last:border-0 ${i === 0 ? 'bg-gold/10' : ''}`}>
+            <div key={r.key} className={`grid ${cols} items-center gap-2 border-b border-line/60 px-3 py-2 last:border-0 ${i === 0 ? 'bg-gold/10' : ''}`}>
               <div className="font-display text-lg font-black text-fg-muted">{i + 1}</div>
               <div className="flex min-w-0 items-center gap-2">
                 <Emblem logo={r.logo} flagName={r.name} className="h-6 w-6 shrink-0 rounded-[3px]" />
@@ -263,6 +288,7 @@ export function MedalTable({ hub, bundleOf }: { hub: Hub; bundleOf: (code: strin
               <div className="text-center font-display text-xl font-black">{r.gold}</div>
               <div className="text-center font-display text-xl font-bold text-fg-muted">{r.silver}</div>
               <div className="text-center font-display text-xl font-bold text-fg-muted">{r.bronze}</div>
+              {four && <div className="text-center font-display text-lg font-bold text-fg-subtle">{r.fourth}</div>}
             </div>
           ))}
         </div>
