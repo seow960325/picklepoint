@@ -18,10 +18,10 @@ const write = (hub: string, pins: Pin[]) => {
   window.dispatchEvent(new CustomEvent(EVT, { detail: { hub, pins } }))
 }
 
-export const MAX_PINS = 3
+export const MAX_PINS = 2
 
 export function usePins(hub: string) {
-  const [pins, setPins] = useState<Pin[]>(() => read(hub))
+  const [pins, setPins] = useState<Pin[]>(() => read(hub).slice(-MAX_PINS))
   useEffect(() => {
     const on = (e: Event) => { const d = (e as CustomEvent).detail; if (d?.hub === hub) setPins(d.pins) }
     window.addEventListener(EVT, on)
