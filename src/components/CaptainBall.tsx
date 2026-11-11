@@ -281,17 +281,13 @@ function CbUpNext({ b, n, big }: { b: Bundle; n: number; big?: boolean }) {
       </div>
       <div className="divide-y divide-line/60 rounded-2xl border border-line bg-surface">
         {ups.map(m => (
-          <div key={m.id} className={`grid grid-cols-[3.5rem_minmax(0,1fr)_1.75rem_minmax(0,1fr)] items-center gap-1.5 px-3 ${big ? 'py-3 text-2xl' : 'py-2 text-sm'}`}>
+          <div key={m.id} className={`grid grid-cols-[3.5rem_minmax(0,1fr)_1.75rem_1.75rem_1.75rem_minmax(0,1fr)] items-center gap-1.5 px-3 ${big ? 'py-3 text-2xl' : 'py-2 text-sm'}`}>
             <span className={`whitespace-nowrap font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>{(cbRound(m).replace('Round ', 'R')) || `G${m.sequence}`}</span>
-            <span className="flex min-w-0 items-center justify-center gap-1.5">
-              <span className="truncate text-center">{teamName(b, m.team_a_id)}</span>
-              <Emblem logo={teamLogo(b, m.team_a_id)} className={fl} />
-            </span>
+            <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
+            <span className="flex items-center justify-center">{m.team_a_id && <Emblem logo={teamLogo(b, m.team_a_id)} className={fl} />}</span>
             <span className="text-center text-xs text-fg-subtle">vs</span>
-            <span className="flex min-w-0 items-center justify-center gap-1.5">
-              <Emblem logo={teamLogo(b, m.team_b_id)} className={fl} />
-              <span className="truncate">{teamName(b, m.team_b_id)}</span>
-            </span>
+            <span className="flex items-center justify-center">{m.team_b_id && <Emblem logo={teamLogo(b, m.team_b_id)} className={fl} />}</span>
+            <span className="truncate text-left">{teamName(b, m.team_b_id)}</span>
           </div>
         ))}
       </div>

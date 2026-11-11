@@ -34,22 +34,18 @@ function Row({ b, code, m, left }: { b: Bundle; code: string; m: Match; left: Re
   const body = (
     <>
       <span className="min-w-0 text-[11px] font-bold uppercase leading-tight tracking-wide text-fg-subtle">{left}</span>
-      <span className={`flex min-w-0 items-center justify-center gap-1.5 text-center ${cls(m.team_a_id)}`}>
-        <span className="line-clamp-2 min-w-0 break-words leading-tight">{teamName(b, m.team_a_id)}</span>
-        <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-6 w-6 shrink-0 rounded-[2px] object-contain" />
-      </span>
+      <span className={`line-clamp-2 min-w-0 break-words text-right leading-tight ${cls(m.team_a_id)}`}>{teamName(b, m.team_a_id)}</span>
+      <span className="flex h-6 w-6 items-center justify-center">{m.team_a_id && <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
       <span className="text-center">
         {live || done
           ? <span className={`tabular whitespace-nowrap font-display text-lg font-bold leading-none ${live ? 'text-emerald-400' : 'text-fg'}`}>{m.score_a}–{m.score_b}</span>
           : <span className="text-xs text-fg-subtle">vs</span>}
       </span>
-      <span className={`flex min-w-0 items-center justify-center gap-1.5 text-center ${cls(m.team_b_id)}`}>
-        <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-6 w-6 shrink-0 rounded-[2px] object-contain" />
-        <span className="line-clamp-2 min-w-0 break-words leading-tight">{teamName(b, m.team_b_id)}</span>
-      </span>
+      <span className="flex h-6 w-6 items-center justify-center">{m.team_b_id && <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
+      <span className={`line-clamp-2 min-w-0 break-words text-left leading-tight ${cls(m.team_b_id)}`}>{teamName(b, m.team_b_id)}</span>
     </>
   )
-  const base = `grid min-h-[44px] grid-cols-[4.2rem_minmax(0,1fr)_3.7rem_minmax(0,1fr)] items-center gap-1.5 border-b border-line/60 px-3 py-2 text-sm last:border-0 ${mine ? 'bg-gold/[0.08]' : ''}`
+  const base = `grid min-h-[44px] grid-cols-[4.2rem_minmax(0,1fr)_1.5rem_3.7rem_1.5rem_minmax(0,1fr)] items-center gap-1.5 border-b border-line/60 px-3 py-2 text-sm last:border-0 ${mine ? 'bg-gold/[0.08]' : ''}`
   return live || done
     ? <Link to={`/c/${code}/match/${m.id}`} className={`${base} active:bg-surface-2`}>{body}</Link>
     : <div className={base}>{body}</div>

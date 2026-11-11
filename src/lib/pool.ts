@@ -319,12 +319,12 @@ export function koSlotLabel(b: Bundle, ev: EventCfg, m: Match, slot: 'a' | 'b'):
   if (adv === 1) {
     const seedNo = standardSeedOrder(size)[j * 2 + (slot === 'a' ? 0 : 1)]
     const g = groups[seedNo - 1]
-    return g ? `Group ${g} winner` : 'Bye'
+    return g ? `Group ${g} winner` : 'Advances'
   }
   // the exact draw seedBracket() will write, with "Group X #n" placeholders
   const placeholders = groups.map(g => Array.from({ length: adv }, (_, i) => `Group ${g} #${i + 1}`))
   const pair = seedBracket(placeholders, size)[j]
-  return pair?.[slot === 'a' ? 0 : 1] ?? 'Bye'
+  return pair?.[slot === 'a' ? 0 : 1] ?? 'Advances'
 }
 
 // ------------------------------------------------------------ random groups

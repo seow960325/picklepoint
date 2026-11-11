@@ -99,16 +99,12 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
       return `line-clamp-2 break-words text-center leading-tight ${!id ? 'italic text-fg-subtle' : done ? (m.winner_id === id ? 'font-bold text-fg' : 'text-fg-subtle') : score ? 'font-semibold' : ''}`
     }
     return (
-      <div className={`grid grid-cols-[minmax(0,1fr)_3.5rem_minmax(0,1fr)] items-center gap-1 py-0.5 text-sm ${score ? '' : 'text-[13px]'}`}>
-        <span className="flex min-w-0 items-center justify-center gap-1">
-          <span className={cls('a')}>{side('a')}</span>
-          {m.team_a_id && <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-6 w-6 shrink-0 rounded-[3px] object-contain" />}
-        </span>
+      <div className={`grid grid-cols-[minmax(0,1fr)_1.5rem_3.5rem_1.5rem_minmax(0,1fr)] items-center gap-1 py-0.5 text-sm ${score ? '' : 'text-[13px]'}`}>
+        <span className={cls('a') + ' !text-right'}>{side('a')}</span>
+        <span className="flex h-6 w-6 items-center justify-center">{m.team_a_id && <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
         {score ? <span className="tabular text-center font-display font-bold">{m.score_a}–{m.score_b}</span> : <span className="text-center text-xs text-fg-subtle">vs</span>}
-        <span className="flex min-w-0 items-center justify-center gap-1">
-          {m.team_b_id && <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-6 w-6 shrink-0 rounded-[3px] object-contain" />}
-          <span className={cls('b')}>{side('b')}</span>
-        </span>
+        <span className="flex h-6 w-6 items-center justify-center">{m.team_b_id && <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
+        <span className={cls('b') + ' !text-left'}>{side('b')}</span>
       </div>
     )
   }

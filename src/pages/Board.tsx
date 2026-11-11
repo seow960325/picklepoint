@@ -1299,7 +1299,7 @@ function PMatch({ b, m, medalOf }: { b: Bundle; m?: Match; medalOf?: (id: string
         <PTeam b={b} teamId={m.team_a_id} score={m.score_a} tier={tier} live={live} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} medal={medalOf?.(m.team_a_id) ?? null} placeholder={slot('a')} />
         <div className="h-px bg-line" />
         {bye
-          ? <div className="px-2.5 py-1.5 text-[11px] italic text-fg-subtle">bye</div>
+          ? <div className="px-2.5 py-1.5 text-[11px] italic text-fg-subtle">Advances</div>
           : <PTeam b={b} teamId={m.team_b_id} score={m.score_b} tier={tier} live={live} win={decided && m.winner_id === m.team_b_id} lose={decided && m.winner_id !== m.team_b_id} finished={decided} medal={medalOf?.(m.team_b_id) ?? null} placeholder={slot('b')} />}
       </div>
     </div>
@@ -1681,7 +1681,7 @@ function BracketView({ b }: { b: Bundle }) {
                     played={m.status === 'finished' && !bye} />
                   <div className="h-px bg-line" />
                   {bye
-                    ? <div className="px-2.5 py-1.5 text-xs italic text-fg-subtle">bye</div>
+                    ? <div className="px-2.5 py-1.5 text-xs italic text-fg-subtle">Advances</div>
                     : <BracketSide b={b} teamId={m.team_b_id} score={m.score_b}
                         won={m.winner_id != null && m.winner_id === m.team_b_id}
                         played={m.status === 'finished'} />}
@@ -1854,7 +1854,7 @@ export function Matches({ b, code }: { b: Bundle; code: string }) {
                           {live
                             ? <Pill tone="live"><span className="mr-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-current align-middle" />live</Pill>
                             : decided ? null
-                            : m.team_b_id == null && m.team_a_id != null ? <span className="text-[10px] font-bold uppercase tracking-widest text-fg-subtle">bye</span>
+                            : m.team_b_id == null && m.team_a_id != null && m.status === 'finished' ? <span className="text-[10px] font-bold uppercase tracking-widest text-fg-subtle">Advances</span>
                             : m.team_a_id != null && m.team_b_id != null ? <span className="text-[10px] font-bold uppercase tracking-widest text-fg-subtle">vs</span>
                             : null}
                         </span>

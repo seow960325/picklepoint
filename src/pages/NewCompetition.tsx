@@ -487,7 +487,7 @@ export default function NewCompetition() {
                     {ko.groupCount} group{ko.groupCount > 1 ? 's' : ''} ·{' '}
                     {ko.groupMatches.length} group matches ·{' '}
                     {ko.qualifiers} qualifiers → bracket of {ko.bracketSize}
-                    {ko.byes > 0 && `, ${ko.byes} bye${ko.byes > 1 ? 's' : ''}`}.
+                    {ko.byes > 0 && `, ${ko.byes} direct ${ko.byes > 1 ? "advances" : "advance"}`}.
                   </div>
                   <div className="mt-1.5 flex flex-wrap gap-1">
                     {[...new Set(ko.teams.map(t => t.pool))].sort().map(g => (

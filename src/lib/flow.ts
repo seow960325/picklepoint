@@ -187,7 +187,7 @@ function genericKo(b: Bundle, evId: string, adv: number,
   } else if (first.length) {
     const grid = pools.map(g => Array.from({ length: adv }, (_, i) => label(g, i)))
     const pairs = seedBracket(grid, first.length * 2)
-    first.forEach((m, j) => firstLabels.set(m.id, [pairs[j]?.[0] ?? 'Bye', pairs[j]?.[1] ?? 'Bye']))
+    first.forEach((m, j) => firstLabels.set(m.id, [pairs[j]?.[0] ?? 'Advances', pairs[j]?.[1] ?? 'Advances']))
   }
   const qualTo = new Map<string, string>()
   const game = (m: Match): FlowGame => {
@@ -196,7 +196,7 @@ function genericKo(b: Bundle, evId: string, adv: number,
       if (fl) {
         const lb = fl[s === 'a' ? 0 : 1]
         const id = idOf.get(lb) ?? null
-        if (lb !== 'Bye') qualTo.set(lb, longTitle(m))
+        if (lb !== 'Advances') qualTo.set(lb, longTitle(m))
         return { label: lb, id, prov: prov && !!id }
       }
       const wf = ko.find(x => x.next_match_id === m.id && x.next_slot === s)
