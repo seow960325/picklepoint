@@ -81,18 +81,23 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
   const name = (b: Bundle, id: string | null) => b.teams.find(t => t.id === id)?.name ?? '—'
   const ours = (b: Bundle, m: Bundle['matches'][number]) => !mine || hub.noChurch
     || [m.team_a_id, m.team_b_id].some(id => churchOf(name(b, id)).toLowerCase() === mine.toLowerCase())
-  const court = (b: Bundle, id: string | null) => {
-    const c = b.courts.find(x => x.id === id)
-    if (!c) return ''
-    return `Ct ${/(\d+)\s*$/.exec(c.label ?? '')?.[1] ?? c.number}`
-  }
+  type M = Bundle['matches'][number]
+  const courtNo = (c: Bundle['courts'][number]) => Number(/(\d+)\s*$/.exec(c.label ?? '')?.[1] ?? c.number)
   const blocks = hub.cats.map(cat => ({ cat, b: bundleOf(cat.code) })).map(({ cat, b }) => {
-    if (!b) return { cat, b, live: [], next: [] }
-    const live = b.matches.filter(m => (m.status === 'live' || m.status === 'awaiting_confirm') && m.team_a_id && m.team_b_id && ours(b, m))
-      .sort((x, y) => x.sequence - y.sequence)
-    const next = b.matches.filter(m => (m.status === 'scheduled' || m.status === 'on_deck') && m.team_a_id && m.team_b_id && ours(b, m))
-      .sort((x, y) => x.sequence - y.sequence).slice(0, mine ? 6 : 3)
-    return { cat, b, live, next }
+    if (!b) return { cat, b, rows: [] as { id: string; label: string; live?: M; next?: M }[], spare: [] as M[] }
+    const ok = (m: M) => m.team_a_id && m.team_b_id && ours(b, m)
+    const live = b.matches.filter(m => (m.status === 'live' || m.status === 'awaiting_confirm') && ok(m)).sort((x, y) => x.sequence - y.sequence)
+    const queued = b.matches.filter(m => (m.status === 'scheduled' || m.status === 'on_deck') && ok(m)).sort((x, y) => x.sequence - y.sequence)
+    const used = new Set<string>()
+    const rows = [...b.courts].sort((x, y) => courtNo(x) - courtNo(y)).map(c => {
+      const l = live.find(m => m.court_id === c.id)
+      const n = queued.find(m => (m.court_id ?? m.home_court) === c.id)
+      if (n) used.add(n.id)
+      return { id: c.id, label: `Court ${courtNo(c)}`, live: l, next: n }
+    }).filter(r => r.live || r.next)
+    // games whose court is not decided yet (knockouts) - shown once, as the next in line
+    const spare = queued.filter(m => !used.has(m.id) && !(m.court_id ?? m.home_court)).slice(0, mine ? 4 : 2)
+    return { cat, b, rows, spare }
   })
 
   return (
@@ -106,7 +111,7 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
         </select>}
       </div>
       <div className="grid items-start gap-3 lg:grid-cols-2">
-        {blocks.map(({ cat, b, live, next }) => {
+        {blocks.map(({ cat, b, rows, spare }) => {
           const st = b ? statusOf(b) : null
           const head = (
             <div className="flex items-center gap-2">
@@ -122,20 +127,35 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
               <div className="mt-0.5 text-xs text-fg-muted">
                 {!b ? 'Loading…' : st!.champ ? <>🏆 Champion: <span className="font-bold text-fg">{st!.champ}</span></> : st!.text}
               </div>
-              {(live.length > 0 || next.length > 0) && <div className="mt-2 border-t border-line/60 pt-1.5">
-                {live.map(m => (
-                  <div key={m.id} className="grid grid-cols-[3rem_minmax(0,1fr)_3rem_minmax(0,1fr)] items-center gap-1.5 py-1 text-sm">
-                    <span className="truncate text-[11px] font-bold uppercase text-red-400">● {court(b!, m.court_id)}</span>
-                    <span className="line-clamp-2 break-words text-right font-semibold leading-tight">{name(b!, m.team_a_id)}</span>
-                    <span className="tabular text-center font-display font-bold">{m.score_a}–{m.score_b}</span>
-                    <span className="line-clamp-2 break-words font-semibold leading-tight">{name(b!, m.team_b_id)}</span>
+              {(rows.length > 0 || spare.length > 0) && <div className="mt-2 space-y-1.5 border-t border-line/60 pt-2">
+                {rows.map(r => (
+                  <div key={r.id} className="rounded-lg bg-surface-2/50 px-2 py-1.5">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider">
+                      <span className={r.live ? 'text-emerald-400' : 'text-fg-subtle'}>{r.live ? '● ' : ''}{r.label}</span>
+                      {r.live && <span className="text-emerald-400/80">live</span>}
+                    </div>
+                    {r.live && (
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 py-0.5 text-sm">
+                        <span className="line-clamp-2 break-words text-right font-semibold leading-tight">{name(b!, r.live.team_a_id)}</span>
+                        <span className="tabular text-center font-display font-bold">{r.live.score_a}–{r.live.score_b}</span>
+                        <span className="line-clamp-2 break-words font-semibold leading-tight">{name(b!, r.live.team_b_id)}</span>
+                      </div>
+                    )}
+                    {r.next && (
+                      <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 py-0.5 text-[13px] text-fg-muted">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-fg-subtle">Next</span>
+                        <span className="line-clamp-2 break-words text-right leading-tight">{name(b!, r.next.team_a_id)}</span>
+                        <span className="text-xs text-fg-subtle">vs</span>
+                        <span className="line-clamp-2 break-words leading-tight">{name(b!, r.next.team_b_id)}</span>
+                      </div>
+                    )}
                   </div>
                 ))}
-                {next.map((m, i) => (
-                  <div key={m.id} className="grid grid-cols-[3rem_minmax(0,1fr)_3rem_minmax(0,1fr)] items-center gap-1.5 py-1 text-sm text-fg-muted">
-                    <span className="truncate text-[11px] font-bold uppercase text-fg-subtle">{i === 0 ? 'Next' : `+${i}`}</span>
+                {spare.map(m => (
+                  <div key={m.id} className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 px-2 py-0.5 text-[13px] text-fg-muted">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-fg-subtle">Next</span>
                     <span className="line-clamp-2 break-words text-right leading-tight">{name(b!, m.team_a_id)}</span>
-                    <span className="text-center text-xs text-fg-subtle">vs</span>
+                    <span className="text-xs text-fg-subtle">vs</span>
                     <span className="line-clamp-2 break-words leading-tight">{name(b!, m.team_b_id)}</span>
                   </div>
                 ))}
