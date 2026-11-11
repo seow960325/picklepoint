@@ -1501,6 +1501,7 @@ const readable = (m: string) => ({
   BAD_RULES: 'Those scoring rules are not valid.',
   NOT_FINISHED: 'Only a finished game can be corrected.',
   BRACKET_SEEDED: 'The knockout bracket is already drawn. Clear it first (Bracket tab), then correct the group game.',
+  BRACKET_IN_PLAY: 'A knockout game has already been played, so group results are locked. Reset that knockout game first.',
   NEXT_STARTED: 'The next game of this team has already started. Reset that game first.',
   WINNER_NEEDS_MORE_POINTS: 'The winner must have more points than the other team.',
   BAD_RESULT: 'That result is not valid.',

@@ -596,7 +596,14 @@ export const demo = {
     const win = winner === 'a' ? m.team_a_id : m.team_b_id
     const lose = winner === 'a' ? m.team_b_id : m.team_a_id
     if (m.bracket_key == null) {
-      if (ms.some(x => x.event_id === m.event_id && x.bracket_key != null && x.team_a_id != null)) throw new Error('BRACKET_SEEDED')
+      const ko = ms.filter(x => x.event_id === m.event_id && x.bracket_key != null)
+      if (ko.some(x => x.team_a_id != null)) {
+        if (ko.some(x => x.score_a > 0 || x.score_b > 0)) throw new Error('BRACKET_IN_PLAY')
+        for (const k of ko) {
+          k.team_a_id = null; k.team_b_id = null; k.court_id = null; k.winner_id = null
+          k.score_a = 0; k.score_b = 0; k.status = 'scheduled'; k.started_at = null; k.finished_at = null; k.duration_seconds = null
+        }
+      }
     } else {
       const next = ms.filter(x => x.id === m.next_match_id || x.id === m.loser_match_id)
       if (next.some(n => n.status !== 'scheduled' || n.score_a > 0 || n.score_b > 0)) throw new Error('NEXT_STARTED')
