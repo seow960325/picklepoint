@@ -595,6 +595,12 @@ export async function adminResetCompetition(token: string): Promise<void> {
   await rpc('admin_reset_competition', { p_token: token })
 }
 
+/** Start over for EVERY category of this hub (YC26 set / MC26 set). Needs migration 0046. */
+export async function adminResetHub(token: string): Promise<void> {
+  if (IS_DEMO) return demo.resetCompetition()
+  await rpc('admin_reset_hub', { p_token: token })
+}
+
 /** Pinned organiser message above "My team"; empty text un-pins it. Needs migration 0044. */
 export async function adminSetAnnouncement(token: string, eventId: string, text: string): Promise<void> {
   if (IS_DEMO) return demo.setAnnouncement(eventId, text)

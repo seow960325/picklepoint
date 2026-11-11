@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   useCompetition, teamName, teamSideName, teamLogo, forgetCode,
@@ -201,7 +201,9 @@ function Panel({ bundle, token, code, reload, onLogout }: {
           : <ScheduleTab bundle={bundle} ev={ev} token={token} run={run} />)}
         {tab === 'knockout' && multi && <KnockoutTab bundle={bundle} token={token} run={run} />}
         {tab === 'sports' && multi && <SportsTab bundle={bundle} token={token} run={run} onAdded={reload} />}
-        {tab === 'bracket' && <BracketTab bundle={bundle} ev={ev} token={token} run={run} />}
+        {ev?.format === 'groups_ko' && (
+          <div className={tab === 'bracket' ? '' : 'hidden'}><BracketTab key={ev.id} bundle={bundle} ev={ev} token={token} run={run} /></div>
+        )}
       </div>
     </div>
   )
@@ -942,8 +944,20 @@ function BracketTab({ bundle, ev, token, run }: any) {
     await api.adminSeedBracket(token, ev.id, seedRows)
   }, 'Bracket seeded — knockout matches are on court')
 
+  // pre-set bracket: once every group game is finished and no coin toss is open,
+  // the knockout is written automatically (no LOCK & DRAW needed). "Unlock" pauses
+  // this until the page is reloaded, so the organiser can correct a result first.
+  const autoBusy = useRef(false)
+  const autoOff = useRef(false)
+  useEffect(() => {
+    if (autoBusy.current || autoOff.current) return
+    if (!complete || seeded || !firstRound || openTosses.length > 0 || seedRows.some(r => !r.key)) return
+    autoBusy.current = true
+    lock().finally(() => { autoBusy.current = false })
+  })
+
   const unlock = () => run(
-    () => api.adminUnseedBracket(token, ev.id),
+    async () => { autoOff.current = true; await api.adminUnseedBracket(token, ev.id) },
     'Bracket cleared — fix the group results and seed again')
 
   const nm = (id: string | null) => id ? teamName(bundle, id) : null
@@ -1055,7 +1069,8 @@ function BracketTab({ bundle, ev, token, run }: any) {
           {openTosses.length > 0 && (
             <Warn>Coin toss needed in Group {openTosses.join(', ')} — tap the toss winner on that group above.</Warn>
           )}
-          <Save label="LOCK & DRAW BRACKET" onClick={lock} disabled={openTosses.length > 0} />
+          <p className="mt-3 text-xs text-gold">The bracket is set automatically as soon as the last group game finishes{openTosses.length ? ' and the coin tosses above are chosen' : ''}.</p>
+          <Save label="LOCK & DRAW NOW" onClick={lock} disabled={openTosses.length > 0} />
         </div>
       )}
 
@@ -1251,24 +1266,33 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
 
 /** Test run finished? Wipe every result and knockout line-up and play again; teams and settings stay. */
 function StartOver({ token, run }: any) {
-  const [open, setOpen] = useState(false)
+  const [mode, setMode] = useState<null | 'one' | 'all'>(null)
   const [txt, setTxt] = useState('')
+  const close = () => { setMode(null); setTxt('') }
   return (
     <div className="mt-8 rounded-xl border border-amber-500/50 bg-amber-500/5 p-4">
-      <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-amber-500">Start over</div>
-      <p className="text-sm text-fg-muted">Clears every score, result, medal and knockout line-up so the whole competition can be played again.
-        Teams, courts and settings stay. Afterwards you can change the rules or groups, then regenerate the draw.</p>
-      {!open ? (
-        <button onClick={() => setOpen(true)} className="mt-3 rounded-xl border border-amber-500/60 px-4 py-2.5 text-sm font-bold uppercase text-amber-500">Reset all results…</button>
+      <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-amber-500">Reset points</div>
+      <p className="text-sm text-fg-muted">Sets every game back to 0-0 and clears results, medals and the knockout line-up so you can play again.
+        Teams, courts, groups and settings stay.</p>
+      {!mode ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button onClick={() => setMode('one')} className="rounded-xl border border-amber-500/60 px-4 py-2.5 text-sm font-bold uppercase text-amber-500">Reset this category…</button>
+          <button onClick={() => setMode('all')} className="rounded-xl border border-red-500/60 px-4 py-2.5 text-sm font-bold uppercase text-red-500">Reset ALL categories…</button>
+        </div>
       ) : (
         <div className="mt-3 space-y-2">
-          <div className="text-sm">Type <span className="font-mono font-bold">RESET</span> to confirm. This cannot be undone.</div>
+          <div className="text-sm">
+            {mode === 'all' ? 'This clears the points of EVERY category in this event. ' : 'This clears the points of this category only. '}
+            Type <span className="font-mono font-bold">RESET</span> to confirm. This cannot be undone.
+          </div>
           <input className={inputFull} value={txt} onChange={e => setTxt(e.target.value)} placeholder="RESET" autoCapitalize="characters" />
           <div className="flex gap-2">
             <button disabled={txt.trim().toUpperCase() !== 'RESET'}
-              onClick={() => run(() => api.adminResetCompetition(token), 'Competition reset: all results cleared').then(() => { setOpen(false); setTxt('') })}
-              className="flex-1 rounded-xl bg-amber-600 px-4 py-2.5 font-display font-bold text-white disabled:opacity-30">RESET EVERYTHING</button>
-            <button onClick={() => { setOpen(false); setTxt('') }} className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-fg-muted">Cancel</button>
+              onClick={() => run(() => mode === 'all' ? api.adminResetHub(token) : api.adminResetCompetition(token),
+                mode === 'all' ? 'All categories reset to 0-0' : 'This category reset to 0-0').then(close)}
+              className="flex-1 rounded-xl bg-amber-600 px-4 py-2.5 font-display font-bold text-white disabled:opacity-30">
+              {mode === 'all' ? 'RESET ALL CATEGORIES' : 'RESET THIS CATEGORY'}</button>
+            <button onClick={close} className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-fg-muted">Cancel</button>
           </div>
         </div>
       )}

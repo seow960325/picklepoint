@@ -319,12 +319,8 @@ export function drawGroups(
 ): DraftTeam[] {
   const groupCount = Math.ceil(names.length / groupSize)
   const mixed = shuffled(names.map((name, i) => ({ name, i })), rng)
-  // teams of the same church ("Mega CMC 1", "Mega CMC 2") are dealt one after
-  // another, so they land in different groups whenever there are enough groups
-  const firstAt = new Map<string, number>()
-  mixed.forEach((t, k) => { const ch = churchOf(t.name).toLowerCase(); if (!firstAt.has(ch)) firstAt.set(ch, k) })
-  const order = mixed.map((t, k) => ({ t, k, f: firstAt.get(churchOf(t.name).toLowerCase())! }))
-    .sort((x, y) => x.f - y.f || x.k - y.k).map(x => x.t)
+  // pure random across the whole category: teams of the same church may share a group
+  const order = mixed
   const out: DraftTeam[] = names.map(name => ({ name, pool: 'A' }))
   order.forEach((t, dealt) => {
     out[t.i] = { name: t.name, pool: GROUP_LETTERS[dealt % groupCount] }

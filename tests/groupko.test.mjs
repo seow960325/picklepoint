@@ -249,13 +249,14 @@ test('flow: 4 teams round robin -> Final 1v2, 3rd 3v4', () => {
 })
 
 import { drawGroups as _dg } from '../src/lib/draw.ts'
-test('draw: same church never shares a group when groups allow it', () => {
-  const names = ['Mega CMC 1','Mega CMC 2','Mega Suria 1','Mega Suria 2','PJ State CMC 1','PJ State CMC 2','PJ State CMC 3','PJ State CMC 4','GMSJ 1','GMSJ 2','BKCMC','Mega Subang CMC 1','Mega Subang CMC 2']
-  for (let seed = 1; seed < 200; seed++) {
+test('draw: pure random, balanced groups, every team once', () => {
+  const names = Array.from({ length: 13 }, (_, i) => 'Team ' + (i + 1))
+  for (let seed = 1; seed < 50; seed++) {
     let r = seed
     const t = _dg(names, 4, () => ((r = (r * 9301 + 49297) % 233280) / 233280))
-    const seen = new Set()
-    for (const x of t) { const k = x.name.replace(/ \d+$/, '') + '|' + x.pool; assert.ok(!seen.has(k), `seed ${seed}: ${k}`); seen.add(k) }
+    assert.equal(new Set(t.map(x => x.name)).size, 13)
+    const c = {}; for (const x of t) c[x.pool] = (c[x.pool] || 0) + 1
+    const v = Object.values(c); assert.ok(Math.max(...v) - Math.min(...v) <= 1)
   }
 })
 
