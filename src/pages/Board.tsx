@@ -1671,7 +1671,7 @@ function BracketView({ b }: { b: Bundle }) {
           </div>
           <div className="flex h-full flex-col justify-around gap-2">
             {r.matches.map(m => {
-              const bye = m.team_b_id == null && m.team_a_id != null
+              const bye = m.team_b_id == null && m.team_a_id != null && m.status === 'finished'
               return (
                 <div key={m.id}
                   className={`overflow-hidden rounded-xl border text-sm ${

@@ -1133,7 +1133,7 @@ function BracketTab({ bundle, ev, token, run }: any) {
                     </span>
                     <span className="tabular text-center text-xs text-fg-subtle">
                       {m.status === 'finished' ? `${m.score_a}–${m.score_b}`
-                        : m.team_b_id == null && m.team_a_id != null ? 'bye' : 'vs'}
+                        : m.team_b_id == null && m.team_a_id != null && m.status === 'finished' ? 'bye' : 'vs'}
                     </span>
                     <span className={`flex min-w-0 items-center gap-1.5 ${m.winner_id === m.team_b_id ? 'font-semibold' : ''}`}>
                       {m.team_b_id && <Emblem logo={teamLogo(bundle, m.team_b_id)} flagName={teamSideName(bundle, m.team_b_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />}

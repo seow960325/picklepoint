@@ -160,14 +160,18 @@ export function Emblem({ logo, flagName, className = '' }: {
     // logos all line up at one size across the whole app
     const h = /(?:^|\s)h-(\d+(?:\.\d+)?)(?=\s|$)/.exec(className)?.[1]
     if (h && !className.includes('/')) {
-      const cls = className.replace(/(?:^|\s)w-(?:\S+)/g, ' ').replace(/\bobject-contain\b/g, '').trim()
+      const cls = className.replace(/(?:^|\s)w-(?:\S+)/g, ' ').replace(/\b(object-contain|inline-block)\b/g, '').trim()
       return (
         <span className={`${cls} inline-flex items-center justify-center overflow-hidden bg-white`} style={{ width: `${Number(h) * 0.25}rem` }} aria-hidden="true">
           <img src={logo} alt="" className="h-full w-full object-contain p-[1px]" />
         </span>
       )
     }
-    return <img src={logo} alt="" className={`${className} object-contain`} />
+    return (
+      <span className={`${className.replace(/\b(object-contain|inline-block)\b/g, '')} inline-flex items-center justify-center overflow-hidden bg-white`} aria-hidden="true">
+        <img src={logo} alt="" className="h-full w-full object-contain p-[1px]" />
+      </span>
+    )
   }
   return <Flag name={flagName} className={className} />
 }
