@@ -66,7 +66,7 @@ test('single round robin: 8 groups x 6 = 48 games, every pair once', () => {
   assert.equal(pairs.size, 48)
   for (const ms of pairs.values()) assert.equal(ms.length, 1)
   for (const t of b.teams) assert.equal(g.filter(m => m.team_a_id === t.id || m.team_b_id === t.id).length, 3)
-  assert.ok(g.every(m => m.round.endsWith('Round Robin')))
+  assert.ok(g.every(m => m.round.endsWith('Round robin')))
 })
 
 test('play order: never back-to-back, even spacing', () => {
