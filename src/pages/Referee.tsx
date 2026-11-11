@@ -3,7 +3,7 @@
 import { SportIcon } from '../components/SportIcon'
 import { Link, useParams } from 'react-router-dom'
 import { useCompetition } from '../lib/store'
-import { hubOf, pageOnly } from '../lib/hub'
+import { hubOf, pageOnly, hubTitle } from '../lib/hub'
 import { sportBundle } from '../lib/multisport'
 import { useOthers } from '../components/HubOverview'
 import { Screen, Spinner } from '../components/ui'
@@ -24,7 +24,7 @@ export default function Referee() {
         <div className="mb-5 flex items-center justify-between gap-2">
           <div>
             <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-fg-subtle">Referees only</div>
-            <h1 className="font-display text-2xl font-black">{hub.title}</h1>
+            <h1 className="font-display text-2xl font-black">{hubTitle(hub, hub.cats.map(c => others[c.code]?.competition.name))}</h1>
           </div>
           <Link to={`/c/${hub.code}`} className="rounded-lg border border-line px-3 py-2 text-sm text-fg-muted">← Board</Link>
         </div>

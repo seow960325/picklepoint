@@ -88,12 +88,13 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                   {games.length > 0 && (
                     <span className="mt-1.5 block space-y-1 border-t border-line/50 pt-1.5">
                       {games.map(g => (
-                        <span key={g.m.id} className="grid grid-cols-[4.6rem_minmax(0,1fr)] gap-x-2 text-xs leading-tight">
-                          <span className={`font-display text-sm font-bold ${g.live ? 'text-emerald-400' : 'text-fg'}`}>{g.live ? '● Now' : g.time || '—'}</span>
-                          <span className="min-w-0">
-                            <span className={`block font-semibold ${g.live ? 'text-emerald-400' : 'text-fg-muted'}`}>{g.court} · {g.title}</span>
-                            <span className="block truncate text-fg-subtle">vs {g.opp}</span>
+                        <span key={g.m.id} className="grid grid-cols-[4.4rem_minmax(0,1fr)_auto] items-center gap-x-2 text-sm leading-tight">
+                          <span className={`font-display text-base font-bold ${g.live ? 'text-emerald-400' : 'text-fg'}`}>{g.live ? '● Now' : g.time || '—'}</span>
+                          <span className="min-w-0 text-center">
+                            {g.m.bracket_key && <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>}
+                            <span className="block truncate font-semibold">{g.opp}</span>
                           </span>
+                          <span className={`whitespace-nowrap text-right text-xs font-bold uppercase tracking-wide ${g.live ? 'text-emerald-400' : 'text-fg-muted'}`}>{g.court}</span>
                         </span>
                       ))}
                     </span>
@@ -158,18 +159,16 @@ function TeamDetail({ hub, pin, b, onClose, onOpen }: { hub: Hub; pin: Pin; b: B
               <div className="space-y-2">
                 {games.map(g => (
                   <Link key={g.m.id} to={g.live || g.done ? `/c/${pin.code}/match/${g.m.id}` : '#'} onClick={e => { if (!g.live && !g.done) e.preventDefault() }}
-                    className={`grid grid-cols-[4.6rem_minmax(0,1fr)_auto] items-center gap-x-2 rounded-xl border px-3 py-2.5 ${g.live ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-line bg-surface'}`}>
+                    className={`grid grid-cols-[4.4rem_minmax(0,1fr)_auto] items-center gap-x-2 rounded-xl border px-3 py-2.5 ${g.live ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-line bg-surface'}`}>
                     <span className={`font-display text-base font-bold leading-tight ${g.live ? 'text-emerald-400' : g.done ? 'text-fg-subtle' : 'text-fg'}`}>{g.live ? '● Now' : g.time || '—'}</span>
-                    <span className="min-w-0">
-                      <span className={`block text-[11px] font-bold uppercase tracking-wide ${g.live ? 'text-emerald-400' : 'text-fg-subtle'}`}>{g.court} · {g.title}</span>
-                      <span className={`block truncate text-sm ${g.done && !g.won ? 'text-fg-muted' : 'font-semibold'}`}>vs {g.opp}</span>
+                    <span className="min-w-0 text-center">
+                      {g.m.bracket_key && <span className="block text-[10px] font-bold uppercase tracking-wide text-fg-subtle">{g.title}</span>}
+                      <span className={`block truncate text-sm ${g.done && !g.won ? 'text-fg-muted' : 'font-semibold'}`}>{g.opp}</span>
                     </span>
-                    {(g.live || g.done) && (
-                      <span className="text-right">
-                        <span className={`tabular block font-display text-lg font-bold leading-none ${g.live ? 'text-emerald-400' : g.won ? 'text-gold' : 'text-fg-subtle'}`}>{g.us}–{g.them}</span>
-                        {g.done && <span className={`block text-[10px] font-bold uppercase tracking-wider ${g.won ? 'text-gold' : 'text-fg-subtle'}`}>{g.won ? 'Won' : 'Lost'}</span>}
-                      </span>
-                    )}
+                    <span className="text-right">
+                      <span className={`block whitespace-nowrap text-xs font-bold uppercase tracking-wide ${g.live ? 'text-emerald-400' : 'text-fg-muted'}`}>{g.court}</span>
+                      {(g.live || g.done) && <span className={`tabular block font-display text-base font-bold leading-tight ${g.live ? 'text-emerald-400' : g.won ? 'text-gold' : 'text-fg-subtle'}`}>{g.us}–{g.them}{g.done ? (g.won ? ' W' : ' L') : ''}</span>}
+                    </span>
                   </Link>
                 ))}
                 {games.length === 0 && <div className="py-4 text-center text-sm text-fg-muted">No games fixed yet.</div>}

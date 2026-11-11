@@ -7,7 +7,7 @@ import { SportIcon } from '../components/SportIcon'
 import { useMemo, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import type { Bundle } from '../lib/types'
-import type { Hub, HubCat } from '../lib/hub'
+import { hubTitle, type Hub, type HubCat } from '../lib/hub'
 import { useCompetition, groupStandings, groupStageComplete } from '../lib/store'
 import { FullscreenButton, ThemeToggle, Spinner } from '../components/ui'
 import { useOthers, LiveNext, MedalTable } from '../components/HubOverview'
@@ -49,7 +49,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
           <div className="flex min-w-0 items-center gap-2">
             <Link to="/" className="flex h-8 shrink-0 items-center rounded-lg border border-line px-2.5 text-sm text-fg-muted">←</Link>
             <div className="min-w-0">
-              <div className="line-clamp-2 font-display text-xl font-bold leading-tight tracking-wide sm:text-2xl lg:text-3xl">{hub.title}</div>
+              <div className="line-clamp-2 font-display text-xl font-bold leading-tight tracking-wide sm:text-2xl lg:text-3xl">{hubTitle(hub, hub.cats.map(c => bundleOf(c.code)?.competition.name))}</div>
               <div className="text-xs text-fg-muted">code <span className="font-bold text-brand-ink">{hub.code}</span></div>
             </div>
           </div>

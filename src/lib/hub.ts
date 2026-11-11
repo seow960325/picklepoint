@@ -55,3 +55,15 @@ export function catHue(nameOrCode?: string | null): 0 | 1 | null {
   if (/\bmen|md$/i.test(x)) return 0
   return null
 }
+
+/** The page title of a front-page-only hub (MC26) follows the name set in Settings: each category's
+ *  competition name is "<title> · <category>", so take the part before the category. The seeded
+ *  default name is used only when nobody has renamed anything. */
+export function hubTitle(h: Hub, names: Array<string | null | undefined>): string {
+  if (!pageOnly(h)) return h.title
+  const clean = names.map(n => (n ?? '').trim()).filter(Boolean).map(n => {
+    const i = n.lastIndexOf(' · ')
+    return (i > 0 ? n.slice(0, i) : n).trim()
+  })
+  return clean.find(n => n.toLowerCase() !== h.title.toLowerCase()) ?? clean[0] ?? h.title
+}
