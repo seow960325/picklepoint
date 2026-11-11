@@ -23,7 +23,20 @@ function upcoming(b: Bundle, id: string, clock?: Hub['clock']) {
     .map(m => {
       const sl = clock ? slotOf(b, m) : null, ct = plannedCourt(b, m)
       const opp = b.teams.find(t => t.id === (m.team_a_id === id ? m.team_b_id : m.team_a_id))?.name ?? ''
-      return { m, time: sl != null && clock ? slotTime(clock, sl) : '', court: ct != null ? `Court ${ct}` : 'Court to be decided', opp, title: gameTitle(b, m).replace(/ · Slot \d+$/, ''), live: m.status === 'live' || m.status === 'awaiting_confirm' }
+      return { m, oppId: m.team_a_id === id ? m.team_b_id! : m.team_a_id!, time: sl != null && clock ? slotTime(clock, sl) : '', court: ct != null ? `Court ${ct}` : 'Court to be decided', opp, title: gameTitle(b, m).replace(/ · Slot \d+$/, ''), live: m.status === 'live' || m.status === 'awaiting_confirm' }
+    })
+}
+
+/** Games already played, latest first: shown at the bottom of the highlight with the score. */
+function played(b: Bundle, id: string, clock?: Hub['clock']) {
+  return b.matches
+    .filter(m => (m.team_a_id === id || m.team_b_id === id) && m.team_a_id && m.team_b_id && m.status === 'finished')
+    .sort((x, y) => (y.finished_at ?? '').localeCompare(x.finished_at ?? '') || y.sequence - x.sequence)
+    .map(m => {
+      const a = m.team_a_id === id, sl = clock ? slotOf(b, m) : null
+      const oppId = (a ? m.team_b_id : m.team_a_id)!
+      return { m, oppId, opp: b.teams.find(t => t.id === oppId)?.name ?? '', time: sl != null && clock ? slotTime(clock, sl) : '',
+        us: a ? m.score_a : m.score_b, them: a ? m.score_b : m.score_a, won: m.winner_id === id }
     })
 }
 
@@ -46,7 +59,9 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
 }) {
   const { pins, toggle } = usePins(hub.code)
   const [picking, setPicking] = useState(false)
-  const [detail, setDetail] = useState<Pin | null>(null)
+  const [stack, setStack] = useState<Pin[]>([])
+  const detail = stack[stack.length - 1] ?? null
+  const setDetail = (p: Pin | null) => setStack(p ? [p] : [])
   if (compact && pins.length === 0) return null
   return (
     <section className="px-4 pt-3 lg:px-6">
@@ -69,14 +84,15 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
             const ev = b?.events.find(e => e.format === 'groups_ko')
             const st = b && id ? teamStatus(b, id, ev ? groupStandings(b, ev.id) : undefined) : null
             const games = b && id ? upcoming(b, id, hub.clock) : []
+            const past = b && id ? played(b, id, hub.clock) : []
             const alerted = games.some(g => isAlert(g.m))
             const tone = alerted ? 'border-red-500/80 bg-red-500/15'
               : st?.state === 'playing' ? 'border-emerald-500/60 bg-emerald-500/10'
               : st?.state === 'next' && (st.ahead ?? 9) <= 1 ? 'border-gold/70 bg-gold/10'
               : 'border-brand-ink/40 bg-brand/[0.07]'
             return (
-              <button key={p.code + p.teamId} onClick={() => setDetail(p)}
-                className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left active:opacity-90 ${tone}`}>
+              <div key={p.code + p.teamId} role="button" tabIndex={0} onClick={() => setDetail(p)}
+                className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left active:opacity-90 ${tone}`}>
                 <Emblem logo={b && id ? teamLogo(b, id) : null} flagName={b && id ? teamSideName(b, id) ?? p.name : p.name} className="h-10 w-10 shrink-0 rounded-[3px]" />
                 <span className="min-w-0 flex-1">
                   <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
@@ -96,16 +112,30 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                           <span className="min-w-0 text-center">
                             {isAlert(g.m) ? <span className="block text-[10px] font-bold uppercase tracking-wider text-red-500">⚠ {alertWord(g.m)}</span>
                               : g.m.bracket_key && <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>}
-                            <span className="block truncate font-semibold">{g.opp}</span>
+                            <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
+                              className="block w-full truncate font-semibold underline decoration-line-strong decoration-dotted underline-offset-4">{g.opp}</button>
                           </span>
                           <span className={`whitespace-nowrap text-right text-xs font-bold uppercase tracking-wide ${g.live ? 'text-emerald-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}>{g.court}</span>
                         </span>
                       ))}
                     </span>
                   )}
+                  {past.length > 0 && (
+                    <span className="mt-1.5 block space-y-1 border-t border-line/50 pt-1.5">
+                      <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">Played</span>
+                      {past.map(g => (
+                        <span key={g.m.id} className="grid grid-cols-[4.4rem_minmax(0,1fr)_auto] items-center gap-x-2 text-sm leading-tight text-fg-muted">
+                          <span className="font-display text-base font-bold">{g.time || '—'}</span>
+                          <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
+                            className="block w-full min-w-0 truncate text-center font-semibold underline decoration-line-strong decoration-dotted underline-offset-4">{g.opp}</button>
+                          <span className={`tabular whitespace-nowrap text-right font-display text-base font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`}>{g.won ? 'W' : 'L'} {g.us}–{g.them}</span>
+                        </span>
+                      ))}
+                    </span>
+                  )}
                 </span>
                 <span className="shrink-0 text-fg-subtle">›</span>
-              </button>
+              </div>
             )
           })}
           {!compact && <button onClick={() => setPicking(true)} className="min-h-[30px] px-1 text-xs font-semibold text-fg-subtle underline underline-offset-4">
@@ -113,14 +143,15 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
           </button>}
         </div>
       )}
-      {detail && <TeamDetail hub={hub} pin={detail} b={bundleOf(detail.code)} onClose={() => setDetail(null)} onOpen={() => { const c = detail.code; setDetail(null); onOpen(c) }} />}
+      {detail && <TeamDetail hub={hub} pin={detail} b={bundleOf(detail.code)} onClose={() => setDetail(null)}
+        onBack={stack.length > 1 ? () => setStack(stack.slice(0, -1)) : undefined} onTeam={q => setStack([...stack, q])} onOpen={() => { const c = detail.code; setDetail(null); onOpen(c) }} />}
       {picking && <TeamPicker hub={hub} bundleOf={bundleOf} pins={pins} toggle={toggle} onClose={() => setPicking(false)} />}
     </section>
   )
 }
 
 /** Tap on the highlighted team: every game of that team, in order. Time, court, opponent, and the result once played. */
-function TeamDetail({ hub, pin, b, onClose, onOpen }: { hub: Hub; pin: Pin; b: Bundle | null; onClose: () => void; onOpen: () => void }) {
+function TeamDetail({ hub, pin, b, onClose, onOpen, onBack, onTeam }: { hub: Hub; pin: Pin; b: Bundle | null; onClose: () => void; onOpen: () => void; onBack?: () => void; onTeam: (p: Pin) => void }) {
   const id = resolvePin(b, pin)
   const cat = hub.cats.find(c => c.code === pin.code)
   const ev = b?.events.find(e => e.format === 'groups_ko')
@@ -146,6 +177,7 @@ function TeamDetail({ hub, pin, b, onClose, onOpen }: { hub: Hub; pin: Pin; b: B
         className="flex h-[88vh] w-full max-w-lg flex-col rounded-t-2xl border border-line bg-canvas sm:h-[80vh] sm:rounded-2xl"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex items-center gap-3 border-b border-line px-4 py-3">
+          {onBack && <button onClick={onBack} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-lg text-fg-muted">‹</button>}
           <Emblem logo={b && id ? teamLogo(b, id) : null} flagName={b && id ? teamSideName(b, id) ?? pin.name : pin.name} className="h-10 w-10 shrink-0 rounded-[3px]" />
           <div className="min-w-0 flex-1">
             <div className="truncate font-display text-xl font-bold leading-tight">{pin.name}</div>
@@ -167,7 +199,8 @@ function TeamDetail({ hub, pin, b, onClose, onOpen }: { hub: Hub; pin: Pin; b: B
                     <span className={`font-display text-base font-bold leading-tight ${g.live ? 'text-emerald-400' : g.done ? 'text-fg-subtle' : 'text-fg'}`}>{g.live ? '● Now' : g.time || '—'}</span>
                     <span className="min-w-0 text-center">
                       {g.m.bracket_key && <span className="block text-[10px] font-bold uppercase tracking-wide text-fg-subtle">{g.title}</span>}
-                      <span className={`block truncate text-sm ${g.done && !g.won ? 'text-fg-muted' : 'font-semibold'}`}>{g.opp}</span>
+                      <button onClick={e => { e.preventDefault(); e.stopPropagation(); const oid = g.m.team_a_id === id ? g.m.team_b_id : g.m.team_a_id; if (oid) onTeam({ code: pin.code, teamId: oid, name: g.opp }) }}
+                        className={`block w-full truncate text-sm underline decoration-line-strong decoration-dotted underline-offset-4 ${g.done && !g.won ? 'text-fg-muted' : 'font-semibold'}`}>{g.opp}</button>
                     </span>
                     <span className="text-right">
                       <span className={`block whitespace-nowrap text-xs font-bold uppercase tracking-wide ${g.live ? 'text-emerald-400' : 'text-fg-muted'}`}>{g.court}</span>
