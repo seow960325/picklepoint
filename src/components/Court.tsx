@@ -212,6 +212,18 @@ export default function Court({
   // uncropped, frameless character treatment.
   const badge = (cx: number, logo?: string | null, flag?: string | null) => {
     if (!logo && !flag) return null
+    // church logos (/logos/…) are flag-style: the same small framed rectangle as a country flag,
+    // whole logo visible on white (never cropped, never the big character badge)
+    const church = !!logo && logo.startsWith('/logos/')
+    if (church)
+      return (
+        <>
+          <rect x={cx - 27} y="31" width="54" height="38" rx="5" fill="#0a0e17" opacity="0.45" filter="url(#soft)" />
+          <rect x={cx - 27} y="30" width="54" height="38" rx="5" fill="#ffffff" />
+          <image href={logo!} x={cx - 24} y="32" width="48" height="34" preserveAspectRatio="xMidYMid meet" />
+          <rect x={cx - 27} y="30" width="54" height="38" rx="5" fill="none" stroke="#eaf2ff" strokeOpacity="0.9" strokeWidth="2" />
+        </>
+      )
     if (bigEmblem && logo && !logo.startsWith('data:image/svg'))
       return <image href={logo} x={cx - 56} y="0" width="112" height="84" preserveAspectRatio="xMidYMax meet" />
     return (
