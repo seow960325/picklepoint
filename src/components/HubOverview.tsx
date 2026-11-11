@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom'
 import type { Bundle } from '../lib/types'
 import * as api from '../lib/api'
 import { Emblem } from './ui'
+import { teamLogo, teamSideName } from '../lib/store'
 import type { Hub } from '../lib/hub'
 import { categoryResult, medalTable } from '../lib/medals'
 import { finalSeries } from '../lib/finals'
@@ -99,9 +100,15 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
     }
     return (
       <div className={`grid grid-cols-[minmax(0,1fr)_3.5rem_minmax(0,1fr)] items-center gap-1 py-0.5 text-sm ${score ? '' : 'text-[13px]'}`}>
-        <span className={cls('a')}>{side('a')}</span>
+        <span className="flex min-w-0 items-center justify-center gap-1">
+          <span className={cls('a')}>{side('a')}</span>
+          {m.team_a_id && <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-5 w-5 shrink-0 rounded-[2px] object-contain" />}
+        </span>
         {score ? <span className="tabular text-center font-display font-bold">{m.score_a}–{m.score_b}</span> : <span className="text-center text-xs text-fg-subtle">vs</span>}
-        <span className={cls('b')}>{side('b')}</span>
+        <span className="flex min-w-0 items-center justify-center gap-1">
+          {m.team_b_id && <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-5 w-5 shrink-0 rounded-[2px] object-contain" />}
+          <span className={cls('b')}>{side('b')}</span>
+        </span>
       </div>
     )
   }
