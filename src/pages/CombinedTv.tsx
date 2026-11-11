@@ -1,7 +1,7 @@
 /** One TV for two sister categories (e.g. /tv/MCMD+MCXD): each code keeps its
  *  own scoring, courts and PINs; this screen only reads both and shows them
  *  together. Panes: Live courts, Group tables, Bracket - each a toggle; the TV rotates through the ones switched on (one on = stays on it).
- *  Separate route on purpose — the single-code board and YC2626's
+ *  Separate route on purpose — the single-code board and YC26's
  *  multi-sport TV are untouched. */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import FillGrid from '../components/FillGrid'

@@ -1,4 +1,4 @@
-// One church event split over several codes: the hub code (YC2626) is the
+// One church event split over several codes: the hub code (YC26) is the
 // front page (overview + Total Champion) and hosts Captain Ball itself; each
 // pickleball / badminton category is its own code. Everything else in the
 // app is untouched: codes not listed here behave exactly as before.
@@ -12,12 +12,12 @@ export interface Hub {
 }
 
 export const HUBS: Hub[] = [{
-  code: 'YC2626',
-  title: 'YC2626 Church Games',
-  // the old badminton / pickleball ties inside YC2626 are replaced by the category codes
+  code: 'YC26',
+  title: 'YC26 Church Games',
+  // the old badminton / pickleball ties inside YC26 are replaced by the category codes
   onlySport: 'captainball',
   cats: [
-    { code: 'YC2626', label: 'Captain Ball', short: 'Captain Ball', sport: 'captainball' },
+    { code: 'YC26', label: 'Captain Ball', short: 'Captain Ball', sport: 'captainball' },
     { code: 'BMMD', label: "Badminton Men's Doubles", short: 'Badminton MD', sport: 'badminton' },
     { code: 'BMXD', label: 'Badminton Mixed Doubles', short: 'Badminton XD', sport: 'badminton' },
     { code: 'PBMD', label: "Pickleball Men's Doubles", short: 'Pickleball MD', sport: 'pickleball' },

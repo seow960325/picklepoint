@@ -2,6 +2,7 @@
  *  A slot is one round of games (one per court); the clock comes from the hub
  *  (first game + minutes per slot), so it is a reference, not a countdown. */
 import type { Bundle, Match } from './types'
+import { hubOf, parentHub } from './hub'
 
 export interface SlotClock { start: string; every: number }
 export interface SlotCell { court: number; m: Match | null }
@@ -34,6 +35,14 @@ export function plannedCourt(b: Bundle, m: Match): number | null {
   const c = b.courts.find(x => x.id === (m.court_id ?? m.home_court))
   if (c) return courtNo(c)
   return b.events.find(e => e.id === m.event_id)?.ko_court_plan?.[m.bracket_key ?? ''] ?? null
+}
+
+/** The planned clock time of a game ("9:30 am"), from the event's printed timetable; '' when the event has none. */
+export function plannedTime(b: Bundle, m: Match): string {
+  const code = b.competition?.code
+  const clock = (parentHub(code) ?? hubOf(code))?.clock
+  const sl = clock ? slotOf(b, m) : null
+  return sl != null && clock ? slotTime(clock, sl) : ''
 }
 
 /** Every slot with one cell per court (m = null: that court has no game in this slot). null = no printed slots. */

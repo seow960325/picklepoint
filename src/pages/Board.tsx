@@ -29,6 +29,7 @@ import { CourtQueues, GroupCardPro, GroupTable, PlayClock } from '../components/
 import FillGrid from '../components/FillGrid'
 import PhoneBracket from '../components/PhoneBracket'
 import { useAutoHide } from '../lib/useAutoHide'
+import { plannedTime } from '../lib/timetable'
 import { roundName, isPoolDispatch, isDiffTiebreak, koSlotLabel, stageLabel, courtChoices } from '../lib/pool'
 
 type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
@@ -39,7 +40,7 @@ export default function Board() {
   // a front-page-only hub (MC26) has no competition of its own to load
   const { bundle: raw, error, loading, reload } = useCompetition(hub && pageOnly(hub) ? undefined : code, { preview: true, viewer: true })
   const parent = parentHub(code)
-  // a hub code shows only its own sport (YC2626 = Captain Ball); the other sports are their own codes
+  // a hub code shows only its own sport (YC26 = Captain Ball); the other sports are their own codes
   const bundle = raw && hub?.onlySport ? sportBundle(raw, hub.onlySport) : raw
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('live')
@@ -80,7 +81,7 @@ export default function Board() {
     </Screen>
   )
 
-  // multi-category event front page (YC2626): its own simple page
+  // multi-category event front page (YC26): its own simple page
   if (hub) return <HubBoard hub={hub} self={bundle} />
 
   const c = bundle.competition
@@ -880,6 +881,7 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
                 <span className={`min-w-0 shrink-0 truncate whitespace-nowrap font-display font-bold tracking-widest text-fg-muted ${tvBig ? 'text-2xl' : 'text-sm lg:text-base'}`}>
                   {b.competition.multi_sport && ct.label ? ct.label.toUpperCase() : `COURT ${ct.number}`}
                   {b.competition.multi_sport && ct.game_group ? ` · ${ct.game_group}` : ''}
+                  {!tv && m && plannedTime(b, m) ? <span className="ml-2 font-bold normal-case tracking-normal text-fg">{plannedTime(b, m)}</span> : null}
                 </span>
                 {poolEv && (
                   <span className={`min-w-0 flex-1 truncate whitespace-nowrap text-center font-display font-bold uppercase ${tvBig ? 'text-3xl tracking-[0.18em]' : 'text-xs tracking-[0.14em] lg:text-base'}`}
@@ -905,7 +907,7 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
               {poolEv
                 ? !tv && up && (
                   <div className={`mt-3 border-t border-line pt-2 text-fg-muted lg:mt-4 lg:pt-3 ${tvBig ? 'text-xl' : 'text-[11px] lg:text-sm'}`}>
-                    Next: <span className="truncate">{teamName(b, up.team_a_id)}</span> vs <span className="truncate">{teamName(b, up.team_b_id)}</span>
+                    Next{plannedTime(b, up) ? ` · ${plannedTime(b, up)}` : ''}: <span className="truncate">{teamName(b, up.team_a_id)}</span> vs <span className="truncate">{teamName(b, up.team_b_id)}</span>
                   </div>
                 )
                 : !tv && <CourtUpList b={b} courtId={ct.id} tv={tv} />}

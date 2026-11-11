@@ -234,7 +234,7 @@ export interface TieRow {
   pf: number; pa: number
 }
 
-/** Sweep bonus (+1 for winning every game of a tie). Badminton (YC2626 organiser):
+/** Sweep bonus (+1 for winning every game of a tie). Badminton (YC26 organiser):
  *  1 point per game won only, so a 3-0 is 3 points. */
 export const sweepBonus = (sport?: string | null): boolean => sport !== 'badminton'
 

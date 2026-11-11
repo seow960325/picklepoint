@@ -22,7 +22,7 @@ import { SevenSeg, segClock, segScore } from '../components/SevenSeg'
 import {
   cbStateOf, cbView, cbScore, cbRun, cbStop, cbPoint, cbUndo, cbFoul, cbTimeout, cbEndTimeout,
   cbTimeoutBack, cbGrantTimeout, cbAdjust, cbEndHalf, cbNextHalf, cbExtraTime, cbReopen, cbRestart,
-  cbFlip, fmtClock, toLeft, toAllowed, ordinal, isLastPeriod, type Act, type CbSnap, type CbState, type Side,
+  cbFlip, fmtClock, toLeft, toAllowed, toUsed, ordinal, isLastPeriod, cbSo, cbShootout, cbShot, cbShotUndo, cbFinal, type Act, type CbSnap, type CbState, type Side,
 } from '../lib/captainball'
 
 type Tone = 'base' | 'go' | 'stop' | 'warn' | 'call' | 'ghost' | 'danger'
@@ -72,7 +72,7 @@ function TeamPanel({ name, side, st, score, callMs, callSide, apply }: {
   const allowed = Math.max(0, toAllowed(st, side)), left = toLeft(st, side)
   const mine = callMs > 0 && callSide === side
   const other = callMs > 0 && callSide !== side
-  const live = st.phase !== 'over' && st.phase !== 'break'
+  const live = st.phase !== 'over' && st.phase !== 'break' && st.phase !== 'so'
   return (
     <div className={`${PANEL} flex min-w-0 flex-1 flex-col gap-2 p-2`}>
       <div className="flex h-8 shrink-0 items-center gap-2 px-1">
@@ -153,7 +153,7 @@ export default function CbScorer({ bundle, match, token, courtNo, courtName, cod
     try {
       while (latest.current.st.rev > sentRev.current) {
         const s = latest.current
-        const c = cbScore(s.st)
+        const c = cbFinal(s.st)
         try {
           await api.cbSave(match.id, token, s.st, c.a, c.b, s.aOnLeft)
           sentRev.current = Math.max(sentRev.current, s.st.rev); setOffline(false)
@@ -196,7 +196,9 @@ export default function CbScorer({ bundle, match, token, courtNo, courtName, cod
   const right: Side = left === 'a' ? 'b' : 'a'
   const tid = (s: Side) => (s === 'a' ? match.team_a_id : match.team_b_id)
   const nm = (s: Side) => teamName(bundle, tid(s))
-  const level = sc.a === sc.b
+  const fin = cbFinal(st)
+  const level = fin.a === fin.b
+  const soNow = st.phase === 'so' ? cbSo(st) : null
   const last = isLastPeriod(st)
   const clockOpen = st.phase === 'play' || st.phase === 'ready'
   const endWord = last ? 'Full time' : `End ${ordinal(st.half)} half`
@@ -204,7 +206,7 @@ export default function CbScorer({ bundle, match, token, courtNo, courtName, cod
     .filter(x => x.court_id === match.court_id).sort((a, b) => a.sequence - b.sequence)
     .findIndex(x => x.id === match.id) + 1, [bundle.matches, match.id])
 
-  const statusColor = v.running ? '#30d158' : v.toMs > 0 ? CB_CALL_COLOR : v.expired || st.phase === 'over' ? '#ffffff' : '#ffd60a'
+  const statusColor = v.running ? '#30d158' : v.toMs > 0 ? CB_CALL_COLOR : v.expired || st.phase === 'over' || st.phase === 'so' ? '#ffffff' : '#ffd60a'
   const adj = st.adj
   const adjTxt = `${adj > 0 ? '+' : adj < 0 ? '−' : '±'}${fmtClock(Math.abs(adj), false)}`
 
@@ -215,16 +217,29 @@ export default function CbScorer({ bundle, match, token, courtNo, courtName, cod
       // ends the rest; the clock then starts with "Start 2nd half" (two different words, so a double tap can't skip a step)
       return <Btn tone="go" className={k} onClick={() => apply(cbNextHalf, chimeSwitch)}>End rest · {ordinal(st.half + 1)} half ready</Btn>
     }
+    if (st.phase === 'so' && soNow) {
+      if (soNow.winner) return <Btn tone="go" className={k} onClick={() => setConfirm('finish')}>Finish game · shoot-out {soNow.a}–{soNow.b}</Btn>
+      const who = nm(soNow.next)
+      return (
+        <div className="grid h-14 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+          <Btn tone="go" className="text-xl" onClick={() => apply(cbShot(true), tapPoint)}>✓ Goal · {who}</Btn>
+          <Btn tone="stop" className="text-xl" onClick={() => apply(cbShot(false), tapPoint)}>✗ Miss · {who}</Btn>
+        </div>
+      )
+    }
     if (st.phase === 'over') {
       return level
-        ? (match.tie_stage
+        ? (st.et
+          // level after extra time too: shoot-out, teams shoot in turn, more goals wins
+          ? <Btn tone="go" className={k} onClick={() => apply(cbShootout)}>Still level · shoot-out</Btn>
+          : match.tie_stage
           // knockout games need a winner: extra time again until someone leads
           ? <Btn tone="go" className={k} onClick={() => apply(cbExtraTime)}>Level · extra time {st.r.extra_min}:00</Btn>
           : <div className="grid h-14 grid-cols-2 gap-2">
             <Btn tone="go" className="text-lg" onClick={() => apply(cbExtraTime)}>Extra time {st.r.extra_min}:00</Btn>
             <Btn tone="warn" className="text-lg" onClick={() => setConfirm('finish')}>Finish · draw</Btn>
           </div>)
-        : <Btn tone="go" className={k} onClick={() => setConfirm('finish')}>Finish game · {sc[left]}–{sc[right]}</Btn>
+        : <Btn tone="go" className={k} onClick={() => setConfirm('finish')}>Finish game · {fin[left]}–{fin[right]}</Btn>
     }
     if (v.expired) return <Btn tone="warn" className={`${k} animate-pulse`} onClick={() => apply(cbEndHalf)}>{endWord}</Btn>
     if (v.running) return <Btn tone="stop" className={k} onClick={() => apply(cbStop)}>■ Stop clock</Btn>
@@ -243,6 +258,16 @@ export default function CbScorer({ bundle, match, token, courtNo, courtName, cod
         <div className={`${base} border border-[#ff9f0a]/60 bg-[#ff9f0a]/15`}>
           <span className="min-w-0 truncate font-display text-base font-bold uppercase tracking-wide text-[#ffb340]">Team call · {nm(v.toSide!)}</span>
           <span className="shrink-0 text-[30px]"><SevenSeg text={segClock(v.toMs, false)} color={CB_CALL_COLOR} size="1em" /></span>
+        </div>
+      )
+    }
+    if (st.phase === 'so' && soNow) {
+      return (
+        <div className={`${base} justify-between border border-[#ffd60a]/50 bg-[#ffd60a]/10`}>
+          <span className="min-w-0 truncate font-display text-base font-bold uppercase tracking-wide text-[#ffd60a]">
+            Shoot-out · {soNow.winner ? `${nm(soNow.winner)} wins` : `${nm(soNow.next)} to shoot`}
+          </span>
+          <span className="tabular shrink-0 font-display text-lg font-bold text-white">{soNow.a} – {soNow.b}</span>
         </div>
       )
     }
@@ -332,7 +357,7 @@ export default function CbScorer({ bundle, match, token, courtNo, courtName, cod
               <Btn tone="ghost" className="h-9 px-3 text-sm" onClick={() => setMenu(false)}>Close</Btn>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <Btn tone="ghost" className="h-11 text-sm" onClick={() => apply(cbUndo, tapUndo)} disabled={!st.log.length}>↶ Undo last</Btn>
+              <Btn tone="ghost" className="h-11 text-sm" onClick={() => apply(st.phase === 'so' ? cbShotUndo : cbUndo, tapUndo)} disabled={st.phase === 'so' ? !(st.so && (st.so.a.length || st.so.b.length)) : !st.log.length}>↶ Undo last</Btn>
               <Btn tone="ghost" className="h-11 text-sm" onClick={() => { setMenu(false); setConfirm('endhalf') }} disabled={!(st.phase === 'play' && !v.expired)}>{endWord}</Btn>
             </div>
             {(['a', 'b'] as Side[]).map(s => (
@@ -340,10 +365,10 @@ export default function CbScorer({ bundle, match, token, courtNo, courtName, cod
                 <span className="truncate text-sm font-semibold"><span className="mr-2 inline-block h-3 w-1.5 rounded align-middle" style={{ background: CB_TEAM_COLOR[s] }} />{nm(s)}</span>
                 <Btn tone="ghost" className="h-10 px-3 text-xs" onClick={() => apply(cbGrantTimeout(s, 1))}>+1 team call</Btn>
                 <Btn tone="ghost" className="h-10 px-3 text-xs" onClick={() => apply(cbTimeoutBack(s))}
-                  disabled={!(st.tou[s][st.et ? st.r.halves : st.half - 1] > 0)}>Give call back</Btn>
+                  disabled={!(toUsed(st, s) > 0)}>Give call back</Btn>
               </div>
             ))}
-            {st.phase === 'over' && <Btn tone="ghost" className="h-11 w-full text-sm" onClick={() => { apply(cbReopen); setMenu(false) }}>Reopen — not full time yet</Btn>}
+            {(st.phase === 'over' || st.phase === 'so') && <Btn tone="ghost" className="h-11 w-full text-sm" onClick={() => { apply(cbReopen); setMenu(false) }}>Reopen — not full time yet</Btn>}
             <Btn tone="danger" className="h-11 w-full text-sm" onClick={() => { setMenu(false); setConfirm('restart') }}>Restart game from 0–0</Btn>
           </div>
         </div>
@@ -353,7 +378,7 @@ export default function CbScorer({ bundle, match, token, courtNo, courtName, cod
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-6">
           <div className="w-full max-w-sm space-y-4 rounded-2xl border border-[#2b313c] bg-[#0f1218] p-5 text-center">
             <div className="font-display text-2xl font-bold uppercase">
-              {confirm === 'finish' ? `Finish game ${sc[left]}–${sc[right]}?` : confirm === 'endhalf' ? `${endWord} now?` : 'Restart the game?'}
+              {confirm === 'finish' ? `Finish game ${fin[left]}–${fin[right]}?` : confirm === 'endhalf' ? `${endWord} now?` : 'Restart the game?'}
             </div>
             <div className="text-sm text-white/60">
               {confirm === 'finish' && <>The result is locked and the next game starts on this court.{level ? ' Level score = draw.' : ''}</>}

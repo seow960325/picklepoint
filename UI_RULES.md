@@ -5,7 +5,7 @@ came back more than once. Then run the layout audit (bottom of this file)
 before pushing.
 
 Test every list with three kinds of names at once: one letter (`q`, `7` —
-real YC2626 data), very long English (`Kelab Pickleball Seri Kembangan
+real YC26 data), very long English (`Kelab Pickleball Seri Kembangan
 United Elite`), and Chinese (`蒲种匹克球俱乐部精英队`).
 
 ## Rows that should line up (schedules, results, tables)
@@ -54,7 +54,7 @@ United Elite`), and Chinese (`蒲种匹克球俱乐部精英队`).
     `py-2`, arrow buttons `h-8 w-8`, icon buttons padded to `h-8 w-8 p-1.5`.
     Underlined secondary text links are the only exception.
 
-## Multi-sport (YC2626)
+## Multi-sport (YC26)
 
 13. Each sport keeps one colour everywhere (`SPORT_TONE` in
     `lib/multisport.ts`: blue = pickleball, green = badminton, matching the
@@ -89,10 +89,10 @@ device repo):
    or the real working tree), `npm ci`,
    `npm i -D playwright @fontsource/barlow-condensed @fontsource/cinzel`.
 2. In that throwaway copy only, add a small temporary patch so demo mode can
-   render the YC2626 multi-sport fixtures at every stage:
+   render the YC26 multi-sport fixtures at every stage:
    - `src/lib/mockmulti.ts` (sandbox-only file, hostile fixtures: one-letter
      names, 40+ char names, Chinese names) exporting `mockMulti(code)` for
-     codes `YC2626` (group stage), `YCSF` (semis in progress), `YCFIN`
+     codes `YC26` (group stage), `YCSF` (semis in progress), `YCFIN`
      (final live), `YCWIN` (champion decided).
    - In `src/lib/api.ts`, route `IS_DEMO && code.startsWith('YC')` to
      `mockMulti()` instead of the normal demo join. This is safe to test

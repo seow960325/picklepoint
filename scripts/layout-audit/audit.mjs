@@ -78,13 +78,13 @@ const SCENARIOS = [
   S('pk-admin-gate', '/c/PICKLE/admin'),
   ...['competition', 'scoring', 'teams', 'courts', 'schedule'].map(t =>
     S(`pk-admin-${t}`, '/c/PICKLE/admin', seq(keypad('9999'), tab(t)))),
-  S('yc-gate', '/c/YC2626'),
+  S('yc-gate', '/c/YC26'),
   ...['live', 'matches', 'standings', 'knockout'].flatMap(t => [
-    S(`yc-pb-${t}`, '/c/YC2626?s=pickleball', tab(t)),
-    S(`yc-all-${t}`, '/c/YC2626?s=all', tab(t)),
+    S(`yc-pb-${t}`, '/c/YC26?s=pickleball', tab(t)),
+    S(`yc-all-${t}`, '/c/YC26?s=all', tab(t)),
   ]),
-  S('yc-tv-all', '/c/YC2626?s=all', tv(), { tvOnly: true }),
-  S('yc-tv-tables', '/c/YC2626?s=all', tv('Tables'), { tvOnly: true }),
+  S('yc-tv-all', '/c/YC26?s=all', tv(), { tvOnly: true }),
+  S('yc-tv-tables', '/c/YC26?s=all', tv('Tables'), { tvOnly: true }),
   S('sf-ko-bm', '/c/YCSF?s=badminton', tab('knockout')),
   S('sf-ko-all', '/c/YCSF?s=all', tab('knockout')),
   S('sf-tv-bracket', '/c/YCSF?s=all', tv('Bracket'), { tvOnly: true }),
@@ -96,10 +96,10 @@ const SCENARIOS = [
   S('win-live-all', '/c/YCWIN?s=all'),
   S('win-tv-all', '/c/YCWIN?s=all', tv(), { tvOnly: true }),
   S('win-tv-one', '/c/YCWIN?s=badminton', tv(), { tvOnly: true }),
-  S('yc-court', '/c/YC2626/court/1', keypad('1234')),
+  S('yc-court', '/c/YC26/court/1', keypad('1234')),
   ...['competition', 'scoring', 'teams', 'courts', 'schedule', 'knockout', 'sports'].map(t =>
-    S(`yc-admin-${t}`, '/c/YC2626/admin', tab(t), { ls: ycAdmin('YC2626') })),
-  S('yc-admin-schedule-bm', '/c/YC2626/admin', seq(tab('schedule'), btn('Badminton')), { ls: ycAdmin('YC2626') }),
+    S(`yc-admin-${t}`, '/c/YC26/admin', tab(t), { ls: ycAdmin('YC26') })),
+  S('yc-admin-schedule-bm', '/c/YC26/admin', seq(tab('schedule'), btn('Badminton')), { ls: ycAdmin('YC26') }),
   S('sf-admin-knockout', '/c/YCSF/admin', tab('knockout'), { ls: ycAdmin('YCSF') }),
   S('win-admin-knockout', '/c/YCWIN/admin', tab('knockout'), { ls: ycAdmin('YCWIN') }),
   // MCMD / MCXD (migration 0026 groups_ko opt-ins) — sandbox fixtures in mockmc.ts

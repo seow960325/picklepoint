@@ -1,6 +1,6 @@
 /** Opt-in extras for groups_ko events (migration 0026). Every helper here is
  *  a no-op unless the event carries the matching flag, so competitions that
- *  never set them (TEST01, YC2626, MCMC26 …) behave exactly as before.
+ *  never set them (TEST01, YC26, MCMC26 …) behave exactly as before.
  *
  *   legs = 1             each pair inside a group meets once (round robin); 2 = twice
  *   court_dispatch=pool  group matches wait OFF-court in one shared queue; a

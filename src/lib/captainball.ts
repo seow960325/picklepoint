@@ -16,22 +16,23 @@ export interface CbRules {
   halves: number        // halves per game (2)
   rest_min: number      // half-time rest, minutes
   to_sec: number        // one time-out, seconds
-  to_h1: number         // time-outs per team, 1st half
-  to_h2: number         // time-outs per team, 2nd half (and extra time)
-  extra_min: number     // extra time when a game is level at full time
+  to_h1: number         // time-outs per team for the WHOLE game (1st + 2nd half + extra time)
+  to_h2: number         // (not used any more: time-outs are counted over the whole game)
+  extra_min: number     // extra time (3 min) when a game is level at full time
+  so_shots: number      // shoot-out: shots per team when still level after extra time
   win: number; draw: number; loss: number   // table points
 }
 
 export const CB_DEFAULT: CbRules = {
-  half_min: 10, halves: 2, rest_min: 2, to_sec: 60, to_h1: 2, to_h2: 2,
-  extra_min: 3, win: 3, draw: 1, loss: 0,
+  half_min: 10, halves: 2, rest_min: 2, to_sec: 60, to_h1: 1, to_h2: 0,
+  extra_min: 3, so_shots: 5, win: 3, draw: 1, loss: 0,
 }
 
 export const cbRulesOf = (ev?: Pick<EventCfg, 'cb_rules'> | null): CbRules =>
   ({ ...CB_DEFAULT, ...(ev?.cb_rules ?? {}) })
 
 export type Side = 'a' | 'b'
-export type CbPhase = 'ready' | 'play' | 'break' | 'over'
+export type CbPhase = 'ready' | 'play' | 'break' | 'over' | 'so'
 export interface CbScore { s: Side; n: number; h: number; c: number }
 export interface CbState {
   rev: number
@@ -48,6 +49,7 @@ export interface CbState {
   f: { a: number; b: number }              // team fouls
   log: CbScore[]          // every score change, newest last (undo pops it)
   adj: number            // net ms the referee added to (or took from) the clock
+  so?: { a: boolean[]; b: boolean[] } | null   // shoot-out: every shot, true = goal
 }
 
 export interface CbSnap { st: CbState; aOnLeft: boolean }
@@ -80,14 +82,13 @@ export const clockAt = (st: CbState, now: number): number =>
 
 const halfIdx = (st: CbState) => (st.et ? st.r.halves : st.half - 1)
 
-/** Time-outs a team still has in the current half. */
+/** Time-outs a team has used in the whole game (1st half, 2nd half, extra time). */
+export const toUsed = (st: CbState, s: Side): number => st.tou[s].reduce((n, x) => n + (x ?? 0), 0)
+/** Time-outs a team still has: one per team for the WHOLE game (rules.to_h1). */
 export function toLeft(st: CbState, s: Side): number {
-  const i = halfIdx(st)
-  const base = i === 0 ? st.r.to_h1 : st.r.to_h2
-  return Math.max(0, base + st.tox[s] - (st.tou[s][i] ?? 0))
+  return Math.max(0, st.r.to_h1 + st.tox[s] - toUsed(st, s))
 }
-export const toAllowed = (st: CbState, s: Side): number =>
-  (halfIdx(st) === 0 ? st.r.to_h1 : st.r.to_h2) + st.tox[s]
+export const toAllowed = (st: CbState, s: Side): number => st.r.to_h1 + st.tox[s]
 
 export interface CbView {
   clock: number            // ms left on the game clock
@@ -106,8 +107,9 @@ export function cbView(st: CbState, now: number): CbView {
   const expired = st.phase === 'play' && clock <= 0
   const toMs = st.to && st.to.until > now ? st.to.until - now : 0
   const brkMs = st.phase === 'break' && st.brk ? Math.max(0, st.brk - now) : 0
-  const periodLabel = st.phase === 'break' ? 'HALF-TIME' : st.et ? 'EXTRA TIME' : `${ordinal(st.half)} HALF`
-  const status = st.phase === 'over' ? 'FULL TIME'
+  const periodLabel = st.phase === 'so' ? 'SHOOT-OUT' : st.phase === 'break' ? 'HALF-TIME' : st.et ? 'EXTRA TIME' : `${ordinal(st.half)} HALF`
+  const status = st.phase === 'so' ? 'SHOOT-OUT'
+    : st.phase === 'over' ? 'FULL TIME'
     : st.phase === 'break' ? 'REST'
     : expired ? 'TIME UP'
     : toMs > 0 ? 'TEAM CALL'
@@ -166,7 +168,7 @@ export const cbFoul = (s: Side, d: number): Act => p => {
 /** Team call (a team's time-out): the clock stops and the call's countdown starts. */
 export const cbTimeout = (s: Side): Act => (p, now) => {
   const st = p.st
-  if (st.phase === 'over' || st.phase === 'break' || toLeft(st, s) < 1) return p
+  if (st.phase === 'over' || st.phase === 'so' || st.phase === 'break' || toLeft(st, s) < 1) return p
   const i = halfIdx(st)
   const used = [...st.tou[s]]
   while (used.length <= i) used.push(0)
@@ -178,8 +180,10 @@ export const cbEndTimeout: Act = p => (p.st.to ? bump(p, { to: null }) : p)
 
 /** Give back the last time-out a team took (called by mistake). */
 export const cbTimeoutBack = (s: Side): Act => p => {
-  const st = p.st, i = halfIdx(st)
-  if (!(st.tou[s][i] > 0)) return p
+  const st = p.st
+  let i = halfIdx(st)
+  if (!(st.tou[s][i] > 0)) i = st.tou[s].reduce((last, x, k) => (x > 0 ? k : last), -1)
+  if (i < 0) return p
   const used = [...st.tou[s]]; used[i]--
   return bump(p, { tou: { ...st.tou, [s]: used }, to: st.to?.s === s ? null : st.to })
 }
@@ -228,8 +232,61 @@ export const cbExtraTime: Act = p => {
   return bump(p, { phase: 'ready', et: true, ms: Math.round(st.r.extra_min * 60000), at: null, to: null })
 }
 
+// ------------------------------------------------------------ shoot-out
+// Still level after extra time: the teams shoot in turn (A, B, A, B …); the team
+// with more goals wins. so_shots each; if still level after those, one more each
+// (sudden death) until one team is ahead after an equal number of shots.
+export interface CbSo { a: number; b: number; na: number; nb: number; next: Side; winner: Side | null }
+export function cbSo(st: CbState): CbSo {
+  const so = st.so ?? { a: [], b: [] }
+  const a = so.a.filter(Boolean).length, b = so.b.filter(Boolean).length
+  const na = so.a.length, nb = so.b.length
+  const n = Math.max(1, st.r.so_shots || 5)
+  let winner: Side | null = null
+  if (na === nb && na >= n && a !== b) winner = a > b ? 'a' : 'b'
+  else if (na < n || nb < n) {              // clinched early: the other team cannot catch up any more
+    if (a > b + (n - nb)) winner = 'a'
+    else if (b > a + (n - na)) winner = 'b'
+  }
+  return { a, b, na, nb, next: na <= nb ? 'a' : 'b', winner }
+}
+
+/** Level after extra time: start the shoot-out. */
+export const cbShootout: Act = p =>
+  p.st.phase === 'over' ? bump(p, { phase: 'so', so: { a: [], b: [] }, to: null }) : p
+
+/** One shot in the shoot-out (the team whose turn it is). */
+export const cbShot = (goal: boolean): Act => p => {
+  const st = p.st
+  if (st.phase !== 'so') return p
+  const o = cbSo(st)
+  if (o.winner) return p
+  const so = { a: [...(st.so?.a ?? [])], b: [...(st.so?.b ?? [])] }
+  so[o.next].push(goal)
+  return bump(p, { so })
+}
+
+/** Take back the last shot. */
+export const cbShotUndo: Act = p => {
+  const st = p.st
+  if (st.phase !== 'so' || !st.so) return p
+  const o = cbSo(st)
+  const side: Side = o.na > o.nb ? 'a' : 'b'
+  const so = { a: [...st.so.a], b: [...st.so.b] }
+  if (!so[side].length) return p
+  so[side].pop()
+  return bump(p, { so })
+}
+
+/** Score that is saved / ranked: the game score, +1 to the shoot-out winner so the game has a winner. */
+export function cbFinal(st: CbState): { a: number; b: number } {
+  const c = cbScore(st)
+  const w = st.so ? cbSo(st).winner : null
+  return w ? { ...c, [w]: c[w] + 1 } as { a: number; b: number } : c
+}
+
 /** Undo "full time" (pressed too early): back to the stopped clock. */
-export const cbReopen: Act = p => (p.st.phase === 'over' ? bump(p, { phase: 'play', at: null }) : p)
+export const cbReopen: Act = p => (p.st.phase === 'over' || p.st.phase === 'so' ? bump(p, { phase: 'play', at: null, so: null }) : p)
 
 /** Start the whole game again from 0-0 (keeps the rev counting up). */
 export const cbRestart = (r: CbRules): Act => p => ({ st: cbFresh(r, p.st.rev + 1), aOnLeft: true })

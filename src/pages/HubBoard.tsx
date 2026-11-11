@@ -1,4 +1,4 @@
-/** The one public page of a multi-category church event (YC2626).
+/** The one public page of a multi-category church event (YC26).
  *  Tabs: Live · Matches · Standings · Bracket · Medals, each covering every
  *  category; a category chip narrows any tab to one category (and then that
  *  category updates live, point by point). Scoring stays per category code

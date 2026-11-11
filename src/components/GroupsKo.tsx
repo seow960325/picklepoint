@@ -10,6 +10,7 @@ import type { Bundle, EventCfg, Match } from '../lib/types'
 import type { Standing } from '../lib/store'
 import { teamName, teamLogo, teamSideName } from '../lib/store'
 import { upNext, fmtClock, poolQueue, teamsBusy } from '../lib/pool'
+import { plannedTime } from '../lib/timetable'
 import { Emblem, Pill } from './ui'
 
 // ------------------------------------------------------------------ clock
@@ -224,6 +225,7 @@ export function CourtQueues({ b, ev, max = 4, n = 6, big = false, courts }: { b:
   if (queue.length === 0) return null   // knockout rounds: nothing queued per court
   const mc = !!b.competition.multi_sport
   const poolOf = (id: string | null) => b.teams.find(t => t.id === id)?.pool ?? '–'
+  const timed = !big && queue.some(m => plannedTime(b, m))   // printed timetable: show each game's planned time
   return (
     <FillGrid max={max} className="gap-2 lg:gap-3">
       {(courts ?? b.courts).map(ct => {
@@ -240,7 +242,8 @@ export function CourtQueues({ b, ev, max = 4, n = 6, big = false, courts }: { b:
               <div className="divide-y divide-line/60">
                 {mine.map((m, i) => (
                   <div key={m.id}
-                    className={`grid ${big ? 'grid-cols-[1.6rem_1.6rem_minmax(0,1fr)_2.2rem_minmax(0,1fr)] gap-2 py-2.5 text-2xl' : 'grid-cols-[1.1rem_1.1rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-1.5 py-1.5 text-sm'} ${mc && !big ? 'lg:!text-xl lg:!py-2' : ''} grid items-center ${teamsBusy(b, m) ? 'opacity-60' : ''}`}>
+                    className={`grid ${big ? 'grid-cols-[1.6rem_1.6rem_minmax(0,1fr)_2.2rem_minmax(0,1fr)] gap-2 py-2.5 text-2xl' : timed ? 'grid-cols-[4.6rem_1.1rem_1.1rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-1.5 py-1.5 text-sm' : 'grid-cols-[1.1rem_1.1rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-1.5 py-1.5 text-sm'} ${mc && !big ? 'lg:!text-xl lg:!py-2' : ''} grid items-center ${teamsBusy(b, m) ? 'opacity-60' : ''}`}>
+                    {timed && <span className="tabular whitespace-nowrap font-display text-xs font-bold text-fg-muted lg:text-base">{plannedTime(b, m)}</span>}
                     <span className={`text-center font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>{i + 1}</span>
                     <span className={`text-center font-bold text-fg-subtle ${big ? 'text-base' : 'text-[10px]'}`}>{poolOf(m.team_a_id)}</span>
                     <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : 'justify-end'} gap-1.5 text-fg-muted`}>

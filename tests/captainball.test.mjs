@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   CB_DEFAULT, cbFresh, cbStateOf, cbScore, clockAt, cbView, fmtClock, toLeft,
   cbRun, cbStop, cbPoint, cbUndo, cbFoul, cbTimeout, cbEndTimeout, cbAdjust, cbEndHalf, cbNextHalf, cbFlip,
-  cbExtraTime, cbRestart, cbGrantTimeout, cbTimeoutBack, cbStandings, buildCbDraw,
+  cbExtraTime, cbRestart, cbShootout, cbShot, cbShotUndo, cbSo, cbFinal, cbGrantTimeout, cbTimeoutBack, cbStandings, buildCbDraw,
 } from '../src/lib/captainball.ts'
 
 const start = () => ({ st: cbFresh(CB_DEFAULT), aOnLeft: true })
@@ -59,9 +59,7 @@ test('time-out: stops the clock, 60 s countdown, each team has its own count', (
   assert.equal(cbView(p.st, T0 + 5000 + 20000).toMs, 40000)
   assert.equal(cbView(p.st, T0 + 5000 + 20000).toSide, 'a')
   assert.equal(cbView(p.st, T0 + 5000 + 61000).toMs, 0)
-  assert.equal(toLeft(p.st, 'a'), 1); assert.equal(toLeft(p.st, 'b'), 2)
-  p = cbTimeout('a')(p, T0 + 70000)
-  assert.equal(toLeft(p.st, 'a'), 0)
+  assert.equal(toLeft(p.st, 'a'), 0); assert.equal(toLeft(p.st, 'b'), 1)   // one call per team for the whole game
   const q = cbTimeout('a')(p, T0 + 80000)                     // none left
   assert.equal(q, p)
   assert.equal(toLeft(cbGrantTimeout('a', 1)(p, T0).st, 'a'), 1)   // referee grants an extra one
@@ -75,12 +73,42 @@ test('different time-out counts per team (rules + extra for one team only)', () 
   assert.equal(toLeft(p.st, 'a'), 1); assert.equal(toLeft(p.st, 'b'), 2)
 })
 
-test('time-outs reset for the 2nd half', () => {
+test('time-out: ONE per team for the whole game (1st + 2nd half), 60 s', () => {
   let p = cbRun(start(), T0)
-  p = cbTimeout('a')(p, T0 + 1000); p = cbTimeout('a')(p, T0 + 70000)
+  p = cbTimeout('a')(p, T0 + 1000)
   assert.equal(toLeft(p.st, 'a'), 0)
   p = cbEndHalf(p, T0 + 80000); p = cbNextHalf(p, T0 + 90000)
-  assert.equal(toLeft(p.st, 'a'), 2)
+  assert.equal(toLeft(p.st, 'a'), 0)                          // not given back in the 2nd half
+  assert.equal(toLeft(p.st, 'b'), 1)
+  assert.equal(p.st.r.to_sec, 60)
+})
+
+test('level after extra time -> shoot-out: teams shoot in turn, more goals wins', () => {
+  let p = { st: { ...cbFresh(CB_DEFAULT), phase: 'over', et: true }, aOnLeft: true }
+  p = cbShootout(p, T0)
+  assert.equal(p.st.phase, 'so')
+  assert.equal(cbSo(p.st).next, 'a')
+  for (const g of [true, false, true, false, false]) p = cbShot(g)(p, T0)   // a, b, a, b, a
+  assert.equal(cbSo(p.st).next, 'b')
+  p = cbShot(false)(p, T0)                                                  // b misses: a 2 - b 0, 5 shots each? no: 3 v 3 taken
+  const o = cbSo(p.st)
+  assert.equal(o.a, 2); assert.equal(o.b, 0)
+  assert.ok(o.winner === 'a' || o.winner === null)
+  while (!cbSo(p.st).winner) p = cbShot(false)(p, T0)
+  assert.equal(cbSo(p.st).winner, 'a')
+  assert.deepEqual(cbFinal(p.st), { a: 1, b: 0 })                           // winner gets the +1 so the game has a winner
+  const q = cbShot(true)(p, T0); assert.equal(q, p)                        // finished: no more shots
+})
+
+test('shoot-out still level after the set shots -> sudden death', () => {
+  const r = { ...CB_DEFAULT, so_shots: 2 }
+  let p = { st: { ...cbFresh(r), phase: 'over', et: true }, aOnLeft: true }
+  p = cbShootout(p, T0)
+  for (const g of [true, true, true, true]) p = cbShot(g)(p, T0)          // 2-2 after 2 each
+  assert.equal(cbSo(p.st).winner, null)
+  p = cbShot(true)(p, T0); assert.equal(cbSo(p.st).winner, null)           // a scores, b still to shoot
+  p = cbShot(false)(p, T0); assert.equal(cbSo(p.st).winner, 'a')
+  p = cbShotUndo(p, T0); assert.equal(cbSo(p.st).winner, null)
 })
 
 test('add time back: +/- on a running and a stopped clock, tracked, clamped', () => {

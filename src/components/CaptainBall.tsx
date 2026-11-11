@@ -13,7 +13,7 @@ import * as api from '../lib/api'
 import { hornEnd } from '../lib/feedback'
 import { SevenSeg, segClock, segScore } from './SevenSeg'
 import {
-  cbStateOf, cbView, cbScore, cbRulesOf, cbStandings, cbKo, CB_STAGE_LABEL, type CbStage, cbRound, fmtClock, toLeft, toAllowed, ordinal,
+  cbStateOf, cbView, cbScore, cbRulesOf, cbStandings, cbKo, CB_STAGE_LABEL, type CbStage, cbRound, fmtClock, toLeft, toAllowed, ordinal, cbSo,
   type CbRules, type CbState, type Side,
 } from '../lib/captainball'
 
@@ -160,7 +160,7 @@ export function CbScoreboard({ b, m, size = 'card', sound = false, courtLabel }:
     )
   }
 
-  const statusTone = v.running ? '#30d158' : v.toMs > 0 ? CB_CALL_COLOR : st.phase === 'over' || v.expired ? '#ffffff' : '#ffd60a'
+  const statusTone = v.running ? '#30d158' : v.toMs > 0 ? CB_CALL_COLOR : st.phase === 'over' || st.phase === 'so' || v.expired ? '#ffffff' : '#ffd60a'
   const halves = cbHalfScores(st)
   // half-time: the game clock counts the rest down (as on a basketball board)
   const shownClock = st.phase === 'break' ? v.brkMs : v.clock
@@ -168,6 +168,8 @@ export function CbScoreboard({ b, m, size = 'card', sound = false, courtLabel }:
     ? { c: CB_CALL_COLOR, txt: `Team call · ${teamName(b, id(v.toSide!))}`, t: v.toMs }
     : st.phase === 'break'
     ? { c: '#64d2ff', txt: 'Half-time rest', t: -1 }
+    : st.phase === 'so'
+    ? { c: '#ffd60a', txt: (() => { const o = cbSo(st); return `Shoot-out ${o.a}–${o.b}${o.winner ? ` · ${teamName(b, id(o.winner))} wins` : ` · ${teamName(b, id(o.next))} to shoot`}` })(), t: -1 }
     : null
 
   return (
@@ -485,16 +487,16 @@ export function CbRulesPanel({ ev, token, run }: { ev: EventCfg; token: string; 
           <Field label="Halves"><Stepper value={r.halves} min={1} max={4} onChange={set('halves')} /></Field>
           <Field label="Half-time rest (min)"><Stepper value={r.rest_min} min={0} max={15} onChange={set('rest_min')} /></Field>
           <Field label="Extra time if level (min)"><Stepper value={r.extra_min} min={1} max={10} onChange={set('extra_min')} /></Field>
+          <Field label="Shoot-out shots per team"><Stepper value={r.so_shots} min={1} max={10} onChange={set('so_shots')} /></Field>
         </div>
       </div>
       <div className="space-y-4 rounded-xl border border-line bg-surface p-4">
         <div className={H}>Team calls (per team)</div>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-4">
           <Field label="Call length (sec)"><Stepper value={r.to_sec} min={10} max={180} onChange={v => set('to_sec')(Math.round(v / 5) * 5 || 10)} /></Field>
-          <Field label="1st half"><Stepper value={r.to_h1} min={0} max={9} onChange={set('to_h1')} /></Field>
-          <Field label="2nd half / extra"><Stepper value={r.to_h2} min={0} max={9} onChange={set('to_h2')} /></Field>
+          <Field label="Calls per team (whole game)"><Stepper value={r.to_h1} min={0} max={9} onChange={set('to_h1')} /></Field>
         </div>
-        <p className="text-xs text-fg-subtle">Each team call stops the game clock and runs its own countdown. The court scorer can also give a team one extra call during a game.</p>
+        <p className="text-xs text-fg-subtle">One call per team for the whole game (1st + 2nd half). Each call stops the game clock and runs its own countdown. Level at full time: extra time, then a shoot-out (teams shoot in turn, more goals wins). The court scorer can also give a team one extra call during a game.</p>
       </div>
       <div className="space-y-4 rounded-xl border border-line bg-surface p-4">
         <div className={H}>Table points</div>
