@@ -114,7 +114,7 @@ function Cup({ px }: { px: number }) {
 }
 
 /** One-shot confetti, then still. Deterministic pieces (no random reflow). */
-function Confetti({ colors }: { colors: string[] }) {
+export function Confetti({ colors }: { colors: string[] }) {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
       {Array.from({ length: 44 }, (_, i) => {

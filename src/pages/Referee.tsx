@@ -47,7 +47,7 @@ export default function Referee() {
                         <Link key={ct.id} to={`/c/${cat.code}/court/${ct.number}`}
                           className="rounded-xl border border-line bg-canvas px-3 py-3 text-center active:bg-surface-2">
                           <div className="font-display text-lg font-bold">{ct.label ?? `Court ${ct.number}`}</div>
-                          <div className={`text-[11px] ${live ? 'text-red-400' : 'text-fg-subtle'}`}>{live ? '● game on' : 'idle'}</div>
+                          <div className={`text-[11px] font-bold uppercase tracking-wider ${live ? 'text-[#34d399]' : 'text-fg-subtle'}`}>{live ? <><span className="mr-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-current align-middle" />live</> : 'idle'}</div>
                         </Link>
                       )
                     })}

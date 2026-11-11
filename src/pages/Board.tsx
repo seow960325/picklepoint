@@ -24,9 +24,10 @@ import { flowOf } from '../lib/flow'
 import { hubOf, parentHub, pageOnly } from '../lib/hub'
 import HubBoard from './HubBoard'
 import { finalSeries } from '../lib/finals'
-import { KnockoutBracket, ChampionStage, FinalBanner, useWide } from '../components/TieKnockout'
+import { KnockoutBracket, ChampionStage, FinalBanner, useWide, Confetti } from '../components/TieKnockout'
 import { CourtQueues, GroupCardPro, GroupTable, PlayClock } from '../components/GroupsKo'
 import FillGrid from '../components/FillGrid'
+import PhoneBracket from '../components/PhoneBracket'
 import { useAutoHide } from '../lib/useAutoHide'
 import { isPoolDispatch, isDiffTiebreak, koSlotLabel, stageLabel, courtChoices } from '../lib/pool'
 
@@ -1170,6 +1171,7 @@ function FitWidth({ children, tall }: { children: any; tall: boolean }) {
 }
 
 export function PosterBracket({ b, broadcast = false, tall = false }: { b: Bundle; broadcast?: boolean; tall?: boolean }) {
+  const roomy = useWide(640)
   const ev = b.events.find(e => e.format === 'groups_ko')
   if (!ev) return null
   if (!bracketSeeded(b, ev.id) && !ev.bracket_preview) {
@@ -1187,9 +1189,20 @@ export function PosterBracket({ b, broadcast = false, tall = false }: { b: Bundl
   const champId = finalSeries(b, ev.id)?.winner ?? null
   const podium = koPodium(b)
 
+  // phone: the same bracket turned upright (halves meet at the Final), podium on top once decided
+  if (!broadcast && !tall && !roomy) {
+    return (
+      <div>
+        {podium && <Podium b={b} champion={podium.champion} runnerUp={podium.runnerUp} third={podium.third} title={ev.name} compact />}
+        <PhoneBracket b={b} ev={ev} top={leftCols} bottom={rightCols} finals={finalR?.matches ?? []} third={thirdM} />
+      </div>
+    )
+  }
+
   return (
     <TallCtx.Provider value={tall}>
     <McCtx.Provider value={bracketTierFn(rounds.filter(r => r !== thirdR), finalR?.round ?? 'Final')}>
+    {podium && !broadcast && !tall && <Podium b={b} champion={podium.champion} runnerUp={podium.runnerUp} third={podium.third} title={ev.name} compact />}
     <div className={`${broadcast ? 'w-max' : ''} ${tall ? 'flex flex-1 flex-col' : ''} p-4 text-fg`} style={{ background: broadcast
         ? 'radial-gradient(ellipse at top, rgba(244,205,106,0.10), transparent 60%), rgb(var(--canvas))'
         : 'radial-gradient(ellipse at top, rgba(244,205,106,0.06), transparent 55%), rgb(var(--canvas))' }}>
@@ -1387,59 +1400,80 @@ export function koPodium(b: Bundle): { champion: string; runnerUp: string | null
   return { champion, runnerUp, third }
 }
 
-export function Podium({ b, champion, runnerUp, third, title }: {
+export function Podium({ b, champion, runnerUp, third, title, compact = false }: {
   b: Bundle; champion: string; runnerUp: string | null; third: string | null; title: string
+  /** inside a page (Bracket tab): own height, smaller blocks. Default fills its parent (TV). */
+  compact?: boolean
 }) {
+  const ev = b.events.find(e => e.format === 'groups_ko')
+  const fs = ev ? finalSeries(b, ev.id) : null
+  const thirdM = ev ? b.matches.find(m => m.event_id === ev.id && m.bracket_key != null && m.round === 'Third place' && m.status === 'finished') : undefined
+  const hi = (m: Match) => `${Math.max(m.score_a, m.score_b)}–${Math.min(m.score_a, m.score_b)}`
+  const finalScore = fs ? (fs.bestOf > 1 ? fs.games.filter(g => g.status === 'finished').map(hi).join(' · ') : fs.games[0] ? hi(fs.games[0]) : null) : null
   return (
-    <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-4 text-fg">
-      <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(46% 55% at 50% 12%, rgba(244,205,106,0.16), transparent 60%)' }} />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-2/3 opacity-25" style={{ background: 'repeating-linear-gradient(90deg, rgba(244,205,106,0.55) 0 1px, transparent 1px 13px)', WebkitMaskImage: 'linear-gradient(to bottom, black, transparent)', maskImage: 'linear-gradient(to bottom, black, transparent)' }} />
-      <div className="relative z-[1] mb-6 text-center sm:mb-10">
-        <div className="font-display text-xs font-semibold uppercase tracking-[0.35em] text-fg-subtle">{title} · Final Standings</div>
-        <div className="mt-1 font-cer text-3xl font-black uppercase tracking-[0.16em] sm:text-5xl"
+    <div className={`relative flex flex-col items-center justify-center overflow-hidden px-3 text-fg ${compact ? 'border-b border-line/60 pb-0 pt-7' : 'flex-1'}`}
+      style={{ background: 'radial-gradient(70% 60% at 50% 0%, rgba(244,205,106,0.13), transparent 65%)' }}>
+      {/* spotlight on the champion + fine gold curtain */}
+      <div className="pp-beam pointer-events-none absolute inset-0" style={{ background: 'conic-gradient(from 180deg at 50% -8%, transparent 164deg, rgba(247,215,116,0.16) 174deg, rgba(255,241,189,0.24) 180deg, rgba(247,215,116,0.16) 186deg, transparent 196deg)' }} />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-2/3 opacity-20" style={{ background: 'repeating-linear-gradient(90deg, rgba(244,205,106,0.55) 0 1px, transparent 1px 13px)', WebkitMaskImage: 'linear-gradient(to bottom, black, transparent)', maskImage: 'linear-gradient(to bottom, black, transparent)' }} />
+      <Confetti colors={['#f7d774', '#fff1bd', '#dfe4ec', '#e2a866', '#c6ff3d']} />
+      <div className={`relative z-[1] text-center ${compact ? 'mb-5' : 'mb-4 sm:mb-6'}`}>
+        <div className="font-display text-xs font-semibold uppercase tracking-[0.3em] text-fg-subtle">{title}</div>
+        <div className={`mt-1 font-cer font-black uppercase tracking-[0.16em] ${compact ? 'text-3xl sm:text-4xl' : 'text-3xl sm:text-5xl'}`}
           style={{ backgroundImage: 'linear-gradient(180deg,#fff,#efdca6 55%,#f4cd6a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>Champions</div>
+        <div className="mx-auto mt-2 flex items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-fg-muted">
+          <span className="h-px w-8 bg-gold/50" />
+          {finalScore && <span>Final <b className="tabular text-gold">{finalScore}</b></span>}
+          {thirdM && <span>· 3rd place <b className="tabular text-[#e0a75f]">{hi(thirdM)}</b></span>}
+          <span className="h-px w-8 bg-gold/50" />
+        </div>
       </div>
-      <div className="relative z-[1] flex items-end justify-center gap-3 sm:gap-6">
-        <PodiumSpot b={b} teamId={runnerUp} place={2} />
-        <PodiumSpot b={b} teamId={champion} place={1} />
-        <PodiumSpot b={b} teamId={third} place={3} />
+      <div className="relative z-[1] flex w-full max-w-xl items-end justify-center gap-2 sm:gap-5">
+        <PodiumSpot b={b} teamId={runnerUp} place={2} compact={compact} />
+        <PodiumSpot b={b} teamId={champion} place={1} compact={compact} />
+        <PodiumSpot b={b} teamId={third} place={3} compact={compact} />
       </div>
     </div>
   )
 }
 
-function PodiumSpot({ b, teamId, place }: { b: Bundle; teamId: string | null; place: 1 | 2 | 3 }) {
+function PodiumSpot({ b, teamId, place, compact }: { b: Bundle; teamId: string | null; place: 1 | 2 | 3; compact: boolean }) {
   const t = place === 1
-    ? { c1: '#f7d774', c2: '#b8862f', h: 'h-40 sm:h-56', label: 'Champion', num: '1', frame: 'h-24 w-24 sm:h-32 sm:w-32', w: 'w-32 sm:w-44', bd: '.32s', wd: '.7s' }
+    ? { c1: '#f7d774', c2: '#b8862f', h: compact ? 'h-28 sm:h-36' : 'h-40 sm:h-56', label: 'Champion', num: '1', frame: 'h-24 w-24 sm:h-32 sm:w-32', bd: '.32s', wd: '.7s' }
     : place === 2
-      ? { c1: '#dbe0e8', c2: '#9aa2af', h: 'h-28 sm:h-40', label: '1st runner-up', num: '2', frame: 'h-20 w-20 sm:h-24 sm:w-24', w: 'w-28 sm:w-36', bd: '.05s', wd: '.35s' }
-      : { c1: '#e0a75f', c2: '#9c6522', h: 'h-24 sm:h-32', label: 'Third place', num: '3', frame: 'h-20 w-20 sm:h-24 sm:w-24', w: 'w-28 sm:w-36', bd: '.18s', wd: '.48s' }
+      ? { c1: '#dbe0e8', c2: '#9aa2af', h: compact ? 'h-20 sm:h-24' : 'h-28 sm:h-40', label: 'Runner-up', num: '2', frame: 'h-[4.5rem] w-[4.5rem] sm:h-24 sm:w-24', bd: '.05s', wd: '.35s' }
+      : { c1: '#e0a75f', c2: '#9c6522', h: compact ? 'h-14 sm:h-16' : 'h-24 sm:h-32', label: 'Third place', num: '3', frame: 'h-[4.5rem] w-[4.5rem] sm:h-24 sm:w-24', bd: '.18s', wd: '.48s' }
   const first = place === 1
+  const name = teamId ? teamName(b, teamId) : ''
+  const parts = name.split(' & ')
   return (
-    <div className={`flex ${t.w} flex-col items-center`}>
-      <div className="pp-rise flex flex-col items-center" style={{ animationDelay: t.wd }}>
+    <div className={`flex min-w-0 flex-col items-center ${first ? 'flex-[1.25]' : 'flex-1'}`}>
+      <div className="pp-rise flex w-full flex-col items-center" style={{ animationDelay: t.wd }}>
         {first && <div className="pp-pop mb-1" style={{ animationDelay: '1.05s' }}><Trophy lit /></div>}
-        <div className={`mb-3 rounded-full p-[3px] ${first ? 'pp-champ-ring' : ''}`} style={{ background: `linear-gradient(150deg, ${t.c1}, ${t.c2})` }}>
+        <div className={`mb-2.5 rounded-full p-[3px] ${first ? 'pp-champ-ring' : ''}`} style={{ background: `linear-gradient(150deg, ${t.c1}, ${t.c2})` }}>
           <div className={`grid ${t.frame} place-items-center overflow-hidden rounded-full bg-[#0b0e14]`}>
             {(() => {
+              if (!teamId) return <span className="font-cer text-2xl font-bold" style={{ color: t.c1 }}>?</span>
               const logo = teamLogo(b, teamId), flag = teamSideName(b, teamId)
               // uploaded team pictures fill the medallion (faces sit on the rim); flags stay small;
               // no picture at all -> the players' initials, never an empty circle
               if (logo && !logo.startsWith('data:image/svg'))
                 return <img src={logo} alt="" className="h-[96%] w-[96%] translate-y-[4%] object-contain object-bottom" />
               if (logo || flag) return <Emblem logo={logo} flagName={flag} className="h-3/5 w-3/5 object-contain" />
-              const ini = teamName(b, teamId).split(/\s*&\s*|\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
+              const ini = name.split(/\s*&\s*|\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
               return <span className={`font-cer font-bold ${first ? 'text-4xl' : 'text-2xl'}`} style={{ color: t.c1 }}>{ini || '—'}</span>
             })()}
           </div>
         </div>
-        <div className={`mb-1 max-w-full truncate text-center font-bold ${first ? 'font-cer text-lg sm:text-2xl' : 'font-display text-base text-fg sm:text-xl'}`}
-          style={first ? { color: '#f4cd6a' } : undefined}>{teamName(b, teamId)}</div>
-        <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: t.c1 }}>{t.label}</div>
+        <div className={`mb-1 flex min-h-[2.4em] w-full flex-col justify-end px-0.5 text-center font-bold leading-[1.15] ${first ? 'font-cer text-base sm:text-2xl' : 'font-display text-[15px] text-fg sm:text-xl'}`}
+          style={first ? { color: '#f4cd6a' } : undefined}>
+          {teamId ? parts.map((x, i) => <span key={i} className="block break-words">{x}</span>) : <span className="text-sm font-semibold text-fg-subtle">to be decided</span>}
+        </div>
+        <div className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: t.c1 }}>{t.label}</div>
       </div>
-      <div className={`pp-grow relative w-full ${t.h} rounded-t-xl border-t-4`}
-        style={{ borderColor: t.c1, background: 'linear-gradient(180deg,#1a1e28,#0a0c11)', boxShadow: `0 0 40px -12px ${t.c1}88`, animationDelay: t.bd }}>
-        <div className="absolute inset-x-0 top-2 text-center font-cer text-6xl font-black opacity-90 sm:text-8xl" style={{ color: t.c1 }}>{t.num}</div>
+      <div className={`pp-grow relative w-full ${t.h} overflow-hidden rounded-t-xl border-t-4`}
+        style={{ borderColor: t.c1, background: `linear-gradient(180deg, ${t.c1}26, #12151d 38%, #0a0c11)`, boxShadow: `0 0 44px -12px ${t.c1}99`, animationDelay: t.bd }}>
+        <div className={`absolute inset-x-0 top-1 text-center font-cer font-black opacity-90 ${compact ? 'text-5xl sm:text-6xl' : 'text-6xl sm:text-8xl'}`} style={{ color: t.c1 }}>{t.num}</div>
       </div>
     </div>
   )
