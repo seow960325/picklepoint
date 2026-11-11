@@ -9,6 +9,8 @@ import { groupStandings, groupStageComplete, bracketSeeded, teamName, teamLogo, 
 import { koPlanOf, planDraw } from '../lib/koplan'
 import { gameTitle } from '../lib/pool'
 import { courtLabel } from '../lib/teamstatus'
+import { hubOf, parentHub } from '../lib/hub'
+import { slotOf, slotTime } from '../lib/timetable'
 import { usePinned } from '../lib/pin'
 import { Emblem } from './ui'
 import { GroupTable } from './GroupsKo'
@@ -52,10 +54,11 @@ function Row({ b, code, m, left }: { b: Bundle; code: string; m: Match; left: Re
     : <div className={base}>{body}</div>
 }
 
-const Tag = ({ top, sub, tone = '' }: { top: string; sub?: string; tone?: string }) => (
+const Tag = ({ top, sub, sub2, tone = '' }: { top: string; sub?: string; sub2?: string; tone?: string }) => (
   <>
     <span className={`block truncate ${tone}`}>{top}</span>
     {sub && <span className="block truncate text-[10px] font-semibold normal-case tracking-normal text-fg-subtle">{sub}</span>}
+    {sub2 && <span className="block truncate text-[10px] font-semibold normal-case tracking-normal text-fg-subtle">{sub2}</span>}
   </>
 )
 
@@ -64,7 +67,9 @@ export function HubGames({ b, code }: { b: Bundle; code: string }) {
   const hasMine = b.teams.some(t => pins.has(t.id))
   const [only, setOnly] = useState(false)
   const [all, setAll] = useState(false)
-  const short = (m: Match) => gameTitle(b, m).replace(/ · Slot \d+$/, '').
+  const short = (m: Match) => gameTitle(b, m).replace(/ · Slot \d+$/, '')
+  const clock = (parentHub(code) ?? hubOf(code) ?? parentHub(b.competition?.code))?.clock
+  const when = (m: Match) => { const sl = clock ? slotOf(b, m) : null; return sl != null && clock ? slotTime(clock, sl) : '' }
   const ct = (id: string | null | undefined) => courtLabel(b, id)
   const keep = (m: Match) => !(only && hasMine) || pins.has(m.team_a_id ?? '') || pins.has(m.team_b_id ?? '')
   const known = (m: Match) => !!m.team_a_id && !!m.team_b_id
@@ -99,7 +104,7 @@ export function HubGames({ b, code }: { b: Bundle; code: string }) {
           {next.length === 0 && <div className="px-3 py-4 text-center text-sm text-fg-muted">
             {b.matches.some(m => m.status !== 'finished') ? 'The next games appear here once the teams are known.' : 'All games have been played.'}
           </div>}
-          {shownNext.map(m => <Row key={m.id} b={b} code={code} m={m} left={<Tag top={ct(m.court_id ?? m.home_court) || '—'} sub={short(m)} />} />)}
+          {shownNext.map(m => <Row key={m.id} b={b} code={code} m={m} left={<Tag top={ct(m.court_id ?? m.home_court) || '—'} sub={when(m) || short(m)} sub2={when(m) ? short(m) : undefined} />} />)}
           {next.length > shownNext.length && (
             <button onClick={() => setAll(true)} className="min-h-[40px] w-full px-3 py-2 text-xs font-semibold text-fg-muted active:bg-surface-2">
               Show all {next.length} games ▾

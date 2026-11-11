@@ -7,6 +7,8 @@ export interface Hub {
   code: string; title: string; onlySport?: 'captainball'; cats: HubCat[]
   /** not a church event: no church filter, no Total Champion / Medals tab */
   noChurch?: boolean
+  /** printed timetable: first game (24 h) and minutes per slot */
+  clock?: { start: string; every: number }
 }
 
 export const HUBS: Hub[] = [{
@@ -28,6 +30,8 @@ export const HUBS: Hub[] = [{
   code: 'MC26',
   title: 'Christmas Outreach',
   noChurch: true,
+  // Derek's plan: games start 9:30 am, one slot every 15 minutes
+  clock: { start: '09:30', every: 15 },
   cats: [
     { code: 'MCMD', label: "Men's Doubles", short: "Men's Doubles", sport: 'pickleball' },
     { code: 'MCXD', label: 'Mixed Doubles', short: 'Mixed Doubles', sport: 'pickleball' },
