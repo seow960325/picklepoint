@@ -1296,22 +1296,31 @@ function StartOver({ token, run }: any) {
 
 /** Pinned message on the front page, above "My team". Un-pin makes it disappear. */
 function AnnouncementCard({ ev, token, run }: any) {
-  const [text, setText] = useState<string>(ev.announcement ?? '')
-  const pinned = !!ev.announcement
+  const [text, setText] = useState('')
+  const list: Array<{ id: string; text: string }> = [
+    ...(ev.announcements ?? []),
+    ...(ev.announcement ? [{ id: '', text: ev.announcement }] : []),   // 0044 message, until 0049 moves it
+  ]
+  const full = list.length >= 3
   return (
     <div className="space-y-2 rounded-xl border border-gold/50 bg-gold/5 p-4">
       <div className="flex items-center justify-between">
-        <span className="font-display text-lg font-bold tracking-wide">Announcement</span>
-        <span className="text-xs font-bold uppercase text-fg-subtle">{pinned ? 'pinned' : 'not shown'}</span>
+        <span className="font-display text-lg font-bold tracking-wide">Announcements</span>
+        <span className="text-xs font-bold uppercase text-fg-subtle">{list.length}/3 pinned</span>
       </div>
-      <textarea className={inputFull + ' min-h-[84px]'} maxLength={400} value={text} onChange={e => setText(e.target.value)}
-        placeholder="e.g. Lunch break 12:30. Men's Doubles semi-finals start at 2 pm." />
-      <div className="flex gap-2">
-        <button disabled={!text.trim()} onClick={() => run(() => api.adminSetAnnouncement(token, ev.id, text), 'Announcement pinned')}
-          className="flex-1 rounded-xl bg-brand px-4 py-2.5 font-display font-bold text-brand-fg disabled:opacity-30">{pinned ? 'UPDATE PIN' : 'PIN TO FRONT PAGE'}</button>
-        {pinned && <button onClick={() => run(() => api.adminSetAnnouncement(token, ev.id, ''), 'Announcement removed').then(() => setText(''))}
-          className="rounded-xl border border-line px-4 py-2.5 text-sm font-bold uppercase text-fg-muted">Un-pin</button>}
-      </div>
+      {list.map(a => (
+        <div key={a.id || 'old'} className="flex items-start gap-2 rounded-lg border border-gold/40 bg-surface px-3 py-2">
+          <span className="min-w-0 flex-1 whitespace-pre-line text-sm font-semibold">{a.text}</span>
+          <button onClick={() => run(() => a.id ? api.adminDeleteAnnouncement(token, ev.id, a.id) : api.adminSetAnnouncement(token, ev.id, ''), 'Announcement deleted')}
+            className="shrink-0 rounded-lg border border-red-500/50 px-2.5 py-1 text-xs font-bold uppercase text-red-500">Delete</button>
+        </div>
+      ))}
+      {full ? <div className="text-xs text-fg-subtle">3 announcements pinned. Delete one to add another.</div> : (<>
+        <textarea className={inputFull + ' min-h-[72px]'} maxLength={400} value={text} onChange={e => setText(e.target.value)}
+          placeholder="e.g. Lunch break 12:30. Men's Doubles semi-finals start at 2 pm." />
+        <button disabled={!text.trim()} onClick={() => run(() => api.adminAddAnnouncement(token, ev.id, text), 'Announcement pinned').then(() => setText(''))}
+          className="w-full rounded-xl bg-brand px-4 py-2.5 font-display font-bold text-brand-fg disabled:opacity-30">PIN TO FRONT PAGE</button>
+      </>)}
     </div>
   )
 }

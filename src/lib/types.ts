@@ -14,6 +14,7 @@ export interface EventCfg {
   sort_order: number
   // migration 0044: pinned organiser message (null = none)
   announcement?: string | null; announce_at?: string | null
+  announcements?: Array<{ id: string; text: string; at: string }> | null
   // multi-sport competitions only; absent/'pickleball' everywhere else
   sport?: 'pickleball' | 'badminton' | 'captainball'
   // captain ball only (migration 0031): clock / time-out / table rules, null = defaults

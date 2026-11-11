@@ -549,6 +549,24 @@ export const demo = {
     save(s)
   },
 
+  /** admin_add_announcement / admin_delete_announcement twins (migration 0049) */
+  addAnnouncement(eventId: string, text: string) {
+    const s = load()
+    const e = s.bundle.events.find(x => x.id === eventId)
+    const t = text.trim()
+    if (!e || !t) return
+    const cur = e.announcements ?? []
+    if (cur.length >= 3) throw new Error('MAX_3')
+    e.announcements = [...cur, { id: Math.random().toString(36).slice(2), text: t, at: new Date().toISOString() }]
+    save(s)
+  },
+  deleteAnnouncement(eventId: string, id: string) {
+    const s = load()
+    const e = s.bundle.events.find(x => x.id === eventId)
+    if (e) e.announcements = (e.announcements ?? []).filter(a => a.id !== id)
+    save(s)
+  },
+
   /** admin_set_announcement twin (migration 0044) */
   setAnnouncement(eventId: string, text: string) {
     const s = load()

@@ -601,6 +601,16 @@ export async function adminResetHub(token: string): Promise<void> {
   await rpc('admin_reset_hub', { p_token: token })
 }
 
+/** Up to 3 pinned messages; each stays until deleted. Needs migration 0049. */
+export async function adminAddAnnouncement(token: string, eventId: string, text: string): Promise<void> {
+  if (IS_DEMO) return demo.addAnnouncement(eventId, text)
+  await rpc('admin_add_announcement', { p_token: token, p_event_id: eventId, p_text: text })
+}
+export async function adminDeleteAnnouncement(token: string, eventId: string, id: string): Promise<void> {
+  if (IS_DEMO) return demo.deleteAnnouncement(eventId, id)
+  await rpc('admin_delete_announcement', { p_token: token, p_event_id: eventId, p_id: id })
+}
+
 /** Pinned organiser message above "My team"; empty text un-pins it. Needs migration 0044. */
 export async function adminSetAnnouncement(token: string, eventId: string, text: string): Promise<void> {
   if (IS_DEMO) return demo.setAnnouncement(eventId, text)
