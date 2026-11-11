@@ -531,6 +531,24 @@ export const demo = {
     save(s)
   },
 
+  /** admin_reset_competition twin (migration 0045) */
+  resetCompetition() {
+    const s = load()
+    s.events = []
+    for (const m of s.bundle.matches) {
+      m.score_a = 0; m.score_b = 0; m.a_on_left = true; m.sides_switched = false
+      m.last_scorer = null; m.initial_server = null; m.serving_team = null; m.server_no = null
+      m.status = 'scheduled'; m.winner_id = null; m.started_at = null; m.finished_at = null; m.duration_seconds = null
+      m.alert_at = null; m.alert_note = null
+      if (m.bracket_key != null) { m.team_a_id = null; m.team_b_id = null }
+    }
+    const first = new Set<string>()
+    for (const m of s.bundle.matches.slice().sort((a, b) => a.sequence - b.sequence)) {
+      if (m.bracket_key == null && m.court_id && !first.has(m.court_id)) { first.add(m.court_id); m.status = 'live' }
+    }
+    save(s)
+  },
+
   /** admin_set_announcement twin (migration 0044) */
   setAnnouncement(eventId: string, text: string) {
     const s = load()

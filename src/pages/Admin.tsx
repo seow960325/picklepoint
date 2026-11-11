@@ -256,6 +256,8 @@ function CompetitionTab({ bundle, ev, token, run, secrets, refreshSecrets }: any
         )}
       </div>
 
+      <StartOver token={token} run={run} />
+
       <div className="mt-8 rounded-xl border border-red-500/40 bg-red-500/5 p-4">
         <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-red-600">Danger zone</div>
         <p className="mb-3 text-sm text-fg-muted">
@@ -1243,6 +1245,33 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
             )
           })}
       </div>
+    </div>
+  )
+}
+
+/** Test run finished? Wipe every result and knockout line-up and play again; teams and settings stay. */
+function StartOver({ token, run }: any) {
+  const [open, setOpen] = useState(false)
+  const [txt, setTxt] = useState('')
+  return (
+    <div className="mt-8 rounded-xl border border-amber-500/50 bg-amber-500/5 p-4">
+      <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-amber-500">Start over</div>
+      <p className="text-sm text-fg-muted">Clears every score, result, medal and knockout line-up so the whole competition can be played again.
+        Teams, courts and settings stay. Afterwards you can change the rules or groups, then regenerate the draw.</p>
+      {!open ? (
+        <button onClick={() => setOpen(true)} className="mt-3 rounded-xl border border-amber-500/60 px-4 py-2.5 text-sm font-bold uppercase text-amber-500">Reset all results…</button>
+      ) : (
+        <div className="mt-3 space-y-2">
+          <div className="text-sm">Type <span className="font-mono font-bold">RESET</span> to confirm. This cannot be undone.</div>
+          <input className={inputFull} value={txt} onChange={e => setTxt(e.target.value)} placeholder="RESET" autoCapitalize="characters" />
+          <div className="flex gap-2">
+            <button disabled={txt.trim().toUpperCase() !== 'RESET'}
+              onClick={() => run(() => api.adminResetCompetition(token), 'Competition reset: all results cleared').then(() => { setOpen(false); setTxt('') })}
+              className="flex-1 rounded-xl bg-amber-600 px-4 py-2.5 font-display font-bold text-white disabled:opacity-30">RESET EVERYTHING</button>
+            <button onClick={() => { setOpen(false); setTxt('') }} className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-fg-muted">Cancel</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -589,6 +589,12 @@ export async function adminSetStageRules(
   })
 }
 
+/** Start over: wipe every result and knockout line-up, keep teams and settings. Needs migration 0045. */
+export async function adminResetCompetition(token: string): Promise<void> {
+  if (IS_DEMO) return demo.resetCompetition()
+  await rpc('admin_reset_competition', { p_token: token })
+}
+
 /** Pinned organiser message above "My team"; empty text un-pins it. Needs migration 0044. */
 export async function adminSetAnnouncement(token: string, eventId: string, text: string): Promise<void> {
   if (IS_DEMO) return demo.setAnnouncement(eventId, text)
