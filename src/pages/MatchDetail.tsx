@@ -5,6 +5,7 @@ import * as api from '../lib/api'
 import type { PointEvent } from '../lib/types'
 import { Screen, TopBar, Spinner } from '../components/ui'
 import { PlayClock } from '../components/GroupsKo'
+import { roundName } from '../lib/pool'
 import { courtSession } from '../lib/queue'
 const adminTokKey = (code: string) => `pp.admin.${code}`
 
@@ -54,7 +55,7 @@ export default function MatchDetail() {
     <Screen>
       <TopBar
         title={`${teamName(bundle, m.team_a_id)} vs ${teamName(bundle, m.team_b_id)}`}
-        sub={`${bundle.competition.multi_sport && court?.label ? court.label : `Court ${court?.number ?? '–'}`} · Match #${m.sequence}${m.round ? ` · ${m.round}` : ''} · ${m.status.replace(/_/g, ' ')}`}
+        sub={`${bundle.competition.multi_sport && court?.label ? court.label : `Court ${court?.number ?? '–'}`} · Match #${m.sequence}${m.round ? ` · ${roundName(m.round)}` : ''} · ${m.status.replace(/_/g, ' ')}`}
         back={courtToken && court ? `/c/${code}/court/${court.number}` : `/c/${code}`}
       />
 

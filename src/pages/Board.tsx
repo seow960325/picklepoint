@@ -7,7 +7,7 @@ import {
 } from '../lib/store'
 import { displayScores, rulesOf, servingSide, serverCourt as serverCourtOf, scoreCall, activeServerNo } from '../lib/scoring'
 import type { Bundle, EventCfg, Match } from '../lib/types'
-import { Screen, Pill, Spinner, FullscreenButton, Flag, Emblem, ThemeToggle, ShrinkText } from '../components/ui'
+import { Screen, Pill, Spinner, FullscreenButton, Flag, Emblem, ThemeToggle, ShrinkText, Monogram, hasFlag } from '../components/ui'
 import Court from '../components/Court'
 import { IS_DEMO, demo, refresh as fetchBundle } from '../lib/api'
 import { fullscreenSupported } from '../lib/fullscreen'
@@ -21,7 +21,7 @@ import {
 import { CbLive, CbMatches, CbStandings, CbKnockoutView } from '../components/CaptainBall'
 import FlowChart from '../components/FlowChart'
 import { flowOf } from '../lib/flow'
-import { hubOf, parentHub, pageOnly } from '../lib/hub'
+import { hubOf, parentHub, pageOnly, catHue } from '../lib/hub'
 import HubBoard from './HubBoard'
 import { finalSeries } from '../lib/finals'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide, Confetti } from '../components/TieKnockout'
@@ -29,7 +29,7 @@ import { CourtQueues, GroupCardPro, GroupTable, PlayClock } from '../components/
 import FillGrid from '../components/FillGrid'
 import PhoneBracket from '../components/PhoneBracket'
 import { useAutoHide } from '../lib/useAutoHide'
-import { isPoolDispatch, isDiffTiebreak, koSlotLabel, stageLabel, courtChoices } from '../lib/pool'
+import { roundName, isPoolDispatch, isDiffTiebreak, koSlotLabel, stageLabel, courtChoices } from '../lib/pool'
 
 type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
 
@@ -351,7 +351,9 @@ function CategorySwitch({ code, name, partner }: { code: string; name: string; p
     }).catch(() => {})
     return () => { alive = false }
   }, [partner])
-  const opts = [{ c: code, n: name, tone: 'bg-[#5aa9ff] text-[#0a0e17]' }, { c: partner, n: pName, tone: 'bg-[#f472b6] text-[#0a0e17]' }]
+  const BLUE = 'bg-[#5aa9ff] text-[#0a0e17]', PINK = 'bg-[#f472b6] text-[#0a0e17]'
+  const toneFor = (c: string, n: string, fallback: string) => { const h = catHue(n) ?? catHue(c); return h == null ? fallback : h === 0 ? BLUE : PINK }
+  const opts = [{ c: code, n: name, tone: toneFor(code, name, BLUE) }, { c: partner, n: pName, tone: toneFor(partner, pName, PINK) }]
     .sort((x, y) => x.c.localeCompare(y.c))
   return (
     <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface p-1">
@@ -1039,7 +1041,7 @@ function Schedule({ b }: { b: Bundle }) {
                 </span>
               </span>
             </div>
-            <div className="mt-1 text-[11px] tracking-wide text-fg-subtle">{(m.round ?? '').replace(/pod/i, 'Court')} · #{m.sequence}{m.game_label ? ` · ${m.game_label}` : ''}</div>
+            <div className="mt-1 text-[11px] tracking-wide text-fg-subtle">{roundName((m.round ?? '').replace(/pod/i, 'Court'))} · #{m.sequence}{m.game_label ? ` · ${m.game_label}` : ''}</div>
           </div>
           {m.status === 'live'
             ? <Pill tone="live">live</Pill>
@@ -1324,7 +1326,9 @@ function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder, tier
   }
   return (
     <div className={`flex items-center ${mc ? (tier === 'compact' || tier === 'std' ? 'gap-1.5 pl-2 pr-2' : stack ? 'gap-2 pl-4 pr-6' : 'gap-2 pl-4 pr-4') : 'gap-2 px-2.5'} border-l-2 ${py} ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
-      <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className={`${logoCls} shrink-0 rounded-[2px] object-contain`} />
+      {teamId && !teamLogo(b, teamId) && !hasFlag(teamSideName(b, teamId))
+        ? <Monogram name={teamName(b, teamId)} className={`${mc ? (tier === 'compact' || tier === 'std' ? 'h-7 w-7 text-[11px]' : 'h-9 w-9 text-sm') : 'h-6 w-6 text-[10px]'}`} />
+        : <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className={`${logoCls} shrink-0 rounded-[2px] object-contain`} />}
       <span className={`min-w-0 flex-1 ${mc ? 'text-center' : ''} ${stack ? 'leading-[1.1]' : 'truncate'} ${tx} ${mc && live ? 'font-extrabold tracking-wide text-white' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-fg' : mc ? 'font-medium text-fg-muted' : 'text-fg-muted'}`}>{stack ? (() => { const parts = teamName(b, teamId).split(' & '); return parts.length === 2 ? <><ShrinkText text={parts[0]} /><ShrinkText text={parts[1]} /></> : <ShrinkText text={teamName(b, teamId)} /> })() : teamName(b, teamId)}</span>
       {medal && <span className="shrink-0 text-xs leading-none" aria-label={medal}>{medal === 'gold' ? '🥇' : medal === 'silver' ? '🥈' : '🥉'}</span>}
       {(finished || (mc && live)) && <span className={`tabular shrink-0 ${mc ? (tier === 'compact' || tier === 'std' ? 'min-w-[1.25rem]' : stack ? 'min-w-[2.5rem]' : 'min-w-[1.75rem]') + ' text-center' : ''} ${tx} ${mc && live ? 'font-extrabold text-brand-ink' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-gold' : 'text-fg-subtle'}`}>{score}</span>}
@@ -2075,7 +2079,7 @@ function Results({ b, code }: { b: Bundle; code: string }) {
               <div className={`truncate text-sm ${!aWon ? 'font-bold text-fg' : 'text-fg-muted'}`}>
                 <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_b_id)}
               </div>
-              <div className="text-[11px] text-fg-subtle">Match #{m.sequence}{m.round ? ` · ${m.round}` : ''}</div>
+              <div className="text-[11px] text-fg-subtle">Match #{m.sequence}{m.round ? ` · ${roundName(m.round)}` : ''}</div>
             </div>
             <div className="tabular text-right font-display text-2xl font-bold leading-tight">
               <div className={aWon ? 'text-brand-ink' : 'text-fg-muted'}>{m.score_a}</div>

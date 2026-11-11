@@ -43,3 +43,11 @@ export const hubOf = (code?: string): Hub | null => HUBS.find(h => h.code === up
 /** The hub a category code belongs to (not the hub itself). */
 export const parentHub = (code?: string): Hub | null =>
   HUBS.find(h => h.code !== up(code) && h.cats.some(c => c.code === up(code))) ?? null
+
+/** Fixed colour per category: Men's = blue, Mixed = pink (by name or code); null = not either. */
+export function catHue(nameOrCode?: string | null): 0 | 1 | null {
+  const x = (nameOrCode ?? '').trim()
+  if (/mix|xd$/i.test(x)) return 1
+  if (/\bmen|md$/i.test(x)) return 0
+  return null
+}

@@ -139,6 +139,8 @@ function match(name?: string | null): 'my' | 'kh' | null {
   return null
 }
 
+export const hasFlag = (name?: string | null): boolean => !!match(name)
+
 /** Raw flag shapes on a 0 0 28 20 canvas (no <svg> wrapper). */
 export function FlagGlyph({ name }: { name?: string | null }) {
   const c = match(name)
@@ -189,4 +191,25 @@ export function ShrinkText({ text, className = '', min = 0.55 }: { text: string;
     return () => ro.disconnect()
   }, [text])
   return <span ref={ref} className={`block overflow-hidden text-ellipsis whitespace-nowrap ${className}`}>{text}</span>
+}
+
+/** "Ryan & Marcus" -> "RM"; one name -> first letters of its first two words. */
+export function initialsOf(name: string): string {
+  const pair = name.split(/\s*&\s*/).filter(Boolean)
+  const words = pair.length >= 2 ? [pair[0], pair[1]] : name.split(/\s+/).filter(Boolean).slice(0, 2)
+  return words.map(w => Array.from(w)[0]?.toUpperCase() ?? '').join('') || '·'
+}
+
+/** Name-only badge for a team without a logo: its initials on a calm tint (same name = same tint). */
+export function Monogram({ name, className = '' }: { name: string; className?: string }) {
+  let h = 0
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 360
+  const hue = Math.round(h / 60) * 60 + 20
+  return (
+    <span aria-hidden="true"
+      className={`grid shrink-0 place-items-center rounded-full font-display font-bold leading-none tracking-wide ${className}`}
+      style={{ background: `hsl(${hue} 38% 22%)`, boxShadow: `inset 0 0 0 1.5px hsl(${hue} 48% 40%)`, color: `hsl(${hue} 85% 84%)` }}>
+      {initialsOf(name)}
+    </span>
+  )
 }

@@ -2,9 +2,9 @@
  *  turned upright. The top half of the draw comes down, the bottom half comes
  *  up, and they meet at the Final in the middle. Full names, readable scores. */
 import type { Bundle, EventCfg, Match } from '../lib/types'
-import { teamName, teamLogo, teamSideName } from '../lib/store'
+import { teamName } from '../lib/store'
+import TeamMark from './TeamMark'
 import { koSlotLabel } from '../lib/pool'
-import { Emblem } from './ui'
 
 type Col = { round: string; matches: Match[] }
 
@@ -25,7 +25,7 @@ function Side({ b, ev, m, s, big }: { b: Bundle; ev: EventCfg; m: Match; s: 'a' 
   if (!id) {
     return (
       <div className={`flex items-center gap-2 px-2.5 ${big ? 'py-2.5' : 'py-2'}`}>
-        <span className={`${big ? 'h-7 w-9' : 'h-5 w-7'} shrink-0 rounded-[3px] border border-dashed border-line-strong`} />
+        <span className={`${big ? 'h-9 w-9' : 'h-7 w-7'} shrink-0 rounded-full border border-dashed border-line-strong`} />
         <span className={`min-w-0 flex-1 italic text-fg-subtle ${big ? 'text-sm' : 'text-xs'}`}>{ev.bracket_preview ? koSlotLabel(b, ev, m, s) : 'To be decided'}</span>
       </div>
     )
@@ -33,8 +33,8 @@ function Side({ b, ev, m, s, big }: { b: Bundle; ev: EventCfg; m: Match; s: 'a' 
   const parts = teamName(b, id).split(' & ')
   return (
     <div className={`flex items-center gap-2 border-l-[3px] px-2.5 ${big ? 'py-2.5' : 'py-2'} ${win ? 'border-gold bg-gold/10' : 'border-transparent'} ${lose ? 'opacity-50' : ''}`}>
-      <Emblem logo={teamLogo(b, id)} flagName={teamSideName(b, id)} className={`${big ? 'h-7 w-9' : 'h-5 w-7'} shrink-0 rounded-[3px]`} />
-      <span className={`min-w-0 flex-1 break-words leading-tight ${big ? 'text-base' : 'text-[13px]'} ${win || live ? 'font-bold text-fg' : 'font-semibold text-fg-muted'}`}>
+      <TeamMark b={b} id={id} box={big ? 'h-7 w-9' : 'h-5 w-7'} ring={big ? 'h-9 w-9 text-sm' : 'h-7 w-7 text-[11px]'} />
+      <span className={`min-w-0 flex-1 break-words leading-tight ${big ? 'text-[17px]' : 'text-[14px]'} ${win || live ? 'font-bold text-fg' : 'font-semibold text-fg-muted'}`}>
         {parts.length === 2 ? <>{parts[0]}<br />{parts[1]}</> : parts[0]}
       </span>
       {(done || live) && <span className={`tabular shrink-0 font-display font-bold leading-none ${big ? 'text-2xl' : 'text-lg'} ${win ? 'text-gold' : live ? 'text-brand-ink' : 'text-fg-subtle'}`}>{score}</span>}

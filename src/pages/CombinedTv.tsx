@@ -12,6 +12,7 @@ import type { Bundle } from '../lib/types'
 import { FullscreenButton, Spinner, Screen, Emblem } from '../components/ui'
 import { GroupTable, PlayClock } from '../components/GroupsKo'
 import { LiveGrid, PosterBracket, Podium, koPodium } from './Board'
+import { catHue } from '../lib/hub'
 import { upNext } from '../lib/pool'
 
 type Pane = 'live' | 'groups' | 'bracket'
@@ -70,7 +71,7 @@ export default function CombinedTv() {
   if (one.loading || (list[1] && two.loading)) return <Screen><Spinner /></Screen>
   const all = [one.bundle, two.bundle].filter((b): b is Bundle => !!b)
   const bundles = sel === 'both' ? all : all.filter(b => b.competition.code.toUpperCase() === sel)
-  const toneOf = (b: Bundle) => TONES[Math.max(0, all.indexOf(b)) % 2]
+  const toneOf = (b: Bundle) => TONES[catHue(category(b)) ?? catHue(b.competition.code) ?? Math.max(0, all.indexOf(b)) % 2]
   if (!all.length) {
     return (
       <Screen className="flex flex-col items-center justify-center gap-4 px-6">

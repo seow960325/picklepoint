@@ -18,7 +18,7 @@ import { ScheduleRow, scheduleStatus } from '../components/ScheduleRow'
 import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts, KnockoutTab } from './MultiSportAdmin'
 import { sportsPresent, isCb } from '../lib/multisport'
 import { CbRulesPanel } from '../components/CaptainBall'
-import { isPoolDispatch, isDiffTiebreak, shuffleMap, eventUntouched } from '../lib/pool'
+import { isPoolDispatch, isDiffTiebreak, shuffleMap, eventUntouched, roundName } from '../lib/pool'
 import { parentHub } from '../lib/hub'
 import { seatsOf, entriesOf, fixedOf, currentMeets, smartDraw, jointDraw, slotClock } from '../lib/clash'
 import { koPlanOf, planDraw, tokenLabel } from '../lib/koplan'
@@ -1192,7 +1192,7 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
             const i = sibs.findIndex((x: any) => x.id === m.id)
             const canUp = m.status === 'scheduled' && i > 0
             const canDown = m.status === 'scheduled' && i >= 0 && i < sibs.length - 1
-            const st = scheduleStatus(m, (m.round ?? '').replace(/pod/i, 'Court'))
+            const st = scheduleStatus(m, roundName((m.round ?? '').replace(/pod/i, 'Court')))
             return (
               <ScheduleRow key={m.id} bundle={bundle} a={m.team_a_id} b={m.team_b_id}
                 meta={<span className="font-display text-sm font-bold">{bundle.courts.find((c: any) => c.id === m.court_id)?.number ?? '–'}</span>}
@@ -1232,7 +1232,7 @@ function FixResults({ bundle, ev, token, run }: any) {
             <div key={m.id} className="rounded-lg border border-line p-2.5 text-sm">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-subtle">{m.round ?? 'Group'}</div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-subtle">{roundName(m.round) || 'Group'}</div>
                   <div className="truncate font-semibold">{teamName(bundle, m.team_a_id)} <span className="text-fg-subtle">{m.score_a}–{m.score_b}</span> {teamName(bundle, m.team_b_id)}</div>
                 </div>
                 <button onClick={() => id === m.id ? setId(null) : edit(m)}

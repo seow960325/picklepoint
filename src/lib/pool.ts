@@ -196,7 +196,7 @@ export function greedyPoolSchedule(teams: DraftTeam[], courtCount: number, legs:
           courtIdx: first ? f.home : -1,
           homeCourt: f.home,
           sequence: seq++,
-          label: legs > 1 ? `Group ${f.pool} · Leg ${f.leg}` : `Group ${f.pool} · Round Robin`,
+          label: `Group ${f.pool} · Round robin`,
         })
         picked++
         break
@@ -390,6 +390,9 @@ export function rankByDiff<S extends RankRow>(rows: S[], done: Match[], h2h = tr
   return out
 }
 
+/** One word for the group stage everywhere: "Group A · Leg 1" / "Round Robin" -> "Group A · Round robin". */
+export const roundName = (r?: string | null): string => (r ?? '').replace(/\bleg\s*\d+/i, 'Round robin').replace(/round\s*robin/i, 'Round robin')
+
 /** Status for a court card header: "ROUND ROBIN", "QF 2", "SF 1",
  *  "3RD PLACE", "FINAL". `kind` picks the glow colour. */
 export function stageLabel(b: Bundle, m: Match): { text: string; kind: 'group' | 'ko' | 'final' } {
@@ -401,11 +404,10 @@ export function stageLabel(b: Bundle, m: Match): { text: string; kind: 'group' |
     if (rn) return { text: `R${rn[1]} · ${koShort(b, m).split('-').pop()}`, kind: 'ko' }   // "R16 · 3"
     return { text: koShort(b, m).replace(/(\D+)(\d+)/, '$1 $2'), kind: 'ko' }   // "QF 4"
   }
-  // "Group B · Leg 2" -> "LEG 2" (group name is on the game row, not the header)
+  // every group game reads "ROUND ROBIN" (old rows said "Group A · Leg 1")
   const r = (m.round ?? '').replace(/\s+/g, ' ').trim()
-  const leg = /leg\s*(\d+)/i.exec(r)
-  if (/round\s*robin/i.test(r)) return { text: 'ROUND ROBIN', kind: 'group' }
-  return { text: leg ? `LEG ${leg[1]}` : (r.replace(/^group\s+/i, '') || 'GROUP').toUpperCase(), kind: 'group' }
+  if (/round\s*robin|leg\s*\d+/i.test(r)) return { text: 'ROUND ROBIN', kind: 'group' }
+  return { text: (r.replace(/^group\s+/i, '') || 'GROUP').toUpperCase(), kind: 'group' }
 }
 
 // ------------------------------------------------- referee: pick another game
