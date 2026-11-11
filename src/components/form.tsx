@@ -16,7 +16,7 @@ export const Section = ({ n, title, hint, children }: {
 export const Field = ({ label, children, className = '' }: {
   label: string; children: ReactNode; className?: string
 }) => (
-  <label className={`block ${className}`}>
+  <label className={`block min-w-0 ${className}`}>
     <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-fg-muted">
       {label}
     </span>
@@ -25,7 +25,7 @@ export const Field = ({ label, children, className = '' }: {
 )
 
 export const input =
-  'rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-fg outline-none ' +
+  'min-w-0 max-w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-fg outline-none ' +
   'placeholder:text-fg-subtle focus:border-brand-ink'
 
 /** Most inputs want the full width of their cell; the narrow ones opt out. */

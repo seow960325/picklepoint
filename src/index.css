@@ -77,3 +77,9 @@ body {
 @keyframes pp-beam{0%,100%{opacity:.75}50%{opacity:1}}
 .pp-beam{animation:pp-beam 6s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){.pp-confetti{display:none}.pp-beam{animation:none !important}}
+
+/* iOS Safari gives date/time inputs an intrinsic width that pushes them past the screen */
+input[type="date"], input[type="time"], input[type="datetime-local"] {
+  -webkit-appearance: none; appearance: none;
+  display: block; min-width: 0; max-width: 100%; box-sizing: border-box;
+}
