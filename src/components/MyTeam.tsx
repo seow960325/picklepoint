@@ -87,9 +87,9 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
             const past = b && id ? played(b, id, hub.clock) : []
             const alerted = games.some(g => isAlert(g.m))
             const tone = alerted ? 'border-red-500/80 bg-red-500/15'
-              : st?.state === 'playing' ? 'border-emerald-400 bg-emerald-500/20'
-              : st?.state === 'next' && (st.ahead ?? 9) <= 1 ? 'border-sky-400/80 bg-sky-500/15'
-              : 'border-sky-500/50 bg-sky-500/10'
+              : st?.state === 'playing' ? 'border-blue-400 bg-blue-500/20'
+              : st?.state === 'next' && (st.ahead ?? 9) <= 1 ? 'border-indigo-300/70 bg-indigo-500/15'
+              : 'border-indigo-400/40 bg-indigo-500/10'
             return (
               <div key={p.code + p.teamId} role="button" tabIndex={0} onClick={() => setDetail(p)}
                 className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left active:opacity-90 ${tone}`}>
@@ -100,7 +100,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                     <span className="truncate">{p.name}{cat ? ` · ${cat.short}` : ''}</span>
                   </span>
                   <span className="block truncate font-display text-xl font-bold leading-tight">
-                    {st?.state === 'playing' && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-400 align-middle" />}
+                    {st?.state === 'playing' && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400 align-middle" />}
                     {!b ? 'Loading…' : st ? st.head : 'Team not found'}
                   </span>
                   {st && !games.length && <span className="line-clamp-2 text-xs leading-snug text-fg-muted">{st.sub}</span>}
@@ -108,14 +108,14 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                     <span className="mt-1.5 block space-y-1 border-t border-line/50 pt-1.5">
                       {games.map(g => (
                         <span key={g.m.id} className="grid grid-cols-[4.6rem_minmax(0,1fr)_4.6rem] items-center gap-x-2 text-sm leading-tight">
-                          <span className={`font-display text-base font-bold ${g.live ? 'text-emerald-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg'}`}>{g.live ? '● Now' : g.time || '—'}</span>
+                          <span className={`font-display text-base font-bold ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg'}`}>{g.live ? '● Now' : g.time || '—'}</span>
                           <span className="min-w-0 text-center">
                             {isAlert(g.m) ? <span className="block text-[10px] font-bold uppercase tracking-wider text-red-500">⚠ {alertWord(g.m)}</span>
                               : g.m.bracket_key && <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>}
                             <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
                               className="block w-full truncate font-semibold underline decoration-line-strong decoration-dotted underline-offset-4">{g.opp}</button>
                           </span>
-                          <span className={`text-right text-xs font-bold uppercase leading-tight tracking-wide ${g.live ? 'text-emerald-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}>{g.court}</span>
+                          <span className={`text-right text-xs font-bold uppercase leading-tight tracking-wide ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}>{g.court}</span>
                         </span>
                       ))}
                     </span>
@@ -195,16 +195,16 @@ function TeamDetail({ hub, pin, b, onClose, onOpen, onBack, onTeam }: { hub: Hub
               <div className="space-y-2">
                 {games.map(g => (
                   <Link key={g.m.id} to={g.live || g.done ? `/c/${pin.code}/match/${g.m.id}` : '#'} onClick={e => { if (!g.live && !g.done) e.preventDefault() }}
-                    className={`grid grid-cols-[4.6rem_minmax(0,1fr)_4.6rem] items-center gap-x-2 rounded-xl border px-3 py-2.5 ${g.live ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-line bg-surface'}`}>
-                    <span className={`font-display text-base font-bold leading-tight ${g.live ? 'text-emerald-400' : g.done ? 'text-fg-subtle' : 'text-fg'}`}>{g.live ? '● Now' : g.time || '—'}</span>
+                    className={`grid grid-cols-[4.6rem_minmax(0,1fr)_4.6rem] items-center gap-x-2 rounded-xl border px-3 py-2.5 ${g.live ? 'border-blue-500/50 bg-blue-500/10' : 'border-line bg-surface'}`}>
+                    <span className={`font-display text-base font-bold leading-tight ${g.live ? 'text-blue-400' : g.done ? 'text-fg-subtle' : 'text-fg'}`}>{g.live ? '● Now' : g.time || '—'}</span>
                     <span className="min-w-0 text-center">
                       {g.m.bracket_key && <span className="block text-[10px] font-bold uppercase tracking-wide text-fg-subtle">{g.title}</span>}
                       <button onClick={e => { e.preventDefault(); e.stopPropagation(); const oid = g.m.team_a_id === id ? g.m.team_b_id : g.m.team_a_id; if (oid) onTeam({ code: pin.code, teamId: oid, name: g.opp }) }}
                         className={`block w-full truncate text-sm underline decoration-line-strong decoration-dotted underline-offset-4 ${g.done && !g.won ? 'text-fg-muted' : 'font-semibold'}`}>{g.opp}</button>
                     </span>
                     <span className="text-right">
-                      <span className={`block text-xs font-bold uppercase leading-tight tracking-wide ${g.live ? 'text-emerald-400' : 'text-fg-muted'}`}>{g.court}</span>
-                      {(g.live || g.done) && <span className={`tabular block font-display text-base font-bold leading-tight ${g.live ? 'text-emerald-400' : g.won ? 'text-gold' : 'text-fg-subtle'}`}>{g.us}–{g.them}{g.done ? (g.won ? ' W' : ' L') : ''}</span>}
+                      <span className={`block text-xs font-bold uppercase leading-tight tracking-wide ${g.live ? 'text-blue-400' : 'text-fg-muted'}`}>{g.court}</span>
+                      {(g.live || g.done) && <span className={`tabular block font-display text-base font-bold leading-tight ${g.live ? 'text-blue-400' : g.won ? 'text-gold' : 'text-fg-subtle'}`}>{g.us}–{g.them}{g.done ? (g.won ? ' W' : ' L') : ''}</span>}
                     </span>
                   </Link>
                 ))}
