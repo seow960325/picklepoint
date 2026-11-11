@@ -13,7 +13,7 @@ import { categoryResult, medalTable } from '../lib/medals'
 import { finalSeries } from '../lib/finals'
 import { cbKo } from '../lib/captainball'
 import { churchOf } from '../lib/draw'
-import { slotRows, type SlotRow } from '../lib/timetable'
+import { slotRows, slotTime, type SlotRow } from '../lib/timetable'
 import { gameTitle, koSlotLabel } from '../lib/pool'
 
 export function useOthers(codes: string[], everyMs = 30000) {
@@ -159,6 +159,11 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
     <section>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-[11px] font-bold uppercase tracking-[0.25em] text-fg-subtle">{hub.clock ? 'Categories · what time, which court' : 'Categories · on court & up next'}</h2>
+        {hub.clock?.breakAt && (() => {
+          const [bh, bm] = hub.clock.breakAt.split(':').map(Number), e = bh * 60 + bm + (hub.clock.breakMins ?? 0)
+          const f = (t: number) => slotTime({ start: `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`, every: 0 }, 1)
+          return <span className="rounded-full border border-gold/50 px-2.5 py-0.5 text-[11px] font-bold text-gold">Lunch break {f(bh * 60 + bm)} – {f(e)}</span>
+        })()}
         {!hub.noChurch && <select value={mine} onChange={e => pick(e.target.value)}
           className="rounded-lg border border-line bg-surface px-2 py-1.5 text-sm text-fg">
           <option value="">All churches</option>

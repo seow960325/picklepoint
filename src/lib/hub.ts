@@ -8,7 +8,7 @@ export interface Hub {
   /** not a church event: no church filter, no Total Champion / Medals tab */
   noChurch?: boolean
   /** printed timetable: first game (24 h) and minutes per slot */
-  clock?: { start: string; every: number }
+  clock?: { start: string; every: number; breakAt?: string; breakMins?: number }
 }
 
 export const HUBS: Hub[] = [{
@@ -31,7 +31,8 @@ export const HUBS: Hub[] = [{
   title: 'Christmas Outreach',
   noChurch: true,
   // Derek's plan: games start 9:30 am, one slot every 15 minutes
-  clock: { start: '09:30', every: 15 },
+  // lunch break 12:30, play resumes 12:45: every slot from 12:30 on shifts by 15 min
+  clock: { start: '09:30', every: 15, breakAt: '12:30', breakMins: 15 },
   cats: [
     { code: 'MCMD', label: "Men's Doubles", short: "Men's Doubles", sport: 'pickleball' },
     { code: 'MCXD', label: 'Mixed Doubles', short: 'Mixed Doubles', sport: 'pickleball' },

@@ -4,17 +4,18 @@
 import type { Bundle, Match } from './types'
 import { hubOf, parentHub } from './hub'
 
-export interface SlotClock { start: string; every: number }
+export interface SlotClock { start: string; every: number; breakAt?: string; breakMins?: number }
 export interface SlotCell { court: number; m: Match | null }
 export interface SlotRow { slot: number; time: string; cells: SlotCell[]; state: 'done' | 'now' | 'later' }
 
-/** knockout games come after the last group slot: QF1-3, QF4, SF1, SF2, 3rd place, Final */
-const KO_OFFSET: Record<string, number> = { 'KO-8-0': 1, 'KO-8-1': 1, 'KO-8-2': 1, 'KO-8-3': 2, 'KO-4-0': 3, 'KO-4-1': 4, 'KO-3P': 5, 'KO-2-0': 6 }
+/** knockout games come after the last group slot: QF1-3, QF4, SF1 + SF2 (same slot, two courts), 3rd place, Final */
+const KO_OFFSET: Record<string, number> = { 'KO-8-0': 1, 'KO-8-1': 1, 'KO-8-2': 1, 'KO-8-3': 2, 'KO-4-0': 3, 'KO-4-1': 3, 'KO-3P': 4, 'KO-2-0': 5 }
 
 /** "9:30 am" for slot 1, "9:45 am" for slot 2 … */
 export function slotTime(c: SlotClock, slot: number): string {
   const [h, mi] = c.start.split(':').map(Number)
-  const t = h * 60 + mi + (slot - 1) * c.every
+  let t = h * 60 + mi + (slot - 1) * c.every
+  if (c.breakAt) { const [bh, bm] = c.breakAt.split(':').map(Number); if (t >= bh * 60 + bm) t += c.breakMins ?? 0 }
   const hh = Math.floor(t / 60) % 24, mm = t % 60
   return `${hh % 12 === 0 ? 12 : hh % 12}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'am' : 'pm'}`
 }
