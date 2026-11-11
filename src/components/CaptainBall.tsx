@@ -7,7 +7,7 @@ import FillGrid from './FillGrid'
 import { Link } from 'react-router-dom'
 import type { Bundle, EventCfg, Match } from '../lib/types'
 import { teamName, teamLogo, liveOnCourt } from '../lib/store'
-import { Emblem, Pill } from './ui'
+import { Emblem, Pill, PairName } from './ui'
 import { Field, Stepper, Warn } from './form'
 import * as api from '../lib/api'
 import { hornEnd } from '../lib/feedback'
@@ -123,7 +123,7 @@ export function CbScoreboard({ b, m, size = 'card', sound = false, courtLabel }:
   const nameCell = (s: Side) => (
     <div className="flex min-w-0 items-center justify-center text-center">
       <span className="line-clamp-2 break-words font-display font-bold uppercase text-white"
-        style={{ fontSize: '1.6em', lineHeight: 1.1, letterSpacing: '0.04em' }}>{teamName(b, id(s))}</span>
+        style={{ fontSize: '1.6em', lineHeight: 1.1, letterSpacing: '0.04em' }}><PairName name={teamName(b, id(s))} /></span>
     </div>
   )
   const barCell = (col: string, w = '70%', glow = true) => (
@@ -283,11 +283,11 @@ function CbUpNext({ b, n, big }: { b: Bundle; n: number; big?: boolean }) {
         {ups.map(m => (
           <div key={m.id} className={`grid grid-cols-[3.5rem_minmax(0,1fr)_1.75rem_1.75rem_1.75rem_minmax(0,1fr)] items-center gap-1.5 px-3 ${big ? 'py-3 text-2xl' : 'py-2 text-sm'}`}>
             <span className={`whitespace-nowrap font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>{(cbRound(m).replace('Round ', 'R')) || `G${m.sequence}`}</span>
-            <span className="truncate text-right">{teamName(b, m.team_a_id)}</span>
+            <span className="truncate text-right"><PairName name={teamName(b, m.team_a_id)} /></span>
             <span className="flex items-center justify-center">{m.team_a_id && <Emblem logo={teamLogo(b, m.team_a_id)} className={fl} />}</span>
             <span className="text-center text-xs text-fg-subtle">vs</span>
             <span className="flex items-center justify-center">{m.team_b_id && <Emblem logo={teamLogo(b, m.team_b_id)} className={fl} />}</span>
-            <span className="truncate text-left">{teamName(b, m.team_b_id)}</span>
+            <span className="truncate text-left"><PairName name={teamName(b, m.team_b_id)} /></span>
           </div>
         ))}
       </div>
@@ -333,7 +333,7 @@ export function CbStandings({ b, ev, big = false, heading = false }: {
               <td className={`px-1 ${cell}`}>
                 <span className="flex min-w-0 items-center gap-1.5">
                   <Emblem logo={teamLogo(b, x.team.id)} className="h-4 w-4 shrink-0 rounded-[2px]" />
-                  <span className={`min-w-0 ${big ? 'line-clamp-2 break-words leading-tight' : 'truncate'}`}>{x.team.name}</span>
+                  <span className={`min-w-0 ${big ? 'line-clamp-2 break-words leading-tight' : 'truncate'}`}><PairName name={x.team.name} /></span>
                   {grouped && ko.supported && ko.groupsDone && (
                     <span className="shrink-0 rounded bg-[#fb923c]/20 px-1 text-[10px] font-bold uppercase text-[#fdba74]">
                       {i === 0 ? 'Semi' : 'Playoff'}
@@ -393,9 +393,9 @@ export function CbKnockoutView({ b }: { b: Bundle }) {
           <div key={s} className="rounded-xl border border-line bg-surface p-3">
             <div className="mb-1 text-[11px] font-bold uppercase tracking-widest text-fg-subtle">{CB_STAGE_LABEL[s]}</div>
             <div className="flex items-center justify-between gap-2 text-base">
-              <span className={`min-w-0 flex-1 truncate text-right ${fin && m.score_a > m.score_b ? 'font-bold' : ''}`}>{teamName(b, m.team_a_id)}</span>
+              <span className={`min-w-0 flex-1 truncate text-right ${fin && m.score_a > m.score_b ? 'font-bold' : ''}`}><PairName name={teamName(b, m.team_a_id)} /></span>
               <span className="tabular shrink-0 font-display text-xl font-bold">{m.status === 'scheduled' ? 'v' : `${m.score_a} – ${m.score_b}`}</span>
-              <span className={`min-w-0 flex-1 truncate ${fin && m.score_b > m.score_a ? 'font-bold' : ''}`}>{teamName(b, m.team_b_id)}</span>
+              <span className={`min-w-0 flex-1 truncate ${fin && m.score_b > m.score_a ? 'font-bold' : ''}`}><PairName name={teamName(b, m.team_b_id)} /></span>
             </div>
           </div>
         )
@@ -416,9 +416,9 @@ export function CbMatches({ b, banner }: { b: Bundle; banner?: React.ReactNode }
     const aW = fin && m.score_a > m.score_b, bW = fin && m.score_b > m.score_a
     const nm = (id: string | null, win: boolean, right: boolean) => (
       <span className={`flex min-w-0 items-center gap-2 text-base leading-tight justify-center text-center ${win ? 'font-bold text-fg' : fin ? 'font-medium text-fg-muted' : 'font-semibold text-fg'}`}>
-        {right && <span className="line-clamp-2 break-words">{teamName(b, id)}</span>}
+        {right && <span className="line-clamp-2 break-words"><PairName name={teamName(b, id)} /></span>}
         <Emblem logo={teamLogo(b, id)} className="h-6 w-6 shrink-0 rounded-[2px] object-contain" />
-        {!right && <span className="line-clamp-2 break-words">{teamName(b, id)}</span>}
+        {!right && <span className="line-clamp-2 break-words"><PairName name={teamName(b, id)} /></span>}
       </span>
     )
     return (

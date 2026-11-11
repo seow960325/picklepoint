@@ -1,5 +1,6 @@
 /** Admin screens that only exist for multi-sport competitions. Rendered by
  *  Admin.tsx only when competition.multi_sport is true. */
+import { PairName } from '../components/ui'
 import { SportIcon } from '../components/SportIcon'
 import { useEffect, useRef, useState } from 'react'
 import * as api from '../lib/api'
@@ -211,7 +212,7 @@ export function TieScheduleTab({ bundle, ev, token, run }: any) {
             {ordered.map((t: any, i: number) => (
               <div key={t.id} className="flex items-center gap-3 py-1.5 text-sm">
                 <span className="w-8 font-display font-bold text-accent">B{i + 1}</span>
-                <span className="min-w-0 flex-1 truncate">{t.name}</span>
+                <span className="min-w-0 flex-1 truncate"><PairName name={t.name} /></span>
                 {!started && (<>
                   <button disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up"
                     className="h-8 w-8 rounded-lg border border-line text-fg-muted disabled:opacity-30">↑</button>

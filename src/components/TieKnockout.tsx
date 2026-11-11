@@ -4,7 +4,7 @@ import { SportIcon } from './SportIcon'
 import { useEffect, useState } from 'react'
 import type { Bundle } from '../lib/types'
 import { teamName, teamLogo, teamSideName } from '../lib/store'
-import { Flag, FlagGlyph, Pill, ShrinkText } from './ui'
+import { Flag, FlagGlyph, Pill, ShrinkText, PairName } from './ui'
 import {
   koState, semiPlan, finalsPlan, groupEvents, groupStageDone, tieStandings, SPORT_ICON, SPORT_LABEL, SPORT_TONE, STAGE_LABEL,
   type Sport, type Tie, type KoState,
@@ -319,7 +319,7 @@ function GroupFeed({ b, sport, eventId }: { b: Bundle; sport: Sport; eventId: st
           <div key={r.team.id}
             className={`grid grid-cols-[1.6rem_minmax(0,1fr)_2.6rem_2.2rem_2.6rem] items-center gap-x-2 px-3 py-1.5 text-sm ${i === 3 && rows.length > 4 ? 'border-b-2 border-dashed !border-line-strong' : ''}`}>
             <span className={`text-xs font-bold ${i < 4 ? tone.text : 'text-fg-subtle'}`}>{i + 1}</span>
-            <span className={`truncate ${i < 4 ? 'font-semibold text-fg' : 'text-fg-subtle'}`}>{r.team.name}</span>
+            <span className={`truncate ${i < 4 ? 'font-semibold text-fg' : 'text-fg-subtle'}`}><PairName name={r.team.name} /></span>
             <span className="tabular text-right text-fg-muted">{r.tieW}–{r.tieL}</span>
             <span className={`tabular text-right font-bold ${tone.text}`}>{r.pts}</span>
             <span className="text-right text-[10px] font-bold text-fg-subtle">{i < 4 ? `→ ${tag[i]}` : 'out'}</span>
@@ -377,7 +377,7 @@ export function KnockoutBracket({ b, sport, big = false }: { b: Bundle; sport: S
         {k.champion && (
           <div className="flex items-center justify-center gap-2 rounded-full border border-[#c99a3c]/60 bg-[#f4cd6a]/10 px-4 py-1.5">
             <Cup px={big ? 26 : 20} />
-            <span className={`font-cer font-bold text-gold ${big ? 'text-xl' : 'text-base'}`}>{teamName(b, k.champion)}</span>
+            <span className={`font-cer font-bold text-gold ${big ? 'text-xl' : 'text-base'}`}><PairName name={teamName(b, k.champion)} /></span>
           </div>
         )}
         <TieNode b={b} sport={sport} big={big} title={STAGE_LABEL['3P']} metal="bronze" tie={k.third}

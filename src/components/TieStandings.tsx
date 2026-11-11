@@ -2,7 +2,7 @@ import type { Bundle } from '../lib/types'
 import FillGrid from './FillGrid'
 import { SportIcon } from './SportIcon'
 import { teamLogo, teamSideName } from '../lib/store'
-import { Emblem } from './ui'
+import { Emblem, PairName } from './ui'
 import { CbStandings } from './CaptainBall'
 import { sportOf, SPORTS, SPORT_ICON, SPORT_LABEL, SPORT_TONE, tieStandings, groupEvents, groupStageDone, sweepBonus } from '../lib/multisport'
 
@@ -61,7 +61,7 @@ export default function TieStandings({ b, big = false }: { b: Bundle; big?: bool
                           <td className={`px-1 ${cell}`}>
                             <span className="flex min-w-0 items-start gap-1.5">
                               <Emblem logo={teamLogo(b, r.team.id)} flagName={teamSideName(b, r.team.id)} className={`mt-0.5 h-4 w-4 shrink-0 rounded-[2px] object-contain`} />
-                              <span className={`min-w-0 ${big ? 'line-clamp-2 break-words leading-tight' : 'truncate'} ${i < qual ? 'font-semibold' : ''}`}>{r.team.name}</span>
+                              <span className={`min-w-0 ${big ? 'line-clamp-2 break-words leading-tight' : 'truncate'} ${i < qual ? 'font-semibold' : ''}`}><PairName name={r.team.name} /></span>
                               {done && i < qual && <span className={`mt-0.5 shrink-0 rounded px-1 text-[10px] font-bold ${tone.solid}`}>SF</span>}
                             </span>
                           </td>

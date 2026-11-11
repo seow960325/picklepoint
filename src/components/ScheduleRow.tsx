@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { teamName, teamLogo, teamSideName } from '../lib/store'
-import { Emblem } from './ui'
+import { Emblem, PairName } from './ui'
 
 /** One row of an admin schedule list. Every column has a FIXED track, so the
  *  team names and "vs" line up down the whole list whatever the status text
@@ -16,11 +16,11 @@ export function ScheduleRow({ bundle, a, b, meta, status, live, canUp, canDown, 
     <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 px-3 py-2 sm:grid-cols-[2.75rem_minmax(0,1fr)_6.5rem_auto]">
       <span className="row-span-2 min-w-0 text-center text-xs leading-tight text-fg-subtle sm:row-span-1">{meta}</span>
       <span className="col-start-2 row-start-1 grid min-w-0 grid-cols-[minmax(0,1fr)_1.5rem_1.5rem_1.5rem_minmax(0,1fr)] items-center gap-1">
-        <span className="truncate text-right">{teamName(bundle, a)}</span>
+        <span className="truncate text-right"><PairName name={teamName(bundle, a)} /></span>
         <span className="flex h-6 w-6 items-center justify-center"><Emblem logo={teamLogo(bundle, a)} flagName={teamSideName(bundle, a)} className="h-6 w-6 shrink-0 rounded-[3px]" /></span>
         <span className="text-center text-xs text-fg-subtle">vs</span>
         <span className="flex h-6 w-6 items-center justify-center"><Emblem logo={teamLogo(bundle, b)} flagName={teamSideName(bundle, b)} className="h-6 w-6 shrink-0 rounded-[3px]" /></span>
-        <span className="truncate text-left">{teamName(bundle, b)}</span>
+        <span className="truncate text-left"><PairName name={teamName(bundle, b)} /></span>
       </span>
       <span className={`tabular col-start-2 row-start-2 truncate whitespace-nowrap text-center text-[11px] sm:col-start-3 sm:row-start-1 sm:text-right sm:text-xs ${
         live ? 'font-bold text-brand-ink' : 'text-fg-muted'}`}>

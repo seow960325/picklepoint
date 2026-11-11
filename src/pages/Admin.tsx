@@ -10,7 +10,7 @@ import {
   seedBracket, nextPowerOfTwo,
   type DraftTeam, type DuelTeam,
 } from '../lib/draw'
-import { Screen, Spinner, ThemeToggle, Emblem } from '../components/ui'
+import { Screen, Spinner, ThemeToggle, Emblem, PairName } from '../components/ui'
 import { Flag } from '../components/ui'
 import { Field, Stepper, Choice, Warn, GrowInput, input, inputFull } from '../components/form'
 import { resizeLogoSafe } from '../lib/image'
@@ -673,7 +673,7 @@ function RandomGroups({ bundle, ev, token, run }: any) {
             {teams.filter((t: any) => (t.pool ?? 'A') === p).map((t: any) => (
               <div key={t.id} className="flex min-w-0 items-center gap-1.5 py-0.5 text-sm">
                 <Emblem logo={t.logo} flagName={null} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-                <span className="truncate">{t.name}</span>
+                <span className="truncate"><PairName name={t.name} /></span>
               </div>
             ))}
           </div>
@@ -994,7 +994,7 @@ function BracketTab({ bundle, ev, token, run }: any) {
                           tossPicks(g).includes(r.team.id) ? 'border-gold bg-gold/20 text-fg' : 'border-line text-fg-muted'}`}>
                         {tossPicks(g).includes(r.team.id) && tossNeed(g) > 1 && <span className="font-bold text-gold">{tossPicks(g).indexOf(r.team.id) + 1}</span>}
                         <Emblem logo={teamLogo(bundle, r.team.id)} flagName={teamSideName(bundle, r.team.id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-                        <span className="truncate">{r.team.name}</span>
+                        <span className="truncate"><PairName name={r.team.name} /></span>
                       </button>
                     ))}
                   </div>
@@ -1019,7 +1019,7 @@ function BracketTab({ bundle, ev, token, run }: any) {
                     <td className="w-full py-0.5">
                       <span className="flex min-w-0 items-center gap-1.5">
                         <Emblem logo={teamLogo(bundle, r.team.id)} flagName={teamSideName(bundle, r.team.id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-                        <span className="truncate">{r.team.name}</span>
+                        <span className="truncate"><PairName name={r.team.name} /></span>
                       </span>
                     </td>
                     <td className="py-0.5 pl-2 text-right tabular font-bold">{r.won}</td>

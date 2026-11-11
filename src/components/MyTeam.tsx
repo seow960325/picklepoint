@@ -10,7 +10,7 @@ import { teamStatus } from '../lib/teamstatus'
 import { slotOf, slotTime, plannedCourt } from '../lib/timetable'
 import { gameTitle } from '../lib/pool'
 import { isAlert, alertWord } from '../lib/alert'
-import { Emblem } from './ui'
+import { Emblem, PairName } from './ui'
 import { Link } from 'react-router-dom'
 import { SportIcon } from './SportIcon'
 
@@ -45,20 +45,6 @@ const Star = ({ on, className = '' }: { on?: boolean; className?: string }) => (
     <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" />
   </svg>
 )
-
-/** "Daniel N / Joel": the slash sits in one fixed column, first name right-aligned to it,
- *  second left-aligned, so the slashes of a list line up. */
-function PairName({ name }: { name: string }) {
-  const parts = name.split(/\s+\/\s+/)
-  if (parts.length !== 2) return <>{name}</>
-  return (
-    <span className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline gap-x-3">
-      <span className="truncate text-right">{parts[0]}</span>
-      <span className="font-normal text-fg-subtle">/</span>
-      <span className="truncate text-left">{parts[1]}</span>
-    </span>
-  )
-}
 
 /** the pin may predate a re-import of the teams: fall back to the same name */
 export function resolvePin(b: Bundle | null, p: Pin): string | null {
@@ -276,7 +262,7 @@ function TeamPicker({ hub, bundleOf, pins, toggle, onClose }: {
                           className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border px-2.5 py-2 text-left ${on ? 'border-gold bg-gold/10' : 'border-line bg-surface active:bg-surface-2'}`}>
                           <Emblem logo={teamLogo(b, t.id)} flagName={teamSideName(b, t.id) ?? t.name} className="h-8 w-8 shrink-0 rounded-[3px]" />
                           <span className="min-w-0">
-                            <span className="block truncate text-sm font-semibold">{t.name}</span>
+                            <span className="block truncate text-sm font-semibold"><PairName name={t.name} /></span>
                             <span className="block truncate text-[11px] text-fg-subtle">{t.pool && t.pool !== '—' ? `Group ${t.pool}` : ''}</span>
                           </span>
                           <Star on={on} className={`h-5 w-5 shrink-0 ${on ? 'text-gold' : 'text-fg-subtle'}`} />

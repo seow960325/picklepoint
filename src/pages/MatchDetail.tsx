@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useCompetition, teamName } from '../lib/store'
 import * as api from '../lib/api'
 import type { PointEvent } from '../lib/types'
-import { Screen, TopBar, Spinner } from '../components/ui'
+import { Screen, TopBar, Spinner, PairName } from '../components/ui'
 import { PlayClock } from '../components/GroupsKo'
 import { roundName } from '../lib/pool'
 import { courtSession } from '../lib/queue'
@@ -103,7 +103,7 @@ export default function MatchDetail() {
           {events.map((e, i) => (
             <div key={e.id} className="flex items-center gap-3 text-sm">
               <span className="w-8 shrink-0 text-right text-fg-subtle">{i + 1}</span>
-              <span className="min-w-0 flex-1 truncate text-fg-muted">{teamName(bundle, e.team_id)}</span>
+              <span className="min-w-0 flex-1 truncate text-fg-muted"><PairName name={teamName(bundle, e.team_id)} /></span>
               <span className="tabular shrink-0 font-semibold">
                 {e.score_a_after} – {e.score_b_after}
               </span>

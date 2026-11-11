@@ -13,7 +13,7 @@ import { courtLabel } from '../lib/teamstatus'
 import { hubOf, parentHub } from '../lib/hub'
 import { slotOf, slotTime } from '../lib/timetable'
 import { usePinned } from '../lib/pin'
-import { Emblem } from './ui'
+import { Emblem, PairName } from './ui'
 import { GroupTable } from './GroupsKo'
 import FillGrid from './FillGrid'
 
@@ -34,7 +34,7 @@ function Row({ b, code, m, left }: { b: Bundle; code: string; m: Match; left: Re
   const body = (
     <>
       <span className="min-w-0 text-[11px] font-bold uppercase leading-tight tracking-wide text-fg-subtle">{left}</span>
-      <span className={`line-clamp-2 min-w-0 break-words text-right leading-tight ${cls(m.team_a_id)}`}>{teamName(b, m.team_a_id)}</span>
+      <span className={`line-clamp-2 min-w-0 break-words text-right leading-tight ${cls(m.team_a_id)}`}><PairName name={teamName(b, m.team_a_id)} /></span>
       <span className="flex h-6 w-6 items-center justify-center">{m.team_a_id && <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
       <span className="text-center">
         {live || done
@@ -42,7 +42,7 @@ function Row({ b, code, m, left }: { b: Bundle; code: string; m: Match; left: Re
           : <span className="text-xs text-fg-subtle">vs</span>}
       </span>
       <span className="flex h-6 w-6 items-center justify-center">{m.team_b_id && <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
-      <span className={`line-clamp-2 min-w-0 break-words text-left leading-tight ${cls(m.team_b_id)}`}>{teamName(b, m.team_b_id)}</span>
+      <span className={`line-clamp-2 min-w-0 break-words text-left leading-tight ${cls(m.team_b_id)}`}><PairName name={teamName(b, m.team_b_id)} /></span>
     </>
   )
   const base = `grid min-h-[44px] grid-cols-[4.2rem_minmax(0,1fr)_1.5rem_3.7rem_1.5rem_minmax(0,1fr)] items-center gap-1.5 border-b border-line/60 px-3 py-2 text-sm last:border-0 ${mine ? 'bg-gold/[0.08]' : ''}`
@@ -154,7 +154,7 @@ function RaceTable({ b, title, note, rows, cut, level, label, settled }: {
                   <span className="flex min-w-0 items-center gap-1.5">
                     <Emblem logo={teamLogo(b, r.team.id)} flagName={teamSideName(b, r.team.id)} className="h-6 w-7 shrink-0 rounded-[2px] object-contain" />
                     <span className="min-w-0 flex-1">
-                      <span className={`block truncate ${q ? 'font-semibold text-fg' : 'text-fg-muted'}`}>{r.team.name}</span>
+                      <span className={`block truncate ${q ? 'font-semibold text-fg' : 'text-fg-muted'}`}><PairName name={r.team.name} /></span>
                       <span className="block truncate text-[10px] text-fg-subtle">Group {r.team.pool}{tied ? ' · level, coin toss' : ''}</span>
                     </span>
                   </span>

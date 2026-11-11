@@ -7,7 +7,7 @@ import {
 } from '../lib/store'
 import { displayScores, rulesOf, servingSide, serverCourt as serverCourtOf, scoreCall, activeServerNo } from '../lib/scoring'
 import type { Bundle, EventCfg, Match } from '../lib/types'
-import { Screen, Pill, Spinner, FullscreenButton, Flag, Emblem, ThemeToggle, ShrinkText, Monogram, hasFlag } from '../components/ui'
+import { Screen, Pill, Spinner, FullscreenButton, Flag, Emblem, ThemeToggle, ShrinkText, Monogram, hasFlag, PairName } from '../components/ui'
 import Court from '../components/Court'
 import { IS_DEMO, demo, refresh as fetchBundle } from '../lib/api'
 import { fullscreenSupported } from '../lib/fullscreen'
@@ -494,13 +494,13 @@ function NextTies({ b, n = 4 }: { b: Bundle; n?: number }) {
             <div className="grid grid-cols-[1.1rem_minmax(0,1fr)_1.75rem_minmax(0,1fr)] items-center gap-1.5 text-sm">
               <span className="text-center font-display text-xs font-bold text-fg-subtle">{i + 1}</span>
               <span className="flex min-w-0 items-center justify-center gap-1.5">
-                <span className="truncate text-center">{teamName(b, t.a)}</span>
+                <span className="truncate text-center"><PairName name={teamName(b, t.a)} /></span>
                 <Emblem logo={teamLogo(b, t.a)} flagName={teamSideName(b, t.a)} className={fl} />
               </span>
               <span className="text-center text-xs text-fg-subtle">vs</span>
               <span className="flex min-w-0 items-center justify-center gap-1.5">
                 <Emblem logo={teamLogo(b, t.b)} flagName={teamSideName(b, t.b)} className={fl} />
-                <span className="truncate">{teamName(b, t.b)}</span>
+                <span className="truncate"><PairName name={teamName(b, t.b)} /></span>
               </span>
             </div>
             <div className="mt-0.5 text-center text-[10px] uppercase tracking-wider text-fg-subtle">
@@ -774,11 +774,11 @@ function TieCard({ b, t, code, sport, bnum }: { b: Bundle; t: Tie; code: string;
   const side = (id: string | null, win: boolean, right: boolean) => (
     <span className={`flex min-w-0 items-center gap-1.5 justify-center ${
       win ? 'font-bold text-fg' : t.done ? 'text-fg-muted' : 'text-fg'}`}>
-      {right && <span className="truncate text-center">{teamName(b, id)}</span>}
+      {right && <span className="truncate text-center"><PairName name={teamName(b, id)} /></span>}
       {right && bTag(id)}
       <Emblem logo={teamLogo(b, id)} flagName={teamSideName(b, id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
       {!right && bTag(id)}
-      {!right && <span className="truncate">{teamName(b, id)}</span>}
+      {!right && <span className="truncate"><PairName name={teamName(b, id)} /></span>}
     </span>
   )
   return (
@@ -907,7 +907,7 @@ export function LiveGrid({ b, code, tv, split = false, compact = false, hideDeck
               {poolEv
                 ? !tv && up && (
                   <div className={`mt-3 border-t border-line pt-2 text-fg-muted lg:mt-4 lg:pt-3 ${tvBig ? 'text-xl' : 'text-[11px] lg:text-sm'}`}>
-                    Next{plannedTime(b, up) ? ` · ${plannedTime(b, up)}` : ''}: <span className="truncate">{teamName(b, up.team_a_id)}</span> vs <span className="truncate">{teamName(b, up.team_b_id)}</span>
+                    Next{plannedTime(b, up) ? ` · ${plannedTime(b, up)}` : ''}: <span className="truncate"><PairName name={teamName(b, up.team_a_id)} /></span> vs <span className="truncate"><PairName name={teamName(b, up.team_b_id)} /></span>
                   </div>
                 )
                 : !tv && <CourtUpList b={b} courtId={ct.id} tv={tv} />}
@@ -958,13 +958,13 @@ function CourtUpList({ b, courtId, tv }: { b: Bundle; courtId: string; tv: boole
             <div key={m.id} className={`grid items-center ${tv ? 'grid-cols-[3.6rem_minmax(0,1fr)_2.2rem_minmax(0,1fr)] gap-2 py-2 text-2xl' : (mc ? 'grid-cols-[2.4rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-1.5 py-1.5 text-sm font-medium leading-tight lg:text-base' : 'grid-cols-[3.1rem_minmax(0,1fr)_2rem_minmax(0,1fr)] gap-2 py-1.5 text-lg lg:text-2xl')}`}>
               <span className={`whitespace-nowrap text-center font-display font-bold text-fg-subtle ${tv ? 'text-base' : mc ? 'text-[10px]' : 'text-xs'}`}>{tagOf(m, i)}</span>
               <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : 'justify-end'} gap-1.5 text-fg-muted`}>
-                <span className={mc ? 'line-clamp-2 break-words text-center' : 'truncate text-right'}>{teamName(b, m.team_a_id)}</span>
+                <span className={mc ? 'line-clamp-2 break-words text-center' : 'truncate text-right'}><PairName name={teamName(b, m.team_a_id)} /></span>
                 <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={`${fl} shrink-0 rounded-[2px] object-contain`} />
               </span>
               <span className={`text-center text-fg-subtle ${mc && !tv ? 'text-xs' : 'text-base'}`}>vs</span>
               <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : ''} gap-1.5 text-fg-muted`}>
                 <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={`${fl} shrink-0 rounded-[2px] object-contain`} />
-                <span className={mc ? 'line-clamp-2 break-words text-center' : 'truncate'}>{teamName(b, m.team_b_id)}</span>
+                <span className={mc ? 'line-clamp-2 break-words text-center' : 'truncate'}><PairName name={teamName(b, m.team_b_id)} /></span>
               </span>
             </div>
           ))}
@@ -1033,13 +1033,13 @@ function Schedule({ b }: { b: Bundle }) {
             <div className="truncate text-sm leading-relaxed">
               <span className="grid grid-cols-[minmax(0,1fr)_1.75rem_minmax(0,1fr)] items-center gap-1">
                 <span className="flex min-w-0 items-center justify-center gap-1">
-                  <span className="truncate text-center">{teamName(b, m.team_a_id)}</span>
+                  <span className="truncate text-center"><PairName name={teamName(b, m.team_a_id)} /></span>
                   <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={fl} />
                 </span>
                 <span className="text-center text-xs text-fg-subtle">vs</span>
                 <span className="flex min-w-0 items-center justify-center gap-1">
                   <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={fl} />
-                  <span className="truncate">{teamName(b, m.team_b_id)}</span>
+                  <span className="truncate"><PairName name={teamName(b, m.team_b_id)} /></span>
                 </span>
               </span>
             </div>
@@ -1366,7 +1366,7 @@ function PCentre({ b, finalM, thirdM, champId, podium }: {
           {champId
             ? <div className="mt-1 flex items-center gap-1.5 rounded-full border border-[#c2922c]/60 bg-[#f7d774]/10 px-3 py-1">
                 <Emblem logo={teamLogo(b, champId)} flagName={teamSideName(b, champId)} className="h-4 w-6 shrink-0 rounded-[1px] object-contain" />
-                <span className="font-cer text-sm font-bold text-[#f7d774]">{teamName(b, champId)}</span>
+                <span className="font-cer text-sm font-bold text-[#f7d774]"><PairName name={teamName(b, champId)} /></span>
               </div>
             : <div className="mt-1 text-[10px] uppercase tracking-widest text-fg-subtle">champion</div>}
         </div>
@@ -1764,7 +1764,7 @@ export function Standings({ b }: { b: Bundle }) {
                   <tbody className="divide-y divide-line">
                     {rows.map(r => (
                       <tr key={r.team.id}>
-                        <td className="truncate px-3 py-2"><Emblem logo={teamLogo(b, r.team.id)} flagName={teamSideName(b, r.team.id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{r.team.name}</td>
+                        <td className="truncate px-3 py-2"><Emblem logo={teamLogo(b, r.team.id)} flagName={teamSideName(b, r.team.id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" /><PairName name={r.team.name} /></td>
                         <td className="tabular px-2 py-2 text-right text-fg-muted">{r.played}</td>
                         <td className="tabular px-2 py-2 text-right font-bold">{r.won}</td>
                         <td className="tabular px-2 py-2 text-right text-fg-muted">{r.lost}</td>
@@ -1846,7 +1846,7 @@ export function Matches({ b, code }: { b: Bundle; code: string }) {
                       <Link to={`/c/${code}/match/${m.id}`}
                         className={`grid grid-cols-[minmax(0,1fr)_4rem_minmax(0,1fr)] items-center gap-2 rounded-lg px-1 py-1.5 active:bg-surface-2 ${live ? 'bg-brand/[0.06]' : ''}`}>
                         <span className={`flex min-w-0 items-center justify-end gap-1.5 truncate text-sm ${nameCls(aWin)}`}>
-                          <span className="truncate">{teamName(b, m.team_a_id)}</span>
+                          <span className="truncate"><PairName name={teamName(b, m.team_a_id)} /></span>
                           <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
                           {(decided || live) && <span className={`tabular inline-block min-w-[1.4rem] pl-1 text-right font-display font-bold ${live ? 'text-brand-ink' : scoreCls(aWin)}`}>{m.score_a}</span>}
                         </span>
@@ -1861,7 +1861,7 @@ export function Matches({ b, code }: { b: Bundle; code: string }) {
                         <span className={`flex min-w-0 items-center gap-1.5 truncate text-sm ${nameCls(bWin)}`}>
                           {(decided || live) && <span className={`tabular inline-block min-w-[1.4rem] pr-1 text-left font-display font-bold ${live ? 'text-brand-ink' : scoreCls(bWin)}`}>{m.score_b}</span>}
                           <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-                          <span className="truncate">{teamName(b, m.team_b_id)}</span>
+                          <span className="truncate"><PairName name={teamName(b, m.team_b_id)} /></span>
                         </span>
                       </Link>
                     </li>
@@ -1910,7 +1910,7 @@ function GroupCard({ b, code, g, rows, advance, matches }: {
             <div key={r.team.id} className={`flex items-center gap-2 py-0.5 ${i < advance ? 'font-semibold text-fg' : 'text-fg-subtle'}`}>
               <span className="w-3.5 shrink-0 tabular">{i + 1}</span>
               <Emblem logo={teamLogo(b, r.team.id)} flagName={teamSideName(b, r.team.id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-              <span className="min-w-0 flex-1 truncate">{r.team.name}</span>
+              <span className="min-w-0 flex-1 truncate"><PairName name={r.team.name} /></span>
               <span className="shrink-0 tabular font-bold">{r.won}</span>
             </div>
           ))}
@@ -1929,7 +1929,7 @@ function GroupCard({ b, code, g, rows, advance, matches }: {
               <Link key={m.id} to={`/c/${code}/match/${m.id}`}
                 className={`grid grid-cols-[minmax(0,1fr)_3.5rem_minmax(0,1fr)] items-center gap-2 border-b border-line/60 px-3 py-2 text-xs last:border-0 active:bg-surface-2 ${live ? 'bg-brand/[0.06]' : ''}`}>
                 <span className={`flex min-w-0 items-center justify-end gap-1 truncate ${nameCls(aWin)}`}>
-                  <span className="truncate">{teamName(b, m.team_a_id)}</span>
+                  <span className="truncate"><PairName name={teamName(b, m.team_a_id)} /></span>
                   <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
                   {(decided || live) && <span className={`tabular inline-block min-w-[1.1rem] pl-0.5 text-right font-bold ${live ? 'text-brand-ink' : scoreCls(aWin)}`}>{m.score_a}</span>}
                 </span>
@@ -1943,7 +1943,7 @@ function GroupCard({ b, code, g, rows, advance, matches }: {
                 <span className={`flex min-w-0 items-center gap-1 truncate ${nameCls(bWin)}`}>
                   {(decided || live) && <span className={`tabular inline-block min-w-[1.1rem] pr-0.5 text-left font-bold ${live ? 'text-brand-ink' : scoreCls(bWin)}`}>{m.score_b}</span>}
                   <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-                  <span className="truncate">{teamName(b, m.team_b_id)}</span>
+                  <span className="truncate"><PairName name={teamName(b, m.team_b_id)} /></span>
                 </span>
               </Link>
             )
@@ -2011,13 +2011,13 @@ function FlatMatches({ b, code }: { b: Bundle; code: string }) {
           <div className="text-center font-display text-base font-bold text-fg-subtle">{court}</div>
           <div className="flex min-w-0 items-center gap-2">
             <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={flag} />
-            <span className={`truncate text-sm ${nameCls(aWin)}`}>{teamName(b, m.team_a_id)}</span>
+            <span className={`truncate text-sm ${nameCls(aWin)}`}><PairName name={teamName(b, m.team_a_id)} /></span>
             {(finished || live) && <span className={`ml-auto pl-2 tabular font-display text-lg font-bold ${live ? 'text-brand-ink' : scoreCls(aWin)}`}>{m.score_a}</span>}
           </div>
           <div className="flex justify-center">{statusPill(m)}</div>
           <div className="flex min-w-0 items-center justify-end gap-2">
             {(finished || live) && <span className={`mr-auto pr-2 tabular font-display text-lg font-bold ${live ? 'text-brand-ink' : scoreCls(bWin)}`}>{m.score_b}</span>}
-            <span className={`truncate text-right text-sm ${nameCls(bWin)}`}>{teamName(b, m.team_b_id)}</span>
+            <span className={`truncate text-right text-sm ${nameCls(bWin)}`}><PairName name={teamName(b, m.team_b_id)} /></span>
             <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={flag} />
           </div>
         </div>
@@ -2027,12 +2027,12 @@ function FlatMatches({ b, code }: { b: Bundle; code: string }) {
           <div className="min-w-0 flex-1 space-y-0.5">
             <div className="flex items-center gap-2">
               <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={flag} />
-              <span className={`truncate text-sm ${nameCls(aWin)}`}>{teamName(b, m.team_a_id)}</span>
+              <span className={`truncate text-sm ${nameCls(aWin)}`}><PairName name={teamName(b, m.team_a_id)} /></span>
               {(finished || live) && <span className={`ml-auto tabular font-bold ${live ? 'text-brand-ink' : scoreCls(aWin)}`}>{m.score_a}</span>}
             </div>
             <div className="flex items-center gap-2">
               <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={flag} />
-              <span className={`truncate text-sm ${nameCls(bWin)}`}>{teamName(b, m.team_b_id)}</span>
+              <span className={`truncate text-sm ${nameCls(bWin)}`}><PairName name={teamName(b, m.team_b_id)} /></span>
               {(finished || live) && <span className={`ml-auto tabular font-bold ${live ? 'text-brand-ink' : scoreCls(bWin)}`}>{m.score_b}</span>}
             </div>
           </div>
