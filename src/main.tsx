@@ -1,6 +1,16 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+// Fonts ship with the app (no Google Fonts request at the venue) in every weight the
+// screens use: before, 800/900 headings were a browser-faked bold of the 700 file.
+import '@fontsource/barlow-condensed/500.css'
+import '@fontsource/barlow-condensed/600.css'
+import '@fontsource/barlow-condensed/700.css'
+import '@fontsource/barlow-condensed/800.css'
+import '@fontsource/barlow-condensed/900.css'
+import '@fontsource/cinzel/600.css'
+import '@fontsource/cinzel/700.css'
+import '@fontsource/cinzel/900.css'
 import './index.css'
 import Join from './pages/Join'
 import Board from './pages/Board'

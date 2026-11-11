@@ -94,7 +94,7 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
                       {r.team.name}
                     </span>
                     {tossAt(i) && (
-                      <span className="mt-0.5 inline-block whitespace-nowrap rounded bg-gold/20 px-1 text-[9px] font-bold uppercase leading-4 text-gold">level · coin toss</span>
+                      <span className="mt-0.5 inline-block whitespace-nowrap rounded bg-gold/20 px-1 text-[10px] font-bold uppercase leading-4 text-gold">level · coin toss</span>
                     )}
                   </span>
                 </span>

@@ -331,6 +331,10 @@ export const demo = {
     }
     const teams = s.bundle.teams.filter(t => t.event_id === eventId)
     const courts = s.bundle.courts
+    // the knockout bracket of the event stays (migration 0041), after the new group games
+    const bracket = s.bundle.matches.filter(m => m.event_id === eventId && m.bracket_key)
+      .sort((a, b) => a.sequence - b.sequence)
+    bracket.forEach((m, i) => { m.sequence = draft.length + 1 + i })
     s.bundle.matches = draft.map(m => ({
       id: uid(), event_id: eventId, court_id: courts[m.courtIdx % courts.length].id,
       round: m.label ?? `Round ${m.round}`, sequence: m.sequence,
@@ -339,9 +343,11 @@ export const demo = {
       status: 'scheduled' as const, winner_id: null, next_match_id: null, next_slot: null,
       started_at: null, finished_at: null, duration_seconds: null,
     }))
+    const groupGames = s.bundle.matches
+    s.bundle.matches = [...groupGames, ...bracket]
     for (const c of courts) {
       const first = s.bundle.matches
-        .filter(m => m.court_id === c.id).sort((a, b) => a.sequence - b.sequence)[0]
+        .filter(m => m.court_id === c.id && !m.bracket_key).sort((a, b) => a.sequence - b.sequence)[0]
       if (first) first.status = 'live'
     }
     save(s)

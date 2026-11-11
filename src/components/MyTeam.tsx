@@ -38,7 +38,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
           <Star className="h-5 w-5 shrink-0 text-gold" />
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-bold">Follow my team</span>
-            <span className="block truncate text-xs text-fg-muted">See your court and how many games before your turn.</span>
+            <span className="block text-xs leading-snug text-fg-muted">See your court and how many games are before yours.</span>
           </span>
           <span className="shrink-0 text-fg-subtle">›</span>
         </button>

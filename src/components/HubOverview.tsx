@@ -126,17 +126,17 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
                 {live.map(m => (
                   <div key={m.id} className="grid grid-cols-[3rem_minmax(0,1fr)_3rem_minmax(0,1fr)] items-center gap-1.5 py-1 text-sm">
                     <span className="truncate text-[11px] font-bold uppercase text-red-400">● {court(b!, m.court_id)}</span>
-                    <span className="truncate text-right font-semibold">{name(b!, m.team_a_id)}</span>
+                    <span className="line-clamp-2 break-words text-right font-semibold leading-tight">{name(b!, m.team_a_id)}</span>
                     <span className="tabular text-center font-display font-bold">{m.score_a}–{m.score_b}</span>
-                    <span className="truncate font-semibold">{name(b!, m.team_b_id)}</span>
+                    <span className="line-clamp-2 break-words font-semibold leading-tight">{name(b!, m.team_b_id)}</span>
                   </div>
                 ))}
                 {next.map((m, i) => (
                   <div key={m.id} className="grid grid-cols-[3rem_minmax(0,1fr)_3rem_minmax(0,1fr)] items-center gap-1.5 py-1 text-sm text-fg-muted">
                     <span className="truncate text-[11px] font-bold uppercase text-fg-subtle">{i === 0 ? 'Next' : `+${i}`}</span>
-                    <span className="truncate text-right">{name(b!, m.team_a_id)}</span>
+                    <span className="line-clamp-2 break-words text-right leading-tight">{name(b!, m.team_a_id)}</span>
                     <span className="text-center text-xs text-fg-subtle">vs</span>
-                    <span className="truncate">{name(b!, m.team_b_id)}</span>
+                    <span className="line-clamp-2 break-words leading-tight">{name(b!, m.team_b_id)}</span>
                   </div>
                 ))}
               </div>}

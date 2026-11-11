@@ -337,7 +337,7 @@ export function CbStandings({ b, ev, big = false, heading = false }: {
                   <Emblem logo={teamLogo(b, x.team.id)} className="h-4 w-4 shrink-0 rounded-[2px]" />
                   <span className={`min-w-0 ${big ? 'line-clamp-2 break-words leading-tight' : 'truncate'}`}>{x.team.name}</span>
                   {grouped && ko.supported && ko.groupsDone && (
-                    <span className="shrink-0 rounded bg-[#fb923c]/20 px-1 text-[9px] font-bold uppercase text-[#fdba74]">
+                    <span className="shrink-0 rounded bg-[#fb923c]/20 px-1 text-[10px] font-bold uppercase text-[#fdba74]">
                       {i === 0 ? 'Semi' : 'Playoff'}
                     </span>
                   )}

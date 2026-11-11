@@ -398,10 +398,11 @@ export async function adminSetAdminPin(token: string, pin: string) {
 
 export async function adminReplaceSchedule(
   token: string, eventId: string, draft: DraftMatch[],
-  teamIds: string[], courtIds: string[],
+  teamIds: string[], courtIds: string[], opts: { keepBracket?: boolean } = {},
 ) {
   if (IS_DEMO) return demo.replaceSchedule(eventId, draft)
-  await rpc('admin_replace_schedule', {
+  // groups -> knockout: only the group games are rebuilt, the bracket stays (migration 0041)
+  await rpc(opts.keepBracket ? 'admin_replace_group_schedule' : 'admin_replace_schedule', {
     p_token: token, p_event_id: eventId,
     p_matches: draft.map(m => ({
       a: m.aIdx, b: m.bIdx, court: m.courtIdx, sequence: m.sequence,

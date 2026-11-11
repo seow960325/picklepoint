@@ -63,7 +63,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
         <div className="mx-auto mt-3 grid max-w-6xl gap-1 sm:flex" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
           {tabs.map(t => (
             <button key={t.id} onClick={() => set('t', t.id === 'live' ? null : t.id)}
-              className={`min-h-[38px] whitespace-nowrap rounded-lg px-0.5 py-2 text-[10px] font-bold uppercase min-[390px]:text-[11px] sm:shrink-0 sm:px-3 sm:text-xs sm:tracking-wide lg:px-4 lg:text-sm ${tab === t.id ? 'bg-brand text-brand-fg' : 'bg-surface text-fg-muted sm:bg-transparent'}`}>
+              className={`min-h-[38px] whitespace-nowrap rounded-lg px-0.5 py-2 font-display text-[15px] font-bold uppercase tracking-wide sm:shrink-0 sm:px-3 sm:text-base lg:px-4 lg:text-lg ${tab === t.id ? 'bg-brand text-brand-fg' : 'bg-surface text-fg-muted sm:bg-transparent'}`}>
               {t.label}
             </button>
           ))}

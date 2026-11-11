@@ -19,7 +19,7 @@ function Name({ b, id, prov, win, lose }: { b: Bundle; id: string | null; prov?:
     <span className={`flex min-w-0 items-center gap-1.5 ${win ? 'font-bold text-fg' : lose ? 'text-fg-subtle line-through decoration-1' : prov ? 'italic text-fg-muted' : 'font-semibold text-fg'}`}>
       <Emblem logo={teamLogo(b, id)} flagName={teamName(b, id)} className="h-5 w-5 shrink-0 rounded-[2px]" />
       <span className="line-clamp-2 min-w-0 break-words leading-tight lg:truncate lg:[display:block]">{teamName(b, id)}</span>
-      {prov && !win && !lose && <span className="hidden shrink-0 rounded bg-amber-400/20 px-1 text-[9px] font-bold uppercase not-italic text-amber-500 lg:inline">so far</span>}
+      {prov && !win && !lose && <span className="hidden shrink-0 rounded bg-amber-400/20 px-1 text-[10px] font-bold uppercase not-italic text-amber-500 lg:inline">so far</span>}
       {win && <span className="shrink-0 text-[#34d399]">✓</span>}
     </span>
   )

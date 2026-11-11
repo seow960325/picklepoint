@@ -73,6 +73,69 @@ export function buildDraw(teams: DraftTeam[], courtCount: number): DraftMatch[] 
   return out
 }
 
+/** Group fixtures spread over the courts so that the day runs evenly:
+ *   - every court gets the same number of games (never 12 / 6 / 6),
+ *   - no team is due on two courts at the same time,
+ *   - a team that has just played waits while a rested team goes first, and
+ *     the team that has waited longest is taken first, so nobody sits out long.
+ *  Each court plays its list top to bottom; the lists are built side by side,
+ *  one game per court per turn. `legs` 2 = every pair meets twice, the second
+ *  meeting only after the whole first round of meetings. */
+export function buildRestedDraw(teams: DraftTeam[], courtCount: number, legs = 1): DraftMatch[] {
+  const courts = Math.max(1, courtCount)
+  const pools = [...new Set(teams.map(t => t.pool || 'A'))].sort()
+  interface G { a: number; b: number; round: number; pool: string; leg: number; order: number }
+  const games: G[] = []
+  let maxRound = 0
+  for (let leg = 0; leg < Math.max(1, legs); leg++) {
+    const start = maxRound
+    for (const pool of pools) {
+      const members = teams.map((t, i) => ({ t, i })).filter(x => (x.t.pool || 'A') === pool)
+      roundRobinPairs(members.length).forEach((pairs, r) => pairs.forEach(([x, y]) => {
+        const [a, b] = leg % 2 ? [members[y].i, members[x].i] : [members[x].i, members[y].i]
+        games.push({ a, b, round: start + r + 1, pool, leg, order: games.length })
+        maxRound = Math.max(maxRound, start + r + 1)
+      }))
+    }
+  }
+  const at = new Map<number, Set<number>>()          // team -> turns it plays in
+  const last = new Map<number, number>()             // team -> its latest turn
+  const busy = (t: number, turn: number) => at.get(t)?.has(turn) ?? false
+  const load = Array<number>(courts).fill(0)         // games given to each court = that court's next turn
+  const placed: Array<G & { court: number; turn: number }> = []
+  let left = games.slice()
+  let stuck = 0
+  while (left.length) {
+    // the court that is free first (fewest games so far) takes the next game
+    const court = load.indexOf(Math.min(...load))
+    const turn = load[court]
+    const leg = Math.min(...left.map(g => g.leg))
+    const free = left.filter(g => g.leg === leg && !busy(g.a, turn) && !busy(g.b, turn))
+    if (!free.length) {
+      // every remaining game has a team on another court in this turn: this court sits the turn out
+      load[court]++
+      if (++stuck > games.length * courts + courts) break
+      continue
+    }
+    stuck = 0
+    const rest = (t: number) => turn - (last.get(t) ?? -9)
+    const key = (g: G) => {
+      const tight = (rest(g.a) <= 1 ? 1 : 0) + (rest(g.b) <= 1 ? 1 : 0)
+      return [tight, g.round, -(Math.min(rest(g.a), 9) + Math.min(rest(g.b), 9)), g.order]
+    }
+    free.sort((x, y) => { const p = key(x), q = key(y); for (let i = 0; i < p.length; i++) if (p[i] !== q[i]) return p[i] - q[i]; return 0 })
+    const g = free[0]
+    left = left.filter(x => x !== g)
+    for (const t of [g.a, g.b]) { at.set(t, (at.get(t) ?? new Set()).add(turn)); last.set(t, Math.max(last.get(t) ?? -9, turn)) }
+    placed.push({ ...g, court, turn })
+    load[court]++
+  }
+  // anything the loop could not place (never expected) still gets a court
+  for (const g of left) placed.push({ ...g, court: load.indexOf(Math.min(...load)), turn: Math.max(...load) })
+  placed.sort((x, y) => x.turn - y.turn || x.court - y.court)
+  return placed.map((g, i) => ({ aIdx: g.a, bIdx: g.b, round: g.round, courtIdx: g.court, sequence: i + 1, pool: g.pool }))
+}
+
 // =====================================================================
 // Duel format — two sides (countries, companies, colors...) face off.
 // Each court hosts one pod: 2 teams from Side A vs 2 teams from Side B,
@@ -324,13 +387,8 @@ export function buildGroupKoDraw(
 
   const teams = drawGroups(names, groupSize, opts.rng ?? Math.random)
   const groupCount = new Set(teams.map(t => t.pool)).size
-  const leg1 = buildDraw(teams, courtCount)
-  // second leg: same fixtures again, sides swapped, after the whole first leg
-  const lastRound = Math.max(0, ...leg1.map(m => m.round))
-  const groupMatches = (opts.legs ?? 1) >= 2
-    ? [...leg1, ...leg1.map(m => ({ ...m, aIdx: m.bIdx, bIdx: m.aIdx,
-        round: m.round + lastRound, sequence: m.sequence + leg1.length }))]
-    : leg1
+  // rested, evenly spread over the courts; second leg (sides swapped) after the whole first leg
+  const groupMatches = buildRestedDraw(teams, courtCount, (opts.legs ?? 1) >= 2 ? 2 : 1)
 
   if (isRrFinal(names.length, groupSize, advancePerGroup)) {
     const seq = groupMatches.length + 1

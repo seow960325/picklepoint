@@ -94,7 +94,7 @@ function TeamPanel({ name, side, st, score, callMs, callSide, apply }: {
       <div className="grid h-12 shrink-0 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 landscape:h-10">
         <Btn onClick={() => apply(cbFoul(side, -1))} tone="ghost" className="h-full text-xl" disabled={st.f[side] < 1}>−</Btn>
         <span className="flex h-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl border border-[#2b313c] bg-[#14171d] landscape:flex-row landscape:gap-2">
-          <span className="font-display text-[9px] font-bold uppercase tracking-[0.18em] text-[#8b93a1] landscape:text-[11px]">Fouls</span>
+          <span className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-[#8b93a1] landscape:text-[11px]">Fouls</span>
           <span className="text-[20px] leading-none landscape:text-[22px]"><SevenSeg text={segScore(st.f[side])} color={CB_FOUL_COLOR} size="1em" glow={false} /></span>
         </span>
         <Btn onClick={() => apply(cbFoul(side, 1), tapPoint)} tone="ghost" className="h-full text-xl">+</Btn>

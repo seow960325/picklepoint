@@ -183,7 +183,22 @@ export default function Court({
   leftName, rightName, nameSize = 15, nameHalo = false, nameBelow = false, leftScore, rightScore, onTap, disabled, serving, serverNo, serverCourt,
   leftFlag, rightFlag, leftLogo, rightLogo, label, callScore, sport, bigEmblem = false, wide = false,
 }: CourtProps) {
-  const VW = wide ? 528 : 480
+  // The court art stretches to the box, so the overlay must be as wide as the box
+  // too (in its own units): on a long phone the circles then sit in the middle of
+  // each half court instead of drifting towards the net.
+  const boxRef = useRef<HTMLDivElement>(null)
+  const [aspect, setAspect] = useState(0)
+  useLayoutEffect(() => {
+    const el = boxRef.current
+    if (!el) return
+    const read = () => { const r = el.getBoundingClientRect(); if (r.height > 0) setAspect(r.width / r.height) }
+    read()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(read)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const VW = Math.max(wide ? 528 : 480, Math.round(240 * aspect))
   const CXL = VW / 4, CXR = VW * 3 / 4
   const BALL_X_RIGHT = VW - 30
   const R = wide ? 74 : 72
@@ -234,7 +249,7 @@ export default function Court({
   })
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-2xl bg-[#0d131e]">
+    <div ref={boxRef} className="relative h-full w-full overflow-hidden rounded-2xl bg-[#0d131e]">
       {/* ---- court surface, stretched full-bleed ---- */}
       <svg viewBox="0 0 480 240" preserveAspectRatio="none"
         className="absolute inset-0 h-full w-full">
@@ -403,7 +418,7 @@ export default function Court({
         {nameBelow && ([[CXL, leftName, '#c6ff3d'], [CXR, rightName, '#22d3ee']] as const).map(([cx, nm, col]) => {
           const full = clip(nm, 30)
           // fit the name inside its own half (never across the net or off the court)
-          const room = (wide ? 236 : 212)
+          const room = VW / 2 - 28
           const em = capsWidth(full)                       // width at 1px font, without letter spacing
           const fs = Math.max(11, Math.min(22, Math.floor((room - full.length) / Math.max(em, 0.1))))
           return <FitText key={cx} x={cx} y={219} room={room} fs={fs} fill={col} text={full} />

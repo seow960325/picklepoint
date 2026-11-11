@@ -6,7 +6,7 @@ import {
 } from '../lib/store'
 import * as api from '../lib/api'
 import {
-  buildDraw, buildDuelDraw, defaultSwitchAt, validateRules, validateDuelSquads,
+  buildDraw, buildRestedDraw, buildDuelDraw, defaultSwitchAt, validateRules, validateDuelSquads,
   seedBracket, nextPowerOfTwo,
   type DraftTeam, type DuelTeam,
 } from '../lib/draw'
@@ -19,6 +19,8 @@ import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts, Kn
 import { sportsPresent, isCb } from '../lib/multisport'
 import { CbRulesPanel } from '../components/CaptainBall'
 import { isPoolDispatch, isDiffTiebreak, shuffleMap, eventUntouched } from '../lib/pool'
+import { parentHub } from '../lib/hub'
+import { seatsOf, entriesOf, fixedOf, currentMeets, smartDraw, jointDraw, slotClock } from '../lib/clash'
 import { koPlanOf, planDraw, tokenLabel } from '../lib/koplan'
 import { GroupTable } from '../components/GroupsKo'
 
@@ -531,10 +533,43 @@ function RandomGroups({ bundle, ev, token, run }: any) {
   const teams = bundle.teams.filter((t: any) => t.event_id === ev.id)
   const pools = [...new Set<string>(teams.map((t: any) => t.pool ?? 'A'))].sort()
   const open = eventUntouched(bundle, ev.id)
+  // The other category of the same event runs at the same time (MC26: Men's on
+  // Courts 1-3, Mixed on 4-6): players entered in both must not be due on two
+  // courts in the same time slot, so the draw looks at the other category too.
+  const code = String(bundle.competition.code).toUpperCase()
+  const hub = parentHub(code)
+  const partnerCat = hub?.cats.find(c => c.code !== code && c.code !== hub.code && c.sport === hub.cats.find(x => x.code === code)?.sport)
+  const [partner, setPartner] = useState<any>(null)
+  const loadPartner = () => partnerCat ? api.join(partnerCat.code).then(setPartner).catch(() => setPartner(null)) : Promise.resolve()
+  useEffect(() => { void loadPartner() }, [partnerCat?.code])
+  const timed = seatsOf(bundle, ev.id).some(s => s.slots.length > 0)
+  const pEv = partner?.events.find((e: any) => e.format === 'groups_ko')
+  const fixed = partner && timed ? fixedOf(partner, partnerCat!.short) : []
+  const meets = timed && partner ? currentMeets(bundle, ev.id, fixed) : []
+  const pToken = partnerCat ? readToken(partnerCat.code) : null
+  const both = !!(partner && pEv && pToken && timed && eventUntouched(partner, pEv.id) && seatsOf(partner, pEv.id).some(s => s.slots.length > 0))
+  const mine = hub?.cats.find(c => c.code === code)?.short ?? code
   const draw = () => {
     setSure(false)
-    run(() => api.adminShuffleGroups(token, ev.id, shuffleMap(teams.map((t: any) => t.id))), 'New random groups drawn')
+    if (!timed || !partner) {
+      run(() => api.adminShuffleGroups(token, ev.id, shuffleMap(teams.map((t: any) => t.id))), 'New random groups drawn')
+      return
+    }
+    const here = { label: mine, seats: seatsOf(bundle, ev.id), entries: entriesOf(bundle, ev.id) }
+    if (both) {
+      const r = jointDraw(here, { label: partnerCat!.short, seats: seatsOf(partner, pEv.id), entries: entriesOf(partner, pEv.id) })
+      run(async () => {
+        await api.adminShuffleGroups(token, ev.id, r.a.map)
+        await api.adminShuffleGroups(pToken!, pEv.id, r.b.map)
+        await loadPartner()
+      }, `Both categories drawn · ${r.a.clashes === 0 ? 'no player on two courts at once' : `${r.a.clashes} time clash${r.a.clashes === 1 ? '' : 'es'} could not be avoided`}`)
+    } else {
+      const d = smartDraw(here.seats, here.entries, fixed)
+      run(async () => { await api.adminShuffleGroups(token, ev.id, d.map); await loadPartner() },
+        `New random groups drawn · ${d.clashes === 0 ? 'no player on two courts at once' : `${d.clashes} time clash${d.clashes === 1 ? '' : 'es'} left — also draw ${partnerCat!.short}`}`)
+    }
   }
+  const clock = (xs: number[], c: string) => xs.map(x => slotClock(c, x)).join(' · ')
   return (
     <div className="space-y-3 rounded-xl border border-line bg-surface p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -550,7 +585,7 @@ function RandomGroups({ bundle, ev, token, run }: any) {
             )}
             <button onClick={() => sure ? draw() : setSure(true)}
               className={`shrink-0 whitespace-nowrap rounded-xl px-5 py-2.5 font-display font-bold ${sure ? 'bg-accent text-canvas' : 'bg-brand text-brand-fg'}`}>
-              {sure ? 'YES, DRAW AGAIN' : '🎲 GENERATE RANDOM GROUPS'}
+              {sure ? 'YES, DRAW AGAIN' : both ? '🎲 DRAW BOTH CATEGORIES' : '🎲 GENERATE RANDOM GROUPS'}
             </button>
           </div>
         ) : (
@@ -573,6 +608,44 @@ function RandomGroups({ bundle, ev, token, run }: any) {
       <p className="text-xs text-fg-subtle">
         Type the real team names above first, then generate. Drawing again is allowed until the first point is scored.
       </p>
+      {partnerCat && timed && (
+        <div className="rounded-lg border border-line px-3 py-2.5">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-fg-subtle">Players in both {mine} and {partnerCat.short}</div>
+            <div className="text-xs text-fg-muted">
+              {!partner ? 'Loading…' : meets.length === 0 ? 'None found (same player name in both).'
+                : `${new Set(meets.map(m => m.player)).size} player${new Set(meets.map(m => m.player)).size === 1 ? '' : 's'} · ${meets.filter(m => m.clash.length).length} time clash${meets.filter(m => m.clash.length).length === 1 ? '' : 'es'}`}
+            </div>
+          </div>
+          {meets.length > 0 && (
+            <div className="mt-2 divide-y divide-line">
+              {meets.map((m, i) => (
+                <div key={i} className="py-2 text-xs">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 truncate text-sm font-semibold capitalize">{m.player}</div>
+                    <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-1 text-[11px] font-bold ${
+                      m.clash.length ? 'bg-red-500/15 text-red-400' : m.tight.length ? 'bg-amber-400/15 text-amber-500' : 'bg-brand/15 text-brand-ink'}`}>
+                      {m.clash.length ? `CLASH ${clock(m.clash, code)}` : m.tight.length ? `${m.tight.length} back to back` : 'OK'}
+                    </span>
+                  </div>
+                  <div className="mt-1 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-2 gap-y-0.5 text-fg-muted">
+                    <span className="font-semibold text-fg-subtle">{/mixed/i.test(mine) ? 'Mixed' : "Men's"} · {m.pool}</span>
+                    <span className="tabular">{clock(m.slots, code)}</span>
+                    <span className="font-semibold text-fg-subtle">{/mixed/i.test(partnerCat.short) ? 'Mixed' : "Men's"} · {m.otherPool}</span>
+                    <span className="tabular">{clock(m.otherSlots, partnerCat.code)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-2 text-xs text-fg-subtle">
+            {both
+              ? 'One tap draws both categories together so these players are never due on two courts in the same time slot.'
+              : `This draw fits ${mine} around the ${partnerCat.short} groups as they are now. To draw both together in one tap, open ${partnerCat.short} settings once on this device (PIN), then come back.`}
+            {' '}Quarter-finals onward cannot be separated by the draw: the referee uses "Play a different game" if a player is still on another court.
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1032,8 +1105,11 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
   const preview = isDuel
     ? (!duelError ? buildDuelDraw(
         teams.map((t: any) => ({ name: t.name, side: t.side }) as DuelTeam), bundle.courts.length) : [])
-    : (teams.length >= 2 ? buildDraw(
-        teams.map((t: any) => ({ name: t.name, pool: t.pool ?? 'A' }) as DraftTeam), bundle.courts.length) : [])
+    : teams.length < 2 ? []
+    : ev.format === 'groups_ko' && !bundle.competition.multi_sport
+      // even over the courts, nobody on two courts at once; keeps "every pair meets twice"
+      ? buildRestedDraw(teams.map((t: any) => ({ name: t.name, pool: t.pool ?? 'A' }) as DraftTeam), bundle.courts.length, ev.legs === 2 ? 2 : 1)
+      : buildDraw(teams.map((t: any) => ({ name: t.name, pool: t.pool ?? 'A' }) as DraftTeam), bundle.courts.length)
 
   return (
     <div className="max-w-2xl space-y-4">
@@ -1066,7 +1142,8 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
         <button
           onClick={() => run(() => api.adminReplaceSchedule(
             token, ev.id, preview,
-            teams.map((t: any) => t.id), bundle.courts.map((c: any) => c.id)), 'Schedule regenerated')}
+            teams.map((t: any) => t.id), bundle.courts.map((c: any) => c.id),
+            { keepBracket: bundle.matches.some((m: any) => m.event_id === ev.id && m.bracket_key) }), 'Schedule regenerated')}
           disabled={preview.length === 0}
           className="rounded-xl bg-brand px-6 py-3 font-display font-bold text-brand-fg disabled:opacity-30">
           REGENERATE SCHEDULE
@@ -1177,4 +1254,6 @@ const readable = (m: string) => ({
   STAGE_STARTED: 'That stage has already started, so it can\'t be undone.',
   WRONG_TEAM: 'A team in that tie belongs to another sport.',
   BAD_RULES: 'Those scoring rules are not valid.',
-}[m] ?? m)
+}[m] ?? (/admin_replace_group_schedule/.test(m)
+  ? 'Run database update 0041 first — without it, regenerating would remove the knockout bracket.'
+  : m))
