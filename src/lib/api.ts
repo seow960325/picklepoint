@@ -589,6 +589,23 @@ export async function adminSetStageRules(
   })
 }
 
+/** Pinned organiser message above "My team"; empty text un-pins it. Needs migration 0044. */
+export async function adminSetAnnouncement(token: string, eventId: string, text: string): Promise<void> {
+  if (IS_DEMO) return demo.setAnnouncement(eventId, text)
+  await rpc('admin_set_announcement', { p_token: token, p_event_id: eventId, p_text: text })
+}
+
+/** Play a waiting group game next on a court; its teams (and the game it jumps) get a red notice. Needs 0044. */
+export async function adminMoveUp(token: string, matchId: string, courtId: string | null): Promise<void> {
+  if (IS_DEMO) return demo.moveUp(matchId, courtId)
+  await rpc('admin_move_up', { p_token: token, p_match_id: matchId, p_court_id: courtId })
+}
+
+export async function adminClearAlert(token: string, matchId: string): Promise<void> {
+  if (IS_DEMO) return demo.clearAlert(matchId)
+  await rpc('admin_clear_alert', { p_token: token, p_match_id: matchId })
+}
+
 /** Fix a finished game (system error, disqualification). Needs migration 0042. */
 export async function adminSetResult(
   token: string, matchId: string, a: number, b: number, winner: 'a' | 'b',

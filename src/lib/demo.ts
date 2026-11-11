@@ -531,6 +531,43 @@ export const demo = {
     save(s)
   },
 
+  /** admin_set_announcement twin (migration 0044) */
+  setAnnouncement(eventId: string, text: string) {
+    const s = load()
+    const e = s.bundle.events.find(x => x.id === eventId)
+    const t = text.trim()
+    if (e) { e.announcement = t || null; e.announce_at = t ? new Date().toISOString() : null }
+    save(s)
+  },
+
+  /** admin_move_up twin (migration 0044) */
+  moveUp(matchId: string, courtId: string | null) {
+    const s = load()
+    const ms = s.bundle.matches
+    const pick = ms.find(x => x.id === matchId)
+    if (!pick || pick.status !== 'scheduled' || pick.court_id) throw new Error('NOT_WAITING')
+    if (pick.bracket_key != null) throw new Error('GROUP_ONLY')
+    const court = courtId ?? pick.home_court ?? null
+    if (!court) throw new Error('BAD_COURT')
+    const ref = ms.filter(x => x.event_id === pick.event_id && x.id !== pick.id && x.bracket_key == null
+      && x.status === 'scheduled' && !x.court_id && x.home_court === court).sort((a, b) => a.sequence - b.sequence)[0]
+    const now = new Date().toISOString()
+    if (ref && ref.sequence < pick.sequence) {
+      const sl = pick.slot ?? null, sq = pick.sequence, hc = pick.home_court ?? null
+      pick.slot = ref.slot ?? null; pick.sequence = ref.sequence
+      ref.slot = sl; ref.sequence = sq; ref.home_court = hc; ref.alert_at = now; ref.alert_note = 'later'
+    }
+    pick.home_court = court; pick.alert_at = now; pick.alert_note = 'up'
+    save(s)
+  },
+
+  clearAlert(matchId: string) {
+    const s = load()
+    const m = s.bundle.matches.find(x => x.id === matchId)
+    if (m) { m.alert_at = null; m.alert_note = null }
+    save(s)
+  },
+
   /** admin_set_result twin (migration 0042) */
   setResult(matchId: string, a: number, b: number, winner: 'a' | 'b') {
     const s = load()

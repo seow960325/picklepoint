@@ -1,4 +1,4 @@
-/** The one public page of a multi-category church event (YC26).
+/** The one public page of a multi-category church event (YC2626).
  *  Tabs: Live · Matches · Standings · Bracket · Medals, each covering every
  *  category; a category chip narrows any tab to one category (and then that
  *  category updates live, point by point). Scoring stays per category code
@@ -18,6 +18,7 @@ import { LiveGrid, Matches, Standings, PosterBracket } from './Board'
 import MyTeamBar, { resolvePin } from '../components/MyTeam'
 import { HubGames, HubStandings } from '../components/HubViews'
 import { PinCtx, usePins } from '../lib/pin'
+import Announcements from '../components/Announcements'
 
 type HubTab = 'live' | 'matches' | 'standings' | 'bracket' | 'medals'
 const TABS: Array<{ id: HubTab; label: string }> = [
@@ -80,6 +81,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
       </div>
 
       <div className="mx-auto max-w-6xl pb-10">
+        {tab !== 'medals' && <Announcements hub={hub} bundleOf={bundleOf} />}
         {tab !== 'medals' && <MyTeamBar hub={hub} bundleOf={bundleOf} compact={tab !== 'live'} onOpen={c => set('cat', c)} />}
         {tab === 'medals' && <div className="px-4 py-5"><MedalTable hub={hub} bundleOf={bundleOf} /></div>}
         {tab === 'live' && !cat && (

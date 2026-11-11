@@ -2,6 +2,7 @@
  *  HubGames     = the games: on court now, coming up (court + order), results.
  *  HubStandings = the group tables and, for a printed draw (MCMD / MCXD),
  *                 the race for the quarter-finals across the groups. */
+import { isAlert, alertWord } from '../lib/alert'
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { Bundle, EventCfg, Match } from '../lib/types'
@@ -104,7 +105,7 @@ export function HubGames({ b, code }: { b: Bundle; code: string }) {
           {next.length === 0 && <div className="px-3 py-4 text-center text-sm text-fg-muted">
             {b.matches.some(m => m.status !== 'finished') ? 'The next games appear here once the teams are known.' : 'All games have been played.'}
           </div>}
-          {shownNext.map(m => <Row key={m.id} b={b} code={code} m={m} left={<Tag top={ct(m.court_id ?? m.home_court) || '—'} sub={when(m) || short(m)} sub2={when(m) ? short(m) : undefined} />} />)}
+          {shownNext.map(m => <Row key={m.id} b={b} code={code} m={m} left={<Tag top={ct(m.court_id ?? m.home_court) || '—'} sub={when(m) || short(m)} sub2={isAlert(m) ? alertWord(m) : when(m) ? short(m) : undefined} tone={isAlert(m) ? 'text-red-500' : ''} />} />)}
           {next.length > shownNext.length && (
             <button onClick={() => setAll(true)} className="min-h-[40px] w-full px-3 py-2 text-xs font-semibold text-fg-muted active:bg-surface-2">
               Show all {next.length} games ▾

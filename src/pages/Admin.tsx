@@ -188,7 +188,7 @@ function Panel({ bundle, token, code, reload, onLogout }: {
         {msg && <div className="mb-4 rounded-lg border border-brand-ink/40 bg-brand/10 px-3 py-2 text-sm text-brand-ink">{msg}</div>}
         {err && <Warn>{err}</Warn>}
 
-        {tab === 'competition' && <CompetitionTab bundle={bundle} token={token} run={run} secrets={secrets}
+        {tab === 'competition' && <CompetitionTab bundle={bundle} ev={ev} token={token} run={run} secrets={secrets}
           refreshSecrets={() => api.adminBundle(token).then(setSecrets)} />}
         {tab === 'scoring' && (multi && isCb(ev?.sport)
           ? <CbRulesPanel ev={ev} token={token} run={run} />
@@ -208,7 +208,7 @@ function Panel({ bundle, token, code, reload, onLogout }: {
 }
 
 // ------------------------------------------------------------ tabs
-function CompetitionTab({ bundle, token, run, secrets, refreshSecrets }: any) {
+function CompetitionTab({ bundle, ev, token, run, secrets, refreshSecrets }: any) {
   const c = bundle.competition
   const [name, setName] = useState(c.name)
   const [venue, setVenue] = useState(c.venue ?? '')
@@ -235,6 +235,7 @@ function CompetitionTab({ bundle, token, run, secrets, refreshSecrets }: any) {
   return (
     <div className="max-w-xl space-y-4">
       <H>Competition</H>
+      {ev && <AnnouncementCard ev={ev} token={token} run={run} />}
       <Field label="Name">
         <input className={inputFull} value={name} onChange={e => setName(e.target.value)} />
       </Field>
@@ -1219,6 +1220,7 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
         </button>
       )}
 
+      {!isDuel && <MoveUp bundle={bundle} ev={ev} token={token} run={run} />}
       {!isDuel && <FixResults bundle={bundle} ev={ev} token={token} run={run} />}
       <div className="text-xs text-fg-subtle">Reorder upcoming matches on a court with the arrows.</div>
       <div className="divide-y divide-line rounded-xl border border-line text-sm">
@@ -1240,6 +1242,70 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
                 onDown={() => run(() => api.adminMoveMatch(token, m.id, 'down'), 'Match moved down')} />
             )
           })}
+      </div>
+    </div>
+  )
+}
+
+/** Pinned message on the front page, above "My team". Un-pin makes it disappear. */
+function AnnouncementCard({ ev, token, run }: any) {
+  const [text, setText] = useState<string>(ev.announcement ?? '')
+  const pinned = !!ev.announcement
+  return (
+    <div className="space-y-2 rounded-xl border border-gold/50 bg-gold/5 p-4">
+      <div className="flex items-center justify-between">
+        <span className="font-display text-lg font-bold tracking-wide">Announcement</span>
+        <span className="text-xs font-bold uppercase text-fg-subtle">{pinned ? 'pinned' : 'not shown'}</span>
+      </div>
+      <textarea className={inputFull + ' min-h-[84px]'} maxLength={400} value={text} onChange={e => setText(e.target.value)}
+        placeholder="e.g. Lunch break 12:30. Men's Doubles semi-finals start at 2 pm." />
+      <div className="flex gap-2">
+        <button disabled={!text.trim()} onClick={() => run(() => api.adminSetAnnouncement(token, ev.id, text), 'Announcement pinned')}
+          className="flex-1 rounded-xl bg-brand px-4 py-2.5 font-display font-bold text-brand-fg disabled:opacity-30">{pinned ? 'UPDATE PIN' : 'PIN TO FRONT PAGE'}</button>
+        {pinned && <button onClick={() => run(() => api.adminSetAnnouncement(token, ev.id, ''), 'Announcement removed').then(() => setText(''))}
+          className="rounded-xl border border-line px-4 py-2.5 text-sm font-bold uppercase text-fg-muted">Un-pin</button>}
+      </div>
+    </div>
+  )
+}
+
+/** Emergency change: play a waiting game next on a court. Its teams (and the game it jumps) turn red on the front page until play starts. */
+function MoveUp({ bundle, ev, token, run }: any) {
+  const [pickCourt, setPickCourt] = useState<Record<string, string>>({})
+  const waiting = bundle.matches.filter((m: any) => m.event_id === ev.id && m.status === 'scheduled' && !m.court_id
+    && m.bracket_key == null && m.team_a_id && m.team_b_id).sort((a: any, b: any) => a.sequence - b.sequence)
+  const flagged = bundle.matches.filter((m: any) => m.event_id === ev.id && m.alert_at && m.status === 'scheduled')
+  if (!waiting.length) return null
+  const cn = (id: string | null) => bundle.courts.find((c: any) => c.id === id)?.label ?? 'a court'
+  return (
+    <div className="space-y-2 rounded-xl border border-red-500/40 bg-red-500/5 p-4">
+      <div className="font-display text-lg font-bold tracking-wide">Move a game up</div>
+      <p className="text-xs text-fg-subtle">The game goes to the front of its court and swaps places with the game that was next. Both games' teams see a red notice until the game starts.</p>
+      {flagged.length > 0 && (
+        <div className="space-y-1 rounded-lg border border-red-500/40 p-2 text-xs">
+          {flagged.map((m: any) => (
+            <div key={m.id} className="flex items-center justify-between gap-2">
+              <span className="min-w-0 truncate font-semibold text-red-500">{m.alert_note === 'later' ? 'Later' : 'Up'} · {teamName(bundle, m.team_a_id)} v {teamName(bundle, m.team_b_id)}</span>
+              <button onClick={() => run(() => api.adminClearAlert(token, m.id), 'Notice cleared')} className="shrink-0 underline">clear</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="divide-y divide-line rounded-lg border border-line text-sm">
+        {waiting.slice(0, 12).map((m: any) => (
+          <div key={m.id} className="flex items-center gap-2 p-2">
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-semibold">{teamName(bundle, m.team_a_id)} <span className="text-fg-subtle">v</span> {teamName(bundle, m.team_b_id)}</div>
+              <div className="text-[11px] text-fg-subtle">{m.slot != null ? `Slot ${m.slot} · ` : ''}{cn(m.home_court)}</div>
+            </div>
+            <select className="rounded-lg border border-line bg-surface px-1 py-1.5 text-xs" value={pickCourt[m.id] ?? m.home_court ?? ''}
+              onChange={e => setPickCourt({ ...pickCourt, [m.id]: e.target.value })}>
+              {bundle.courts.map((c: any) => <option key={c.id} value={c.id}>{c.label ?? `Court ${c.number}`}</option>)}
+            </select>
+            <button onClick={() => run(() => api.adminMoveUp(token, m.id, pickCourt[m.id] ?? m.home_court ?? null), 'Game moved up')}
+              className="shrink-0 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold uppercase text-white">Play next</button>
+          </div>
+        ))}
       </div>
     </div>
   )

@@ -12,6 +12,8 @@ export interface EventCfg {
   id: string; competition_id: string; name: string; format: string
   target_score: number; win_by: number; cap: number; switch_at: number
   sort_order: number
+  // migration 0044: pinned organiser message (null = none)
+  announcement?: string | null; announce_at?: string | null
   // multi-sport competitions only; absent/'pickleball' everywhere else
   sport?: 'pickleball' | 'badminton' | 'captainball'
   // captain ball only (migration 0031): clock / time-out / table rules, null = defaults
@@ -101,6 +103,8 @@ export interface Match {
   home_court?: string | null
   // migration 0039: printed time slot of a group game (pool_strict events)
   slot?: number | null
+  // migration 0044: the organiser changed this game (moved up / later); red until it starts
+  alert_at?: string | null; alert_note?: 'up' | 'later' | string | null
   loser_match_id?: string | null
   loser_slot?: 'a' | 'b' | null
   // captain ball only (migration 0031): clock, fouls, time-outs, score log

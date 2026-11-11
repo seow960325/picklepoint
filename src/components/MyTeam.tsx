@@ -9,6 +9,7 @@ import { usePins, MAX_PINS, type Pin } from '../lib/pin'
 import { teamStatus } from '../lib/teamstatus'
 import { slotOf, slotTime, plannedCourt } from '../lib/timetable'
 import { gameTitle } from '../lib/pool'
+import { isAlert, alertWord } from '../lib/alert'
 import { Emblem } from './ui'
 import { Link } from 'react-router-dom'
 import { SportIcon } from './SportIcon'
@@ -68,7 +69,9 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
             const ev = b?.events.find(e => e.format === 'groups_ko')
             const st = b && id ? teamStatus(b, id, ev ? groupStandings(b, ev.id) : undefined) : null
             const games = b && id ? upcoming(b, id, hub.clock) : []
-            const tone = st?.state === 'playing' ? 'border-emerald-500/60 bg-emerald-500/10'
+            const alerted = games.some(g => isAlert(g.m))
+            const tone = alerted ? 'border-red-500/80 bg-red-500/15'
+              : st?.state === 'playing' ? 'border-emerald-500/60 bg-emerald-500/10'
               : st?.state === 'next' && (st.ahead ?? 9) <= 1 ? 'border-gold/70 bg-gold/10'
               : 'border-brand-ink/40 bg-brand/[0.07]'
             return (
@@ -89,12 +92,13 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                     <span className="mt-1.5 block space-y-1 border-t border-line/50 pt-1.5">
                       {games.map(g => (
                         <span key={g.m.id} className="grid grid-cols-[4.4rem_minmax(0,1fr)_auto] items-center gap-x-2 text-sm leading-tight">
-                          <span className={`font-display text-base font-bold ${g.live ? 'text-emerald-400' : 'text-fg'}`}>{g.live ? '● Now' : g.time || '—'}</span>
+                          <span className={`font-display text-base font-bold ${g.live ? 'text-emerald-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg'}`}>{g.live ? '● Now' : g.time || '—'}</span>
                           <span className="min-w-0 text-center">
-                            {g.m.bracket_key && <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>}
+                            {isAlert(g.m) ? <span className="block text-[10px] font-bold uppercase tracking-wider text-red-500">⚠ {alertWord(g.m)}</span>
+                              : g.m.bracket_key && <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>}
                             <span className="block truncate font-semibold">{g.opp}</span>
                           </span>
-                          <span className={`whitespace-nowrap text-right text-xs font-bold uppercase tracking-wide ${g.live ? 'text-emerald-400' : 'text-fg-muted'}`}>{g.court}</span>
+                          <span className={`whitespace-nowrap text-right text-xs font-bold uppercase tracking-wide ${g.live ? 'text-emerald-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}>{g.court}</span>
                         </span>
                       ))}
                     </span>
