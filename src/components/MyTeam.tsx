@@ -46,6 +46,20 @@ const Star = ({ on, className = '' }: { on?: boolean; className?: string }) => (
   </svg>
 )
 
+/** "Daniel N / Joel": the slash sits in one fixed column, first name right-aligned to it,
+ *  second left-aligned, so the slashes of a list line up. */
+function PairName({ name }: { name: string }) {
+  const parts = name.split(/\s+\/\s+/)
+  if (parts.length !== 2) return <>{name}</>
+  return (
+    <span className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline gap-x-3">
+      <span className="truncate text-right">{parts[0]}</span>
+      <span className="font-normal text-fg-subtle">/</span>
+      <span className="truncate text-left">{parts[1]}</span>
+    </span>
+  )
+}
+
 /** the pin may predate a re-import of the teams: fall back to the same name */
 export function resolvePin(b: Bundle | null, p: Pin): string | null {
   if (!b) return null
@@ -113,7 +127,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                             {isAlert(g.m) ? <span className="block text-[10px] font-bold uppercase tracking-wider text-red-500">⚠ {alertWord(g.m)}</span>
                               : g.m.bracket_key && <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>}
                             <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
-                              className="block w-full truncate font-semibold underline decoration-line-strong decoration-dotted underline-offset-4">{g.opp}</button>
+                              className="block w-full truncate font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"><PairName name={g.opp} /></button>
                           </span>
                           <span className={`text-right text-xs font-bold uppercase leading-tight tracking-wide ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}>{g.court}</span>
                         </span>
@@ -127,7 +141,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                         <span key={g.m.id} className="grid grid-cols-[4.6rem_minmax(0,1fr)_4.6rem] items-center gap-x-2 text-sm leading-tight text-fg-muted">
                           <span className="font-display text-base font-bold">{g.time || '—'}</span>
                           <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
-                            className="block w-full min-w-0 truncate text-center font-semibold underline decoration-line-strong decoration-dotted underline-offset-4">{g.opp}</button>
+                            className="block w-full min-w-0 truncate text-center font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"><PairName name={g.opp} /></button>
                           <span className={`tabular whitespace-nowrap text-right font-display text-base font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`}>{g.won ? 'W' : 'L'} {g.us}–{g.them}</span>
                         </span>
                       ))}
@@ -200,7 +214,7 @@ function TeamDetail({ hub, pin, b, onClose, onOpen, onBack, onTeam }: { hub: Hub
                     <span className="min-w-0 text-center">
                       {g.m.bracket_key && <span className="block text-[10px] font-bold uppercase tracking-wide text-fg-subtle">{g.title}</span>}
                       <button onClick={e => { e.preventDefault(); e.stopPropagation(); const oid = g.m.team_a_id === id ? g.m.team_b_id : g.m.team_a_id; if (oid) onTeam({ code: pin.code, teamId: oid, name: g.opp }) }}
-                        className={`block w-full truncate text-sm underline decoration-line-strong decoration-dotted underline-offset-4 ${g.done && !g.won ? 'text-fg-muted' : 'font-semibold'}`}>{g.opp}</button>
+                        className={`block w-full truncate text-sm underline decoration-line-strong decoration-dotted underline-offset-4 ${g.done && !g.won ? 'text-fg-muted' : 'font-semibold'}`}><PairName name={g.opp} /></button>
                     </span>
                     <span className="text-right">
                       <span className={`block text-xs font-bold uppercase leading-tight tracking-wide ${g.live ? 'text-blue-400' : 'text-fg-muted'}`}>{g.court}</span>
