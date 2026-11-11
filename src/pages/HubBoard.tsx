@@ -146,5 +146,6 @@ function Section({ tab, b, code }: { tab: HubTab; b: Bundle; code: string }) {
   if (tab === 'matches') return cb ? <div className="p-3 lg:p-5"><CbMatches b={b} /></div> : ko ? <HubGames b={b} code={code} /> : <Matches b={b} code={code} />
   if (tab === 'standings') return cb ? <div className="mx-auto max-w-2xl p-3 lg:p-5"><CbStandings b={b} ev={cb} /></div> : <HubStandings b={b} ev={ko} fallback={<Standings b={b} />} />
   const flow = flowOf(b, { groupStandings, groupStageComplete })
-  return flow ? <FlowChart b={b} flow={flow} /> : <PosterBracket b={b} />
+  // printed knockout (bracket_preview): the corners-to-trophy poster bracket; the flow chart only for the 6-team formats
+  return flow && !ko?.bracket_preview ? <FlowChart b={b} flow={flow} /> : <PosterBracket b={b} />
 }

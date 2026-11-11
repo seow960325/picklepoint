@@ -571,6 +571,25 @@ export async function adminSetKoRules(
   })
 }
 
+export async function adminSetQfRules(
+  token: string, eventId: string, r: { target_score: number; win_by: number; cap: number },
+): Promise<void> {
+  if (IS_DEMO) return demo.setQfRules(eventId, r)
+  await rpc('admin_set_qf_rules', {
+    p_token: token, p_event_id: eventId, p_target: r.target_score, p_win_by: r.win_by, p_cap: r.cap,
+  })
+}
+
+/** Fix a finished game (system error, disqualification). Needs migration 0042. */
+export async function adminSetResult(
+  token: string, matchId: string, a: number, b: number, winner: 'a' | 'b',
+): Promise<void> {
+  if (IS_DEMO) return demo.setResult(matchId, a, b, winner)
+  await rpc('admin_set_result', {
+    p_token: token, p_match_id: matchId, p_score_a: a, p_score_b: b, p_winner: winner,
+  })
+}
+
 /** Public self-registration (MCMD/MCXD): no admin PIN. Needs migration 0028. */
 export async function registerTeam(code: string, p1: string, p2: string, logo: string, token: string, pin: string): Promise<{ team_id: string; name: string; edited: boolean }> {
   if (IS_DEMO) throw new Error('REG_CLOSED')

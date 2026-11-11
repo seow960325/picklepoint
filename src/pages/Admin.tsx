@@ -316,6 +316,7 @@ function ScoringTab({ ev, token, run }: any) {
   return (
     <div className="max-w-2xl space-y-5">
       <H>Scoring</H>
+      {ev.ko_from_sf && <p className="-mt-2 text-sm text-fg-muted">These settings are the <b>group stage</b>. The quarter-finals and the semi-finals / 3rd place / Final each have their own card below.</p>}
       <Field label="Event name">
         <input className={`${inputFull} max-w-sm`} value={name} onChange={e => setName(e.target.value)} />
       </Field>
@@ -374,8 +375,9 @@ function ScoringTab({ ev, token, run }: any) {
         onClick={() => run(() => api.adminUpdateEvent(token, ev.id, name,
           { target_score: t, win_by: w, cap, switch_at: sw, side_a_name: aName, side_b_name: bName, serve_mode: serveMode }),
           'Scoring updated')} />
+      {ev.ko_from_sf && <QfRules ev={ev} token={token} run={run} />}
       {ev.ko_target_score != null && !ev.ko_final_only && <KoRules ev={ev} token={token} run={run} />}
-      {ev.format === 'groups_ko' && <FinalRules ev={ev} token={token} run={run} />}
+      {ev.format === 'groups_ko' && !ev.ko_from_sf && <FinalRules ev={ev} token={token} run={run} />}
     </div>
   )
 }
@@ -391,8 +393,8 @@ function KoRules({ ev, token, run }: any) {
   return (
     <div className="mt-8 space-y-4 rounded-xl border border-line bg-surface p-4">
       <div>
-        <div className="font-display text-lg font-bold tracking-wide">Knockout scoring</div>
-        <p className="text-xs text-fg-subtle">Quarter-finals, semi-finals, 3rd place and Final. The rules above are the group stage.</p>
+        <div className="font-display text-lg font-bold tracking-wide">{ev.ko_from_sf ? 'Semi-finals, 3rd place & Final' : 'Knockout scoring'}</div>
+        <p className="text-xs text-fg-subtle">{ev.ko_from_sf ? 'The three games that decide the medals.' : 'Quarter-finals, semi-finals, 3rd place and Final. The rules above are the group stage.'}</p>
       </div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-4">
         <Field label="Winning score">
@@ -410,6 +412,35 @@ function KoRules({ ev, token, run }: any) {
       </p>
       <Save disabled={!!bad} label="SAVE KNOCKOUT RULES"
         onClick={() => run(() => api.adminSetKoRules(token, ev.id, { target_score: t, win_by: w, cap, switch_at: sw }), 'Knockout scoring updated')} />
+    </div>
+  )
+}
+
+/** Quarter-finals only (migration 0042): own winning score, win by, cap. */
+function QfRules({ ev, token, run }: any) {
+  const [t, setT] = useState<number>(ev.qf_target_score ?? ev.target_score)
+  const [w, setW] = useState<number>(ev.qf_win_by ?? ev.win_by)
+  const [cap, setCap] = useState<number>(ev.qf_cap ?? ev.qf_target_score ?? ev.cap)
+  const bad = validateRules({ target_score: t, win_by: w, cap, switch_at: 0 })
+  return (
+    <div className="mt-8 space-y-4 rounded-xl border border-line bg-surface p-4">
+      <div>
+        <div className="font-display text-lg font-bold tracking-wide">Quarter-finals</div>
+        <p className="text-xs text-fg-subtle">The four games between the group stage and the semi-finals.</p>
+      </div>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-4">
+        <Field label="Winning score">
+          <Stepper value={t} min={1} max={99} onChange={v => { setT(v); if (cap < v) setCap(v) }} />
+        </Field>
+        <Field label="Win by"><Stepper value={w} min={1} max={5} onChange={setW} /></Field>
+        <Field label="Hard cap"><Stepper value={cap} min={1} max={120} onChange={setCap} /></Field>
+      </div>
+      {bad && <Warn>{bad}</Warn>}
+      <p className="text-xs text-fg-subtle">
+        {w === 1 && cap === t ? `Sudden death — first to ${t} wins, no deuce.` : `First to ${t}, win by ${w}, capped at ${cap}.`}
+      </p>
+      <Save disabled={!!bad} label="SAVE QUARTER-FINAL RULES"
+        onClick={() => run(() => api.adminSetQfRules(token, ev.id, { target_score: t, win_by: w, cap }), 'Quarter-final scoring updated')} />
     </div>
   )
 }
@@ -991,7 +1022,7 @@ function BracketTab({ bundle, ev, token, run }: any) {
       {pd && cross && (
         <div className="rounded-xl border border-line bg-surface p-4">
           <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
-            Ranking across pools — wins, then point difference
+            Ranking across pools — wins, then point difference, then points scored
           </div>
           {([['W', 'Pool winners', pd.winners], ['R', `Runners-up (best ${plan!.pairs.flat().filter(t => /^R\d/.test(t)).length} go through)`, pd.runners]] as const).map(([k, title, x]) => (
             <div key={k} className="mb-3">
@@ -1017,7 +1048,7 @@ function BracketTab({ bundle, ev, token, run }: any) {
             </div>
           ))}
           {crossTies > 0 && complete && !seeded && (
-            <p className="text-xs text-gold">Teams marked “level” have the same wins and point difference: toss a coin and tap ⇅ if the toss winner is below.</p>
+            <p className="text-xs text-gold">Teams marked “level” have the same wins, point difference and points scored: toss a coin and tap ⇅ if the toss winner is below.</p>
           )}
         </div>
       )}
@@ -1150,6 +1181,7 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
         </button>
       )}
 
+      {!isDuel && <FixResults bundle={bundle} ev={ev} token={token} run={run} />}
       <div className="text-xs text-fg-subtle">Reorder upcoming matches on a court with the arrows.</div>
       <div className="divide-y divide-line rounded-xl border border-line text-sm">
         {bundle.matches.slice().sort((a: any, b: any) => a.sequence - b.sequence).slice(0, 60)
@@ -1171,6 +1203,60 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
             )
           })}
       </div>
+    </div>
+  )
+}
+
+/** Backup plan: correct a finished game (system error, team disqualified after winning). */
+function FixResults({ bundle, ev, token, run }: any) {
+  const [open, setOpen] = useState(false)
+  const [id, setId] = useState<string | null>(null)
+  const [a, setA] = useState(0)
+  const [b, setB] = useState(0)
+  const [win, setWin] = useState<'a' | 'b'>('a')
+  const done = bundle.matches.filter((m: any) => m.event_id === ev.id && m.status === 'finished' && m.team_a_id && m.team_b_id)
+    .sort((x: any, y: any) => (y.finished_at ?? '').localeCompare(x.finished_at ?? ''))
+  if (!done.length) return null
+  const edit = (m: any) => { setId(m.id); setA(m.score_a); setB(m.score_b); setWin(m.score_b > m.score_a ? 'b' : 'a') }
+  const bad = win === 'a' ? a <= b : b <= a
+  return (
+    <div className="rounded-xl border border-line bg-surface p-4">
+      <button onClick={() => setOpen(!open)} className="flex w-full items-center justify-between text-left">
+        <span className="font-display text-lg font-bold tracking-wide">Correct a result</span>
+        <span className="text-sm text-fg-subtle">{open ? 'hide' : `${done.length} finished`}</span>
+      </button>
+      {open && (
+        <div className="mt-3 space-y-2">
+          <p className="text-xs text-fg-subtle">For a system error, or a team disqualified after winning. Pick the game, set the score and the winner. The next round is updated, as long as that game has not started.</p>
+          {done.map((m: any) => (
+            <div key={m.id} className="rounded-lg border border-line p-2.5 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-subtle">{m.round ?? 'Group'}</div>
+                  <div className="truncate font-semibold">{teamName(bundle, m.team_a_id)} <span className="text-fg-subtle">{m.score_a}–{m.score_b}</span> {teamName(bundle, m.team_b_id)}</div>
+                </div>
+                <button onClick={() => id === m.id ? setId(null) : edit(m)}
+                  className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-xs font-bold uppercase">{id === m.id ? 'close' : 'fix'}</button>
+              </div>
+              {id === m.id && (
+                <div className="mt-3 space-y-3">
+                  {(['a', 'b'] as const).map(side => (
+                    <div key={side} className="flex items-center gap-3">
+                      <button onClick={() => setWin(side)}
+                        className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 text-xs font-bold ${win === side ? 'border-gold bg-gold/20 text-gold' : 'border-line text-fg-subtle'}`}>{win === side ? '✓' : ''}</button>
+                      <span className="min-w-0 flex-1 truncate">{teamName(bundle, side === 'a' ? m.team_a_id : m.team_b_id)}{win === side ? ' · winner' : ''}</span>
+                      <Stepper value={side === 'a' ? a : b} min={0} max={99} onChange={v => side === 'a' ? setA(v) : setB(v)} />
+                    </div>
+                  ))}
+                  {bad && <Warn>The winner must have more points. Raise their score or lower the other.</Warn>}
+                  <Save disabled={bad} label="SAVE RESULT"
+                    onClick={() => run(() => api.adminSetResult(token, m.id, a, b, win), 'Result corrected').then(() => setId(null))} />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -1254,6 +1340,12 @@ const readable = (m: string) => ({
   STAGE_STARTED: 'That stage has already started, so it can\'t be undone.',
   WRONG_TEAM: 'A team in that tie belongs to another sport.',
   BAD_RULES: 'Those scoring rules are not valid.',
+  NOT_FINISHED: 'Only a finished game can be corrected.',
+  BRACKET_SEEDED: 'The knockout bracket is already drawn. Clear it first (Bracket tab), then correct the group game.',
+  NEXT_STARTED: 'The next game of this team has already started. Reset that game first.',
+  WINNER_NEEDS_MORE_POINTS: 'The winner must have more points than the other team.',
+  BAD_RESULT: 'That result is not valid.',
 }[m] ?? (/admin_replace_group_schedule/.test(m)
   ? 'Run database update 0041 first — without it, regenerating would remove the knockout bracket.'
+  : /admin_set_(result|qf_rules)/.test(m) ? 'Run database update 0042 first.'
   : m))

@@ -517,6 +517,36 @@ export const demo = {
     save(s)
   },
 
+  setQfRules(eventId: string, r: { target_score: number; win_by: number; cap: number }) {
+    const s = load()
+    const e = s.bundle.events.find(x => x.id === eventId)
+    if (e) Object.assign(e, { qf_target_score: r.target_score, qf_win_by: r.win_by, qf_cap: r.cap })
+    save(s)
+  },
+
+  /** admin_set_result twin (migration 0042) */
+  setResult(matchId: string, a: number, b: number, winner: 'a' | 'b') {
+    const s = load()
+    const ms = s.bundle.matches
+    const m = ms.find(x => x.id === matchId)
+    if (!m || m.status !== 'finished') throw new Error('NOT_FINISHED')
+    if ((winner === 'a' && a <= b) || (winner === 'b' && b <= a)) throw new Error('WINNER_NEEDS_MORE_POINTS')
+    const win = winner === 'a' ? m.team_a_id : m.team_b_id
+    const lose = winner === 'a' ? m.team_b_id : m.team_a_id
+    if (m.bracket_key == null) {
+      if (ms.some(x => x.event_id === m.event_id && x.bracket_key != null && x.team_a_id != null)) throw new Error('BRACKET_SEEDED')
+    } else {
+      const next = ms.filter(x => x.id === m.next_match_id || x.id === m.loser_match_id)
+      if (next.some(n => n.status !== 'scheduled' || n.score_a > 0 || n.score_b > 0)) throw new Error('NEXT_STARTED')
+      const nm = ms.find(x => x.id === m.next_match_id)
+      if (nm) { if (m.next_slot === 'a') nm.team_a_id = win; else nm.team_b_id = win }
+      const lm = ms.find(x => x.id === m.loser_match_id)
+      if (lm && lose) { if (m.loser_slot === 'a') lm.team_a_id = lose; else lm.team_b_id = lose }
+    }
+    m.score_a = a; m.score_b = b; m.winner_id = win
+    save(s)
+  },
+
   // ------------------------------------------------- groups_ko bracket
   seedBracket(
     eventId: string, pairs: Array<{ key: string; a: string | null; b: string | null }>,

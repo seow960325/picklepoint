@@ -180,7 +180,7 @@ export function UpNextQueue({ b, ev, n = 6, big = false }: { b: Bundle; ev: Even
   const poolOf = (id: string | null) => b.teams.find(t => t.id === id)?.pool ?? '–'
   const courtNo = (id?: string | null) => {
     const c = b.courts.find(c => c.id === id)
-    return c ? (b.competition.multi_sport && c.label ? c.label.toUpperCase() : `CT${c.number}`) : undefined
+    return c ? (b.competition.multi_sport && c.label ? c.label.toUpperCase() : `Court ${c.number}`) : undefined
   }
   return (
     <div className="rounded-2xl border border-line bg-surface p-3">

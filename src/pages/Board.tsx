@@ -251,7 +251,7 @@ export default function Board() {
       {tab === 'standings' && (multi ? <TieStandings b={vb} /> : <Standings b={bundle} />)}
       {/* bracket = the full picture (groups -> knockout -> medals) whenever the format has one */}
       {tab === 'knockout' && multi && (flow ? <FlowChart b={flowB} flow={flow} /> : <MultiKnockout b={bundle} view={sv} title={c.name} wide={wide} />)}
-      {tab === 'bracket' && (flow ? <FlowChart b={flowB} flow={flow} /> : <PosterBracket b={bundle} />)}
+      {tab === 'bracket' && (flow && !bundle.events.some(e => e.format === 'groups_ko' && e.bracket_preview) ? <FlowChart b={flowB} flow={flow} /> : <PosterBracket b={bundle} />)}
       {tab === 'matches' && (multi
         ? <TieMatches b={bundle} code={code!} view={sv} />
         : <Matches b={bundle} code={code!} />)}

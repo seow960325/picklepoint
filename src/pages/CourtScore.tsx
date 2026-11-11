@@ -41,7 +41,7 @@ export default function CourtScore() {
   // multi-sport codes number courts per sport ("Captain Ball 1", "Badminton 3"), not 1..9 across all sports
   const named = !!bundle.competition.multi_sport && !!court?.label
   const cname = named ? court!.label!.toUpperCase() : `COURT ${court?.number}`
-  const cshort = named ? court!.label!.toUpperCase() : `CT${court?.number}`
+  const cshort = named ? court!.label!.toUpperCase() : `Court ${court?.number}`
   if (!court) return (
     <Screen className="flex items-center justify-center">
       <div className="text-fg-muted">Court {number} not found</div>
@@ -527,7 +527,7 @@ function Scorer({ bundle, match, token, courtNo, courtName, courtShort, code, re
           </Link>
           <div className={`flex min-w-0 items-baseline gap-2 truncate font-display font-bold tracking-widest text-fg-muted ${
             isPortrait ? 'text-sm' : ''}`}>
-            <span className={isPortrait ? 'text-sm' : 'text-base sm:text-lg'}>{courtShort ?? `CT${courtNo}`} · M{matchNo}</span>
+            <span className={isPortrait ? 'text-sm' : 'text-base sm:text-lg'}>{courtShort ?? `Court ${courtNo}`} · M{matchNo}</span>
             {matchPoint && <span className="shrink-0 animate-pulse text-sm text-brand-ink">MATCH PT</span>}
             {ev.play_clock && <PlayClock m={m} className="text-xs font-semibold tracking-normal text-fg-subtle" />}
           </div>

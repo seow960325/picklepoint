@@ -25,10 +25,18 @@ export interface Rules {
   serve_mode: ServeMode
 }
 
-export const rulesOf = (e: EventCfg, m?: Pick<Match, 'bracket_key'> | null): Rules =>
+export const rulesOf = (e: EventCfg, m?: Pick<Match, 'bracket_key'> | null): Rules => {
+  const serve_mode = e.serve_mode ?? 'winner'
+  // migration 0042: quarter-finals (KO-8-*) with their own rules
+  if (m?.bracket_key != null && e.qf_target_score != null && /^KO-8-/.test(m.bracket_key)) {
+    return {
+      target_score: e.qf_target_score, win_by: e.qf_win_by ?? e.win_by,
+      cap: e.qf_cap ?? e.qf_target_score, switch_at: e.switch_at, serve_mode,
+    }
+  }
   // knockout games of an event with its own knockout rules (migration 0026);
   // ko_target_score is null on every other event, so they never get here
-  m?.bracket_key != null && e.ko_target_score != null
+  return m?.bracket_key != null && e.ko_target_score != null
     && (!e.ko_final_only || m.bracket_key === 'KO-2-0' || m.bracket_key.startsWith('KO-2-0-'))
     // migration 0038: ko_from_sf = own rules for semi-finals, 3rd place and Final only
     && (!e.ko_from_sf || /^KO-(4|2)-|^KO-3P/.test(m.bracket_key))
@@ -37,12 +45,13 @@ export const rulesOf = (e: EventCfg, m?: Pick<Match, 'bracket_key'> | null): Rul
         win_by: e.ko_win_by ?? e.win_by,
         cap: e.ko_cap ?? e.ko_target_score,
         switch_at: e.ko_switch_at ?? e.switch_at,
-        serve_mode: e.serve_mode ?? 'winner',
+        serve_mode,
       }
     : {
         target_score: e.target_score, win_by: e.win_by, cap: e.cap, switch_at: e.switch_at,
-        serve_mode: e.serve_mode ?? 'winner',
+        serve_mode,
       }
+}
 
 export function isGameOver(a: number, b: number, r: Rules): boolean {
   const hi = Math.max(a, b), lo = Math.min(a, b)

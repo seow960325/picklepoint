@@ -49,6 +49,10 @@ export interface EventCfg {
   ko_from_sf?: boolean | null
   ko_court_plan?: Record<string, number> | null
   pool_strict?: boolean | null
+  // migration 0042: own rules for the quarter-finals (null = group rules)
+  qf_target_score?: number | null
+  qf_win_by?: number | null
+  qf_cap?: number | null
 }
 export interface Court { id: string; number: number; label: string | null; sport?: 'pickleball' | 'badminton' | 'captainball'
   // multi-sport only: which game type (MD1 / MD2 / XD) this court hosts; null = any

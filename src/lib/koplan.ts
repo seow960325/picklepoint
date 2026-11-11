@@ -42,17 +42,17 @@ export function slotName(t: string): string {
   return tokenLabel(t)
 }
 
-export interface PlanRow { team: { id: string; pool?: string | null }; won: number; diff: number }
+export interface PlanRow { team: { id: string; pool?: string | null }; won: number; diff: number; pf?: number }
 
-/** Rows from different pools ranked by wins, then point difference.
+/** Rows from different pools ranked by wins, then point difference, then points scored.
  *  level[i] = row i is level with row i + 1 (needs a coin toss). An `order`
  *  (team ids, from the organiser's coin tosses) wins over the computed order. */
 export function crossRank<R extends PlanRow>(rows: R[], order?: string[]): { ranked: R[]; level: boolean[] } {
-  let ranked = rows.slice().sort((a, z) => z.won - a.won || z.diff - a.diff
+  let ranked = rows.slice().sort((a, z) => z.won - a.won || z.diff - a.diff || (z.pf ?? 0) - (a.pf ?? 0)
     || String(a.team.pool ?? '').localeCompare(String(z.team.pool ?? '')))
   if (order?.length && order.length === ranked.length && ranked.every(r => order.includes(r.team.id)))
     ranked = order.map(id => ranked.find(r => r.team.id === id)!)
-  const level = ranked.map((r, i) => i + 1 < ranked.length && r.won === ranked[i + 1].won && r.diff === ranked[i + 1].diff)
+  const level = ranked.map((r, i) => i + 1 < ranked.length && r.won === ranked[i + 1].won && r.diff === ranked[i + 1].diff && (r.pf ?? 0) === (ranked[i + 1].pf ?? 0))
   return { ranked, level }
 }
 

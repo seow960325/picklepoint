@@ -7,7 +7,7 @@
  *                        court that frees up takes the next match whose two
  *                        teams are both idle (keeps waiting time even)
  *   tiebreak = 'diff'    wins → point difference → head-to-head → coin toss
- *   tiebreak = 'diff_only'  wins → point difference → coin toss (no head-to-head)
+ *   tiebreak = 'diff_only'  wins → point difference → points scored → coin toss (no head-to-head)
  *   pool_strict          shared queue: each court plays its home games in the
  *                        printed order, waiting while a team is still on court
  *   ko_*                 knockout games use their own scoring rules
@@ -352,19 +352,21 @@ export function fmtClock(sec: number | null | undefined): string {
 }
 
 // ------------------------------------------------------------ ranking
-export interface RankRow { team: Team; won: number; diff: number; tieGroup?: number | null }
+export interface RankRow { team: Team; won: number; diff: number; pf?: number; tieGroup?: number | null }
 
 /** tiebreak = 'diff' (migration 0026): wins → point difference (points won
  *  minus points lost, all group games) → head-to-head wins among the teams
  *  still level → coin toss. Teams level after head-to-head get the same
  *  `tieGroup` number so the admin can settle it with a toss. */
 export function rankByDiff<S extends RankRow>(rows: S[], done: Match[], h2h = true): S[] {
-  const sorted = rows.slice().sort((a, z) => z.won - a.won || z.diff - a.diff)
+  // 'diff_only' (printed plan): points scored is the third criterion, before the coin toss
+  const pf = (r: S) => (h2h ? 0 : r.pf ?? 0)
+  const sorted = rows.slice().sort((a, z) => z.won - a.won || z.diff - a.diff || pf(z) - pf(a))
   const out: S[] = []
   let tieNo = 0
   for (let i = 0; i < sorted.length;) {
     let j = i
-    while (j < sorted.length && sorted[j].won === sorted[i].won && sorted[j].diff === sorted[i].diff) j++
+    while (j < sorted.length && sorted[j].won === sorted[i].won && sorted[j].diff === sorted[i].diff && pf(sorted[j]) === pf(sorted[i])) j++
     const level = sorted.slice(i, j)
     if (level.length === 1) { out.push({ ...level[0], tieGroup: null }); i = j; continue }
     const ids = new Set(level.map(r => r.team.id))

@@ -185,7 +185,7 @@ export function HubStandings({ b, ev, fallback }: { b: Bundle; ev: EventCfg | un
         <H>Who goes to the quarter-finals</H>
         <div className="mb-2 rounded-xl border border-line bg-surface px-3 py-2 text-xs text-fg-muted">
           <span className="font-semibold text-fg">{nW} group winners + the {nR} best runners-up = 8 teams.</span>{' '}
-          Ranked by wins, then point difference (points won minus points lost). Still level: coin toss. {state}
+          Ranked by wins, then point difference (points won minus points lost), then points scored. Still level: coin toss. {state}
         </div>
         <FillGrid max={2} className="gap-3">
           <RaceTable b={b} title="Group winners" note="All go through. The order decides who they meet."
