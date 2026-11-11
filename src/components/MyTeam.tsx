@@ -107,7 +107,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                   {games.length > 0 && (
                     <span className="mt-1.5 block space-y-1 border-t border-line/50 pt-1.5">
                       {games.map(g => (
-                        <span key={g.m.id} className="grid grid-cols-[4.4rem_minmax(0,1fr)_auto] items-center gap-x-2 text-sm leading-tight">
+                        <span key={g.m.id} className="grid grid-cols-[4.6rem_minmax(0,1fr)_4.6rem] items-center gap-x-2 text-sm leading-tight">
                           <span className={`font-display text-base font-bold ${g.live ? 'text-emerald-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg'}`}>{g.live ? '● Now' : g.time || '—'}</span>
                           <span className="min-w-0 text-center">
                             {isAlert(g.m) ? <span className="block text-[10px] font-bold uppercase tracking-wider text-red-500">⚠ {alertWord(g.m)}</span>
@@ -115,7 +115,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                             <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
                               className="block w-full truncate font-semibold underline decoration-line-strong decoration-dotted underline-offset-4">{g.opp}</button>
                           </span>
-                          <span className={`whitespace-nowrap text-right text-xs font-bold uppercase tracking-wide ${g.live ? 'text-emerald-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}>{g.court}</span>
+                          <span className={`text-right text-xs font-bold uppercase leading-tight tracking-wide ${g.live ? 'text-emerald-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}>{g.court}</span>
                         </span>
                       ))}
                     </span>
@@ -124,7 +124,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                     <span className="mt-1.5 block space-y-1 border-t border-line/50 pt-1.5">
                       <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">Played</span>
                       {past.map(g => (
-                        <span key={g.m.id} className="grid grid-cols-[4.4rem_minmax(0,1fr)_auto] items-center gap-x-2 text-sm leading-tight text-fg-muted">
+                        <span key={g.m.id} className="grid grid-cols-[4.6rem_minmax(0,1fr)_4.6rem] items-center gap-x-2 text-sm leading-tight text-fg-muted">
                           <span className="font-display text-base font-bold">{g.time || '—'}</span>
                           <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
                             className="block w-full min-w-0 truncate text-center font-semibold underline decoration-line-strong decoration-dotted underline-offset-4">{g.opp}</button>
@@ -195,7 +195,7 @@ function TeamDetail({ hub, pin, b, onClose, onOpen, onBack, onTeam }: { hub: Hub
               <div className="space-y-2">
                 {games.map(g => (
                   <Link key={g.m.id} to={g.live || g.done ? `/c/${pin.code}/match/${g.m.id}` : '#'} onClick={e => { if (!g.live && !g.done) e.preventDefault() }}
-                    className={`grid grid-cols-[4.4rem_minmax(0,1fr)_auto] items-center gap-x-2 rounded-xl border px-3 py-2.5 ${g.live ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-line bg-surface'}`}>
+                    className={`grid grid-cols-[4.6rem_minmax(0,1fr)_4.6rem] items-center gap-x-2 rounded-xl border px-3 py-2.5 ${g.live ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-line bg-surface'}`}>
                     <span className={`font-display text-base font-bold leading-tight ${g.live ? 'text-emerald-400' : g.done ? 'text-fg-subtle' : 'text-fg'}`}>{g.live ? '● Now' : g.time || '—'}</span>
                     <span className="min-w-0 text-center">
                       {g.m.bracket_key && <span className="block text-[10px] font-bold uppercase tracking-wide text-fg-subtle">{g.title}</span>}
@@ -203,7 +203,7 @@ function TeamDetail({ hub, pin, b, onClose, onOpen, onBack, onTeam }: { hub: Hub
                         className={`block w-full truncate text-sm underline decoration-line-strong decoration-dotted underline-offset-4 ${g.done && !g.won ? 'text-fg-muted' : 'font-semibold'}`}>{g.opp}</button>
                     </span>
                     <span className="text-right">
-                      <span className={`block whitespace-nowrap text-xs font-bold uppercase tracking-wide ${g.live ? 'text-emerald-400' : 'text-fg-muted'}`}>{g.court}</span>
+                      <span className={`block text-xs font-bold uppercase leading-tight tracking-wide ${g.live ? 'text-emerald-400' : 'text-fg-muted'}`}>{g.court}</span>
                       {(g.live || g.done) && <span className={`tabular block font-display text-base font-bold leading-tight ${g.live ? 'text-emerald-400' : g.won ? 'text-gold' : 'text-fg-subtle'}`}>{g.us}–{g.them}{g.done ? (g.won ? ' W' : ' L') : ''}</span>}
                     </span>
                   </Link>
