@@ -31,7 +31,7 @@ function Row({ b, code, m, left }: { b: Bundle; code: string; m: Match; left: Re
   const body = (
     <>
       <span className="min-w-0 text-[11px] font-bold uppercase leading-tight tracking-wide text-fg-subtle">{left}</span>
-      <span className={`flex min-w-0 items-center justify-end gap-1.5 text-right ${cls(m.team_a_id)}`}>
+      <span className={`flex min-w-0 items-center justify-center gap-1.5 text-center ${cls(m.team_a_id)}`}>
         <span className="line-clamp-2 min-w-0 break-words leading-tight">{teamName(b, m.team_a_id)}</span>
         <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-6 w-6 shrink-0 rounded-[2px] object-contain" />
       </span>
@@ -40,13 +40,13 @@ function Row({ b, code, m, left }: { b: Bundle; code: string; m: Match; left: Re
           ? <span className={`tabular whitespace-nowrap font-display text-lg font-bold leading-none ${live ? 'text-red-400' : 'text-fg'}`}>{m.score_a}–{m.score_b}</span>
           : <span className="text-xs text-fg-subtle">vs</span>}
       </span>
-      <span className={`flex min-w-0 items-center gap-1.5 ${cls(m.team_b_id)}`}>
+      <span className={`flex min-w-0 items-center justify-center gap-1.5 text-center ${cls(m.team_b_id)}`}>
         <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-6 w-6 shrink-0 rounded-[2px] object-contain" />
         <span className="line-clamp-2 min-w-0 break-words leading-tight">{teamName(b, m.team_b_id)}</span>
       </span>
     </>
   )
-  const base = `grid min-h-[44px] grid-cols-[2.9rem_minmax(0,1fr)_3.7rem_minmax(0,1fr)] items-center gap-1.5 border-b border-line/60 px-3 py-2 text-sm last:border-0 ${mine ? 'bg-gold/[0.08]' : ''}`
+  const base = `grid min-h-[44px] grid-cols-[4.2rem_minmax(0,1fr)_3.7rem_minmax(0,1fr)] items-center gap-1.5 border-b border-line/60 px-3 py-2 text-sm last:border-0 ${mine ? 'bg-gold/[0.08]' : ''}`
   return live || done
     ? <Link to={`/c/${code}/match/${m.id}`} className={`${base} active:bg-surface-2`}>{body}</Link>
     : <div className={base}>{body}</div>
@@ -64,8 +64,8 @@ export function HubGames({ b, code }: { b: Bundle; code: string }) {
   const hasMine = b.teams.some(t => pins.has(t.id))
   const [only, setOnly] = useState(false)
   const [all, setAll] = useState(false)
-  const short = (m: Match) => gameTitle(b, m).replace(/ · Slot \d+$/, '').replace(/^Group /, 'Grp ')
-  const ct = (id: string | null | undefined) => courtLabel(b, id).replace(/^Court /, 'Ct ')
+  const short = (m: Match) => gameTitle(b, m).replace(/ · Slot \d+$/, '').
+  const ct = (id: string | null | undefined) => courtLabel(b, id)
   const keep = (m: Match) => !(only && hasMine) || pins.has(m.team_a_id ?? '') || pins.has(m.team_b_id ?? '')
   const known = (m: Match) => !!m.team_a_id && !!m.team_b_id
   const live = b.matches.filter(m => ON.has(m.status) && known(m) && keep(m)).sort((x, y) => x.sequence - y.sequence)

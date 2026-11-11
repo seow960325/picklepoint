@@ -252,7 +252,7 @@ export function TieScheduleTab({ bundle, ev, token, run }: any) {
             <ScheduleRow key={m.id} bundle={bundle} a={m.team_a_id} b={m.team_b_id}
               meta={<>
                 <span className="block font-display text-sm font-bold text-accent">{m.game_label}{m.set_no ? ` G${m.set_no}` : ''}</span>
-                <span className="block">Ct {bundle.courts.find((c: any) => c.id === m.court_id)?.number ?? '–'}</span>
+                <span className="block">Court {bundle.courts.find((c: any) => c.id === m.court_id)?.number ?? '–'}</span>
               </>}
               status={st.text} live={st.live}
               canUp={canUp} canDown={canDown}

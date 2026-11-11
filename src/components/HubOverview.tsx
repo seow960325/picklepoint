@@ -82,6 +82,14 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
   const ours = (b: Bundle, m: Bundle['matches'][number]) => !mine || hub.noChurch
     || [m.team_a_id, m.team_b_id].some(id => churchOf(name(b, id)).toLowerCase() === mine.toLowerCase())
   type M = Bundle['matches'][number]
+  /** name | score (or vs) | name: score keeps its place, each name is centred in its half */
+  const Pair = ({ b, m, score }: { b: Bundle; m: M; score?: boolean }) => (
+    <div className={`grid grid-cols-[minmax(0,1fr)_3.5rem_minmax(0,1fr)] items-center gap-1 py-0.5 text-sm ${score ? '' : 'text-[13px]'}`}>
+      <span className={`line-clamp-2 break-words text-center leading-tight ${score ? 'font-semibold' : ''}`}>{name(b, m.team_a_id)}</span>
+      {score ? <span className="tabular text-center font-display font-bold">{m.score_a}–{m.score_b}</span> : <span className="text-center text-xs text-fg-subtle">vs</span>}
+      <span className={`line-clamp-2 break-words text-center leading-tight ${score ? 'font-semibold' : ''}`}>{name(b, m.team_b_id)}</span>
+    </div>
+  )
   const courtNo = (c: Bundle['courts'][number]) => Number(/(\d+)\s*$/.exec(c.label ?? '')?.[1] ?? c.number)
   const blocks = hub.cats.map(cat => ({ cat, b: bundleOf(cat.code) })).map(({ cat, b }) => {
     if (!b) return { cat, b, rows: [] as { id: string; label: string; live?: M; next?: M }[], spare: [] as M[] }
@@ -129,36 +137,30 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
               </div>
               {(rows.length > 0 || spare.length > 0) && <div className="mt-2 space-y-1.5 border-t border-line/60 pt-2">
                 {rows.map(r => (
-                  <div key={r.id} className="rounded-lg bg-surface-2/50 px-2 py-1.5">
-                    <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider">
-                      <span className={r.live ? 'text-emerald-400' : 'text-fg-subtle'}>{r.live ? '● ' : ''}{r.label}</span>
-                      {r.live && <span className="text-emerald-400/80">live</span>}
+                  <div key={r.id}>
+                    <div className="rounded-lg bg-surface-2/50 px-2 py-1.5">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider">
+                        <span className={r.live ? 'text-emerald-400' : 'text-fg-subtle'}>{r.live ? '● ' : ''}{r.label}</span>
+                        {r.live && <span className="text-emerald-400/80">live</span>}
+                      </div>
+                      {r.live
+                        ? <Pair b={b!} m={r.live} score />
+                        : <div className="py-1 text-center text-xs text-fg-subtle">Free</div>}
                     </div>
-                    {r.live && (
-                      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 py-0.5 text-sm">
-                        <span className="line-clamp-2 break-words text-right font-semibold leading-tight">{name(b!, r.live.team_a_id)}</span>
-                        <span className="tabular text-center font-display font-bold">{r.live.score_a}–{r.live.score_b}</span>
-                        <span className="line-clamp-2 break-words font-semibold leading-tight">{name(b!, r.live.team_b_id)}</span>
-                      </div>
-                    )}
                     {r.next && (
-                      <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 py-0.5 text-[13px] text-fg-muted">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-fg-subtle">Next</span>
-                        <span className="line-clamp-2 break-words text-right leading-tight">{name(b!, r.next.team_a_id)}</span>
-                        <span className="text-xs text-fg-subtle">vs</span>
-                        <span className="line-clamp-2 break-words leading-tight">{name(b!, r.next.team_b_id)}</span>
+                      <div className="px-2 pt-1 text-fg-muted">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-fg-subtle">Next on {r.label}</div>
+                        <Pair b={b!} m={r.next} />
                       </div>
                     )}
                   </div>
                 ))}
-                {spare.map(m => (
-                  <div key={m.id} className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 px-2 py-0.5 text-[13px] text-fg-muted">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-fg-subtle">Next</span>
-                    <span className="line-clamp-2 break-words text-right leading-tight">{name(b!, m.team_a_id)}</span>
-                    <span className="text-xs text-fg-subtle">vs</span>
-                    <span className="line-clamp-2 break-words leading-tight">{name(b!, m.team_b_id)}</span>
+                {spare.length > 0 && (
+                  <div className="px-2 text-fg-muted">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-fg-subtle">Next · court to be decided</div>
+                    {spare.map(m => <Pair key={m.id} b={b!} m={m} />)}
                   </div>
-                ))}
+                )}
               </div>}
             </>
           )
