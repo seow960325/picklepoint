@@ -1,7 +1,7 @@
 -- =====================================================================
 -- PicklePoint 0047 (YC26 set-up, safe to re-run)
 --   1. Mega Subang logo
---   2. Admin PIN 0000 for every category of both events
+--   2. Admin PIN 0000 for the YC26 categories only (MC26 untouched)
 --   3. Pickleball courts: PBMD = 2 courts, PBXD = 1 court
 --   4. Scorer PINs by sport (badminton 0001, captain ball 0002, pickleball 0003), unlock
 -- After running: Admin > Schedule > regenerate for PBMD and PBXD.
@@ -12,7 +12,7 @@ update teams set logo = '/logos/subang.png'
                      where c.code in ('YC26','BMMD','BMXD','PBMD','PBXD'));
 
 update competitions set admin_pin = '0000'
- where code in ('YC26','BMMD','BMXD','PBMD','PBXD','MCMD','MCXD');
+ where code in ('YC26','BMMD','BMXD','PBMD','PBXD');
 
 do $$
 declare r record; want int; ids uuid[]; i int;
