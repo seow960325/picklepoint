@@ -173,8 +173,8 @@ function Panel({ bundle, token, code, reload, onLogout }: {
         </div>
       </aside>
 
-      <div className="min-w-0 flex-1 overflow-y-auto p-6">
-        <div className="mb-4 flex gap-1 overflow-x-auto md:hidden">
+      <div className="min-w-0 flex-1 p-6" style={{ paddingTop: 'max(var(--pp-top), 1.5rem)' }}>
+        <div className="sticky z-30 -mx-6 mb-4 flex gap-1 overflow-x-auto bg-canvas px-6 py-2 md:hidden" style={{ top: 'var(--pp-top)' }}>
           {tabs.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold uppercase ${
