@@ -155,7 +155,20 @@ export function FlagGlyph({ name }: { name?: string | null }) {
 export function Emblem({ logo, flagName, className = '' }: {
   logo?: string | null; flagName?: string | null; className?: string
 }) {
-  if (logo) return <img src={logo} alt="" className={`${className} object-contain`} />
+  if (logo) {
+    // every logo sits in the same square white tile, so round, square and wide
+    // logos all line up at one size across the whole app
+    const h = /(?:^|\s)h-(\d+(?:\.\d+)?)(?=\s|$)/.exec(className)?.[1]
+    if (h && !className.includes('/')) {
+      const cls = className.replace(/(?:^|\s)w-(?:\S+)/g, ' ').replace(/\bobject-contain\b/g, '').trim()
+      return (
+        <span className={`${cls} inline-flex items-center justify-center overflow-hidden bg-white`} style={{ width: `${Number(h) * 0.25}rem` }} aria-hidden="true">
+          <img src={logo} alt="" className="h-full w-full object-contain p-[1px]" />
+        </span>
+      )
+    }
+    return <img src={logo} alt="" className={`${className} object-contain`} />
+  }
   return <Flag name={flagName} className={className} />
 }
 
