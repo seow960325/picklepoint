@@ -34,6 +34,10 @@ export const rulesOf = (e: EventCfg, m?: Pick<Match, 'bracket_key'> | null): Rul
       cap: e.qf_cap ?? e.qf_target_score, switch_at: e.switch_at, serve_mode,
     }
   }
+  // migration 0043: semi-finals, 3rd place and Final each with their own rules
+  const sg = m?.bracket_key == null ? null : /^KO-4-/.test(m.bracket_key) ? 'sf' : m.bracket_key === 'KO-3P' ? 'p3' : /^KO-2-/.test(m.bracket_key) ? 'fin' : null
+  const sr = sg ? e.stage_rules?.[sg] : null
+  if (sr) return { target_score: sr.target, win_by: sr.win_by, cap: sr.cap, switch_at: e.ko_switch_at ?? e.switch_at, serve_mode }
   // knockout games of an event with its own knockout rules (migration 0026);
   // ko_target_score is null on every other event, so they never get here
   return m?.bracket_key != null && e.ko_target_score != null

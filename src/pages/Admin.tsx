@@ -376,7 +376,8 @@ function ScoringTab({ ev, token, run }: any) {
           { target_score: t, win_by: w, cap, switch_at: sw, side_a_name: aName, side_b_name: bName, serve_mode: serveMode }),
           'Scoring updated')} />
       {ev.ko_from_sf && <QfRules ev={ev} token={token} run={run} />}
-      {ev.ko_target_score != null && !ev.ko_final_only && <KoRules ev={ev} token={token} run={run} />}
+      {ev.ko_from_sf && (['sf', 'p3', 'fin'] as const).map(k => <StageRules key={k} stage={k} ev={ev} token={token} run={run} />)}
+      {ev.ko_target_score != null && !ev.ko_final_only && !ev.ko_from_sf && <KoRules ev={ev} token={token} run={run} />}
       {ev.format === 'groups_ko' && !ev.ko_from_sf && <FinalRules ev={ev} token={token} run={run} />}
     </div>
   )
@@ -441,6 +442,43 @@ function QfRules({ ev, token, run }: any) {
       </p>
       <Save disabled={!!bad} label="SAVE QUARTER-FINAL RULES"
         onClick={() => run(() => api.adminSetQfRules(token, ev.id, { target_score: t, win_by: w, cap }), 'Quarter-final scoring updated')} />
+    </div>
+  )
+}
+
+const STAGE_INFO = {
+  sf: ['Semi-finals', 'The two games before the Final.', 'SAVE SEMI-FINAL RULES', 'Semi-final scoring updated'],
+  p3: ['3rd place', 'The bronze-medal game.', 'SAVE 3RD PLACE RULES', '3rd place scoring updated'],
+  fin: ['The Final', 'The title game: one game.', 'SAVE FINAL RULES', 'Final scoring updated'],
+} as const
+
+/** Semi-finals / 3rd place / Final: each its own score, win-by and cap (migration 0043). */
+function StageRules({ stage, ev, token, run }: any) {
+  const cur = ev.stage_rules?.[stage]
+  const [t, setT] = useState<number>(cur?.target ?? ev.ko_target_score ?? ev.target_score)
+  const [w, setW] = useState<number>(cur?.win_by ?? ev.ko_win_by ?? ev.win_by)
+  const [cap, setCap] = useState<number>(cur?.cap ?? ev.ko_cap ?? cur?.target ?? ev.ko_target_score ?? ev.target_score)
+  const bad = validateRules({ target_score: t, win_by: w, cap, switch_at: 0 })
+  const [title, sub, label, done] = STAGE_INFO[stage as 'sf' | 'p3' | 'fin']
+  return (
+    <div className="mt-8 space-y-4 rounded-xl border border-line bg-surface p-4">
+      <div>
+        <div className="font-display text-lg font-bold tracking-wide">{title}</div>
+        <p className="text-xs text-fg-subtle">{sub}</p>
+      </div>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-4">
+        <Field label="Winning score">
+          <Stepper value={t} min={1} max={99} onChange={v => { setT(v); if (cap < v) setCap(v) }} />
+        </Field>
+        <Field label="Win by"><Stepper value={w} min={1} max={5} onChange={setW} /></Field>
+        <Field label="Hard cap"><Stepper value={cap} min={1} max={120} onChange={setCap} /></Field>
+      </div>
+      {bad && <Warn>{bad}</Warn>}
+      <p className="text-xs text-fg-subtle">
+        {w === 1 && cap === t ? `Sudden death — first to ${t} wins, no deuce.` : `First to ${t}, win by ${w}, capped at ${cap}.`}
+      </p>
+      <Save disabled={!!bad} label={label}
+        onClick={() => run(() => api.adminSetStageRules(token, ev.id, stage, { target_score: t, win_by: w, cap }), done)} />
     </div>
   )
 }

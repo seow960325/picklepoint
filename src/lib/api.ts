@@ -580,6 +580,15 @@ export async function adminSetQfRules(
   })
 }
 
+export async function adminSetStageRules(
+  token: string, eventId: string, stage: 'sf' | 'p3' | 'fin', r: { target_score: number; win_by: number; cap: number },
+): Promise<void> {
+  if (IS_DEMO) return demo.setStageRules(eventId, stage, r)
+  await rpc('admin_set_stage_rules', {
+    p_token: token, p_event_id: eventId, p_stage: stage, p_target: r.target_score, p_win_by: r.win_by, p_cap: r.cap,
+  })
+}
+
 /** Fix a finished game (system error, disqualification). Needs migration 0042. */
 export async function adminSetResult(
   token: string, matchId: string, a: number, b: number, winner: 'a' | 'b',

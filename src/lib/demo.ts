@@ -524,6 +524,13 @@ export const demo = {
     save(s)
   },
 
+  setStageRules(eventId: string, stage: 'sf' | 'p3' | 'fin', r: { target_score: number; win_by: number; cap: number }) {
+    const s = load()
+    const e = s.bundle.events.find(x => x.id === eventId)
+    if (e) e.stage_rules = { ...(e.stage_rules ?? {}), [stage]: { target: r.target_score, win_by: r.win_by, cap: r.cap } }
+    save(s)
+  },
+
   /** admin_set_result twin (migration 0042) */
   setResult(matchId: string, a: number, b: number, winner: 'a' | 'b') {
     const s = load()

@@ -53,6 +53,8 @@ export interface EventCfg {
   qf_target_score?: number | null
   qf_win_by?: number | null
   qf_cap?: number | null
+  // migration 0043: own rules for semi-finals / 3rd place / Final
+  stage_rules?: Partial<Record<'sf' | 'p3' | 'fin', { target: number; win_by: number; cap: number }>> | null
 }
 export interface Court { id: string; number: number; label: string | null; sport?: 'pickleball' | 'badminton' | 'captainball'
   // multi-sport only: which game type (MD1 / MD2 / XD) this court hosts; null = any
