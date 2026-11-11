@@ -952,6 +952,8 @@ function BracketTab({ bundle, ev, token, run }: any) {
   useEffect(() => {
     if (autoBusy.current || autoOff.current) return
     if (!complete || seeded || !firstRound || openTosses.length > 0 || seedRows.some(r => !r.key)) return
+    // printed draw with teams level across pools: wait for the organiser's coin toss (tap ⇅, or LOCK & DRAW NOW)
+    if (crossTies > 0 && !xOrder.W && !xOrder.R) return
     autoBusy.current = true
     lock().finally(() => { autoBusy.current = false })
   })
@@ -1069,7 +1071,7 @@ function BracketTab({ bundle, ev, token, run }: any) {
           {openTosses.length > 0 && (
             <Warn>Coin toss needed in Group {openTosses.join(', ')} — tap the toss winner on that group above.</Warn>
           )}
-          <p className="mt-3 text-xs text-gold">The bracket is set automatically as soon as the last group game finishes{openTosses.length ? ' and the coin tosses above are chosen' : ''}.</p>
+          <p className="mt-3 text-xs text-gold">The bracket is set automatically as soon as the last group game finishes{openTosses.length ? ' and the coin tosses above are chosen' : crossTies > 0 ? ' — teams marked level need a coin toss first (tap ⇅, or press the button)' : ''}.</p>
           <Save label="LOCK & DRAW NOW" onClick={lock} disabled={openTosses.length > 0} />
         </div>
       )}
