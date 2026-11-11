@@ -1,7 +1,7 @@
 /** Admin screens that only exist for multi-sport competitions. Rendered by
  *  Admin.tsx only when competition.multi_sport is true. */
 import { SportIcon } from '../components/SportIcon'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as api from '../lib/api'
 import { teamName } from '../lib/store'
 import { buildCbDraw, cbKo, cbKoGame, CB_STAGE_LABEL, type CbStage } from '../lib/captainball'
@@ -599,19 +599,30 @@ function SportKnockout({ bundle, sport, token, run }: any) {
 function CbKnockoutAdmin({ bundle, token, run }: any) {
   const sb = sportBundle(bundle, 'captainball')
   const ev = sb.events[0]
-  if (!ev) return null
-  const ko = cbKo(sb, ev)
+  const ko = ev ? cbKo(sb, ev) : null
+  // auto: the next stage is created as soon as the previous one is decided (no CREATE button needed);
+  // "undo last stage" pauses this until the page is reloaded
+  const fired = useRef('')
+  const autoOff = useRef(false)
+  useEffect(() => {
+    if (!ev || !ko || !ko.supported || !ko.next?.ready || autoOff.current) return
+    const key = `${ev.id}|${ko.next.label}|${Object.keys(ko.games).sort().join(',')}`
+    if (fired.current === key) return
+    fired.current = key
+    create()
+  })
+  if (!ev || !ko) return null
   if (!ko.supported) {
     return <Warn>Captain Ball: groups → playoff → final needs exactly two groups of three teams (put "A" / "B" after each team name). Otherwise it stays one round robin.</Warn>
   }
   const nm = (t: any) => t.name
-  const create = () => run(async () => {
+  function create() { return run(async () => {
     let pending = 0
-    for (const p of ko.next!.pairs) {
+    for (const p of ko!.next!.pairs) {
       const g = cbKoGame({ ...sb, matches: [...sb.matches] }, p.stage, p.a, p.b, 0)
       await api.adminAddTieStage(token, ev.id, p.stage, [{ ...g, seq: ++pending }])
     }
-  }, `Captain Ball ${ko.next?.label.toLowerCase()} created`)
+  }, `Captain Ball ${ko!.next?.label.toLowerCase()} created`) }
   const started = (s: CbStage) => { const m = ko.games[s]; return !!m && (m.status === 'finished' || m.score_a > 0 || m.score_b > 0 || !!m.started_at) }
   const last = (['F', '3P', 'SF1', 'SF2', 'P1', 'P2'] as CbStage[]).filter(s => ko.games[s])
   const undoStages: CbStage[] = last.some(s => s === 'F' || s === '3P') ? ['F', '3P'] : last.some(s => s === 'SF1' || s === 'SF2') ? ['SF1', 'SF2'] : ['P1', 'P2']
@@ -643,7 +654,7 @@ function CbKnockoutAdmin({ bundle, token, run }: any) {
         <div className="text-sm text-fg-muted">{ko.podium ? 'Complete — champions decided.' : 'All stages created.'}</div>
       )}
       {canUndo && (
-        <button onClick={() => run(() => Promise.all(undoStages.filter(s => ko.games[s]).map(s => api.adminClearTieStage(token, ev.id, s))), 'Stage removed')}
+        <button onClick={() => { autoOff.current = true; run(() => Promise.all(undoStages.filter(s => ko.games[s]).map(s => api.adminClearTieStage(token, ev.id, s))), 'Stage removed') }}
           className="block text-xs text-fg-subtle underline underline-offset-4">undo last stage (nothing played yet)</button>
       )}
     </section>

@@ -150,20 +150,16 @@ export function GameRow({ b, code, m, tag }: { b: Bundle; code: string; m: Match
   const name = (win: boolean) => win ? 'font-bold text-gold' : 'text-fg-muted'
   return (
     <Link to={`/c/${code}/match/${m.id}`}
-      className={`grid grid-cols-[minmax(0,1fr)_3.5rem_minmax(0,1fr)_3.25rem] items-center gap-2 border-b border-line/60 px-3 py-2 text-xs last:border-0 active:bg-surface-2 ${live ? 'bg-brand/[0.06]' : ''}`}>
-      <span className={`flex min-w-0 items-center justify-center gap-1.5 ${name(aWin)}`}>
-        <span className="truncate text-center">{teamName(b, m.team_a_id)}</span>
-        <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-6 w-8 shrink-0 rounded-[2px] object-contain" />
-      </span>
+      className={`grid grid-cols-[minmax(0,1fr)_1.5rem_3.5rem_1.5rem_minmax(0,1fr)_3.25rem] items-center gap-2 border-b border-line/60 px-3 py-2 text-xs last:border-0 active:bg-surface-2 ${live ? 'bg-brand/[0.06]' : ''}`}>
+      <span className={`truncate text-right ${name(aWin)}`}>{teamName(b, m.team_a_id)}</span>
+      <span className="flex h-6 w-6 items-center justify-center">{m.team_a_id && <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
       <span className="flex justify-center">
         {decided || live
           ? <span className={`tabular whitespace-nowrap font-display text-sm font-bold ${live ? 'text-brand-ink' : 'text-fg'}`}>{m.score_a}–{m.score_b}</span>
           : <span className="text-[10px] font-bold uppercase tracking-widest text-fg-subtle">{tag ?? 'vs'}</span>}
       </span>
-      <span className={`flex min-w-0 items-center justify-center gap-1.5 ${name(bWin)}`}>
-        <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-6 w-8 shrink-0 rounded-[2px] object-contain" />
-        <span className="truncate">{teamName(b, m.team_b_id)}</span>
-      </span>
+      <span className="flex h-6 w-6 items-center justify-center">{m.team_b_id && <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
+      <span className={`truncate text-left ${name(bWin)}`}>{teamName(b, m.team_b_id)}</span>
       <span className="flex justify-end text-[11px] text-fg-subtle">
         {live && m.status === 'live' && !(m.score_a || m.score_b) ? <Pill tone="live">live</Pill> : <PlayClock m={m} />}
       </span>
@@ -195,20 +191,16 @@ export function UpNextQueue({ b, ev, n = 6, big = false }: { b: Bundle; ev: Even
         <div className="divide-y divide-line/60">
           {list.map(({ m, waiting }, i) => (
             <div key={m.id}
-              className={`grid grid-cols-[1.25rem_3.25rem_minmax(0,1fr)_1.75rem_minmax(0,1fr)] items-center gap-1.5 py-1.5 ${big ? 'text-base' : 'text-sm'} ${waiting ? 'opacity-60' : ''}`}>
+              className={`grid grid-cols-[1.25rem_3.25rem_minmax(0,1fr)_1.25rem_1.75rem_1.25rem_minmax(0,1fr)] items-center gap-1.5 py-1.5 ${big ? 'text-base' : 'text-sm'} ${waiting ? 'opacity-60' : ''}`}>
               <span className="text-center font-display text-xs font-bold text-fg-subtle">{i + 1}</span>
               <span className="whitespace-nowrap text-center text-[10px] font-bold text-fg-subtle">
                 {courtNo(m.home_court) ? `${courtNo(m.home_court)} · ` : ''}{poolOf(m.team_a_id)}
               </span>
-              <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : 'justify-end'} gap-1.5 text-fg-muted`}>
-                <span className={`truncate ${mc ? 'text-center' : 'text-right'}`}>{teamName(b, m.team_a_id)}</span>
-                <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-3.5 w-3.5 shrink-0 rounded-[1px] object-contain" />
-              </span>
+              <span className="truncate text-right text-fg-muted">{teamName(b, m.team_a_id)}</span>
+              <span className="flex h-5 w-5 items-center justify-center">{m.team_a_id && <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-5 w-5 shrink-0 rounded-[3px]" />}</span>
               <span className="text-center text-xs text-fg-subtle">vs</span>
-              <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : ''} gap-1.5 text-fg-muted`}>
-                <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-3.5 w-3.5 shrink-0 rounded-[1px] object-contain" />
-                <span className={`truncate ${mc ? 'text-center' : ''}`}>{teamName(b, m.team_b_id)}</span>
-              </span>
+              <span className="flex h-5 w-5 items-center justify-center">{m.team_b_id && <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-5 w-5 shrink-0 rounded-[3px]" />}</span>
+              <span className="truncate text-left text-fg-muted">{teamName(b, m.team_b_id)}</span>
             </div>
           ))}
         </div>

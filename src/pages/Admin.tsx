@@ -199,7 +199,7 @@ function Panel({ bundle, token, code, reload, onLogout }: {
         {tab === 'schedule' && (multi
           ? <TieScheduleTab bundle={bundle} ev={ev} token={token} run={run} />
           : <ScheduleTab bundle={bundle} ev={ev} token={token} run={run} />)}
-        {tab === 'knockout' && multi && <KnockoutTab bundle={bundle} token={token} run={run} />}
+        {multi && <div className={tab === 'knockout' ? '' : 'hidden'}><KnockoutTab bundle={bundle} token={token} run={run} /></div>}
         {tab === 'sports' && multi && <SportsTab bundle={bundle} token={token} run={run} onAdded={reload} />}
         {ev?.format === 'groups_ko' && (
           <div className={tab === 'bracket' ? '' : 'hidden'}><BracketTab key={ev.id} bundle={bundle} ev={ev} token={token} run={run} /></div>
@@ -1040,18 +1040,14 @@ function BracketTab({ bundle, ev, token, run }: any) {
           </div>
           <ul className="space-y-1 text-sm">
             {shownPairs.map((pr, i) => (
-              <li key={i} className="grid grid-cols-[minmax(0,1fr)_2.75rem_minmax(0,1fr)] items-center gap-2 border-b border-line/60 pb-1">
-                <span className="flex min-w-0 items-center justify-end gap-1.5 truncate text-right">
-                  <span className="truncate">{nm(pr[0]) ?? '—'}</span>
-                  {pr[0] && <Emblem logo={teamLogo(bundle, pr[0])} flagName={teamSideName(bundle, pr[0])} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />}
-                </span>
+              <li key={i} className="grid grid-cols-[minmax(0,1fr)_1.5rem_2.75rem_1.5rem_minmax(0,1fr)] items-center gap-1.5 border-b border-line/60 pb-1">
+                <span className="truncate text-right">{nm(pr[0]) ?? '—'}</span>
+                <span className="flex h-6 w-6 items-center justify-center">{pr[0] && <Emblem logo={teamLogo(bundle, pr[0])} flagName={teamSideName(bundle, pr[0])} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
                 <span className="text-center text-xs text-fg-subtle">
                   {pr[1] ? 'vs' : 'advances'}
                 </span>
-                <span className="flex min-w-0 items-center gap-1.5 truncate text-left">
-                  {pr[1] && <Emblem logo={teamLogo(bundle, pr[1])} flagName={teamSideName(bundle, pr[1])} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />}
-                  <span className="truncate">{nm(pr[1]) ?? '—'}</span>
-                </span>
+                <span className="flex h-6 w-6 items-center justify-center">{pr[1] && <Emblem logo={teamLogo(bundle, pr[1])} flagName={teamSideName(bundle, pr[1])} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
+                <span className="truncate text-left">{nm(pr[1]) ?? '—'}</span>
               </li>
             ))}
           </ul>
@@ -1126,19 +1122,15 @@ function BracketTab({ bundle, ev, token, run }: any) {
               </div>
               <ul className="space-y-1 text-sm">
                 {r.matches.map((m: any) => (
-                  <li key={m.id} className="grid grid-cols-[minmax(0,1fr)_4rem_minmax(0,1fr)] items-center gap-2">
-                    <span className={`flex min-w-0 items-center justify-end gap-1.5 ${m.winner_id === m.team_a_id ? 'font-semibold' : ''}`}>
-                      <span className="truncate text-right">{nm(m.team_a_id) ?? '—'}</span>
-                      {m.team_a_id && <Emblem logo={teamLogo(bundle, m.team_a_id)} flagName={teamSideName(bundle, m.team_a_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />}
-                    </span>
+                  <li key={m.id} className="grid grid-cols-[minmax(0,1fr)_1.5rem_4rem_1.5rem_minmax(0,1fr)] items-center gap-1.5">
+                    <span className={`truncate text-right ${m.winner_id === m.team_a_id ? 'font-semibold' : ''}`}>{nm(m.team_a_id) ?? '—'}</span>
+                    <span className="flex h-6 w-6 items-center justify-center">{m.team_a_id && <Emblem logo={teamLogo(bundle, m.team_a_id)} flagName={teamSideName(bundle, m.team_a_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
                     <span className="tabular text-center text-xs text-fg-subtle">
                       {m.status === 'finished' ? `${m.score_a}–${m.score_b}`
                         : m.team_b_id == null && m.team_a_id != null && m.status === 'finished' ? 'advances' : 'vs'}
                     </span>
-                    <span className={`flex min-w-0 items-center gap-1.5 ${m.winner_id === m.team_b_id ? 'font-semibold' : ''}`}>
-                      {m.team_b_id && <Emblem logo={teamLogo(bundle, m.team_b_id)} flagName={teamSideName(bundle, m.team_b_id)} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />}
-                      <span className="truncate">{nm(m.team_b_id) ?? '—'}</span>
-                    </span>
+                    <span className="flex h-6 w-6 items-center justify-center">{m.team_b_id && <Emblem logo={teamLogo(bundle, m.team_b_id)} flagName={teamSideName(bundle, m.team_b_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
+                    <span className={`truncate text-left ${m.winner_id === m.team_b_id ? 'font-semibold' : ''}`}>{nm(m.team_b_id) ?? '—'}</span>
                   </li>
                 ))}
               </ul>
