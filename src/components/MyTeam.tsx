@@ -87,9 +87,9 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
             const past = b && id ? played(b, id, hub.clock) : []
             const alerted = games.some(g => isAlert(g.m))
             const tone = alerted ? 'border-red-500/80 bg-red-500/15'
-              : st?.state === 'playing' ? 'border-emerald-500/60 bg-emerald-500/10'
-              : st?.state === 'next' && (st.ahead ?? 9) <= 1 ? 'border-gold/70 bg-gold/10'
-              : 'border-brand-ink/40 bg-brand/[0.07]'
+              : st?.state === 'playing' ? 'border-emerald-400 bg-emerald-500/20'
+              : st?.state === 'next' && (st.ahead ?? 9) <= 1 ? 'border-emerald-500/70 bg-emerald-500/15'
+              : 'border-emerald-500/40 bg-emerald-500/[0.07]'
             return (
               <div key={p.code + p.teamId} role="button" tabIndex={0} onClick={() => setDetail(p)}
                 className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left active:opacity-90 ${tone}`}>
