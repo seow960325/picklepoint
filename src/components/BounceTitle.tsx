@@ -69,9 +69,7 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
       const b = w.getBoundingClientRect(), r = logo.getBoundingClientRect()
       if (!r.width) return false
       const hit = { x: r.left - b.left + r.width * 0.573 - d / 2 + d * 0.3, y: r.top - b.top + r.height * 0.406 - d / 2 }
-      await hop(pos, 420, d * 1.6)                                   // a little toss first
-      if (dead) return true
-      await shoot(hit, 170)
+      await shoot(hit, 190)                                          // one straight line from where it rests
       if (dead) return true
       const cross = logo.querySelector<HTMLElement>('[data-cross]'), star = logo.querySelector<HTMLElement>('[data-star]')
       cross?.animate([
@@ -83,17 +81,23 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
         { transform: 'translate(-50%,-50%) scale(1.15) rotate(30deg)', opacity: 1, offset: 0.15 },
         { transform: 'translate(-50%,-50%) scale(0) rotate(90deg)', opacity: 0 }], { duration: 700, easing: 'ease-out' })
       logo.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-2px)', offset: 0.2 }, { transform: 'translateX(1px)', offset: 0.5 }, { transform: 'translateX(0)' }], { duration: 260 })
-      // blocked: like a ball off a wall it drops straight down onto the word (gravity, no more bounces)
-      // and keeps rolling a short way, slowing to a stop; it turns only as far as it rolls
-      const land = spot(back, 0.1)
-      await shoot({ x: land.x, y: land.y }, 440, 'cubic-bezier(.1,.6,.4,1)', 'cubic-bezier(.45,0,.9,.55)')
+      // blocked: it comes off the cross to the right and falls in one curve (steady sideways speed,
+      // gravity pulling it down) onto the word, takes two tiny bounces still moving right, then rolls
+      // to a stop. It turns only as far as it travels along the word.
+      const land = spot(back, 0.22)
+      if (land.y > pos.y + 2) await shoot(land, 420, 'cubic-bezier(.25,.5,.6,1)', 'cubic-bezier(.5,0,.95,.6)')
+      else await hop(land, 380, d * 0.5)                             // title on one line: the word's top is not below the cross
       if (dead) return true
-      const stop = spot(back, 0.82)
-      const turn = Math.max(0, stop.x - pos.x) / (d / 2) * (180 / Math.PI)
-      const ease = 'cubic-bezier(.12,.65,.3,1)'
-      live.push(y.animate([{ rotate: `${angle}deg` }, { rotate: `${angle + turn}deg` }], { duration: 1300, easing: ease }))
+      const stop = spot(back, 0.8)
+      const span = Math.max(0, stop.x - pos.x)
+      const turn = span / (d / 2) * (180 / Math.PI)
+      live.push(y.animate([{ rotate: `${angle}deg` }, { rotate: `${angle + turn}deg` }], { duration: 1500, easing: 'cubic-bezier(.2,.6,.35,1)' }))
       angle = (angle + turn) % 360; y.style.rotate = `${angle}deg`
-      await shoot({ x: stop.x, y: pos.y }, 1300, ease)
+      await hop({ x: pos.x + span * 0.3, y: pos.y }, 260, d * 0.42)
+      if (dead) return true
+      await hop({ x: pos.x + span * 0.2, y: pos.y }, 180, d * 0.16)
+      if (dead) return true
+      await shoot({ x: stop.x, y: pos.y }, 1000, 'cubic-bezier(.15,.7,.35,1)')
       return true
     }
     const show = (el: HTMLElement) => {
