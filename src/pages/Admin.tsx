@@ -19,7 +19,7 @@ import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts, Kn
 import { sportsPresent, isCb } from '../lib/multisport'
 import { CbRulesPanel } from '../components/CaptainBall'
 import { isPoolDispatch, isDiffTiebreak, shuffleMap, eventUntouched, roundName } from '../lib/pool'
-import { parentHub } from '../lib/hub'
+import { parentHub, hubOf } from '../lib/hub'
 import { CHURCHES, churchLogo, teamChurch } from '../lib/churches'
 import { seatsOf, entriesOf, fixedOf, currentMeets, smartDraw, jointDraw, slotClock } from '../lib/clash'
 import { koPlanOf, planDraw, tokenLabel } from '../lib/koplan'
@@ -529,7 +529,7 @@ function FinalRules({ ev, token, run }: any) {
 /** YC26 admin: every player pair of the four categories in one list, church chosen per pair
  *  (the church is only used for the medal table; names stay the players' names). */
 function HubPlayers({ token, run }: any) {
-  const hub = parentHub('YC26')!
+  const hub = hubOf('YC26')!
   const [bs, setBs] = useState<Array<{ cat: any; b: any }>>([])
   const load = () => Promise.all(hub.cats.filter(c => c.code !== hub.code).map(cat =>
     api.join(cat.code).then((b: any) => ({ cat, b })).catch(() => null)))

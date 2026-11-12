@@ -188,9 +188,11 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
               </button>
               {(() => {
                 const ck = clockOfCode(cat.code)
-                return ck && (ck.lunch || (hub.map && ck.sport)) ? (
+                const mc = hub.mapCourts?.[cat.code]
+                const sport = ck?.sport ?? mc?.sport, courts = ck?.courts ?? mc?.courts
+                return ck && (ck.lunch || (hub.map && sport)) ? (
                   <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                    {hub.map && ck.sport && <MapButton src={hub.map} sport={ck.sport} courts={ck.courts} label={`Map · ${ck.sport === 'captainball' ? 'Court' : 'Court'} ${ck.courts?.join(', ')}`} />}
+                    {hub.map && sport && <MapButton src={hub.map} sport={sport} courts={courts} label={`Map · Court ${courts?.join(', ')}`} />}
                     {ck.lunch && <span className="rounded-full border border-gold/50 px-2 py-0.5 text-[11px] font-bold text-gold">Lunch {ck.lunch}</span>}
                   </div>
                 ) : null
