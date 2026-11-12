@@ -14,7 +14,7 @@ import { finalSeries } from '../lib/finals'
 import { cbKo } from '../lib/captainball'
 import { teamChurch } from '../lib/churches'
 import { slotRows, slotTime, clockOfCode, type SlotRow } from '../lib/timetable'
-import MapButton from './CourtMap'
+import MapButton, { CourtTag } from './CourtMap'
 import { gameTitle, koSlotLabel } from '../lib/pool'
 
 export function useOthers(codes: string[], everyMs = 30000) {
@@ -123,7 +123,7 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
         return (
           <div key={c.court} className="border-t border-line/50 px-2.5 py-1.5">
             <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider">
-              <span className={live ? 'text-emerald-400' : 'text-fg-subtle'}>{live ? '● ' : ''}Court {c.court}</span>
+              <span className={live ? 'text-emerald-400' : 'text-fg-subtle'}>{live ? '● ' : ''}<CourtTag code={b.competition.code} n={c.court}>Court {c.court}</CourtTag></span>
               {c.m && <span className="font-semibold normal-case tracking-normal text-fg-subtle">· {gameTitle(b, c.m).replace(/ · Slot \d+$/, '')}</span>}
               {live && <span className="ml-auto text-emerald-400">live</span>}
               {!c.m && <span className="font-semibold normal-case tracking-normal text-fg-subtle">· no game</span>}

@@ -6,6 +6,7 @@ import { teamName } from '../lib/store'
 import TeamMark from './TeamMark'
 import { koSlotLabel } from '../lib/pool'
 import { plannedTime, plannedCourt } from '../lib/timetable'
+import { CourtTag } from './CourtMap'
 
 type Col = { round: string; matches: Match[] }
 
@@ -55,7 +56,7 @@ function Card({ b, ev, m, title, big, gold }: { b: Bundle; ev: EventCfg; m: Matc
         {started
           ? <span className="flex shrink-0 items-center gap-1 text-[#34d399]"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />live</span>
           : m.status === 'finished' ? <span className="shrink-0 font-semibold normal-case tracking-normal">full time</span>
-          : (at || courtNo != null) ? <span className="shrink-0 font-semibold normal-case tracking-normal">{at}{at && courtNo != null ? ' · ' : ''}{courtNo != null ? `Court ${courtNo}` : ''}</span> : null}
+          : (at || courtNo != null) ? <span className="shrink-0 font-semibold normal-case tracking-normal">{at}{at && courtNo != null ? ' · ' : ''}{courtNo != null ? <CourtTag code={b.competition.code} n={courtNo}>Court {courtNo}</CourtTag> : ''}</span> : null}
       </div>
       <Side b={b} ev={ev} m={m} s="a" big={big} />
       <div className="mx-2.5 h-px bg-line" />

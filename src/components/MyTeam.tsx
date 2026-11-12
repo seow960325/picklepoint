@@ -7,6 +7,7 @@ import type { Hub } from '../lib/hub'
 import { groupStandings, teamLogo, teamSideName } from '../lib/store'
 import { usePins, MAX_PINS, type Pin } from '../lib/pin'
 import { teamStatus } from '../lib/teamstatus'
+import { CourtTag } from './CourtMap'
 import { slotOf, slotTime, plannedCourt, clockOfCode } from '../lib/timetable'
 import { gameTitle } from '../lib/pool'
 import { isAlert, alertWord } from '../lib/alert'
@@ -23,7 +24,7 @@ function upcoming(b: Bundle, id: string, clock?: Hub['clock']) {
     .map(m => {
       const sl = clock ? slotOf(b, m) : null, ct = plannedCourt(b, m)
       const opp = b.teams.find(t => t.id === (m.team_a_id === id ? m.team_b_id : m.team_a_id))?.name ?? ''
-      return { m, oppId: m.team_a_id === id ? m.team_b_id! : m.team_a_id!, time: sl != null && clock ? slotTime(clock, sl) : '', court: ct != null ? `Court ${ct}` : 'Court to be decided', opp, title: gameTitle(b, m).replace(/ · Slot \d+$/, ''), live: m.status === 'live' || m.status === 'awaiting_confirm' }
+      return { m, oppId: m.team_a_id === id ? m.team_b_id! : m.team_a_id!, time: sl != null && clock ? slotTime(clock, sl) : '', court: ct != null ? `Court ${ct}` : 'Court to be decided', n: ct, opp, title: gameTitle(b, m).replace(/ · Slot \d+$/, ''), live: m.status === 'live' || m.status === 'awaiting_confirm' }
     })
 }
 
@@ -115,7 +116,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                             <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
                               className="block w-full truncate font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"><PairName name={g.opp} /></button>
                           </span>
-                          <span className={`text-right text-xs font-bold uppercase leading-tight tracking-wide ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}>{g.court}</span>
+                          <span className={`text-right text-xs font-bold uppercase leading-tight tracking-wide ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}><CourtTag code={b?.competition?.code} n={g.n}>{g.court}</CourtTag></span>
                         </span>
                       ))}
                     </span>
@@ -164,7 +165,7 @@ function TeamDetail({ hub, pin, b, onClose, onOpen, onBack, onTeam }: { hub: Hub
       const ck = clockOfCode(b.competition?.code), sl = ck ? slotOf(b, m) : null, ct = plannedCourt(b, m)
       const oppId = a ? m.team_b_id : m.team_a_id
       return {
-        m, time: sl != null && ck ? slotTime(ck, sl) : '', court: ct != null ? `Court ${ct}` : 'Court to be decided',
+        m, time: sl != null && ck ? slotTime(ck, sl) : '', court: ct != null ? `Court ${ct}` : 'Court to be decided', n: ct,
         opp: b.teams.find(t => t.id === oppId)?.name ?? '', title: gameTitle(b, m).replace(/ · Slot \d+$/, ''),
         us: a ? m.score_a : m.score_b, them: a ? m.score_b : m.score_a,
         live: m.status === 'live' || m.status === 'awaiting_confirm', done: m.status === 'finished', won: m.winner_id === id,
@@ -203,7 +204,7 @@ function TeamDetail({ hub, pin, b, onClose, onOpen, onBack, onTeam }: { hub: Hub
                         className={`block w-full truncate text-sm underline decoration-line-strong decoration-dotted underline-offset-4 ${g.done && !g.won ? 'text-fg-muted' : 'font-semibold'}`}><PairName name={g.opp} /></button>
                     </span>
                     <span className="text-right">
-                      <span className={`block text-xs font-bold uppercase leading-tight tracking-wide ${g.live ? 'text-blue-400' : 'text-fg-muted'}`}>{g.court}</span>
+                      <span className={`block text-xs font-bold uppercase leading-tight tracking-wide ${g.live ? 'text-blue-400' : 'text-fg-muted'}`}><CourtTag code={pin.code} n={g.n}>{g.court}</CourtTag></span>
                       {(g.live || g.done) && <span className={`tabular block font-display text-base font-bold leading-tight ${g.live ? 'text-blue-400' : g.won ? 'text-gold' : 'text-fg-subtle'}`}>{g.us}–{g.them}{g.done ? (g.won ? ' W' : ' L') : ''}</span>}
                     </span>
                   </Link>
