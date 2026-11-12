@@ -1,6 +1,6 @@
 /** Venue map (X Park PJ South): a Map button that opens the floor plan full screen.
  *  `courts` rings the courts of one category (pulsing), so people see where to go. */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { hubOf, parentHub } from '../lib/hub'
 
@@ -15,26 +15,38 @@ const W = 780, H = 1160
 // MC26 map (960 x 1098): pickleball courts only
 const MC = { W: 960, H: 1098, XY: { 1: [682, 763], 2: [510, 763], 3: [338, 763], 4: [408, 462], 5: [408, 298], 6: [408, 137], 7: [682, 190] } as Record<number, [number, number]> }
 
-/** The floor plan full screen, with a red ring on each court of `courts`. */
+/** The floor plan in a medium card (not full screen), a red ring on each court of `courts`.
+ *  Tap anywhere outside, the Close button, or Esc to close. */
 function MapModal({ src, sport, courts, onClose }: { src: string; sport?: Sport; courts?: number[]; onClose: () => void }) {
   const mc = src.includes('mc26')
   const W_ = mc ? MC.W : W, H_ = mc ? MC.H : H
   const rings = sport && courts ? courts.map(n => (mc ? MC.XY[n] : XY[sport][n])).filter(Boolean) : []
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k)
+  }, [onClose])
+  const title = courts?.length ? `${sport === 'captainball' ? 'Captain Ball' : sport === 'badminton' ? 'Badminton' : 'Pickleball'} court ${courts.join(', ')}` : 'Venue map'
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex flex-col bg-black/90" onClick={e => { e.preventDefault(); e.stopPropagation(); onClose() }}>
-      <div className="flex items-center justify-between px-4 py-3 text-white">
-        <span className="font-display text-lg font-bold tracking-wide">Venue map{courts?.length ? ` · ${sport === 'captainball' ? 'Captain Ball' : sport === 'badminton' ? 'Badminton' : 'Pickleball'} court ${courts.join(', ')}` : ''}</span>
-        <button type="button" className="grid h-9 w-9 place-items-center rounded-full bg-white/15 text-xl" aria-label="Close">×</button>
-      </div>
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-2" onClick={e => e.stopPropagation()}>
-        <div className="relative max-h-full" style={{ aspectRatio: `${W_} / ${H_}`, height: '100%', maxWidth: '100%' }}>
-          <img src={src} alt="Venue map" className="h-full w-full select-none rounded-lg bg-white object-contain" draggable={false} />
-          {rings.map(([x, y], i) => (
-            <span key={i} className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${x / W_ * 100}%`, top: `${y / H_ * 100}%` }}>
-              <span className="absolute inset-0 animate-ping rounded-full bg-red-500/60" style={{ width: '9vmin', height: '9vmin', margin: '-4.5vmin' }} />
-              <span className="block rounded-full border-[3px] border-red-500 bg-red-500/25" style={{ width: '9vmin', height: '9vmin', margin: '-4.5vmin' }} />
-            </span>
-          ))}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
+      style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+      onClick={e => { e.preventDefault(); e.stopPropagation(); onClose() }}>
+      <div className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl border border-line bg-canvas shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+          <span className="min-w-0 truncate font-display text-base font-bold tracking-wide">{title}</span>
+          <button type="button" onClick={onClose} aria-label="Close map"
+            className="shrink-0 rounded-lg bg-brand px-4 py-1.5 text-sm font-bold text-brand-fg">Close</button>
+        </div>
+        <div className="flex min-h-0 flex-1 items-center justify-center bg-white p-1.5">
+          <div className="relative" style={{ width: `min(100%, calc(62vh * ${W_ / H_}))`, aspectRatio: `${W_} / ${H_}` }}>
+            <img src={src} alt="Venue map" className="absolute inset-0 h-full w-full select-none" draggable={false} />
+            {rings.map(([x, y], i) => (
+              <span key={i} className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
+                style={{ left: `${x / W_ * 100}%`, top: `${y / H_ * 100}%`, width: '12%', aspectRatio: '1 / 1' }}>
+                <span className="absolute inset-0 animate-ping rounded-full bg-red-500/50" />
+                <span className="absolute inset-0 rounded-full border-[3px] border-red-500 bg-red-500/20" />
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </div>, document.body)
