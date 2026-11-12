@@ -414,21 +414,18 @@ export function CbMatches({ b, banner }: { b: Bundle; banner?: React.ReactNode }
     const live = m.status === 'live' && !!m.started_at
     const fin = m.status === 'finished'
     const aW = fin && m.score_a > m.score_b, bW = fin && m.score_b > m.score_a
-    const nm = (id: string | null, win: boolean, right: boolean) => (
-      <span className={`flex min-w-0 items-center gap-2 text-base leading-tight justify-center text-center ${win ? 'font-bold text-fg' : fin ? 'font-medium text-fg-muted' : 'font-semibold text-fg'}`}>
-        {right && <span className="line-clamp-2 break-words"><PairName name={teamName(b, id)} /></span>}
-        <Emblem logo={teamLogo(b, id)} className="h-6 w-6 shrink-0 rounded-[2px] object-contain" />
-        {!right && <span className="line-clamp-2 break-words"><PairName name={teamName(b, id)} /></span>}
-      </span>
-    )
+    const cls = (win: boolean) => `line-clamp-2 min-w-0 break-words text-base leading-tight ${win ? 'font-bold text-fg' : fin ? 'font-medium text-fg-muted' : 'font-semibold text-fg'}`
+    const logo = (id: string | null) => <span className="flex h-7 w-7 items-center justify-center">{id && <Emblem logo={teamLogo(b, id)} className="h-7 w-7 shrink-0 rounded-[3px]" />}</span>
     return (
-      <div key={m.id} className={`grid grid-cols-[2.25rem_minmax(0,1fr)_3.75rem_minmax(0,1fr)_4.5rem] items-center gap-2 border-l-2 px-2 py-2.5 ${live ? 'border-[#f97316] bg-[#f97316]/10' : 'border-transparent'}`}>
+      <div key={m.id} className={`grid grid-cols-[2rem_minmax(0,1fr)_1.75rem_3.5rem_1.75rem_minmax(0,1fr)_4rem] items-center gap-2 border-l-2 px-2 py-2.5 ${live ? 'border-[#f97316] bg-[#f97316]/10' : 'border-transparent'}`}>
         <span className="text-center font-display text-sm font-bold text-fg-subtle">{m.sequence}</span>
-        {nm(m.team_a_id, aW, true)}
-        <span className={`tabular text-center font-display ${live || fin ? 'text-xl font-bold text-[#c2410c] dark:text-[#fdba74]' : 'text-sm font-semibold uppercase text-fg-subtle'}`}>
+        <span className={`${cls(aW)} text-right`}><PairName name={teamName(b, m.team_a_id)} /></span>
+        {logo(m.team_a_id)}
+        <span className={`tabular text-center font-display ${live || fin ? 'text-xl font-bold text-[#c2410c] dark:text-[#fdba74]' : 'text-xs font-semibold uppercase text-fg-subtle'}`}>
           {live || fin ? `${m.score_a}–${m.score_b}` : 'vs'}
         </span>
-        {nm(m.team_b_id, bW, false)}
+        {logo(m.team_b_id)}
+        <span className={`${cls(bW)} text-left`}><PairName name={teamName(b, m.team_b_id)} /></span>
         <span className="text-right">{live ? <Pill tone="live">● live</Pill> : fin ? <Pill tone="done">{m.winner_id ? 'final' : 'draw'}</Pill> : null}</span>
       </div>
     )

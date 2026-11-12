@@ -313,6 +313,16 @@ export async function adminSeedBracket(
   })
 }
 
+/** Same seeding, written by a referee's court session once the last group game is
+ *  confirmed (migration 0050) — so the knockout appears without anyone pressing a button. */
+export async function courtSeedBracket(
+  token: string, eventId: string,
+  pairs: Array<{ key: string; a: string | null; b: string | null }>,
+): Promise<void> {
+  if (IS_DEMO) { await demo.seedBracket(eventId, pairs); return }
+  await rpc('court_seed_bracket', { p_token: token, p_event_id: eventId, p_pairs: pairs })
+}
+
 /** Clear the bracket back to empty so a mis-scored group match can be fixed
  *  and the draw redone. Refuses once a knockout match has been played. */
 export async function adminUnseedBracket(token: string, eventId: string): Promise<void> {

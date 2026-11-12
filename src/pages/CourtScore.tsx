@@ -14,6 +14,7 @@ import { PlayClock } from '../components/GroupsKo'
 import { koCourtLabel, isCb } from '../lib/multisport'
 import { courtChoices, gameTitle } from '../lib/pool'
 import CbScorer from './CbScorer'
+import { autoSeedRows } from '../lib/autoseed'
 
 export default function CourtScore() {
   const { code, number } = useParams()
@@ -28,6 +29,18 @@ export default function CourtScore() {
   // so the PIN pad never flashes up first.
   const token = picked ?? (court ? courtSession(court.id) : null)
   const setToken = (t: string | null) => { setTokenState(t); if (court) saveCourtSession(court.id, t) }
+  // knockout seeds itself: the referee whose confirm finishes the last group game writes the draw
+  const seeding = useRef(false)
+  useEffect(() => {
+    if (!bundle || !token || seeding.current) return
+    for (const ev of bundle.events) {
+      const rows = autoSeedRows(bundle, ev)
+      if (!rows) continue
+      seeding.current = true
+      api.courtSeedBracket(token, ev.id, rows).catch(() => {}).finally(() => { seeding.current = false; refreshLive() })
+      break
+    }
+  })
   // keep the session fresh while the referee is on this screen
   useEffect(() => {
     if (!token || !court) return

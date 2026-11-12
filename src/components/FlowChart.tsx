@@ -42,7 +42,7 @@ function Game({ b, g, tone, icon }: { b: Bundle; g: FlowGame; tone: string; icon
         {g.live && <span className="animate-pulse rounded bg-emerald-500 px-1.5 text-[10px] font-bold text-emerald-950">LIVE</span>}
       </div>
       {row(g.a)}
-      <div className="my-0.5 text-center text-[10px] text-fg-subtle">vs</div>
+      <div className="my-1.5 h-px bg-line" />
       {row(g.b)}
     </div>
   )

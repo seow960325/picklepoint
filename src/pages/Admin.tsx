@@ -951,9 +951,8 @@ function BracketTab({ bundle, ev, token, run }: any) {
   const autoOff = useRef(false)
   useEffect(() => {
     if (autoBusy.current || autoOff.current) return
-    if (!complete || seeded || !firstRound || openTosses.length > 0 || seedRows.some(r => !r.key)) return
+    if (!complete || seeded || !firstRound || seedRows.some(r => !r.key)) return
     // printed draw with teams level across pools: wait for the organiser's coin toss (tap ⇅, or LOCK & DRAW NOW)
-    if (crossTies > 0 && !xOrder.W && !xOrder.R) return
     autoBusy.current = true
     lock().finally(() => { autoBusy.current = false })
   })
@@ -1062,13 +1061,9 @@ function BracketTab({ bundle, ev, token, run }: any) {
             Top {advance} from each group, seeded so the group winners are kept apart
             and nobody meets a team from their own group in round one{advance > 1 ? <> — a
             group's winner and runner-up sit in opposite halves, so they can only meet again in the Final</> : null}.
-            Byes go to the highest seeds. Nothing is written until you press the button.
+            Byes go to the highest seeds.
           </p>}
-          {openTosses.length > 0 && (
-            <Warn>Coin toss needed in Group {openTosses.join(', ')} — tap the toss winner on that group above.</Warn>
-          )}
-          <p className="mt-3 text-xs text-gold">The bracket is set automatically as soon as the last group game finishes{openTosses.length ? ' and the coin tosses above are chosen' : crossTies > 0 ? ' — teams marked level need a coin toss first (tap ⇅, or press the button)' : ''}.</p>
-          <Save label="LOCK & DRAW NOW" onClick={lock} disabled={openTosses.length > 0} />
+          <p className="mt-3 text-xs text-gold">The bracket is set automatically as soon as the last group game finishes — no button needed.</p>
         </div>
       )}
 
