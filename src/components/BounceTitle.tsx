@@ -26,7 +26,7 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
       const b = w.getBoundingClientRect(), r = el.getBoundingClientRect()
       return { x: r.left - b.left + r.width * at - d / 2, y: r.top - b.top - d + r.height * 0.16, ok: r.width > 0 && r.bottom <= b.bottom + 2 }
     }
-    let pos = { x: 0, y: 0 }
+    let pos = { x: 0, y: 0 }, angle = 0
     const place = (p: { x: number; y: number }) => { pos = p; x.style.transform = `translateX(${p.x}px)`; y.style.transform = `translateY(${p.y}px)` }
     /** one jump from where the ball is to `to`, `ms` long, `h` high */
     const hop = async (to: { x: number; y: number }, ms: number, h: number) => {
@@ -48,10 +48,10 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
       }
     }
     /** a drive: straight and fast, no arc */
-    const shoot = async (to: { x: number; y: number }, ms: number, ease = 'cubic-bezier(.5,0,1,.6)') => {
+    const shoot = async (to: { x: number; y: number }, ms: number, ease = 'cubic-bezier(.5,0,1,.6)', easeY = ease) => {
       const from = pos
       const ax = x.animate([{ transform: `translateX(${from.x}px)` }, { transform: `translateX(${to.x}px)` }], { duration: ms, easing: ease, fill: 'forwards' })
-      const ay = y.animate([{ transform: `translateY(${from.y}px)` }, { transform: `translateY(${to.y}px)` }], { duration: ms, easing: ease, fill: 'forwards' })
+      const ay = y.animate([{ transform: `translateY(${from.y}px)` }, { transform: `translateY(${to.y}px)` }], { duration: ms, easing: easeY, fill: 'forwards' })
       live.push(ax, ay)
       await Promise.all([ax.finished, ay.finished]).catch(() => {})
       if (dead) return
@@ -79,18 +79,17 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
         { transform: 'translate(-50%,-50%) scale(1.15) rotate(30deg)', opacity: 1, offset: 0.15 },
         { transform: 'translate(-50%,-50%) scale(0) rotate(90deg)', opacity: 0 }], { duration: 700, easing: 'ease-out' })
       logo.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-2px)', offset: 0.2 }, { transform: 'translateX(1px)', offset: 0.5 }, { transform: 'translateX(0)' }], { duration: 260 })
-      // blocked: fast and flat back to the word, then it keeps its momentum: smaller and smaller
-      // bounces and a last roll that slows to a stop, spinning the whole time
-      const spin = y.animate([{ rotate: '0deg' }, { rotate: '1080deg' }], { duration: 2000, easing: 'cubic-bezier(.2,.6,.3,1)' })
-      live.push(spin)
-      await hop(spot(back, 0.18), 300, d * 0.9)
-      for (const [at, ms, h] of [[0.4, 360, 0.8], [0.56, 270, 0.4], [0.66, 200, 0.16]] as const) {
-        if (dead) return true
-        await hop(spot(back, at), ms, d * h)
-      }
+      // blocked: like a ball off a wall it drops straight down onto the word (gravity, no more bounces)
+      // and keeps rolling a short way, slowing to a stop; it turns only as far as it rolls
+      const land = spot(back, 0.1)
+      await shoot({ x: land.x, y: land.y }, 440, 'cubic-bezier(.1,.6,.4,1)', 'cubic-bezier(.45,0,.9,.55)')
       if (dead) return true
-      const stop = spot(back, 0.86)
-      await shoot({ x: stop.x, y: pos.y }, 800, 'cubic-bezier(.15,.7,.35,1)')
+      const stop = spot(back, 0.82)
+      const turn = Math.max(0, stop.x - pos.x) / (d / 2) * (180 / Math.PI)
+      const ease = 'cubic-bezier(.12,.65,.3,1)'
+      live.push(y.animate([{ rotate: `${angle}deg` }, { rotate: `${angle + turn}deg` }], { duration: 1300, easing: ease }))
+      angle = (angle + turn) % 360; y.style.rotate = `${angle}deg`
+      await shoot({ x: stop.x, y: pos.y }, 1300, ease)
       return true
     }
     const show = (el: HTMLElement) => {
