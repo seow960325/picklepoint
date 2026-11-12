@@ -40,6 +40,13 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
       if (dead) return
       place(to); ax.cancel(); ay.cancel(); live.length = 0
     }
+    /** after a landing: two smaller and smaller bounces that drift on a little (gravity + momentum) */
+    const settle = async (dir: number) => {
+      for (const [ms, h, dx] of [[300, 0.55, 0.45], [210, 0.22, 0.2]] as const) {
+        if (dead) return
+        await hop({ x: pos.x + dir * d * dx, y: pos.y }, ms, d * h)
+      }
+    }
     /** a drive: straight and fast, no arc */
     const shoot = async (to: { x: number; y: number }, ms: number, ease = 'cubic-bezier(.5,0,1,.6)') => {
       const from = pos
@@ -103,10 +110,12 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
       y.style.opacity = '1'
       // intro: one slow jump per word
       for (let i = 0; i < seen.length && !dead; i++) {
-        await hop(spot(seen[i], 0.5), 620, d * 2.4)
+        const to = spot(seen[i], 0.4), dir = Math.sign(to.x - pos.x) || 1
+        await hop(to, 620, d * 2.4)
         if (dead) return
         show(seen[i])
-        await wait(380)
+        await settle(dir)
+        await wait(250)
       }
       // alive: rest, then a little bounce in place or a jump to another word (other line included)
       let cur = seen.length - 1, jumps = 0, due = 3
@@ -127,7 +136,10 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
         const to = spot(seen[next])
         if (!to.ok) continue
         const far = Math.hypot(to.x - pos.x, to.y - pos.y)
+        const dir = Math.sign(to.x - pos.x) || 1
         await hop(to, Math.min(1100, 520 + far * 2.2), d * rnd(2, 3.2))
+        if (dead) return
+        await settle(dir)
         cur = next
       }
     })()
