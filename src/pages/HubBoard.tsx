@@ -21,6 +21,7 @@ import { HubGames, HubStandings } from '../components/HubViews'
 import { PinCtx, usePins } from '../lib/pin'
 import Announcements from '../components/Announcements'
 import BounceTitle from '../components/BounceTitle'
+import SportsTitle from '../components/SportsTitle'
 
 type HubTab = 'live' | 'matches' | 'standings' | 'bracket' | 'medals'
 const TABS: Array<{ id: HubTab; label: string }> = [
@@ -56,7 +57,10 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
               {(() => {
                 const title = hubTitle(hub, hub.cats.map(c => bundleOf(c.code)?.competition.name))
                 const cls = 'font-display text-xl font-bold leading-tight tracking-wide sm:text-2xl lg:text-3xl'
-                return <BounceTitle text={title} className={cls} sports={[...new Set(hub.cats.map(c => c.sport))]} />
+                const sports = [...new Set(hub.cats.map(c => c.sport))]
+                return sports.length > 1
+                  ? <SportsTitle text={title} className={cls} sports={sports} />
+                  : sports[0] === 'pickleball' ? <BounceTitle text={title} className={cls} /> : <div className={`line-clamp-2 ${cls}`}>{title}</div>
               })()}
             </div>
           </div>
