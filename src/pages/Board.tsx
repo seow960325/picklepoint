@@ -1371,7 +1371,7 @@ function PCentre({ b, finals, thirdM, champId, podium }: {
     <div className="flex flex-col px-2 lg:px-5">
       <div className="mb-2 flex h-8 items-center justify-center border-b-2 border-gold/60 pb-1 text-center font-cer text-base font-bold uppercase tracking-[0.3em] text-gold">Final</div>
       <div className="flex flex-1 flex-col items-center justify-center gap-2">
-        <div className={`${finalT ? finalT.box : 'w-52'} flex flex-col gap-2 transition-all duration-500`}>{(finals.length ? finals : [undefined]).map((g, i) => <PMatch key={g?.id ?? i} b={b} m={g} medalOf={medalOf} />)}</div>
+        <div className={`${finalT ? finalT.box : 'w-52'} flex flex-col gap-2 transition-all duration-500`}>{finals.length > 1 ? <FinalSeriesBox b={b} games={finals} champId={champId} medalOf={medalOf} /> : <PMatch b={b} m={finals[0]} medalOf={medalOf} />}</div>
         <div className="my-1 flex flex-col items-center">
           <Trophy lit={!!champId} fight={fight} />
           {champId
@@ -1384,6 +1384,47 @@ function PCentre({ b, finals, thirdM, champId, podium }: {
         <div className="mt-1 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-fg-subtle">Third place</div>
         <div className={`${thirdT ? thirdT.box : 'w-48'} transition-all duration-500`}><PMatch b={b} m={thirdM} medalOf={medalOf} /></div>
       </div>
+    </div>
+  )
+}
+
+function FinalSeriesBox({ b, games, champId, medalOf }: { b: Bundle; games: Match[]; champId: string | null; medalOf: (id: string | null) => 'gold' | 'silver' | 'bronze' | null }) {
+  const a = games[0].team_a_id, c = games[0].team_b_id
+  const side = (id: string | null, g: Match) => g.team_a_id === id ? g.score_a : g.score_b
+  const done = (g: Match) => g.status === 'finished'
+  const wonBy = (id: string | null, g: Match) => done(g) && g.winner_id === id
+  const wins = (id: string | null) => games.filter(g => wonBy(id, g)).length
+  const live = games.some(g => g.status === 'live' && !!g.started_at)
+  const row = (id: string | null) => {
+    const win = !!champId && champId === id
+    const lose = !!champId && !!id && champId !== id
+    const medal = medalOf(id)
+    return (
+      <div className={`flex items-center gap-2 border-l-2 px-2.5 py-1.5 ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
+        <Emblem logo={teamLogo(b, id)} flagName={teamSideName(b, id)} className="h-6 w-6 shrink-0 rounded-[2px] object-contain" />
+        <span className={`min-w-0 flex-1 text-xs leading-tight ${win ? 'font-bold text-fg' : 'font-medium text-fg-muted'}`}>{id ? <PairName name={teamName(b, id)} /> : '—'}</span>
+        {medal && <span className="shrink-0 text-xs leading-none">{medal === 'gold' ? '🥇' : medal === 'silver' ? '🥈' : '🥉'}</span>}
+        {games.map(g => {
+          const w = wonBy(id, g)
+          return <span key={g.id} className={`tabular w-6 shrink-0 text-center text-xs ${w ? 'font-bold text-gold' : done(g) ? 'text-fg-subtle' : 'text-fg-subtle/50'}`}>{done(g) || g.status === 'live' ? side(id, g) : '–'}</span>
+        })}
+        <span className={`tabular w-5 shrink-0 text-center text-sm font-extrabold ${win ? 'text-gold' : 'text-fg-muted'}`}>{wins(id)}</span>
+      </div>
+    )
+  }
+  return (
+    <div className={`overflow-hidden rounded-md border ${live ? 'border-brand pp-live' : 'border-line'} bg-surface`}>
+      <div className="flex items-center gap-2 border-b border-line/60 bg-surface-2/40 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-fg-muted">
+        <span className="flex-1 text-center">Final · best of {games.length}</span>
+      </div>
+      <div className="flex items-center gap-2 px-2.5 pb-0.5 pt-1 text-[9px] font-bold uppercase tracking-wider text-fg-subtle">
+        <span className="flex-1" />
+        {games.map((g, i) => <span key={g.id} className="w-6 shrink-0 text-center">G{i + 1}</span>)}
+        <span className="w-5 shrink-0 text-center">W</span>
+      </div>
+      {row(a)}
+      <div className="h-px bg-line" />
+      {row(c)}
     </div>
   )
 }

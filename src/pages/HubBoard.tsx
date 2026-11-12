@@ -8,7 +8,7 @@ import { useMemo, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import type { Bundle } from '../lib/types'
 import { hubTitle, catHue, type Hub, type HubCat } from '../lib/hub'
-import { useCompetition, groupStandings, groupStageComplete } from '../lib/store'
+import { useCompetition, groupStandings, groupStageComplete, bracketRounds, bracketSeeded } from '../lib/store'
 import { FullscreenButton, ThemeToggle, Spinner, EventLogo } from '../components/ui'
 import MapButton from '../components/CourtMap'
 import { useOthers, LiveNext, MedalTable } from '../components/HubOverview'
@@ -170,5 +170,7 @@ function Section({ tab, b, code }: { tab: HubTab; b: Bundle; code: string }) {
   if (tab === 'standings') return cb ? <div className="mx-auto max-w-2xl p-3 lg:p-5"><CbStandings b={b} ev={cb} /></div> : <HubStandings b={b} ev={ko} fallback={<Standings b={b} />} />
   const flow = flowOf(b, { groupStandings, groupStageComplete })
   // printed knockout (bracket_preview): the corners-to-trophy poster bracket; the flow chart only for the 6-team formats
-  return flow && !ko?.bracket_preview ? <FlowChart b={b} flow={flow} /> : <PosterBracket b={b} />
+  // one round-robin group straight into Final + 3rd place (4 teams): once drawn, the same bracket as the other categories
+  const rrFinal = !!ko && !cb && bracketSeeded(b, ko.id) && bracketRounds(b, ko.id).every(r => r.round === 'Final' || r.round === 'Third place')
+  return flow && !ko?.bracket_preview && !rrFinal ? <FlowChart b={b} flow={flow} /> : <PosterBracket b={b} />
 }
