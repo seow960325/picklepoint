@@ -41,10 +41,10 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
       place(to); ax.cancel(); ay.cancel(); live.length = 0
     }
     /** a drive: straight and fast, no arc */
-    const shoot = async (to: { x: number; y: number }, ms: number) => {
+    const shoot = async (to: { x: number; y: number }, ms: number, ease = 'cubic-bezier(.5,0,1,.6)') => {
       const from = pos
-      const ax = x.animate([{ transform: `translateX(${from.x}px)` }, { transform: `translateX(${to.x}px)` }], { duration: ms, easing: 'cubic-bezier(.5,0,1,.6)', fill: 'forwards' })
-      const ay = y.animate([{ transform: `translateY(${from.y}px)` }, { transform: `translateY(${to.y}px)` }], { duration: ms, easing: 'cubic-bezier(.5,0,1,.6)', fill: 'forwards' })
+      const ax = x.animate([{ transform: `translateX(${from.x}px)` }, { transform: `translateX(${to.x}px)` }], { duration: ms, easing: ease, fill: 'forwards' })
+      const ay = y.animate([{ transform: `translateY(${from.y}px)` }, { transform: `translateY(${to.y}px)` }], { duration: ms, easing: ease, fill: 'forwards' })
       live.push(ax, ay)
       await Promise.all([ax.finished, ay.finished]).catch(() => {})
       if (dead) return
@@ -72,7 +72,18 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
         { transform: 'translate(-50%,-50%) scale(1.15) rotate(30deg)', opacity: 1, offset: 0.15 },
         { transform: 'translate(-50%,-50%) scale(0) rotate(90deg)', opacity: 0 }], { duration: 700, easing: 'ease-out' })
       logo.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-2px)', offset: 0.2 }, { transform: 'translateX(1px)', offset: 0.5 }, { transform: 'translateX(0)' }], { duration: 260 })
-      await hop(spot(back), 300, d * 0.9)                            // blocked: fast, flat, back to the word
+      // blocked: fast and flat back to the word, then it keeps its momentum: smaller and smaller
+      // bounces and a last roll that slows to a stop, spinning the whole time
+      const spin = y.animate([{ rotate: '0deg' }, { rotate: '1080deg' }], { duration: 2000, easing: 'cubic-bezier(.2,.6,.3,1)' })
+      live.push(spin)
+      await hop(spot(back, 0.18), 300, d * 0.9)
+      for (const [at, ms, h] of [[0.4, 360, 0.8], [0.56, 270, 0.4], [0.66, 200, 0.16]] as const) {
+        if (dead) return true
+        await hop(spot(back, at), ms, d * h)
+      }
+      if (dead) return true
+      const stop = spot(back, 0.86)
+      await shoot({ x: stop.x, y: pos.y }, 800, 'cubic-bezier(.15,.7,.35,1)')
       return true
     }
     const show = (el: HTMLElement) => {
