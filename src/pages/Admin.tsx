@@ -526,6 +526,45 @@ function FinalRules({ ev, token, run }: any) {
   )
 }
 
+/** YC26 admin: every player pair of the four categories in one list, church chosen per pair
+ *  (the church is only used for the medal table; names stay the players' names). */
+function HubPlayers({ token, run }: any) {
+  const hub = parentHub('YC26')!
+  const [bs, setBs] = useState<Array<{ cat: any; b: any }>>([])
+  const load = () => Promise.all(hub.cats.filter(c => c.code !== hub.code).map(cat =>
+    api.join(cat.code).then((b: any) => ({ cat, b })).catch(() => null)))
+    .then(r => setBs(r.filter(Boolean) as any))
+  useEffect(() => { void load() }, [])
+  const missing = bs.reduce((n, x) => n + x.b.teams.filter((t: any) => !t.church).length, 0)
+  return (
+    <div className="space-y-3 rounded-xl border border-line bg-surface p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="font-display text-lg font-bold tracking-wide">Players &amp; church</div>
+        <div className="text-xs text-fg-subtle">{missing ? `${missing} pair${missing === 1 ? '' : 's'} without a church` : 'every pair has a church'} · the church only counts for medals</div>
+      </div>
+      {bs.map(({ cat, b }) => (
+        <div key={cat.code}>
+          <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">{cat.short} · {b.teams.length}</div>
+          <div className="divide-y divide-line rounded-lg border border-line">
+            {b.teams.slice().sort((x: any, y: any) => x.name.localeCompare(y.name)).map((t: any) => (
+              <div key={t.id} className="flex items-center gap-2 px-2 py-1.5">
+                {churchLogo(teamChurch(t)) && <img src={churchLogo(teamChurch(t))!} alt="" className="h-6 w-6 shrink-0 rounded border border-line bg-white object-contain" />}
+                <span className="min-w-0 flex-1 truncate text-sm">{t.name}</span>
+                <select className={`${input} w-40 shrink-0 ${t.church ? '' : 'border-accent/60'}`} value={t.church ?? ''}
+                  onChange={e => { const c = CHURCHES.find(x => x.name === e.target.value)
+                    run(async () => { await api.adminSetTeamChurch(token, t.id, c?.name ?? null, c?.logo ?? null); await load() }, c ? `${t.name} → ${c.name}` : 'Church cleared') }}>
+                  <option value="">Church…</option>
+                  {CHURCHES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function TeamsTab({ bundle, ev, token, run }: any) {
   const isDuel = ev.format === 'duel'
   const teams = bundle.teams.filter((t: any) => t.event_id === ev.id)
@@ -545,6 +584,7 @@ function TeamsTab({ bundle, ev, token, run }: any) {
   return (
     <div className="max-w-5xl space-y-4">
       <H>Teams</H>
+      {String(bundle.competition.code).toUpperCase() === 'YC26' && <HubPlayers token={token} run={run} />}
       {isPoolDispatch(ev) && <RegisterStatus teams={teams} token={token} code={bundle.competition.code} />}
       {ev.format === 'groups_ko' && (isPoolDispatch(ev) || ev.legs === 2) && (
         <RandomGroups bundle={bundle} ev={ev} token={token} run={run} />
