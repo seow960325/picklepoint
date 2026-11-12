@@ -1441,8 +1441,8 @@ export function Podium({ b, champion, runnerUp, third, title, compact = false }:
           style={{ backgroundImage: 'linear-gradient(180deg,#fff,#efdca6 55%,#f4cd6a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>Champions</div>
         <div className="mx-auto mt-2 flex items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-fg-muted">
           <span className="h-px w-8 bg-gold/50" />
-          {finalScore && <span>Final <b className="tabular text-gold">{finalScore}</b></span>}
-          {thirdM && <span>· 3rd place <b className="tabular text-[#e0a75f]">{hi(thirdM)}</b></span>}
+          {thirdM && <span>3rd place <b className="tabular text-[#e0a75f]">{hi(thirdM)}</b></span>}
+          {finalScore && <span>{thirdM ? '· ' : ''}Final <b className="tabular text-gold">{finalScore}</b></span>}
           <span className="h-px w-8 bg-gold/50" />
         </div>
       </div>
@@ -1468,21 +1468,6 @@ function PodiumSpot({ b, teamId, place, compact }: { b: Bundle; teamId: string |
     <div className={`flex min-w-0 flex-col items-center ${first ? 'flex-[1.25]' : 'flex-1'}`}>
       <div className="pp-rise flex w-full flex-col items-center" style={{ animationDelay: t.wd }}>
         {first && <div className="pp-pop mb-1" style={{ animationDelay: '1.05s' }}><Trophy lit /></div>}
-        <div className={`mb-2.5 rounded-full p-[3px] ${first ? 'pp-champ-ring' : ''}`} style={{ background: `linear-gradient(150deg, ${t.c1}, ${t.c2})` }}>
-          <div className={`grid ${t.frame} place-items-center overflow-hidden rounded-full bg-[#0b0e14]`}>
-            {(() => {
-              if (!teamId) return <span className="font-cer text-2xl font-bold" style={{ color: t.c1 }}>?</span>
-              const logo = teamLogo(b, teamId), flag = teamSideName(b, teamId)
-              // uploaded team pictures fill the medallion (faces sit on the rim); flags stay small;
-              // no picture at all -> the players' initials, never an empty circle
-              if (logo && !logo.startsWith('data:image/svg'))
-                return <img src={logo} alt="" className="h-[96%] w-[96%] translate-y-[4%] object-contain object-bottom" />
-              if (logo || flag) return <Emblem logo={logo} flagName={flag} className="h-3/5 w-3/5 object-contain" />
-              const ini = name.split(/\s*&\s*|\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
-              return <span className={`font-cer font-bold ${first ? 'text-4xl' : 'text-2xl'}`} style={{ color: t.c1 }}>{ini || '—'}</span>
-            })()}
-          </div>
-        </div>
         <div className={`mb-1 flex min-h-[2.4em] w-full flex-col justify-end px-0.5 text-center font-bold leading-[1.15] ${first ? 'font-cer text-base sm:text-2xl' : 'font-display text-[15px] text-fg sm:text-xl'}`}
           style={first ? { color: '#f4cd6a' } : undefined}>
           {teamId ? parts.map((x, i) => <span key={i} className="block break-words">{x}</span>) : <span className="text-sm font-semibold text-fg-subtle">to be decided</span>}

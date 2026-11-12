@@ -9,8 +9,8 @@ import FillGrid from './FillGrid'
 import type { Bundle, EventCfg, Match } from '../lib/types'
 import type { Standing } from '../lib/store'
 import { teamName, teamLogo, teamSideName } from '../lib/store'
-import { upNext, fmtClock, poolQueue, teamsBusy } from '../lib/pool'
-import { plannedTime } from '../lib/timetable'
+import { upNext, fmtClock, poolQueue, teamsBusy, stageName } from '../lib/pool'
+import { plannedTime, plannedCourt } from '../lib/timetable'
 import { Emblem, Pill, PairName, ScoreWL } from './ui'
 
 // ------------------------------------------------------------------ clock
@@ -120,56 +120,99 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
 
 /** Tap a team in a group table: every group game it played, the score, and how its +/- adds up. */
 export function TeamGames({ b, id, onClose }: { b: Bundle; id: string; onClose: () => void }) {
-  const games = b.matches
-    .filter(m => m.bracket_key == null && !m.tie_stage && m.status === 'finished' && (m.team_a_id === id || m.team_b_id === id))
-    .sort((x, y) => x.sequence - y.sequence)
-    .map(m => {
-      const a = m.team_a_id === id
-      const us = a ? m.score_a : m.score_b, them = a ? m.score_b : m.score_a
-      return { m, opp: a ? m.team_b_id : m.team_a_id, us, them, won: m.winner_id === id }
-    })
-  const pf = games.reduce((t, g) => t + g.us, 0), pa = games.reduce((t, g) => t + g.them, 0)
+  const mine = b.matches.filter(m => !m.tie_stage && (m.team_a_id === id || m.team_b_id === id)).sort((x, y) => x.sequence - y.sequence)
+  const side = (m: Match) => {
+    const a = m.team_a_id === id
+    return { opp: a ? m.team_b_id : m.team_a_id, us: a ? m.score_a : m.score_b, them: a ? m.score_b : m.score_a }
+  }
+  const played = mine.filter(m => m.status === 'finished').map(m => ({ m, ...side(m), won: m.winner_id === id }))
+  const coming = mine.filter(m => m.status !== 'finished')
+  const grp = played.filter(g => g.m.bracket_key == null)
+  const pf = grp.reduce((t, g) => t + g.us, 0), pa = grp.reduce((t, g) => t + g.them, 0)
   const sign = (n: number) => n > 0 ? `+${n}` : String(n)
   const tone = (n: number) => n > 0 ? 'text-brand-ink' : n < 0 ? 'text-red-400' : 'text-fg-muted'
+  const head = 'px-1 pb-1 pt-3 text-[10px] font-bold uppercase tracking-wider text-fg-subtle'
+  const cols = 'grid grid-cols-[minmax(0,1fr)_6.5rem_2.75rem] items-center gap-2 px-1'
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center" onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} className="w-full max-w-md rounded-t-2xl border border-line bg-canvas sm:rounded-2xl"
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center" onClick={e => { e.preventDefault(); e.stopPropagation(); onClose() }}>
+      <div onClick={e => { e.preventDefault(); e.stopPropagation() }} className="w-full max-w-md rounded-t-2xl border border-line bg-canvas sm:rounded-2xl"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex items-center gap-3 border-b border-line px-4 py-3">
           <div className="min-w-0 flex-1">
             <div className="truncate font-display text-xl font-bold leading-tight"><PairName name={teamName(b, id)} /></div>
-            <div className="text-xs text-fg-muted">Group games played: {games.length} · won {games.filter(g => g.won).length}</div>
+            <div className="text-xs text-fg-muted">Played {played.length} · won {played.filter(g => g.won).length}{coming.length > 0 ? ` · ${coming.length} to come` : ''}</div>
           </div>
           <button onClick={onClose} className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-fg">Done</button>
         </div>
-        <div className="max-h-[60vh] overflow-y-auto px-3 py-2">
-          {games.length === 0 && <div className="py-4 text-center text-sm text-fg-muted">No group game played yet.</div>}
-          {games.length > 0 && (
-            <table className="w-full table-fixed text-sm">
-              <thead className="text-[10px] uppercase tracking-wider text-fg-subtle">
-                <tr><th className="py-1 text-left">Opponent</th><th className="w-20 py-1 text-center">Score</th><th className="w-12 py-1 text-right">+/-</th></tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {games.map(g => (
-                  <tr key={g.m.id}>
-                    <td className="truncate py-2 pr-2"><span className={`mr-1.5 inline-block w-4 text-xs font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`}>{g.won ? 'W' : 'L'}</span><PairName name={teamName(b, g.opp)} /></td>
-                    <td className="py-2 text-center font-display font-bold"><ScoreWL us={g.us} them={g.them} /></td>
-                    <td className={`tabular py-2 text-right font-bold ${tone(g.us - g.them)}`}>{sign(g.us - g.them)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="border-t-2 border-line-strong">
-                <tr>
-                  <td className="py-2 text-xs font-bold uppercase tracking-wider text-fg-muted">Total (won {pf} − lost {pa})</td>
-                  <td className="py-2 text-center font-display font-bold"><ScoreWL us={pf} them={pa} digits={3} /></td>
-                  <td className={`tabular py-2 text-right font-display text-base font-bold ${tone(pf - pa)}`}>{sign(pf - pa)}</td>
-                </tr>
-              </tfoot>
-            </table>
+        <div className="max-h-[65vh] overflow-y-auto px-3 pb-3">
+          <div className={head}>Games played</div>
+          {played.length === 0 && <div className="py-3 text-center text-sm text-fg-muted">No game played yet.</div>}
+          {played.length > 0 && (
+            <div className="divide-y divide-line">
+              {played.map(g => (
+                <div key={g.m.id} className={`${cols} py-2`}>
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-baseline gap-1.5 text-sm">
+                      <span className="inline-block w-3 shrink-0 text-center text-xs font-bold text-fg-subtle">vs</span>
+                      <span className="min-w-0 truncate"><PairName name={teamName(b, g.opp)} /></span>
+                    </div>
+                    <div className="pl-[1.125rem] text-[10px] text-fg-subtle">{stageName(b, g.m)}</div>
+                  </div>
+                  <div className="text-center font-display font-bold"><ScoreWL us={g.us} them={g.them} wl={g.won ? 'W' : 'L'} /></div>
+                  <div className={`tabular text-right text-sm font-bold ${tone(g.us - g.them)}`}>{sign(g.us - g.them)}</div>
+                </div>
+              ))}
+              {grp.length > 0 && (
+                <div className={`${cols} border-t-2 border-line-strong py-2`}>
+                  <div className="text-xs font-bold uppercase tracking-wider text-fg-muted">Group total</div>
+                  <div className="text-center font-display font-bold"><ScoreWL us={pf} them={pa} wl={null} digits={3} /></div>
+                  <div className={`tabular text-right font-display text-base font-bold ${tone(pf - pa)}`}>{sign(pf - pa)}</div>
+                </div>
+              )}
+            </div>
+          )}
+          {coming.length > 0 && (
+            <>
+              <div className={head}>Coming up</div>
+              <div className="divide-y divide-line">
+                {coming.map(m => {
+                  const o = side(m).opp, t = plannedTime(b, m), c = plannedCourt(b, m)
+                  const live = m.status === 'live' || m.status === 'awaiting_confirm'
+                  return (
+                    <div key={m.id} className="grid grid-cols-[minmax(0,1fr)_6.5rem] items-center gap-2 px-1 py-2">
+                      <div className="min-w-0">
+                        <div className="flex min-w-0 items-baseline gap-1.5 text-sm">
+                          <span className="inline-block w-3 shrink-0 text-center text-xs font-bold text-fg-subtle">vs</span>
+                          <span className="min-w-0 truncate">{o ? <PairName name={teamName(b, o)} /> : <span className="text-fg-subtle">to be decided</span>}</span>
+                        </div>
+                        <div className="pl-[1.125rem] text-[10px] text-fg-subtle">{stageName(b, m)}</div>
+                      </div>
+                      <div className="tabular text-center text-xs font-bold text-fg-muted">
+                        {live ? <span className="text-emerald-400">LIVE {m.score_a}–{m.score_b}</span> : <>{t || ''}{t && c != null ? ' · ' : ''}{c != null ? `Ct ${c}` : ''}{!t && c == null ? '—' : ''}</>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           )}
         </div>
       </div>
     </div>
+  )
+}
+
+/** A team name you can tap: opens that team's played + coming games. */
+export function TeamLink({ b, id, children, className = '' }: { b: Bundle; id: string | null | undefined; children: React.ReactNode; className?: string }) {
+  const [open, setOpen] = useState(false)
+  if (!id) return <>{children}</>
+  return (
+    <>
+      <span role="button" tabIndex={0} onClick={e => { e.preventDefault(); e.stopPropagation(); setOpen(true) }}
+        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); setOpen(true) } }}
+        className={`cursor-pointer underline decoration-line-strong decoration-dotted underline-offset-4 ${className}`}>{children}</span>
+      {open && <TeamGames b={b} id={id} onClose={() => setOpen(false)} />}
+    </>
   )
 }
 
@@ -210,7 +253,7 @@ export function GameRow({ b, code, m, tag }: { b: Bundle; code: string; m: Match
   return (
     <Link to={`/c/${code}/match/${m.id}`}
       className={`grid grid-cols-[minmax(0,1fr)_1.5rem_3.5rem_1.5rem_minmax(0,1fr)_3.25rem] items-center gap-2 border-b border-line/60 px-3 py-2 text-xs last:border-0 active:bg-surface-2 ${live ? 'bg-brand/[0.06]' : ''}`}>
-      <span className={`truncate text-right ${name(aWin)}`}><PairName name={teamName(b, m.team_a_id)} /></span>
+      <span className={`truncate text-right ${name(aWin)}`}><TeamLink b={b} id={m.team_a_id}><PairName name={teamName(b, m.team_a_id)} /></TeamLink></span>
       <span className="flex h-6 w-6 items-center justify-center">{m.team_a_id && <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
       <span className="flex justify-center">
         {decided || live
@@ -218,7 +261,7 @@ export function GameRow({ b, code, m, tag }: { b: Bundle; code: string; m: Match
           : <span className="text-[10px] font-bold uppercase tracking-widest text-fg-subtle">{tag ?? 'vs'}</span>}
       </span>
       <span className="flex h-6 w-6 items-center justify-center">{m.team_b_id && <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
-      <span className={`truncate text-left ${name(bWin)}`}><PairName name={teamName(b, m.team_b_id)} /></span>
+      <span className={`truncate text-left ${name(bWin)}`}><TeamLink b={b} id={m.team_b_id}><PairName name={teamName(b, m.team_b_id)} /></TeamLink></span>
       <span className="flex justify-end text-[11px] text-fg-subtle">
         {live && m.status === 'live' && !(m.score_a || m.score_b) ? <Pill tone="live">live</Pill> : <PlayClock m={m} />}
       </span>
@@ -255,11 +298,11 @@ export function UpNextQueue({ b, ev, n = 6, big = false }: { b: Bundle; ev: Even
               <span className="whitespace-nowrap text-center text-[10px] font-bold text-fg-subtle">
                 {courtNo(m.home_court) ? `${courtNo(m.home_court)} · ` : ''}{poolOf(m.team_a_id)}
               </span>
-              <span className="truncate text-right text-fg-muted"><PairName name={teamName(b, m.team_a_id)} /></span>
+              <span className="truncate text-right text-fg-muted"><TeamLink b={b} id={m.team_a_id}><PairName name={teamName(b, m.team_a_id)} /></TeamLink></span>
               <span className="flex h-5 w-5 items-center justify-center">{m.team_a_id && <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-5 w-5 shrink-0 rounded-[3px]" />}</span>
               <span className="text-center text-xs text-fg-subtle">vs</span>
               <span className="flex h-5 w-5 items-center justify-center">{m.team_b_id && <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-5 w-5 shrink-0 rounded-[3px]" />}</span>
-              <span className="truncate text-left text-fg-muted"><PairName name={teamName(b, m.team_b_id)} /></span>
+              <span className="truncate text-left text-fg-muted"><TeamLink b={b} id={m.team_b_id}><PairName name={teamName(b, m.team_b_id)} /></TeamLink></span>
             </div>
           ))}
         </div>
@@ -298,13 +341,13 @@ export function CourtQueues({ b, ev, max = 4, n = 6, big = false, courts }: { b:
                     <span className={`text-center font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>{i + 1}</span>
                     <span className={`text-center font-bold text-fg-subtle ${big ? 'text-base' : 'text-[10px]'}`}>{poolOf(m.team_a_id)}</span>
                     <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : 'justify-end'} gap-1.5 text-fg-muted`}>
-                      <span className={`truncate ${mc ? 'text-center' : 'text-right'}`}><PairName name={teamName(b, m.team_a_id)} /></span>
+                      <span className={`truncate ${mc ? 'text-center' : 'text-right'}`}><TeamLink b={b} id={m.team_a_id}><PairName name={teamName(b, m.team_a_id)} /></TeamLink></span>
                       <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={`shrink-0 rounded-[2px] object-contain ${big ? 'h-6 w-6' : 'h-3.5 w-3.5'}`} />
                     </span>
                     <span className={`text-center text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>vs</span>
                     <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : ''} gap-1.5 text-fg-muted`}>
                       <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={`shrink-0 rounded-[2px] object-contain ${big ? 'h-6 w-6' : 'h-3.5 w-3.5'}`} />
-                      <span className={`truncate ${mc ? 'text-center' : ''}`}><PairName name={teamName(b, m.team_b_id)} /></span>
+                      <span className={`truncate ${mc ? 'text-center' : ''}`}><TeamLink b={b} id={m.team_b_id}><PairName name={teamName(b, m.team_b_id)} /></TeamLink></span>
                     </span>
                   </div>
                 ))}

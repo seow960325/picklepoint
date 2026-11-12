@@ -3,6 +3,7 @@
  *  up, and they meet at the Final in the middle. Full names, readable scores. */
 import type { Bundle, EventCfg, Match } from '../lib/types'
 import { teamName, groupStandings } from '../lib/store'
+import { TeamLink } from './GroupsKo'
 import TeamMark from './TeamMark'
 import { koSlotLabel } from '../lib/pool'
 import { koPlanOf } from '../lib/koplan'
@@ -45,7 +46,7 @@ function Side({ b, ev, m, s, big }: { b: Bundle; ev: EventCfg; m: Match; s: 'a' 
       <TeamMark nameOnly b={b} id={id} box={big ? 'h-7 w-9' : 'h-5 w-7'} ring={big ? 'h-9 w-9 text-sm' : 'h-7 w-7 text-[11px]'} />
       <span className="min-w-0 flex-1">
         <span className={`block break-words leading-tight ${big ? 'text-[18px]' : 'text-[15px]'} ${win || live ? 'font-bold text-fg' : 'font-semibold text-fg'}`}>
-          {parts.length === 2 ? <>{parts[0]}<br />{parts[1]}</> : parts[0]}
+          <TeamLink b={b} id={id}>{parts.length === 2 ? <>{parts[0]}<br />{parts[1]}</> : parts[0]}</TeamLink>
         </span>
         {slot && slot !== 'To be decided' && slot !== 'TBD' && <span className="block truncate text-[10.5px] leading-tight text-fg-subtle">{slot}</span>}
       </span>
@@ -117,6 +118,12 @@ export default function PhoneBracket({ b, ev, top, bottom, finals, third }: {
         </div>
       ))}
       <div className="space-y-2">
+        {third && (
+          <div className="mx-auto w-[72%]">
+            <div className="mb-1 text-center text-[10.5px] font-semibold uppercase tracking-wider text-fg-subtle">Played before the Final</div>
+            <Card b={b} ev={ev} m={third} title="🥉 3rd place" />
+          </div>
+        )}
         {finals.map(m => <Card key={m.id} b={b} ev={ev} m={m} title={`🏆 ${roundTitle(finalCol, m, all)}`} big gold />)}
       </div>
       {[...bottom].reverse().map((col, i, arr) => (
@@ -125,11 +132,6 @@ export default function PhoneBracket({ b, ev, top, bottom, finals, third }: {
           <Row b={b} ev={ev} col={col} all={all} labelBelow />
         </div>
       ))}
-      {third && (
-        <div className="mt-5 border-t border-line/60 pt-4">
-          <div className="mx-auto w-[72%]"><Card b={b} ev={ev} m={third} title="🥉 3rd place" /></div>
-        </div>
-      )}
     </div>
   )
 }

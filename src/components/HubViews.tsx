@@ -13,8 +13,8 @@ import { courtLabel } from '../lib/teamstatus'
 import { hubOf, parentHub } from '../lib/hub'
 import { slotOf, slotTime, clockOfCode } from '../lib/timetable'
 import { usePinned } from '../lib/pin'
-import { Emblem, PairName } from './ui'
-import { GroupTable } from './GroupsKo'
+import { Emblem, PairName, hasFlag } from './ui'
+import { GroupTable, TeamLink } from './GroupsKo'
 import FillGrid from './FillGrid'
 
 const ON = new Set(['live', 'awaiting_confirm'])
@@ -34,7 +34,7 @@ function Row({ b, code, m, left }: { b: Bundle; code: string; m: Match; left: Re
   const body = (
     <>
       <span className="min-w-0 text-[11px] font-bold uppercase leading-tight tracking-wide text-fg-subtle">{left}</span>
-      <span className={`line-clamp-2 min-w-0 break-words text-right leading-tight ${cls(m.team_a_id)}`}><PairName name={teamName(b, m.team_a_id)} /></span>
+      <span className={`line-clamp-2 min-w-0 break-words text-right leading-tight ${cls(m.team_a_id)}`}><TeamLink b={b} id={m.team_a_id}><PairName name={teamName(b, m.team_a_id)} /></TeamLink></span>
       <span className="flex h-6 w-6 items-center justify-center">{m.team_a_id && <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
       <span className="text-center">
         {live || done
@@ -42,7 +42,7 @@ function Row({ b, code, m, left }: { b: Bundle; code: string; m: Match; left: Re
           : <span className="text-xs text-fg-subtle">vs</span>}
       </span>
       <span className="flex h-6 w-6 items-center justify-center">{m.team_b_id && <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
-      <span className={`line-clamp-2 min-w-0 break-words text-left leading-tight ${cls(m.team_b_id)}`}><PairName name={teamName(b, m.team_b_id)} /></span>
+      <span className={`line-clamp-2 min-w-0 break-words text-left leading-tight ${cls(m.team_b_id)}`}><TeamLink b={b} id={m.team_b_id}><PairName name={teamName(b, m.team_b_id)} /></TeamLink></span>
     </>
   )
   const base = `grid min-h-[44px] grid-cols-[4.2rem_minmax(0,1fr)_1.5rem_3.7rem_1.5rem_minmax(0,1fr)] items-center gap-1.5 border-b border-line/60 px-3 py-2 text-sm last:border-0 ${mine ? 'bg-gold/[0.08]' : ''}`
@@ -137,6 +137,7 @@ function RaceTable({ b, title, note, rows, cut, level, label, settled }: {
         <thead className="text-[10px] uppercase tracking-wider text-fg-subtle">
           <tr>
             <th className="w-9 px-1 py-1 text-left">#</th>
+            <th className="w-12 px-1 py-1 text-left">Group</th>
             <th className="px-1 py-1 text-left">Team</th>
             <th className="w-7 px-1 py-1 text-right">P</th>
             <th className="w-7 px-1 py-1 text-right">W</th>
@@ -149,19 +150,18 @@ function RaceTable({ b, title, note, rows, cut, level, label, settled }: {
             const tied = settled && ((level[i] && i + 1 < rows.length) || (i > 0 && level[i - 1]))
             return (
               <tr key={r.team.id} className={`${q ? 'bg-brand/[0.08]' : ''} ${pins.has(r.team.id) ? 'outline outline-2 -outline-offset-2 outline-gold/70' : ''} ${i === cut - 1 && i < rows.length - 1 ? 'border-b-2 border-dashed !border-line-strong' : ''}`}>
-                <td className={`px-1 py-1.5 text-xs font-bold ${q ? 'text-brand-ink' : 'text-fg-subtle'}`}>{label}{i + 1}</td>
-                <td className="px-1 py-1.5">
+                <td className={`px-1 py-2 align-middle text-xs font-bold ${q ? 'text-brand-ink' : 'text-fg-subtle'}`}>{label}{i + 1}</td>
+                <td className="px-1 py-2 align-middle text-xs text-fg-muted">{r.team.pool}</td>
+                <td className="px-1 py-2 align-middle">
                   <span className="flex min-w-0 items-center gap-1.5">
-                    <Emblem logo={teamLogo(b, r.team.id)} flagName={teamSideName(b, r.team.id)} className="h-6 w-7 shrink-0 rounded-[2px] object-contain" />
-                    <span className="min-w-0 flex-1">
-                      <span className={`block truncate ${q ? 'font-semibold text-fg' : 'text-fg-muted'}`}><PairName name={r.team.name} /></span>
-                      <span className="block truncate text-[10px] text-fg-subtle">Group {r.team.pool}{tied ? ' · level, coin toss' : ''}</span>
-                    </span>
+                    {(teamLogo(b, r.team.id) || hasFlag(teamSideName(b, r.team.id))) && <Emblem logo={teamLogo(b, r.team.id)} flagName={teamSideName(b, r.team.id)} className="h-6 w-7 shrink-0 rounded-[2px] object-contain" />}
+                    <span className={`min-w-0 flex-1 truncate ${q ? 'font-semibold text-fg' : 'text-fg-muted'}`}><TeamLink b={b} id={r.team.id}>{r.team.name}</TeamLink></span>
+                    {tied && <span className="shrink-0 rounded bg-gold/20 px-1 text-[9px] font-bold uppercase leading-4 text-gold">coin toss</span>}
                   </span>
                 </td>
-                <td className="tabular px-1 py-1.5 text-right text-fg-muted">{r.played}</td>
-                <td className="tabular px-1 py-1.5 text-right font-bold">{r.won}</td>
-                <td className={`tabular px-2 py-1.5 text-right ${r.diff > 0 ? 'text-brand-ink' : r.diff < 0 ? 'text-red-400' : 'text-fg-muted'}`}>{r.diff > 0 ? `+${r.diff}` : r.diff}</td>
+                <td className="tabular px-1 py-2 align-middle text-right text-fg-muted">{r.played}</td>
+                <td className="tabular px-1 py-2 align-middle text-right font-bold">{r.won}</td>
+                <td className={`tabular px-2 py-2 align-middle text-right ${r.diff > 0 ? 'text-brand-ink' : r.diff < 0 ? 'text-red-400' : 'text-fg-muted'}`}>{r.diff > 0 ? `+${r.diff}` : r.diff}</td>
               </tr>
             )
           })}
