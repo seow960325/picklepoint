@@ -56,9 +56,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
               {(() => {
                 const title = hubTitle(hub, hub.cats.map(c => bundleOf(c.code)?.competition.name))
                 const cls = 'font-display text-xl font-bold leading-tight tracking-wide sm:text-2xl lg:text-3xl'
-                return hub.cats.every(c => c.sport === 'pickleball')
-                  ? <BounceTitle text={title} className={cls} />
-                  : <div className={`line-clamp-2 ${cls}`}>{title}</div>
+                return <BounceTitle text={title} className={cls} sports={[...new Set(hub.cats.map(c => c.sport))]} />
               })()}
             </div>
           </div>

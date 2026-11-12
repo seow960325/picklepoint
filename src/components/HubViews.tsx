@@ -33,8 +33,9 @@ function Row({ b, code, m, left }: { b: Bundle; code: string; m: Match; left: Re
   const cls = (id: string | null) => `${done ? (m.winner_id === id ? 'font-bold text-fg' : 'text-fg-subtle') : 'font-semibold text-fg'} ${pins.has(id ?? '') ? 'underline decoration-gold decoration-2 underline-offset-4' : ''}`
   const body = (
     <>
-      <span className="min-w-0 text-[11px] font-bold uppercase leading-tight tracking-wide text-fg-subtle">{left}</span>
-      <span className={`line-clamp-2 min-w-0 break-words text-right leading-tight ${cls(m.team_a_id)}`}><TeamLink b={b} id={m.team_a_id}><PairName name={teamName(b, m.team_a_id)} /></TeamLink></span>
+      <div className="mb-1.5 flex min-w-0 text-[11px] font-bold uppercase leading-tight tracking-wide text-fg-subtle">{left}</div>
+      <div className="grid grid-cols-[minmax(0,1fr)_1.5rem_3.6rem_1.5rem_minmax(0,1fr)] items-center gap-x-1.5">
+      <span className={`min-w-0 text-right leading-tight ${cls(m.team_a_id)}`}><TeamLink b={b} id={m.team_a_id} className="block"><Stack name={teamName(b, m.team_a_id)} /></TeamLink></span>
       <span className="flex h-6 w-6 items-center justify-center">{m.team_a_id && <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
       <span className="text-center">
         {live || done
@@ -42,22 +43,36 @@ function Row({ b, code, m, left }: { b: Bundle; code: string; m: Match; left: Re
           : <span className="text-xs text-fg-subtle">vs</span>}
       </span>
       <span className="flex h-6 w-6 items-center justify-center">{m.team_b_id && <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
-      <span className={`line-clamp-2 min-w-0 break-words text-left leading-tight ${cls(m.team_b_id)}`}><TeamLink b={b} id={m.team_b_id}><PairName name={teamName(b, m.team_b_id)} /></TeamLink></span>
+      <span className={`min-w-0 text-left leading-tight ${cls(m.team_b_id)}`}><TeamLink b={b} id={m.team_b_id} className="block"><Stack name={teamName(b, m.team_b_id)} /></TeamLink></span>
+      </div>
     </>
   )
-  const base = `grid min-h-[44px] grid-cols-[4.2rem_minmax(0,1fr)_1.5rem_3.7rem_1.5rem_minmax(0,1fr)] items-center gap-1.5 border-b border-line/60 px-3 py-2 text-sm last:border-0 ${mine ? 'bg-gold/[0.08]' : ''}`
+  const base = `block border-b border-line/60 px-3 py-2.5 text-[14px] last:border-0 ${mine ? 'bg-gold/[0.08]' : ''}`
   return live || done
     ? <Link to={`/c/${code}/match/${m.id}`} className={`${base} active:bg-surface-2`}>{body}</Link>
     : <div className={base}>{body}</div>
 }
 
-const Tag = ({ top, sub, sub2, tone = '' }: { top: string; sub?: string; sub2?: string; tone?: string }) => (
-  <>
-    <span className={`block truncate ${tone}`}>{top}</span>
-    {sub && <span className="block truncate text-[10px] font-semibold normal-case tracking-normal text-fg-subtle">{/^\d{1,2}:\d{2}\s*[ap]m$/i.test(sub) ? <Clock t={sub} /> : sub}</span>}
-    {sub2 && <span className="block truncate text-[10px] font-semibold normal-case tracking-normal text-fg-subtle">{sub2}</span>}
-  </>
-)
+/** one player per line (no "/" and nothing cut off) */
+const Stack = ({ name }: { name: string | null | undefined }) => {
+  const parts = (name ?? '').split(/\s+\/\s+|\s*\|\s*/).filter(Boolean)
+  return <>{(parts.length ? parts : ['—']).map((x, i) => <span key={i} className="block truncate">{x}</span>)}</>
+}
+const TIME = /^\d{1,2}:\d{2}\s*[ap]m$/i
+/** the game's header line: court (and time) on the left, what stage it is on the right */
+const Tag = ({ top, sub, sub2, tone = '' }: { top: string; sub?: string; sub2?: string; tone?: string }) => {
+  const time = sub && TIME.test(sub) ? sub : null
+  const right = sub2 ?? (sub && !time ? sub : null)
+  return (
+    <span className="flex w-full items-baseline justify-between gap-3">
+      <span className={`flex min-w-0 items-baseline gap-2.5 ${tone}`}>
+        <span className="whitespace-nowrap">{top}</span>
+        {time && <Clock t={time} className="text-[12px] text-fg-muted" />}
+      </span>
+      {right && <span className={`min-w-0 truncate text-right text-[10.5px] font-semibold normal-case tracking-normal ${sub2 && tone ? tone : 'text-fg-subtle'}`}>{right}</span>}
+    </span>
+  )
+}
 
 export function HubGames({ b, code }: { b: Bundle; code: string }) {
   const pins = usePinned()

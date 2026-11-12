@@ -5,7 +5,7 @@ import type { Bundle } from './types.ts'
 import { cbStandings, cbKo } from './captainball.ts'
 import { churchOf } from './draw.ts'
 import { finalSeries } from './finals.ts'
-import { teamChurch, churchLogo } from './churches.ts'
+import { teamChurch, churchLogo, CHURCHES } from './churches.ts'
 
 export interface Podium3 { first: string | null; second: string | null; third: string | null; fourth?: string | null }
 export interface CategoryResult {
@@ -73,6 +73,8 @@ const keyOf = (s: string) => churchOf(s).toLowerCase()
 /** Gold, then silver, then bronze, then name. Churches are matched by team name. */
 export function medalTable(results: CategoryResult[], all: Bundle[] = []): MedalRow[] {
   const rows = new Map<string, MedalRow>()
+  // every church of the games is listed from the start, whether or not its teams have a church chosen yet
+  if (all.length) for (const c of CHURCHES) rows.set(keyOf(c.name), { key: keyOf(c.name), name: c.name, logo: c.logo, gold: 0, silver: 0, bronze: 0, fourth: 0 })
   // every church that takes part is listed, even with no medal yet (0 0 0)
   for (const b of all) for (const t of b.teams) {
     // a pair of players with no church chosen yet is not a church: no empty row for it

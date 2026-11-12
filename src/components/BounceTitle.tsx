@@ -4,11 +4,20 @@
  *  Every few jumps it is driven hard at the logo's cross, which blocks it (and shines) and sends it back.
  *  Without animation support (or with reduced motion) it is just the plain title. */
 import { useLayoutEffect, useRef } from 'react'
+import { SportIcon } from './SportIcon'
+import type { Sport } from '../lib/multisport'
 
 const UP = 'cubic-bezier(.15,.6,.45,1)', DOWN = 'cubic-bezier(.55,0,.85,.4)'
 const rnd = (a: number, b: number) => a + Math.random() * (b - a)
 
-export default function BounceTitle({ text, className = '' }: { text: string; className?: string }) {
+/** how each kind of ball moves: how high it jumps / how long a jump takes (the shuttle floats) */
+const MOVE: Record<Sport, { h: number; t: number }> = { pickleball: { h: 1, t: 1 }, captainball: { h: 1.45, t: 1.15 }, badminton: { h: 0.75, t: 1.7 } }
+
+/** `sports`: more than one = the same little actor turns into each sport's ball in turn
+ *  (pickleball, captain ball, shuttlecock), each with its own way of moving. */
+export default function BounceTitle({ text, className = '', sports = ['pickleball'] }: { text: string; className?: string; sports?: Sport[] }) {
+  const list: Sport[] = sports.length ? sports : ['pickleball']
+  const multi = list.length > 1
   const wrap = useRef<HTMLDivElement>(null), bx = useRef<HTMLSpanElement>(null), by = useRef<HTMLSpanElement>(null), ball = useRef<HTMLSpanElement>(null)
   useLayoutEffect(() => {
     const w = wrap.current, x = bx.current, y = by.current, spinEl = ball.current
@@ -21,6 +30,17 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
     const timers: number[] = []
     const wait = (ms: number) => new Promise<void>(r => { timers.push(window.setTimeout(r, ms)) })
     const d = y.offsetWidth
+    let kind = 0                                                    // which of `list` the ball is right now
+    const mv = () => MOVE[list[kind]]
+    const glyphs = Array.from(spinEl.querySelectorAll<HTMLElement>('[data-sport]'))
+    const showKind = () => glyphs.forEach(g => { g.style.display = g.dataset.sport === list[kind] ? '' : 'none' })
+    showKind()
+    /** turn into the next sport's ball: a little pop, rotation reset */
+    const swap = () => {
+      if (!multi) return
+      kind = (kind + 1) % list.length; showKind(); angle = 0; spinEl.style.rotate = '0deg'
+      live.push(spinEl.animate([{ transform: 'scale(.2)' }, { transform: 'scale(1.35)', offset: 0.6 }, { transform: 'scale(1)' }], { duration: 380, easing: 'ease-out' }))
+    }
     // where the ball sits on a word: somewhere along its top edge (measured fresh, so rotation / resize is fine)
     const spot = (el: HTMLElement, at = rnd(0.2, 0.8)) => {
       const b = w.getBoundingClientRect(), r = el.getBoundingClientRect()
@@ -29,7 +49,8 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
     let pos = { x: 0, y: 0 }, angle = 0
     const place = (p: { x: number; y: number }) => { pos = p; x.style.transform = `translateX(${p.x}px)`; y.style.transform = `translateY(${p.y}px)` }
     /** one jump from where the ball is to `to`, `ms` long, `h` high */
-    const hop = async (to: { x: number; y: number }, ms: number, h: number) => {
+    const hop = async (to: { x: number; y: number }, ms0: number, h0: number) => {
+      const ms = ms0 * mv().t, h = h0 * mv().h
       const from = pos, top = Math.min(from.y, to.y) - h
       const ax = x.animate([{ transform: `translateX(${from.x}px)` }, { transform: `translateX(${to.x}px)` }], { duration: ms, easing: 'linear', fill: 'forwards' })
       const ay = y.animate([
@@ -103,7 +124,8 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
       }
       const total = path[path.length - 1][0] || 1, n = path.length - 1, ms = n * DT * 1000
       const at = (i: number) => x0 + span * path[i][0] / total
-      const deg = (i: number) => angle + (at(i) - x0) / (d / 2) * (180 / Math.PI)
+      const spinK = list[kind] === 'badminton' ? 0 : 1          // a shuttle does not roll
+      const deg = (i: number) => angle + spinK * (at(i) - x0) / (d / 2) * (180 / Math.PI)
       const ax = x.animate(path.map((_, i) => ({ transform: `translateX(${at(i)}px)`, offset: i / n })), { duration: ms, easing: 'linear', fill: 'forwards' })
       const ay = y.animate(path.map((q, i) => ({ transform: `translateY(${q[1]}px)`, offset: i / n })), { duration: ms, easing: 'linear', fill: 'forwards' })
       const ar = spinEl.animate(path.map((_, i) => ({ rotate: `${deg(i)}deg`, offset: i / n })), { duration: ms, easing: 'linear', fill: 'forwards' })
@@ -146,11 +168,13 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
         if (document.hidden) continue
         if (jumps >= due) {                                           // after a few normal jumps: the drive at the cross
           cur = Math.floor(Math.random() * seen.length)
+          swap()
           await drill(seen[cur])
           jumps = 0; due = 3 + Math.floor(Math.random() * 3)
           continue
         }
         jumps++
+        if (multi && jumps % 2 === 0) swap()
         if (Math.random() < 0.3) { await hop(pos, 480, d * 1.3); continue }
         let next = Math.floor(Math.random() * seen.length)
         if (seen.length > 1 && next === cur) next = (next + 1) % seen.length
@@ -180,7 +204,15 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
         ))}
       </div>
       <span ref={bx} className="pointer-events-none absolute left-0 top-0" aria-hidden="true">
-        <span ref={by} className="block" style={{ opacity: 0 }}><span ref={ball} className="pp-ball block" /></span>
+        <span ref={by} className="block" style={{ opacity: 0 }}>
+          {multi ? (
+            <span ref={ball} className="relative block" style={{ width: '.55em', height: '.55em' }}>
+              {list.map(sp => sp === 'pickleball'
+                ? <span key={sp} data-sport={sp} className="pp-ball absolute inset-0 m-auto" />
+                : <span key={sp} data-sport={sp} className="absolute inset-0 block text-[.55em]" style={{ lineHeight: 1 }}><SportIcon sport={sp} className="!block !h-full !w-full" /></span>)}
+            </span>
+          ) : <span ref={ball} className="pp-ball block" />}
+        </span>
       </span>
     </div>
   )
