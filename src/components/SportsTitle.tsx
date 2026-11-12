@@ -167,7 +167,7 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
         const lows = seen.map(s => spot(s, d, 0.5).top)
         const ground = Math.min(...lows)                                   // top edge of the words
         const x0 = ltr ? -d * 2 : b.width + d * 2, x1 = ltr ? b.width + d * 2 : -d * 2
-        const yHit = ground - d * rnd(1.2, 2.2), yEnd = ground + d * rnd(-0.4, 0.5), lift = d * rnd(0.8, 1.6)
+        const yHit = ground - d * rnd(0.2, 0.6), yEnd = ground + d * rnd(0.1, 0.5), lift = d * rnd(0.15, 0.35)   // just above the words
         const N = 48, kf: Keyframe[] = []
         const P = (t: number): Pt => ({ x: x0 + (x1 - x0) * t, y: yHit + (yEnd - yHit) * t * t - lift * 4 * t * (1 - t) })
         for (let i = 0; i <= N; i++) {

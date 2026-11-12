@@ -37,7 +37,7 @@ function played(b: Bundle, id: string, clock?: Hub['clock']) {
       const a = m.team_a_id === id, sl = clock ? slotOf(b, m) : null
       const oppId = (a ? m.team_b_id : m.team_a_id)!
       return { m, oppId, opp: b.teams.find(t => t.id === oppId)?.name ?? '', time: sl != null && clock ? slotTime(clock, sl) : '',
-        us: a ? m.score_a : m.score_b, them: a ? m.score_b : m.score_a, won: m.winner_id === id }
+        title: stageName(b, m), us: a ? m.score_a : m.score_b, them: a ? m.score_b : m.score_a, won: m.winner_id === id }
     })
 }
 
@@ -94,11 +94,13 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
             return (
               <div key={p.code + p.teamId} role="button" tabIndex={0} onClick={() => setDetail(p)}
                 className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left active:opacity-90 ${tone}`}>
-                <Emblem logo={b && id ? teamLogo(b, id) : null} flagName={b && id ? teamSideName(b, id) ?? p.name : p.name} className="h-10 w-10 shrink-0 rounded-[3px]" />
                 <span className="min-w-0 flex-1">
-                  <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
-                    <Star on className="h-3 w-3 shrink-0 text-gold" />
-                    <span className="truncate">{p.name}{cat ? ` · ${cat.short}` : ''}</span>
+                  <span className="flex min-w-0 items-start justify-between gap-2">
+                    <span className="flex min-w-0 items-center gap-1.5 pt-0.5 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
+                      <Star on className="h-3 w-3 shrink-0 text-gold" />
+                      <span className="truncate">{p.name}{cat ? ` · ${cat.short}` : ''}</span>
+                    </span>
+                    <Emblem logo={b && id ? teamLogo(b, id) : null} flagName={b && id ? teamSideName(b, id) ?? p.name : p.name} className="h-9 w-9 shrink-0 rounded-[3px]" />
                   </span>
                   <span className="block truncate font-display text-xl font-bold leading-tight">
                     {st?.state === 'playing' && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400 align-middle" />}
@@ -108,15 +110,17 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                   {games.length > 0 && (
                     <span className="mt-1.5 block space-y-1 border-t border-line/50 pt-1.5">
                       {games.map(g => (
-                        <span key={g.m.id} className="grid grid-cols-[4.6rem_minmax(0,1fr)_4.6rem] items-center gap-x-2 text-sm leading-tight">
-                          <span className={`font-display text-base font-bold ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg'}`}>{g.live ? '● Now' : <Clock t={g.time} />}</span>
-                          <span className="min-w-0 text-center">
-                            {isAlert(g.m) ? <span className="block text-[10px] font-bold uppercase tracking-wider text-red-500">⚠ {alertWord(g.m)}</span>
-                              : <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>}
-                            <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
-                              className="block w-full truncate font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"><PairName name={g.opp} /></button>
+                        <span key={g.m.id} className="block py-0.5 text-sm leading-tight">
+                          <span className="flex items-baseline justify-between gap-2">
+                            <span className="flex min-w-0 items-baseline gap-2">
+                              <span className={`font-display text-base font-bold ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg'}`}>{g.live ? '● Now' : <Clock t={g.time} />}</span>
+                              {isAlert(g.m) ? <span className="truncate text-[10px] font-bold uppercase tracking-wider text-red-500">⚠ {alertWord(g.m)}</span>
+                                : <span className="truncate text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>}
+                            </span>
+                            <span className={`shrink-0 text-xs font-bold uppercase tracking-wide ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}><CourtTag code={b?.competition?.code} n={g.n}>{g.court}</CourtTag></span>
                           </span>
-                          <span className={`text-right text-xs font-bold uppercase leading-tight tracking-wide ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}><CourtTag code={b?.competition?.code} n={g.n}>{g.court}</CourtTag></span>
+                          <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
+                            className="mt-0.5 block w-full text-left text-[15px] font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"><span className="text-fg-subtle">vs </span>{g.opp.replace(/\s*\|\s*/g, ' / ')}</button>
                         </span>
                       ))}
                     </span>
@@ -125,11 +129,16 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                     <span className="mt-1.5 block space-y-1 border-t border-line/50 pt-1.5">
                       <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">Played</span>
                       {past.map(g => (
-                        <span key={g.m.id} className="grid grid-cols-[4.6rem_minmax(0,1fr)_4.6rem] items-center gap-x-2 text-sm leading-tight text-fg-muted">
-                          <span className="font-display text-base font-bold"><Clock t={g.time} /></span>
+                        <span key={g.m.id} className="block py-0.5 text-sm leading-tight text-fg-muted">
+                          <span className="flex items-baseline justify-between gap-2">
+                            <span className="flex min-w-0 items-baseline gap-2">
+                              <span className="font-display text-base font-bold"><Clock t={g.time} /></span>
+                              <span className="truncate text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>
+                            </span>
+                            <ScoreWL us={g.us} them={g.them} wl={g.won ? 'W' : 'L'} className={`shrink-0 font-display text-base font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`} />
+                          </span>
                           <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
-                            className="block w-full min-w-0 truncate text-center font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"><PairName name={g.opp} /></button>
-                          <ScoreWL us={g.us} them={g.them} wl={g.won ? 'W' : 'L'} className={`justify-self-end font-display text-base font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`} />
+                            className="mt-0.5 block w-full text-left text-[15px] font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"><span className="text-fg-subtle">vs </span>{g.opp.replace(/\s*\|\s*/g, ' / ')}</button>
                         </span>
                       ))}
                     </span>
