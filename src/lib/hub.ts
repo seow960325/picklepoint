@@ -13,6 +13,8 @@ export interface Hub {
   clock?: { start: string; every: number; breakAt?: string; breakMins?: number }
   /** per-category printed timetable (YC26): slot start times, knockout slots, real courts */
   clocks?: Record<string, SlotClock>
+  /** the day's fixed items before the games (24 h from / to), shown above the categories */
+  program?: Array<{ from: string; to: string; label: string; zh?: string }>
   /** venue map image */
   map?: string
   /** event logo (transparent PNG): header and podium */
@@ -27,6 +29,10 @@ export const HUBS: Hub[] = [{
   // the old badminton / pickleball ties inside YC26 are replaced by the category codes
   onlySport: 'captainball',
   clocks: YC26_CLOCKS,
+  program: [
+    { from: '07:45', to: '08:15', label: 'Registration', zh: '开放报道' },
+    { from: '08:15', to: '08:45', label: 'Opening', zh: '开幕' },
+  ],
   map: '/yc26-map.jpg',
   cats: [
     { code: 'YC26', label: 'Captain Ball', short: 'Captain Ball', sport: 'captainball' },

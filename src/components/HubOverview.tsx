@@ -157,8 +157,25 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
     return { cat, b, rows, spare, slots: clockOfCode(cat.code) ? slotRows(b, clockOfCode(cat.code)!) : null }
   })
 
+  const hm = (t: string) => slotTime({ start: t, every: 0 }, 1)
   return (
     <section>
+      {hub.program && hub.program.length > 0 && (
+        <div className="mb-4 overflow-hidden rounded-xl border border-gold/40 bg-surface">
+          <div className="border-b border-line/60 bg-gold/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.25em] text-gold">Programme · before the games</div>
+          {hub.program.map(p => (
+            <div key={p.from} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-line/50 px-3 py-2.5 last:border-0">
+              <div className="min-w-0">
+                <div className="font-display text-lg font-bold leading-tight">{p.label}</div>
+                {p.zh && <div className="text-sm text-fg-muted">{p.zh}</div>}
+              </div>
+              <div className="flex items-baseline gap-1.5 font-display text-base font-bold">
+                <Clock t={hm(p.from)} /><span className="text-fg-subtle">–</span><Clock t={hm(p.to)} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-[11px] font-bold uppercase tracking-[0.25em] text-fg-subtle">{hub.clock || hub.clocks ? 'Categories · what time, which court' : 'Categories · on court & up next'}</h2>
         {hub.clock?.breakAt && (() => {
