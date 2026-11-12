@@ -50,10 +50,9 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <Link to="/" className="flex h-8 shrink-0 items-center rounded-lg border border-line px-2.5 text-sm text-fg-muted">←</Link>
-            {hub.logo && <EventLogo src={hub.logo} className="h-10 w-10 lg:h-12 lg:w-12" />}
+            {hub.logo && <EventLogo src={hub.logo} className="h-12 w-12 lg:h-14 lg:w-14" />}
             <div className="min-w-0">
               <div className="line-clamp-2 font-display text-xl font-bold leading-tight tracking-wide sm:text-2xl lg:text-3xl">{hubTitle(hub, hub.cats.map(c => bundleOf(c.code)?.competition.name))}</div>
-              <div className="text-xs text-fg-muted">code <span className="font-bold text-brand-ink">{hub.code}</span></div>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
