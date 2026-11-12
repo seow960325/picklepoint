@@ -13,7 +13,8 @@ import { categoryResult, medalTable, needsFourth, type MedalRow } from '../lib/m
 import { finalSeries } from '../lib/finals'
 import { cbKo } from '../lib/captainball'
 import { churchOf } from '../lib/draw'
-import { slotRows, slotTime, type SlotRow } from '../lib/timetable'
+import { slotRows, slotTime, clockOfCode, type SlotRow } from '../lib/timetable'
+import MapButton from './CourtMap'
 import { gameTitle, koSlotLabel } from '../lib/pool'
 
 export function useOthers(codes: string[], everyMs = 30000) {
@@ -148,13 +149,13 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
     }).filter(r => r.live || r.next)
     // games whose court is not decided yet (knockouts) - shown once, as the next in line
     const spare = queued.filter(m => !used.has(m.id) && !(m.court_id ?? m.home_court)).slice(0, mine ? 4 : 2)
-    return { cat, b, rows, spare, slots: hub.clock ? slotRows(b, hub.clock) : null }
+    return { cat, b, rows, spare, slots: clockOfCode(cat.code) ? slotRows(b, clockOfCode(cat.code)!) : null }
   })
 
   return (
     <section>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-[11px] font-bold uppercase tracking-[0.25em] text-fg-subtle">{hub.clock ? 'Categories · what time, which court' : 'Categories · on court & up next'}</h2>
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.25em] text-fg-subtle">{hub.clock || hub.clocks ? 'Categories · what time, which court' : 'Categories · on court & up next'}</h2>
         {hub.clock?.breakAt && (() => {
           const [bh, bm] = hub.clock.breakAt.split(':').map(Number), e = bh * 60 + bm + (hub.clock.breakMins ?? 0)
           const f = (t: number) => slotTime({ start: `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`, every: 0 }, 1)
@@ -185,6 +186,15 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
                 {!b ? 'Loading…' : st!.champ ? <>🏆 Champion: <span className="font-bold text-fg">{st!.champ}</span></> : st!.text}
               </div>
               </button>
+              {(() => {
+                const ck = clockOfCode(cat.code)
+                return ck && (ck.lunch || (hub.map && ck.sport)) ? (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    {hub.map && ck.sport && <MapButton src={hub.map} sport={ck.sport} courts={ck.courts} label={`Map · ${ck.sport === 'captainball' ? 'Court' : 'Court'} ${ck.courts?.join(', ')}`} />}
+                    {ck.lunch && <span className="rounded-full border border-gold/50 px-2 py-0.5 text-[11px] font-bold text-gold">Lunch {ck.lunch}</span>}
+                  </div>
+                ) : null
+              })()}
               {slots && (() => {
                 const cur = Math.max(0, slots.findIndex(r => r.state !== 'done'))
                 const allDone = slots.every(r => r.state === 'done')

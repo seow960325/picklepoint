@@ -10,6 +10,7 @@ import type { Bundle } from '../lib/types'
 import { hubTitle, type Hub, type HubCat } from '../lib/hub'
 import { useCompetition, groupStandings, groupStageComplete } from '../lib/store'
 import { FullscreenButton, ThemeToggle, Spinner } from '../components/ui'
+import MapButton from '../components/CourtMap'
 import { useOthers, LiveNext, MedalTable } from '../components/HubOverview'
 import { CbLive, CbMatches, CbStandings } from '../components/CaptainBall'
 import FlowChart from '../components/FlowChart'
@@ -55,6 +56,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
+            {hub.map && <MapButton src={hub.map} className="lg:h-10 lg:text-sm" />}
             <Link to={`/c/${hub.code}/referee`} className="flex h-8 items-center rounded-lg border border-line px-3 text-xs text-fg-muted lg:h-10 lg:text-sm">Referee</Link>
             <FullscreenButton className="grid h-8 w-8 place-items-center rounded-lg border border-line p-1.5 text-fg-muted lg:h-10 lg:w-10" />
             <ThemeToggle />

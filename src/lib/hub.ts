@@ -2,6 +2,8 @@
 // front page (overview + Total Champion) and hosts Captain Ball itself; each
 // pickleball / badminton category is its own code. Everything else in the
 // app is untouched: codes not listed here behave exactly as before.
+import type { SlotClock } from './timetable'
+import { YC26_CLOCKS } from './yc26plan.ts'
 export interface HubCat { code: string; label: string; short: string; sport: 'pickleball' | 'badminton' | 'captainball' }
 export interface Hub {
   code: string; title: string; onlySport?: 'captainball'; cats: HubCat[]
@@ -9,6 +11,10 @@ export interface Hub {
   noChurch?: boolean
   /** printed timetable: first game (24 h) and minutes per slot */
   clock?: { start: string; every: number; breakAt?: string; breakMins?: number }
+  /** per-category printed timetable (YC26): slot start times, knockout slots, real courts */
+  clocks?: Record<string, SlotClock>
+  /** venue map image */
+  map?: string
 }
 
 export const HUBS: Hub[] = [{
@@ -16,6 +22,8 @@ export const HUBS: Hub[] = [{
   title: 'YC26 Church Games',
   // the old badminton / pickleball ties inside YC26 are replaced by the category codes
   onlySport: 'captainball',
+  clocks: YC26_CLOCKS,
+  map: '/yc26-map.jpg',
   cats: [
     { code: 'YC26', label: 'Captain Ball', short: 'Captain Ball', sport: 'captainball' },
     { code: 'BMMD', label: "Badminton Men's Doubles", short: 'Badminton MD', sport: 'badminton' },

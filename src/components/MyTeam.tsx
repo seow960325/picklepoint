@@ -7,7 +7,7 @@ import type { Hub } from '../lib/hub'
 import { groupStandings, teamLogo, teamSideName } from '../lib/store'
 import { usePins, MAX_PINS, type Pin } from '../lib/pin'
 import { teamStatus } from '../lib/teamstatus'
-import { slotOf, slotTime, plannedCourt } from '../lib/timetable'
+import { slotOf, slotTime, plannedCourt, clockOfCode } from '../lib/timetable'
 import { gameTitle } from '../lib/pool'
 import { isAlert, alertWord } from '../lib/alert'
 import { Emblem, PairName } from './ui'
@@ -83,8 +83,8 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
             const id = resolvePin(b, p)
             const ev = b?.events.find(e => e.format === 'groups_ko')
             const st = b && id ? teamStatus(b, id, ev ? groupStandings(b, ev.id) : undefined) : null
-            const games = b && id ? upcoming(b, id, hub.clock) : []
-            const past = b && id ? played(b, id, hub.clock) : []
+            const games = b && id ? upcoming(b, id, clockOfCode(b.competition?.code)) : []
+            const past = b && id ? played(b, id, clockOfCode(b.competition?.code)) : []
             const alerted = games.some(g => isAlert(g.m))
             const tone = alerted ? 'border-red-500/80 bg-red-500/15'
               : st?.state === 'playing' ? 'border-blue-400 bg-blue-500/20'
@@ -161,10 +161,10 @@ function TeamDetail({ hub, pin, b, onClose, onOpen, onBack, onTeam }: { hub: Hub
     .sort((x, y) => x.sequence - y.sequence)
     .map(m => {
       const a = m.team_a_id === id
-      const sl = hub.clock ? slotOf(b, m) : null, ct = plannedCourt(b, m)
+      const ck = clockOfCode(b.competition?.code), sl = ck ? slotOf(b, m) : null, ct = plannedCourt(b, m)
       const oppId = a ? m.team_b_id : m.team_a_id
       return {
-        m, time: sl != null && hub.clock ? slotTime(hub.clock, sl) : '', court: ct != null ? `Court ${ct}` : 'Court to be decided',
+        m, time: sl != null && ck ? slotTime(ck, sl) : '', court: ct != null ? `Court ${ct}` : 'Court to be decided',
         opp: b.teams.find(t => t.id === oppId)?.name ?? '', title: gameTitle(b, m).replace(/ · Slot \d+$/, ''),
         us: a ? m.score_a : m.score_b, them: a ? m.score_b : m.score_a,
         live: m.status === 'live' || m.status === 'awaiting_confirm', done: m.status === 'finished', won: m.winner_id === id,

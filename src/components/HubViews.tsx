@@ -11,7 +11,7 @@ import { koPlanOf, planDraw } from '../lib/koplan'
 import { gameTitle } from '../lib/pool'
 import { courtLabel } from '../lib/teamstatus'
 import { hubOf, parentHub } from '../lib/hub'
-import { slotOf, slotTime } from '../lib/timetable'
+import { slotOf, slotTime, clockOfCode } from '../lib/timetable'
 import { usePinned } from '../lib/pin'
 import { Emblem, PairName } from './ui'
 import { GroupTable } from './GroupsKo'
@@ -65,7 +65,7 @@ export function HubGames({ b, code }: { b: Bundle; code: string }) {
   const [only, setOnly] = useState(false)
   const [all, setAll] = useState(false)
   const short = (m: Match) => gameTitle(b, m).replace(/ · Slot \d+$/, '')
-  const clock = (parentHub(code) ?? hubOf(code) ?? parentHub(b.competition?.code))?.clock
+  const clock = clockOfCode(b.competition?.code ?? code)
   const when = (m: Match) => { const sl = clock ? slotOf(b, m) : null; return sl != null && clock ? slotTime(clock, sl) : '' }
   const ct = (id: string | null | undefined) => courtLabel(b, id)
   const keep = (m: Match) => !(only && hasMine) || pins.has(m.team_a_id ?? '') || pins.has(m.team_b_id ?? '')

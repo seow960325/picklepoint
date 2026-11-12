@@ -2,9 +2,27 @@
  *  A slot is one round of games (one per court); the clock comes from the hub
  *  (first game + minutes per slot), so it is a reference, not a countdown. */
 import type { Bundle, Match } from './types'
-import { hubOf, parentHub } from './hub'
+import { hubOf, parentHub } from './hub.ts'
 
-export interface SlotClock { start: string; every: number; breakAt?: string; breakMins?: number }
+export const clockOfCode = (code?: string | null): SlotClock | undefined => {
+  const c = (code ?? '').toUpperCase(), h = parentHub(c) ?? hubOf(c)
+  return h?.clocks?.[c] ?? h?.clock
+}
+
+export interface SlotClock {
+  start: string; every: number; breakAt?: string; breakMins?: number
+  /** explicit start time ('HH:MM') of slot 1, 2, 3 ... (YC26: the day is not evenly spaced) */
+  times?: string[]
+  /** knockout round -> slot / real court per game of that round (in play order) */
+  roundSlots?: Record<string, number[]>
+  roundCourts?: Record<string, number[]>
+  /** captain ball: slot from the game order (group games 1-6, then playoff, semi, 3rd, final) */
+  cb?: boolean
+  sport?: 'pickleball' | 'badminton' | 'captainball'
+  /** real venue court numbers of this category */
+  courts?: number[]
+  lunch?: string
+}
 export interface SlotCell { court: number; m: Match | null }
 export interface SlotRow { slot: number; time: string; cells: SlotCell[]; state: 'done' | 'now' | 'later' }
 
@@ -13,9 +31,9 @@ const KO_OFFSET: Record<string, number> = { 'KO-8-0': 1, 'KO-8-1': 1, 'KO-8-2': 
 
 /** "9:30 am" for slot 1, "9:45 am" for slot 2 … */
 export function slotTime(c: SlotClock, slot: number): string {
-  const [h, mi] = c.start.split(':').map(Number)
-  let t = h * 60 + mi + (slot - 1) * c.every
-  if (c.breakAt) { const [bh, bm] = c.breakAt.split(':').map(Number); if (t >= bh * 60 + bm) t += c.breakMins ?? 0 }
+  const [h, mi] = (c.times?.[slot - 1] ?? c.start).split(':').map(Number)
+  let t = h * 60 + mi + (c.times?.[slot - 1] ? 0 : (slot - 1) * c.every)
+  if (c.breakAt && !c.times) { const [bh, bm] = c.breakAt.split(':').map(Number); if (t >= bh * 60 + bm) t += c.breakMins ?? 0 }
   const hh = Math.floor(t / 60) % 24, mm = t % 60
   return `${hh % 12 === 0 ? 12 : hh % 12}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'am' : 'pm'}`
 }
@@ -23,7 +41,22 @@ export function slotTime(c: SlotClock, slot: number): string {
 const courtNo = (c: Bundle['courts'][number]) => Number(/(\d+)\s*$/.exec(c.label ?? '')?.[1] ?? c.number)
 
 /** The slot a game belongs to (printed group slot, or its place after the groups); null = not on the timetable. */
+const CB_KO: Array<[RegExp, number]> = [[/playoff\s*1/i, 7], [/playoff\s*2/i, 8], [/semi\D*1/i, 9], [/semi\D*2/i, 10], [/3rd|third/i, 11], [/final/i, 12]]
+/** index of a knockout game among the games of its round (play order) */
+const roundIdx = (b: Bundle, m: Match) => b.matches.filter(x => x.event_id === m.event_id && x.bracket_key != null && x.round === m.round)
+  .sort((x, y) => x.sequence - y.sequence).findIndex(x => x.id === m.id)
+
 export function slotOf(b: Bundle, m: Match): number | null {
+  const clk = clockOfCode(b.competition?.code)
+  if (clk?.cb) {
+    const r = m.round ?? ''
+    const ko = CB_KO.find(([re]) => re.test(r))
+    return ko ? ko[1] : m.sequence >= 1 && m.sequence <= 6 ? m.sequence : null
+  }
+  if (clk?.times && m.bracket_key != null) {
+    const arr = clk.roundSlots?.[m.round ?? '']
+    return arr ? arr[Math.min(Math.max(0, roundIdx(b, m)), arr.length - 1)] ?? null : null
+  }
   if (m.bracket_key == null) return m.slot ?? null
   const off = KO_OFFSET[m.bracket_key]
   if (off == null) return null
@@ -35,20 +68,24 @@ export function slotOf(b: Bundle, m: Match): number | null {
 export function plannedCourt(b: Bundle, m: Match): number | null {
   const c = b.courts.find(x => x.id === (m.court_id ?? m.home_court))
   if (c) return courtNo(c)
-  return b.events.find(e => e.id === m.event_id)?.ko_court_plan?.[m.bracket_key ?? ''] ?? null
+  const plan = b.events.find(e => e.id === m.event_id)?.ko_court_plan?.[m.bracket_key ?? '']
+  if (plan != null) return plan
+  const clk = clockOfCode(b.competition?.code)
+  if (clk?.cb) return clk.courts?.[0] ?? null
+  const arr = clk?.roundCourts?.[m.round ?? '']
+  return arr ? arr[Math.min(Math.max(0, roundIdx(b, m)), arr.length - 1)] ?? null : null
 }
 
 /** The planned clock time of a game ("9:30 am"), from the event's printed timetable; '' when the event has none. */
 export function plannedTime(b: Bundle, m: Match): string {
-  const code = b.competition?.code
-  const clock = (parentHub(code) ?? hubOf(code))?.clock
+  const clock = clockOfCode(b.competition?.code)
   const sl = clock ? slotOf(b, m) : null
   return sl != null && clock ? slotTime(clock, sl) : ''
 }
 
 /** Every slot with one cell per court (m = null: that court has no game in this slot). null = no printed slots. */
 export function slotRows(b: Bundle, clock: SlotClock): SlotRow[] | null {
-  const courts = [...new Set(b.courts.map(courtNo))].sort((x, y) => x - y)
+  const courts = [...new Set([...b.courts.map(courtNo), ...(clock.courts ?? [])])].sort((x, y) => x - y)
   const by = new Map<number, Map<number, Match>>()
   for (const m of b.matches) {
     const s = slotOf(b, m), c = plannedCourt(b, m)
