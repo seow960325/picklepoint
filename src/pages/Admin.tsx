@@ -1345,7 +1345,7 @@ function StartOver({ token, run }: any) {
   )
 }
 
-/** Pinned message on the front page, above "My team". Un-pin makes it disappear. */
+/** Message board to everyone: what you send here flashes at the top of the front page for players, referees and the TV. */
 function AnnouncementCard({ ev, token, run }: any) {
   const [text, setText] = useState('')
   const list: Array<{ id: string; text: string }> = [
@@ -1353,24 +1353,41 @@ function AnnouncementCard({ ev, token, run }: any) {
     ...(ev.announcement ? [{ id: '', text: ev.announcement }] : []),   // 0044 message, until 0049 moves it
   ]
   const full = list.length >= 3
+  const t = text.trim()
   return (
-    <div className="space-y-2 rounded-xl border border-gold/50 bg-gold/5 p-4">
-      <div className="flex items-center justify-between">
-        <span className="font-display text-lg font-bold tracking-wide">Announcements</span>
-        <span className="text-xs font-bold uppercase text-fg-subtle">{list.length}/3 pinned</span>
+    <div className="space-y-3 overflow-hidden rounded-2xl border-2 border-gold/60 bg-gradient-to-b from-gold/15 to-gold/5 p-4">
+      <div className="flex items-center gap-2.5">
+        <span className="pp-flash grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-gold/70 text-2xl">📢</span>
+        <div className="min-w-0 flex-1">
+          <div className="font-display text-xl font-bold leading-tight tracking-wide">Message to everyone</div>
+          <div className="text-xs text-fg-muted">Shows at the top of the front page for all players, flashing, until you delete it.</div>
+        </div>
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold uppercase ${full ? 'bg-red-500/20 text-red-500' : 'bg-gold/20 text-gold'}`}>{list.length}/3 live</span>
       </div>
-      {list.map(a => (
-        <div key={a.id || 'old'} className="flex items-start gap-2 rounded-lg border border-gold/40 bg-surface px-3 py-2">
-          <span className="min-w-0 flex-1 whitespace-pre-line text-sm font-semibold">{a.text}</span>
-          <button onClick={() => run(() => a.id ? api.adminDeleteAnnouncement(token, ev.id, a.id) : api.adminSetAnnouncement(token, ev.id, ''), 'Announcement deleted')}
-            className="shrink-0 rounded-lg border border-red-500/50 px-2.5 py-1 text-xs font-bold uppercase text-red-500">Delete</button>
+
+      {list.map((a, i) => (
+        <div key={a.id || 'old'} className="pp-flash flex items-start gap-2.5 rounded-xl border-2 border-gold/60 bg-gold/10 px-3 py-2.5">
+          <span className="mt-0.5 shrink-0 rounded bg-gold px-1.5 py-0.5 font-display text-[10px] font-black uppercase tracking-wider text-black">Live {i + 1}</span>
+          <span className="min-w-0 flex-1 whitespace-pre-line text-base font-semibold leading-snug">{a.text}</span>
+          <button onClick={() => run(() => a.id ? api.adminDeleteAnnouncement(token, ev.id, a.id) : api.adminSetAnnouncement(token, ev.id, ''), 'Message removed')}
+            className="shrink-0 rounded-lg border border-red-500/50 px-2.5 py-1 text-xs font-bold uppercase text-red-500">Remove</button>
         </div>
       ))}
-      {full ? <div className="text-xs text-fg-subtle">3 announcements pinned. Delete one to add another.</div> : (<>
-        <textarea className={inputFull + ' min-h-[72px]'} maxLength={400} value={text} onChange={e => setText(e.target.value)}
-          placeholder="e.g. Lunch break 12:30. Men's Doubles semi-finals start at 2 pm." />
-        <button disabled={!text.trim()} onClick={() => run(() => api.adminAddAnnouncement(token, ev.id, text), 'Announcement pinned').then(() => setText(''))}
-          className="w-full rounded-xl bg-brand px-4 py-2.5 font-display font-bold text-brand-fg disabled:opacity-30">PIN TO FRONT PAGE</button>
+
+      {full ? <div className="rounded-xl border border-line px-3 py-2 text-center text-xs text-fg-subtle">3 messages are live. Remove one to send another.</div> : (<>
+        <textarea className={inputFull + ' min-h-[96px] text-base'} maxLength={400} value={text} onChange={e => setText(e.target.value)}
+          placeholder="Type your message to everyone…" />
+        <div className="flex items-center justify-between text-xs text-fg-subtle">
+          <span>{t ? 'This is how players will see it:' : ''}</span><span>{text.length}/400</span>
+        </div>
+        {t && (
+          <div className="pp-flash flex items-start gap-2.5 rounded-xl border-2 border-gold/60 bg-gold/10 px-3 py-2.5">
+            <span className="mt-0.5 text-lg leading-none">📢</span>
+            <span className="min-w-0 flex-1 whitespace-pre-line text-sm font-semibold leading-snug">{t}</span>
+          </div>
+        )}
+        <button disabled={!t} onClick={() => run(() => api.adminAddAnnouncement(token, ev.id, text), 'Sent to everyone').then(() => setText(''))}
+          className="w-full rounded-xl bg-brand px-4 py-3 font-display text-lg font-bold tracking-wide text-brand-fg disabled:opacity-30">SEND TO EVERYONE</button>
       </>)}
     </div>
   )
