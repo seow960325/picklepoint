@@ -9,10 +9,10 @@ const UP = 'cubic-bezier(.15,.6,.45,1)', DOWN = 'cubic-bezier(.55,0,.85,.4)'
 const rnd = (a: number, b: number) => a + Math.random() * (b - a)
 
 export default function BounceTitle({ text, className = '' }: { text: string; className?: string }) {
-  const wrap = useRef<HTMLDivElement>(null), bx = useRef<HTMLSpanElement>(null), by = useRef<HTMLSpanElement>(null)
+  const wrap = useRef<HTMLDivElement>(null), bx = useRef<HTMLSpanElement>(null), by = useRef<HTMLSpanElement>(null), ball = useRef<HTMLSpanElement>(null)
   useLayoutEffect(() => {
-    const w = wrap.current, x = bx.current, y = by.current
-    if (!w || !x || !y || typeof w.animate !== 'function') return
+    const w = wrap.current, x = bx.current, y = by.current, spinEl = ball.current
+    if (!w || !x || !y || !spinEl || typeof w.animate !== 'function') return
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
     const words = Array.from(w.querySelectorAll<HTMLElement>('[data-w]'))
     if (!words.length) return
@@ -91,8 +91,8 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
       const stop = spot(back, 0.8)
       const span = Math.max(0, stop.x - pos.x)
       const turn = span / (d / 2) * (180 / Math.PI)
-      live.push(y.animate([{ rotate: `${angle}deg` }, { rotate: `${angle + turn}deg` }], { duration: 1500, easing: 'cubic-bezier(.2,.6,.35,1)' }))
-      angle = (angle + turn) % 360; y.style.rotate = `${angle}deg`
+      live.push(spinEl.animate([{ rotate: `${angle}deg` }, { rotate: `${angle + turn}deg` }], { duration: 1500, easing: 'cubic-bezier(.2,.6,.35,1)' }))
+      angle = (angle + turn) % 360; spinEl.style.rotate = `${angle}deg`
       await hop({ x: pos.x + span * 0.3, y: pos.y }, 260, d * 0.42)
       if (dead) return true
       await hop({ x: pos.x + span * 0.2, y: pos.y }, 180, d * 0.16)
@@ -166,7 +166,7 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
         ))}
       </div>
       <span ref={bx} className="pointer-events-none absolute left-0 top-0" aria-hidden="true">
-        <span ref={by} className="pp-ball block" style={{ opacity: 0 }} />
+        <span ref={by} className="block" style={{ opacity: 0 }}><span ref={ball} className="pp-ball block" /></span>
       </span>
     </div>
   )
