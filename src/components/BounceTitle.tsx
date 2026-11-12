@@ -59,7 +59,11 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
     }
     /** the ball is driven hard at the centre of the logo's cross; the cross blocks it (and shines at
      *  that very moment) and the ball comes straight back onto a word */
-    const drill = async (back: HTMLElement) => {
+    const drill = async (pick: HTMLElement) => {
+      // it drops onto the lowest line of the title (on a phone: from the top line down to the bottom line)
+      const low = Math.max(...words.map(el => spot(el).y))
+      const lows = words.filter(el => spot(el).ok && spot(el).y >= low - 4)
+      const back = lows.includes(pick) ? pick : lows[0] ?? pick
       const logo = document.querySelector<HTMLElement>('[data-event-logo]')
       if (!logo) return false
       const b = w.getBoundingClientRect(), r = logo.getBoundingClientRect()
