@@ -37,7 +37,7 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
     /** where an actor sits on a word: along its top edge */
     const spot = (el: HTMLElement, d: number, at = rnd(0.2, 0.8)) => {
       const b = w.getBoundingClientRect(), r = el.getBoundingClientRect()
-      return { x: r.left - b.left + r.width * at - d / 2, y: r.top - b.top - d + r.height * 0.16, ok: r.width > 0 && r.bottom <= b.bottom + 2 }
+      return { x: r.left - b.left + r.width * at - d / 2, y: r.bottom - b.top - d * 1.05, top: r.top - b.top - d + r.height * 0.16, ok: r.width > 0 && r.bottom <= b.bottom + 2 }
     }
     const seen = words.filter(el => spot(el, 10).ok)
     if (!seen.length) return
@@ -80,14 +80,14 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
     }
     const entry = (a: NonNullable<ReturnType<typeof actor>>, fromRight: boolean, target: HTMLElement) => {
       const t = spot(target, a.d, 0.5)
-      a.place({ x: fromRight ? W() + a.d * 2 : -a.d * 3, y: t.y - a.d * 3 })
+      a.place({ x: fromRight ? W() + a.d * 2 : -a.d * 3, y: t.y - a.d * 0.6 })
       a.showIt()
       return t
     }
     /** leaves the box: one arc past the edge, then hidden */
     const exitArc = async (a: NonNullable<ReturnType<typeof actor>>, toRight: boolean) => {
       const p = a.pos()
-      await a.hop({ x: toRight ? W() + a.d * 3 : -a.d * 4, y: p.y - a.d * 0.5 }, 900, a.d * 3.2)
+      await a.hop({ x: toRight ? W() + a.d * 3 : -a.d * 4, y: p.y }, 1100, a.d * 1.5)
       a.hide()
     }
 
@@ -99,7 +99,7 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
       const first = intro ? seen[0] : seen[Math.floor(Math.random() * seen.length)]
       entry(cb, fromRight, first)
       // flies in to the first word
-      await cb.hop(spot(first, cb.d, 0.4), 800, cb.d * 2.2, 1.4)
+      await cb.hop(spot(first, cb.d, 0.4), 1100, cb.d * 1.2, 1.4)
       if (dead) return
       if (intro) show(first)
       let cur = first, left = Math.round(rnd(4, 7))
@@ -107,18 +107,18 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
       // carries the rest of the words in, one pass each
       for (const el of rest) {
         if (dead) return
-        await wait(160)
-        await cb.hop(spot(el, cb.d, 0.4), 520, cb.d * rnd(1.6, 2.4), 1.4)
+        await wait(260)
+        await cb.hop(spot(el, cb.d, 0.4), 900, cb.d * rnd(0.9, 1.3), 1.4)
         if (dead) return
         show(el); cur = el; left--
       }
       // keeps passing
       while (left-- > 0 && !dead) {
-        await wait(rnd(120, 260))
+        await wait(rnd(220, 420))
         let next = seen[Math.floor(Math.random() * seen.length)]
         if (seen.length > 1 && next === cur) next = seen[(seen.indexOf(next) + 1) % seen.length]
         const to = spot(next, cb.d)
-        await cb.hop(to, Math.min(900, 420 + Math.abs(to.x - cb.pos().x) * 1.4), cb.d * rnd(1.8, 3), 1.4)
+        await cb.hop(to, Math.min(1500, 750 + Math.abs(to.x - cb.pos().x) * 2), cb.d * rnd(0.9, 1.5), 1.4)
         cur = next
       }
       if (dead) return
@@ -132,18 +132,18 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
       fromRight = !fromRight
       let cur = seen[Math.floor(Math.random() * seen.length)]
       entry(pb, fromRight, cur)
-      await pb.hop(spot(cur, pb.d, 0.4), 760, pb.d * 2.6)
+      await pb.hop(spot(cur, pb.d, 0.4), 800, pb.d * 1.6)
       if (dead) return
       await pb.settle(fromRight ? -1 : 1)
       for (let n = Math.round(rnd(5, 8)); n > 0 && !dead; n--) {
         await wait(rnd(500, 1300))
         if (dead) return
-        if (Math.random() < 0.3) { await pb.hop(pb.pos(), 480, pb.d * 1.3); continue }
+        if (Math.random() < 0.3) { await pb.hop(pb.pos(), 480, pb.d * 0.9); continue }
         let next = seen[Math.floor(Math.random() * seen.length)]
         if (seen.length > 1 && next === cur) next = seen[(seen.indexOf(next) + 1) % seen.length]
         const to = spot(next, pb.d)
         const dir = Math.sign(to.x - pb.pos().x) || 1
-        await pb.hop(to, Math.min(1100, 520 + Math.abs(to.x - pb.pos().x) * 2.2), pb.d * rnd(2, 3.2))
+        await pb.hop(to, Math.min(1200, 560 + Math.abs(to.x - pb.pos().x) * 2.2), pb.d * rnd(1.3, 2))
         if (dead) return
         await pb.settle(dir)
         cur = next
@@ -164,7 +164,7 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
         if (document.hidden) continue
         const b = w.getBoundingClientRect()
         const d = el.offsetWidth
-        const lows = seen.map(s => spot(s, d, 0.5).y)
+        const lows = seen.map(s => spot(s, d, 0.5).top)
         const ground = Math.min(...lows)                                   // top edge of the words
         const x0 = ltr ? -d * 2 : b.width + d * 2, x1 = ltr ? b.width + d * 2 : -d * 2
         const yHit = ground - d * rnd(1.2, 2.2), yEnd = ground + d * rnd(-0.4, 0.5), lift = d * rnd(0.8, 1.6)
@@ -211,7 +211,7 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
     }
   }, [text, hasPb, hasCb, hasSh])
 
-  const SZ = '.55em'
+  const SZ = '.62em'
   return (
     <div ref={wrap} className={`relative ${className}`} style={{ overflowX: 'clip' }}>
       <div className="line-clamp-2">
@@ -220,19 +220,19 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
         ))}
       </div>
       {hasPb && (
-        <span ref={pbX} className="pointer-events-none absolute left-0 top-0" aria-hidden="true">
+        <span ref={pbX} className="pointer-events-none absolute left-0 top-0 z-10" aria-hidden="true">
           <span ref={pbY} className="block" style={{ opacity: 0 }}><span ref={pbR} className="pp-ball block" /></span>
         </span>
       )}
       {hasCb && (
-        <span ref={cbX} className="pointer-events-none absolute left-0 top-0" aria-hidden="true">
+        <span ref={cbX} className="pointer-events-none absolute left-0 top-0 z-10" aria-hidden="true">
           <span ref={cbY} className="block" style={{ opacity: 0 }}>
             <span ref={cbR} className="block" style={{ width: SZ, height: SZ }}><SportIcon sport="captainball" className="!block !h-full !w-full" /></span>
           </span>
         </span>
       )}
       {hasSh && (
-        <span ref={shT} className="pointer-events-none absolute left-0 top-0 block" aria-hidden="true" style={{ width: '.62em', height: '.62em', opacity: 0 }}>
+        <span ref={shT} className="pointer-events-none absolute left-0 top-0 block" aria-hidden="true" style={{ width: '.74em', height: '.74em', opacity: 0 }}>
           <SportIcon sport="badminton" className="!block !h-full !w-full" />
         </span>
       )}
