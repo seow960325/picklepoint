@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom'
 import type { Bundle } from '../lib/types'
 import * as api from '../lib/api'
 import { Emblem } from './ui'
-import { teamLogo, teamSideName } from '../lib/store'
+import { teamLogo, teamSideName, groupStandings } from '../lib/store'
 import type { Hub } from '../lib/hub'
 import { categoryResult, medalTable, needsFourth, type MedalRow } from '../lib/medals'
 import { finalSeries } from '../lib/finals'
@@ -15,7 +15,7 @@ import { cbKo } from '../lib/captainball'
 import { teamChurch } from '../lib/churches'
 import { slotRows, slotTime, clockOfCode, type SlotRow } from '../lib/timetable'
 import MapButton, { CourtTag } from './CourtMap'
-import { gameTitle, koSlotLabel } from '../lib/pool'
+import { gameTitle, koSlotLabel, provisionalTeam, slotStage, stageName } from '../lib/pool'
 
 export function useOthers(codes: string[], everyMs = 30000) {
   const [got, setGot] = useState<Record<string, Bundle | null>>({})
@@ -92,7 +92,8 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
     const ev = b.events.find(e => e.id === m.event_id)
     const side = (s: 'a' | 'b') => {
       const id = s === 'a' ? m.team_a_id : m.team_b_id
-      return id ? name(b, id) : ev?.bracket_preview ? koSlotLabel(b, ev, m, s) : 'To be decided'
+      const pid = id ?? (ev ? provisionalTeam(b, ev, m, s, groupStandings) : null)
+      return pid ? name(b, pid) : ev && (ev.bracket_preview || ev.format === 'groups_ko') ? koSlotLabel(b, ev, m, s) : 'To be decided'
     }
     const done = m.status === 'finished'
     const cls = (s: 'a' | 'b') => {
@@ -113,7 +114,10 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
   const SlotBox = ({ b, r }: { b: Bundle; r: SlotRow }) => (
     <div className={`overflow-hidden rounded-lg border ${r.state === 'now' ? 'border-emerald-500/50' : 'border-line/70'}`}>
       <div className={`flex items-center justify-between gap-2 px-2.5 py-1.5 ${r.state === 'now' ? 'bg-emerald-500/10' : 'bg-surface-2/60'}`}>
-        <span className="font-display text-base font-bold leading-none tracking-wide">{r.time}</span>
+        <span className="flex min-w-0 items-baseline gap-2">
+          <span className="font-display text-base font-bold leading-none tracking-wide">{r.time}</span>
+          {r.cells.some(c => c.m) && <span className="truncate text-xs font-bold uppercase tracking-wider text-fg-muted">{slotStage(b, r.cells.filter(c => c.m).map(c => c.m!))}</span>}
+        </span>
         <span className={`text-[10px] font-bold uppercase tracking-wider ${r.state === 'now' ? 'text-emerald-400' : 'text-fg-subtle'}`}>
           {r.state === 'now' ? 'Now' : r.state === 'done' ? 'Finished' : 'Coming up'}
         </span>
@@ -124,7 +128,7 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
           <div key={c.court} className="border-t border-line/50 px-2.5 py-1.5">
             <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider">
               <span className={live ? 'text-emerald-400' : 'text-fg-subtle'}>{live ? '● ' : ''}<CourtTag code={b.competition.code} n={c.court}>Court {c.court}</CourtTag></span>
-              {c.m && <span className="font-semibold normal-case tracking-normal text-fg-subtle">· {gameTitle(b, c.m).replace(/ · Slot \d+$/, '')}</span>}
+              {c.m && <span className="font-semibold normal-case tracking-normal text-fg-subtle">· {c.m.bracket_key ? stageName(b, c.m) : gameTitle(b, c.m).replace(/ · Slot \d+$/, '').replace(/^Round robin · /, '')}</span>}
               {live && <span className="ml-auto text-emerald-400">live</span>}
               {!c.m && <span className="font-semibold normal-case tracking-normal text-fg-subtle">· no game</span>}
             </div>

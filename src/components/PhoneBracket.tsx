@@ -6,13 +6,14 @@ import { teamName, groupStandings } from '../lib/store'
 import TeamMark from './TeamMark'
 import { koSlotLabel } from '../lib/pool'
 import { koPlanOf } from '../lib/koplan'
-import { planCaption, provisionalTeam } from '../lib/pool'
+import { planCaption, provisionalTeam, koCode } from '../lib/pool'
 import { plannedTime, plannedCourt } from '../lib/timetable'
 import { CourtTag } from './CourtMap'
 
 type Col = { round: string; matches: Match[] }
 
-function roundTitle(col: Col, m: Match, all: Match[]): string {
+function roundTitle(col: Col, m: Match, all: Match[], b?: Bundle): string {
+  if (b && m.bracket_key && /^(QF|SF|PO)\d+$/.test(koCode(b, m))) return `${koCode(b, m)} · ${m.round}`
   if (m.round === 'Final') return all.filter(x => x.round === 'Final').length > 1 ? `Final · game ${all.filter(x => x.round === 'Final').indexOf(m) + 1}` : 'Final'
   if (m.round === 'Third place') return '3rd place'
   const same = all.filter(x => x.round === m.round)
@@ -29,7 +30,7 @@ function Side({ b, ev, m, s, big }: { b: Bundle; ev: EventCfg; m: Match; s: 'a' 
   if (!id) {
     return (
       <div className={`flex items-center gap-2 border-l-[3px] border-transparent px-2.5 ${big ? 'py-3' : 'py-2.5'}`}>
-                <span className={`min-w-0 flex-1 italic text-fg-subtle ${big ? 'text-sm' : 'text-xs'}`}>{ev.bracket_preview || koPlanOf(b.competition?.code) ? koSlotLabel(b, ev, m, s) : 'To be decided'}</span>
+                <span className={`min-w-0 flex-1 italic text-fg-subtle ${big ? 'text-sm' : 'text-xs'}`}>{ev.bracket_preview || ev.format === 'groups_ko' || koPlanOf(b.competition?.code) ? koSlotLabel(b, ev, m, s) : 'To be decided'}</span>
       </div>
     )
   }
@@ -82,7 +83,7 @@ function Row({ b, ev, col, all }: { b: Bundle; ev: EventCfg; col: Col; all: Matc
   const n = col.matches.length
   return (
     <div className={n === 1 ? 'mx-auto w-[64%]' : 'grid grid-cols-2 gap-2'}>
-      {col.matches.map(m => <Card key={m.id} b={b} ev={ev} m={m} title={roundTitle(col, m, all)} />)}
+      {col.matches.map(m => <Card key={m.id} b={b} ev={ev} m={m} title={roundTitle(col, m, all, b)} />)}
     </div>
   )
 }

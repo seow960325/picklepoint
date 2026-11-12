@@ -9,7 +9,7 @@ import { usePins, MAX_PINS, type Pin } from '../lib/pin'
 import { teamStatus } from '../lib/teamstatus'
 import { CourtTag } from './CourtMap'
 import { slotOf, slotTime, plannedCourt, clockOfCode } from '../lib/timetable'
-import { gameTitle } from '../lib/pool'
+import { stageName } from '../lib/pool'
 import { isAlert, alertWord } from '../lib/alert'
 import { Emblem, PairName } from './ui'
 import { Link } from 'react-router-dom'
@@ -24,7 +24,7 @@ function upcoming(b: Bundle, id: string, clock?: Hub['clock']) {
     .map(m => {
       const sl = clock ? slotOf(b, m) : null, ct = plannedCourt(b, m)
       const opp = b.teams.find(t => t.id === (m.team_a_id === id ? m.team_b_id : m.team_a_id))?.name ?? ''
-      return { m, oppId: m.team_a_id === id ? m.team_b_id! : m.team_a_id!, time: sl != null && clock ? slotTime(clock, sl) : '', court: ct != null ? `Court ${ct}` : 'Court to be decided', n: ct, opp, title: gameTitle(b, m).replace(/ · Slot \d+$/, ''), live: m.status === 'live' || m.status === 'awaiting_confirm' }
+      return { m, oppId: m.team_a_id === id ? m.team_b_id! : m.team_a_id!, time: sl != null && clock ? slotTime(clock, sl) : '', court: ct != null ? `Court ${ct}` : 'Court to be decided', n: ct, opp, title: stageName(b, m), live: m.status === 'live' || m.status === 'awaiting_confirm' }
     })
 }
 
@@ -112,7 +112,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                           <span className={`font-display text-base font-bold ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg'}`}>{g.live ? '● Now' : g.time || '—'}</span>
                           <span className="min-w-0 text-center">
                             {isAlert(g.m) ? <span className="block text-[10px] font-bold uppercase tracking-wider text-red-500">⚠ {alertWord(g.m)}</span>
-                              : g.m.bracket_key && <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>}
+                              : <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>}
                             <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
                               className="block w-full truncate font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"><PairName name={g.opp} /></button>
                           </span>
@@ -166,7 +166,7 @@ function TeamDetail({ hub, pin, b, onClose, onOpen, onBack, onTeam }: { hub: Hub
       const oppId = a ? m.team_b_id : m.team_a_id
       return {
         m, time: sl != null && ck ? slotTime(ck, sl) : '', court: ct != null ? `Court ${ct}` : 'Court to be decided', n: ct,
-        opp: b.teams.find(t => t.id === oppId)?.name ?? '', title: gameTitle(b, m).replace(/ · Slot \d+$/, ''),
+        opp: b.teams.find(t => t.id === oppId)?.name ?? '', title: stageName(b, m),
         us: a ? m.score_a : m.score_b, them: a ? m.score_b : m.score_a,
         live: m.status === 'live' || m.status === 'awaiting_confirm', done: m.status === 'finished', won: m.winner_id === id,
       }
@@ -199,7 +199,7 @@ function TeamDetail({ hub, pin, b, onClose, onOpen, onBack, onTeam }: { hub: Hub
                     className={`grid grid-cols-[4.6rem_minmax(0,1fr)_4.6rem] items-center gap-x-2 rounded-xl border px-3 py-2.5 ${g.live ? 'border-blue-500/50 bg-blue-500/10' : 'border-line bg-surface'}`}>
                     <span className={`font-display text-base font-bold leading-tight ${g.live ? 'text-blue-400' : g.done ? 'text-fg-subtle' : 'text-fg'}`}>{g.live ? '● Now' : g.time || '—'}</span>
                     <span className="min-w-0 text-center">
-                      {g.m.bracket_key && <span className="block text-[10px] font-bold uppercase tracking-wide text-fg-subtle">{g.title}</span>}
+                      <span className="block text-[10px] font-bold uppercase tracking-wide text-fg-subtle">{g.title}</span>
                       <button onClick={e => { e.preventDefault(); e.stopPropagation(); const oid = g.m.team_a_id === id ? g.m.team_b_id : g.m.team_a_id; if (oid) onTeam({ code: pin.code, teamId: oid, name: g.opp }) }}
                         className={`block w-full truncate text-sm underline decoration-line-strong decoration-dotted underline-offset-4 ${g.done && !g.won ? 'text-fg-muted' : 'font-semibold'}`}><PairName name={g.opp} /></button>
                     </span>

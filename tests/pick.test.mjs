@@ -40,7 +40,7 @@ test('courtChoices: a team on another court makes the game unavailable', () => {
 
 test('gameTitle', () => {
   const b = base()
-  assert.equal(gameTitle(b, b.matches[2]), 'Group A · Slot 2')
+  assert.equal(gameTitle(b, b.matches[2]), 'Round robin · Group A · Slot 2')
   assert.equal(gameTitle(b, b.matches[6]), 'Final')
 })
 
