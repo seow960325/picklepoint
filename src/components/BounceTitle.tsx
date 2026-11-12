@@ -197,7 +197,7 @@ export default function BounceTitle({ text, className = '', sports = ['picklebal
   }, [text])
 
   return (
-    <div ref={wrap} className={`relative ${className}`}>
+    <div ref={wrap} className={`relative pt-[0.85em] ${className}`}>
       <div className="line-clamp-2">
         {text.split(/\s+/).filter(Boolean).map((word, i) => (
           <span key={i}><span data-w className="inline-block whitespace-nowrap">{word}</span>{' '}</span>

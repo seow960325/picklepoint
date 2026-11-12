@@ -108,37 +108,33 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                   </span>
                   {st && !games.length && <span className="line-clamp-2 text-xs leading-snug text-fg-muted">{st.sub}</span>}
                   {games.length > 0 && (
-                    <span className="mt-1.5 block space-y-1 border-t border-line/50 pt-1.5">
+                    <span className="mt-1.5 block divide-y divide-line/30 border-t border-line/50 pt-0.5">
                       {games.map(g => (
-                        <span key={g.m.id} className="block py-0.5 text-sm leading-tight">
-                          <span className="flex items-baseline justify-between gap-2">
-                            <span className="flex min-w-0 items-baseline gap-2">
-                              <span className={`font-display text-base font-bold ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg'}`}>{g.live ? '● Now' : <Clock t={g.time} />}</span>
-                              {isAlert(g.m) ? <span className="truncate text-[10px] font-bold uppercase tracking-wider text-red-500">⚠ {alertWord(g.m)}</span>
-                                : <span className="truncate text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>}
-                            </span>
-                            <span className={`shrink-0 text-xs font-bold uppercase tracking-wide ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}><CourtTag code={b?.competition?.code} n={g.n}>{g.court}</CourtTag></span>
+                        <span key={g.m.id} className="grid grid-cols-[5.9rem_minmax(0,1fr)_auto] items-center gap-x-3 py-2 text-sm leading-tight">
+                          <span className={`font-display text-lg font-bold ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg'}`}>{g.live ? '● Now' : <Clock t={g.time} />}</span>
+                          <span className="min-w-0">
+                            {isAlert(g.m) ? <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-red-500">⚠ {alertWord(g.m)}</span>
+                              : <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>}
+                            <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
+                              className="block w-full truncate text-left text-[15px] font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"><span className="mr-2 text-[11px] font-bold uppercase text-fg-subtle no-underline">vs</span>{g.opp.replace(/\s*\|\s*/g, ' / ')}</button>
                           </span>
-                          <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
-                            className="mt-0.5 block w-full text-left text-[15px] font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"><span className="text-fg-subtle">vs </span>{g.opp.replace(/\s*\|\s*/g, ' / ')}</button>
+                          <span className={`text-xs font-bold uppercase tracking-wide ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}><CourtTag code={b?.competition?.code} n={g.n}>{g.court}</CourtTag></span>
                         </span>
                       ))}
                     </span>
                   )}
                   {past.length > 0 && (
-                    <span className="mt-1.5 block space-y-1 border-t border-line/50 pt-1.5">
-                      <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">Played</span>
+                    <span className="mt-1.5 block divide-y divide-line/30 border-t border-line/50 pt-1.5">
+                      <span className="block pb-1 text-[10px] font-bold uppercase tracking-wider text-fg-subtle">Played</span>
                       {past.map(g => (
-                        <span key={g.m.id} className="block py-0.5 text-sm leading-tight text-fg-muted">
-                          <span className="flex items-baseline justify-between gap-2">
-                            <span className="flex min-w-0 items-baseline gap-2">
-                              <span className="font-display text-base font-bold"><Clock t={g.time} /></span>
-                              <span className="truncate text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>
-                            </span>
-                            <ScoreWL us={g.us} them={g.them} wl={g.won ? 'W' : 'L'} className={`shrink-0 font-display text-base font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`} />
+                        <span key={g.m.id} className="grid grid-cols-[5.9rem_minmax(0,1fr)_auto] items-center gap-x-3 py-2 text-sm leading-tight text-fg-muted">
+                          <span className="font-display text-lg font-bold"><Clock t={g.time} /></span>
+                          <span className="min-w-0">
+                            <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>
+                            <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
+                              className="block w-full truncate text-left text-[15px] font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"><span className="mr-2 text-[11px] font-bold uppercase text-fg-subtle no-underline">vs</span>{g.opp.replace(/\s*\|\s*/g, ' / ')}</button>
                           </span>
-                          <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
-                            className="mt-0.5 block w-full text-left text-[15px] font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"><span className="text-fg-subtle">vs </span>{g.opp.replace(/\s*\|\s*/g, ' / ')}</button>
+                          <ScoreWL us={g.us} them={g.them} wl={g.won ? 'W' : 'L'} className={`font-display text-lg font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`} />
                         </span>
                       ))}
                     </span>

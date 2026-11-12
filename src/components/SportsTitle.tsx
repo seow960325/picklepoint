@@ -213,7 +213,7 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
 
   const SZ = '.62em'
   return (
-    <div ref={wrap} className={`relative ${className}`} style={{ overflowX: 'clip' }}>
+    <div ref={wrap} className={`relative pt-[0.85em] ${className}`} style={{ overflowX: 'clip' }}>
       <div className="line-clamp-2">
         {text.split(/\s+/).filter(Boolean).map((word, i) => (
           <span key={i}><span data-w className="inline-block whitespace-nowrap">{word}</span>{' '}</span>
