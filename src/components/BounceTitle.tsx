@@ -1,6 +1,7 @@
 /** Event title with a small pickleball that keeps the page alive: it drops in and hops slowly from
  *  word to word (each word appears as the ball lands on it), then stays around for good, resting on
  *  a word for a while, then jumping to another one, sometimes on the top line, sometimes the bottom.
+ *  Every few jumps it is driven hard at the logo's cross, which blocks it (and shines) and sends it back.
  *  Without animation support (or with reduced motion) it is just the plain title. */
 import { useLayoutEffect, useRef } from 'react'
 
@@ -39,6 +40,41 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
       if (dead) return
       place(to); ax.cancel(); ay.cancel(); live.length = 0
     }
+    /** a drive: straight and fast, no arc */
+    const shoot = async (to: { x: number; y: number }, ms: number) => {
+      const from = pos
+      const ax = x.animate([{ transform: `translateX(${from.x}px)` }, { transform: `translateX(${to.x}px)` }], { duration: ms, easing: 'cubic-bezier(.5,0,1,.6)', fill: 'forwards' })
+      const ay = y.animate([{ transform: `translateY(${from.y}px)` }, { transform: `translateY(${to.y}px)` }], { duration: ms, easing: 'cubic-bezier(.5,0,1,.6)', fill: 'forwards' })
+      live.push(ax, ay)
+      await Promise.all([ax.finished, ay.finished]).catch(() => {})
+      if (dead) return
+      place(to); ax.cancel(); ay.cancel(); live.length = 0
+    }
+    /** the ball is driven hard at the centre of the logo's cross; the cross blocks it (and shines at
+     *  that very moment) and the ball comes straight back onto a word */
+    const drill = async (back: HTMLElement) => {
+      const logo = document.querySelector<HTMLElement>('[data-event-logo]')
+      if (!logo) return false
+      const b = w.getBoundingClientRect(), r = logo.getBoundingClientRect()
+      if (!r.width) return false
+      const hit = { x: r.left - b.left + r.width * 0.573 - d / 2 + d * 0.3, y: r.top - b.top + r.height * 0.406 - d / 2 }
+      await hop(pos, 420, d * 1.6)                                   // a little toss first
+      if (dead) return true
+      await shoot(hit, 170)
+      if (dead) return true
+      const cross = logo.querySelector<HTMLElement>('[data-cross]'), star = logo.querySelector<HTMLElement>('[data-star]')
+      cross?.animate([
+        { filter: 'drop-shadow(0 0 0 rgba(255,255,255,0)) brightness(1)' },
+        { filter: 'drop-shadow(0 0 4px #fff) drop-shadow(0 0 14px rgba(255,255,255,.95)) brightness(1.35)', offset: 0.12 },
+        { filter: 'drop-shadow(0 0 0 rgba(255,255,255,0)) brightness(1)' }], { duration: 900, easing: 'ease-out' })
+      star?.animate([
+        { transform: 'translate(-50%,-50%) scale(0) rotate(0)', opacity: 0 },
+        { transform: 'translate(-50%,-50%) scale(1.15) rotate(30deg)', opacity: 1, offset: 0.15 },
+        { transform: 'translate(-50%,-50%) scale(0) rotate(90deg)', opacity: 0 }], { duration: 700, easing: 'ease-out' })
+      logo.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-2px)', offset: 0.2 }, { transform: 'translateX(1px)', offset: 0.5 }, { transform: 'translateX(0)' }], { duration: 260 })
+      await hop(spot(back), 300, d * 0.9)                            // blocked: fast, flat, back to the word
+      return true
+    }
     const show = (el: HTMLElement) => {
       el.style.opacity = ''
       live.push(el.animate([{ opacity: 0, transform: 'translateY(.2em) scale(.85)' }, { opacity: 1, transform: 'translateY(-.04em) scale(1.04)', offset: 0.6 }, { opacity: 1, transform: 'none' }],
@@ -62,11 +98,18 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
         await wait(380)
       }
       // alive: rest, then a little bounce in place or a jump to another word (other line included)
-      let cur = seen.length - 1
+      let cur = seen.length - 1, jumps = 0, due = 3
       while (!dead) {
         await wait(rnd(1800, 5200))
         if (dead) return
         if (document.hidden) continue
+        if (jumps >= due) {                                           // after a few normal jumps: the drive at the cross
+          cur = Math.floor(Math.random() * seen.length)
+          await drill(seen[cur])
+          jumps = 0; due = 3 + Math.floor(Math.random() * 3)
+          continue
+        }
+        jumps++
         if (Math.random() < 0.3) { await hop(pos, 480, d * 1.3); continue }
         let next = Math.floor(Math.random() * seen.length)
         if (seen.length > 1 && next === cur) next = (next + 1) % seen.length
