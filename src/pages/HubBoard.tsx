@@ -7,7 +7,7 @@ import { SportIcon } from '../components/SportIcon'
 import { useMemo, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import type { Bundle } from '../lib/types'
-import { hubTitle, type Hub, type HubCat } from '../lib/hub'
+import { hubTitle, catHue, type Hub, type HubCat } from '../lib/hub'
 import { useCompetition, groupStandings, groupStageComplete } from '../lib/store'
 import { FullscreenButton, ThemeToggle, Spinner, EventLogo } from '../components/ui'
 import MapButton from '../components/CourtMap'
@@ -47,7 +47,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
   return (
     <PinCtx.Provider value={pinned}>
     <div className="min-h-screen bg-canvas text-fg">
-      <div className="border-b border-line px-4 pb-2 pt-3 lg:px-6" style={{ paddingTop: 'max(var(--pp-top), 0.75rem)' }}>
+      <div className="sticky top-0 z-40 border-b border-line bg-canvas px-4 pb-2 pt-3 lg:px-6" style={{ paddingTop: 'max(var(--pp-top), 0.75rem)' }}>
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <Link to="/" className="flex h-8 shrink-0 items-center rounded-lg border border-line px-2.5 text-sm text-fg-muted">←</Link>
@@ -82,9 +82,15 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
         {tab !== 'medals' && (
           <div className="mx-auto mt-2 flex max-w-6xl flex-wrap gap-1.5 pb-1">
             <Chip on={!cat} onClick={() => set('cat', null)}>All</Chip>
-            {hub.cats.map(c => (
-              <Chip key={c.code} on={cat?.code === c.code} onClick={() => set('cat', c.code)}><SportIcon sport={c.sport} /> {c.short}</Chip>
-            ))}
+            {hub.cats.map(c => {
+              // MC26 (all pickleball): no ball icon, Men's = blue, Mixed = pink
+              const hue = hub.noChurch ? catHue(c.code) : null
+              return (
+                <Chip key={c.code} on={cat?.code === c.code} onClick={() => set('cat', c.code)} hue={hue}>
+                  {hue == null && <SportIcon sport={c.sport} />} {c.short}
+                </Chip>
+              )
+            })}
           </div>
         )}
       </div>
@@ -110,9 +116,13 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
   )
 }
 
-const Chip = ({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) => (
+const HUE_CHIP = [
+  { on: 'border-sky-400 bg-sky-500 text-white', off: 'border-sky-500/60 bg-sky-500/15 text-sky-300' },
+  { on: 'border-pink-400 bg-pink-500 text-white', off: 'border-pink-500/60 bg-pink-500/15 text-pink-300' },
+]
+const Chip = ({ on, onClick, children, hue = null }: { on: boolean; onClick: () => void; children: ReactNode; hue?: 0 | 1 | null }) => (
   <button onClick={onClick}
-    className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? 'border-fg bg-fg text-canvas' : 'border-line text-fg-muted'}`}>
+    className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold ${hue != null ? HUE_CHIP[hue][on ? 'on' : 'off'] : on ? 'border-fg bg-fg text-canvas' : 'border-line text-fg-muted'}`}>
     {children}
   </button>
 )
