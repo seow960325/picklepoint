@@ -160,7 +160,7 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
   const hm = (t: string) => slotTime({ start: t, every: 0 }, 1)
   return (
     <section>
-      {hub.program && hub.program.length > 0 && (
+      {hub.program && hub.program.length > 0 && !blocks.some(x => x.b?.matches.some(m => m.status === 'live' || m.status === 'awaiting_confirm' || m.status === 'finished')) && (
         <div className="mb-4 overflow-hidden rounded-xl border border-gold/40 bg-surface">
           <div className="border-b border-line/60 bg-gold/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.25em] text-gold">Programme · before the games</div>
           {hub.program.map(p => (
