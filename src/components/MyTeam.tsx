@@ -257,14 +257,17 @@ function TeamPicker({ hub, bundleOf, pins, toggle, onClose }: {
                 {!b ? <div className="py-2 text-sm text-fg-muted">Loading…</div> : (
                   <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                     {teams.map(t => {
+                      const anyLogo = teams.some(x => !!teamLogo(b, x.id))
                       const on = pins.some(p => p.code === cat.code && (p.teamId === t.id || p.name === t.name))
                       return (
                         <button key={t.id} onClick={() => toggle({ code: cat.code, teamId: t.id, name: t.name })}
-                          className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border px-2.5 py-2 text-left ${on ? 'border-gold bg-gold/10' : 'border-line bg-surface active:bg-surface-2'}`}>
-                          <Emblem logo={teamLogo(b, t.id)} flagName={teamSideName(b, t.id) ?? t.name} className="h-8 w-8 shrink-0 rounded-[3px]" />
-                          <span className="min-w-0">
-                            <span className="block truncate text-sm font-semibold"><PairName name={t.name} /></span>
-                            <span className="block truncate text-[11px] text-fg-subtle">{t.pool && t.pool !== '—' ? `Group ${t.pool}` : ''}</span>
+                          className={`flex w-full items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left ${on ? 'border-gold bg-gold/10' : 'border-line bg-surface active:bg-surface-2'}`}>
+                          {anyLogo && (teamLogo(b, t.id)
+                            ? <Emblem logo={teamLogo(b, t.id)} flagName={teamSideName(b, t.id) ?? t.name} className="h-8 w-8 shrink-0 rounded-[3px]" />
+                            : <span className="h-8 w-8 shrink-0" aria-hidden="true" />)}
+                          <span className="block min-w-0 flex-1">
+                            <span className="block w-full text-sm font-semibold"><PairName name={t.name} /></span>
+                            <span className="block text-center text-[11px] leading-tight text-fg-subtle">{t.pool && t.pool !== '—' ? `Group ${t.pool}` : '\u00a0'}</span>
                           </span>
                           <Star on={on} className={`h-5 w-5 shrink-0 ${on ? 'text-gold' : 'text-fg-subtle'}`} />
                         </button>

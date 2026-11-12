@@ -234,7 +234,7 @@ export function Monogram({ name, className = '' }: { name: string; className?: s
 /** "Daniel N / Joel": the slash sits in one fixed column, first name right-aligned to it,
  *  second left-aligned, so the slashes of a list line up. Other names pass through. */
 export function PairName({ name }: { name: string | null | undefined }) {
-  const parts = (name ?? '').split(/\s+\/\s+/)
+  const parts = (name ?? '').split(/\s+\/\s+|\s*\|\s*/)
   if (parts.length !== 2) return <>{name ?? ''}</>
   return (
     <span className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline gap-x-3">
