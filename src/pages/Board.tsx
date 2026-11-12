@@ -1,3 +1,4 @@
+import { koPlanOf } from '../lib/koplan'
 import { useState, useEffect, useRef, useLayoutEffect, createContext, useContext } from 'react'
 import { SportIcon } from '../components/SportIcon'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -1283,7 +1284,7 @@ function PMatch({ b, m, medalOf }: { b: Bundle; m?: Match; medalOf?: (id: string
   const bye = m.team_b_id == null && m.team_a_id != null && m.status === 'finished'
   // fixed bracket shown before the teams are known (bracket_preview events)
   const ev = eventOf(b, m)
-  const slot = (s: 'a' | 'b') => ev?.bracket_preview ? koSlotLabel(b, ev, m, s) : undefined
+  const slot = (s: 'a' | 'b') => ev && (ev.bracket_preview || koPlanOf(b.competition?.code)) ? koSlotLabel(b, ev, m, s) : undefined
   const decided = m.status === 'finished'
   const live = m.status === 'live'
   const tierOf = useContext(McCtx)

@@ -26,16 +26,16 @@ export const KO_PLANS: Record<string, KoPlan> = {
 export const koPlanOf = (code?: string | null): KoPlan | null => KO_PLANS[(code ?? '').toUpperCase()] ?? null
 
 const ORD = ['winner', '2nd', '3rd', '4th']
-/** "A winner", "C 2nd", "Winner 3", "Runner-up 1" */
+/** "A winner", "C 2nd", "Best group winner 3", "Best runner-up 1" */
 export function tokenLabel(t: string): string {
   const pool = /^([A-Z])(\d)$/.exec(t)
   if (pool && !/^[WR]$/.test(pool[1])) return `${pool[1]} ${ORD[Number(pool[2]) - 1] ?? `#${pool[2]}`}`
   const x = /^([WR])(\d+)$/.exec(t)
-  if (x) return `${x[1] === 'W' ? 'Winner' : 'Runner-up'} ${x[2]}`
+  if (x) return `Best ${x[1] === 'W' ? 'group winner' : 'runner-up'} ${x[2]}`
   return t
 }
 
-/** Bracket preview wording: "Group A winner", "Group C runner-up", "Winner 3", "Runner-up 1" */
+/** Bracket wording: "Group A winner", "Group C runner-up", "Best group winner 3", "Best runner-up 1" */
 export function slotName(t: string): string {
   const pool = /^([A-Z])(\d)$/.exec(t)
   if (pool && !/^[WR]$/.test(pool[1])) return `Group ${pool[1]} ${pool[2] === '1' ? 'winner' : pool[2] === '2' ? 'runner-up' : `#${pool[2]}`}`
