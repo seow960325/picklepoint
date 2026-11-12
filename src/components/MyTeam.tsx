@@ -11,7 +11,7 @@ import { CourtTag } from './CourtMap'
 import { slotOf, slotTime, plannedCourt, clockOfCode } from '../lib/timetable'
 import { stageName } from '../lib/pool'
 import { isAlert, alertWord } from '../lib/alert'
-import { Emblem, PairName } from './ui'
+import { Emblem, PairName, ScoreWL } from './ui'
 import { Link } from 'react-router-dom'
 import { SportIcon } from './SportIcon'
 
@@ -129,7 +129,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                           <span className="font-display text-base font-bold">{g.time || '—'}</span>
                           <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
                             className="block w-full min-w-0 truncate text-center font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"><PairName name={g.opp} /></button>
-                          <span className={`tabular whitespace-nowrap text-right font-display text-base font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`}>{g.won ? 'W' : 'L'} {g.us}–{g.them}</span>
+                          <ScoreWL us={g.us} them={g.them} wl={g.won ? 'W' : 'L'} className={`justify-self-end font-display text-base font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`} />
                         </span>
                       ))}
                     </span>
@@ -205,7 +205,7 @@ function TeamDetail({ hub, pin, b, onClose, onOpen, onBack, onTeam }: { hub: Hub
                     </span>
                     <span className="text-right">
                       <span className={`block text-xs font-bold uppercase leading-tight tracking-wide ${g.live ? 'text-blue-400' : 'text-fg-muted'}`}><CourtTag code={pin.code} n={g.n}>{g.court}</CourtTag></span>
-                      {(g.live || g.done) && <span className={`tabular block font-display text-base font-bold leading-tight ${g.live ? 'text-blue-400' : g.won ? 'text-gold' : 'text-fg-subtle'}`}>{g.us}–{g.them}{g.done ? (g.won ? ' W' : ' L') : ''}</span>}
+                      {(g.live || g.done) && <ScoreWL us={g.us} them={g.them} wl={g.done ? (g.won ? 'W' : 'L') : null} className={`font-display text-base font-bold leading-tight ${g.live ? 'text-blue-400' : g.won ? 'text-gold' : 'text-fg-subtle'}`} />}
                     </span>
                   </Link>
                 ))}

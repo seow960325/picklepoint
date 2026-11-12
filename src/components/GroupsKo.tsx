@@ -11,7 +11,7 @@ import type { Standing } from '../lib/store'
 import { teamName, teamLogo, teamSideName } from '../lib/store'
 import { upNext, fmtClock, poolQueue, teamsBusy } from '../lib/pool'
 import { plannedTime } from '../lib/timetable'
-import { Emblem, Pill, PairName } from './ui'
+import { Emblem, Pill, PairName, ScoreWL } from './ui'
 
 // ------------------------------------------------------------------ clock
 /** Running time since the first point of a live game, or the recorded game
@@ -153,7 +153,7 @@ export function TeamGames({ b, id, onClose }: { b: Bundle; id: string; onClose: 
                 {games.map(g => (
                   <tr key={g.m.id}>
                     <td className="truncate py-2 pr-2"><span className={`mr-1.5 inline-block w-4 text-xs font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`}>{g.won ? 'W' : 'L'}</span><PairName name={teamName(b, g.opp)} /></td>
-                    <td className="tabular py-2 text-center font-display font-bold">{g.us}–{g.them}</td>
+                    <td className="py-2 text-center font-display font-bold"><ScoreWL us={g.us} them={g.them} /></td>
                     <td className={`tabular py-2 text-right font-bold ${tone(g.us - g.them)}`}>{sign(g.us - g.them)}</td>
                   </tr>
                 ))}
@@ -161,7 +161,7 @@ export function TeamGames({ b, id, onClose }: { b: Bundle; id: string; onClose: 
               <tfoot className="border-t-2 border-line-strong">
                 <tr>
                   <td className="py-2 text-xs font-bold uppercase tracking-wider text-fg-muted">Total (won {pf} − lost {pa})</td>
-                  <td className="tabular py-2 text-center font-display font-bold">{pf}–{pa}</td>
+                  <td className="py-2 text-center font-display font-bold"><ScoreWL us={pf} them={pa} digits={3} /></td>
                   <td className={`tabular py-2 text-right font-display text-base font-bold ${tone(pf - pa)}`}>{sign(pf - pa)}</td>
                 </tr>
               </tfoot>

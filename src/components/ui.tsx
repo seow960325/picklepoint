@@ -261,3 +261,17 @@ export function EventLogo({ src, className = 'h-12 w-12', still = false }: {
     </span>
   )
 }
+
+/** "W 15–0" with fixed columns, so W/L, both scores and the dash line up row under row
+ *  whether a score has one digit or two. */
+export function ScoreWL({ us, them, wl, digits = 2, className = '' }: { us: number; them: number; wl?: 'W' | 'L' | null; digits?: number; className?: string }) {
+  return (
+    <span className={`tabular inline-grid items-baseline ${className}`}
+      style={{ gridTemplateColumns: `${wl === undefined ? '0' : '1.5em'} ${digits}ch 0.8em ${digits}ch` }}>
+      <span className="text-left">{wl ?? ''}</span>
+      <span className="text-right">{us}</span>
+      <span className="text-center">–</span>
+      <span className="text-left">{them}</span>
+    </span>
+  )
+}
