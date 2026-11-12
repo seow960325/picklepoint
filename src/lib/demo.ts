@@ -535,6 +535,7 @@ export const demo = {
   resetCompetition() {
     const s = load()
     s.events = []
+    s.bundle.matches = s.bundle.matches.filter(m => !m.tie_stage)
     for (const m of s.bundle.matches) {
       m.score_a = 0; m.score_b = 0; m.a_on_left = true; m.sides_switched = false
       m.last_scorer = null; m.initial_server = null; m.serving_team = null; m.server_no = null

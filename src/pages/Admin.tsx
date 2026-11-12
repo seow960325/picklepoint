@@ -1203,12 +1203,17 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
       </div>
       {isDuel && duelError && <Warn>{duelError}</Warn>}
       {isPoolDispatch(ev) ? (
+        <>
         <div className="rounded-xl border border-line bg-surface p-4 text-sm text-fg-muted">
           Home courts: each group plays on its own court (a group shared by two courts moves
           once), and a free court takes its next game whose two teams are both free and rested,
           so every team's rest stays about the same.
-          To change who is in which group, use Teams → Generate random groups.
+          Redraw the groups below: teams are dealt into new group slots, while the games,
+          times, courts and the knockout positions (Group A winner v Group B runner-up, and so
+          on) stay exactly as printed. Only before the first point is scored.
         </div>
+        {ev.format === 'groups_ko' && <RandomGroups bundle={bundle} ev={ev} token={token} run={run} />}
+        </>
       ) : started ? (
         <Warn>
           Matches have already been played, so the schedule is locked. Regenerating
