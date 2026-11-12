@@ -28,9 +28,10 @@ import HubBoard from './HubBoard'
 import { HubGames } from '../components/HubViews'
 import { finalSeries } from '../lib/finals'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide, Confetti } from '../components/TieKnockout'
-import { CourtQueues, GroupCardPro, GroupTable, PlayClock } from '../components/GroupsKo'
+import { CourtQueues, GroupCardPro, GroupTable, PlayClock, TeamLink } from '../components/GroupsKo'
+import TeamMark from '../components/TeamMark'
 import FillGrid from '../components/FillGrid'
-import PhoneBracket from '../components/PhoneBracket'
+import PhoneBracket, { Join } from '../components/PhoneBracket'
 import type { Flow, FlowGame, FlowSlot } from '../lib/flow'
 import { useAutoHide } from '../lib/useAutoHide'
 import { plannedTime } from '../lib/timetable'
@@ -1271,6 +1272,45 @@ function FGame({ b, g, tier }: { b: Bundle; g: FlowGame; tier: Tier }) {
   )
 }
 
+function FCard({ b, g, title, big, gold }: { b: Bundle; g: FlowGame; title: string; big?: boolean; gold?: boolean }) {
+  const m = g.m
+  const done = !!g.winner
+  const sc = (s: FlowSlot) => m && (m.status === 'finished' || m.status === 'live') && s.id ? (m.team_a_id === s.id ? m.score_a : m.score_b) : null
+  const side = (s: FlowSlot) => {
+    const win = done && g.winner === s.id
+    const lose = done && !!s.id && g.winner !== s.id
+    const score = sc(s)
+    if (!s.id) return (
+      <div className={`flex min-h-[2.75rem] items-center border-l-[3px] border-transparent px-2.5 ${big ? 'py-2.5' : 'py-2'}`}>
+        <span className={`italic text-fg-muted ${big ? 'text-[15px]' : 'text-[13px]'}`}>{s.label}</span>
+      </div>
+    )
+    return (
+      <div className={`flex min-h-[2.75rem] items-center gap-2 border-l-[3px] px-2.5 ${big ? 'py-2' : 'py-1.5'} ${win ? 'border-gold bg-gold/10' : 'border-transparent'} ${lose ? 'opacity-50' : ''}`}>
+        <TeamMark nameOnly b={b} id={s.id} box={big ? 'h-7 w-9' : 'h-5 w-7'} ring={big ? 'h-9 w-9 text-sm' : 'h-7 w-7 text-[11px]'} />
+        <span className="min-w-0 flex-1">
+          <span className={`block break-words leading-tight ${big ? 'text-[18px]' : 'text-[15px]'} ${s.prov ? 'italic text-fg-muted' : 'font-semibold text-fg'}`}><TeamLink b={b} id={s.id}>{teamName(b, s.id)}</TeamLink></span>
+          <span className="block truncate text-[10.5px] leading-tight text-fg-subtle">{s.label}</span>
+        </span>
+        {score !== null && <span className={`tabular shrink-0 font-display font-bold leading-none ${big ? 'text-2xl' : 'text-lg'} ${win ? 'text-gold' : g.live ? 'text-brand-ink' : 'text-fg-subtle'}`}>{score}</span>}
+      </div>
+    )
+  }
+  return (
+    <div className={`overflow-hidden rounded-xl border bg-surface ${g.live ? 'border-brand pp-live' : gold ? 'border-gold/60' : 'border-line'}`}
+      style={gold ? { boxShadow: '0 0 34px -14px rgba(244,205,106,0.7)' } : undefined}>
+      <div className={`flex items-center justify-between gap-1.5 border-b px-2.5 py-1.5 ${gold ? 'border-gold/30 bg-gold/10' : 'border-line/70 bg-surface-2/50'}`}>
+        <span className={`whitespace-nowrap font-display font-bold leading-none ${big ? 'text-lg' : 'text-[15px]'} ${gold ? 'text-gold' : 'text-fg'}`}>{title}</span>
+        {g.live ? <span className="flex items-center gap-1 text-xs font-bold text-[#34d399]"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />live</span>
+          : done ? <span className="text-xs font-semibold text-fg-subtle">full time</span> : null}
+      </div>
+      {side(g.a)}
+      <div className="mx-2.5 h-px bg-line" />
+      {side(g.b)}
+    </div>
+  )
+}
+
 export function FlowBracket({ b, flow }: { b: Bundle; flow: Flow }) {
   const roomy = useWide(640)
   const [po, sf, md] = flow.stages
@@ -1283,23 +1323,41 @@ export function FlowBracket({ b, flow }: { b: Bundle; flow: Flow }) {
   const thirdTier: Tier = act === 2 ? 'big' : 'compact'
   const pg = po.games, sg = sf.games
 
+  const cbEv = b.events.find(e => e.sport === 'captainball')
+  const podium = flow.champion && F.winner && T3?.winner
+    ? { champion: flow.champion, runnerUp: F.a.id === F.winner ? F.b.id : F.a.id, third: T3.winner } : null
+  const podiumEl = podium ? <Podium b={b} champion={podium.champion} runnerUp={podium.runnerUp} third={podium.third} title={cbEv?.name ?? ''} compact /> : null
+
   if (!roomy) {
-    const ph = (t: Tier): Tier => t === 'xl' || t === 'xxl' ? 'big' : 'compact'
-    const sect = (title: string, games: FlowGame[], t: Tier) => (
-      <div>
-        <div className="mb-1.5 text-center text-[11px] font-bold uppercase tracking-[0.2em] text-fg-subtle">{title}</div>
-        <div className={`grid gap-2 ${games.length > 1 ? 'grid-cols-2' : ''}`}>{games.map(g => <FGame key={g.key} b={b} g={g} tier={games.length > 1 && ph(t) === 'big' ? 'std' : ph(t)} />)}</div>
+    // same upright picture as the other categories: first half comes down, second half comes up, they meet at the Final
+    const half = (gs: FlowGame[], i: number, label: string) => gs[i] && (
+      <div className="mx-auto w-[72%]">
+        <div className="py-1 text-center text-[10px] font-bold uppercase tracking-[0.25em] text-fg-subtle">{label}</div>
+        <FCard b={b} g={gs[i]} title={gs[i].title} big={false} />
       </div>
     )
     return (
-      <div className="mx-auto max-w-xl space-y-3 px-3 py-4">
-        {flow.champion && <div className="mx-auto w-fit rounded-xl border border-[#f4cd6a]/70 bg-[#f4cd6a]/15 px-5 py-2 text-center font-display text-xl font-black">🏆 {teamName(b, flow.champion)}</div>}
-        {sect('Playoff', pg, tierOf(0))}
-        <div className="text-center text-fg-subtle">↓</div>
-        {sect('Semi-final', sg, tierOf(1))}
-        <div className="text-center text-fg-subtle">↓</div>
-        {sect('Final', [F], tierOf(2))}
-        {T3 && sect('Third place', [T3], thirdTier)}
+      <div>
+        {podiumEl}
+        <div className="mx-auto max-w-md px-3 py-4" style={{ background: 'radial-gradient(60% 30% at 50% 50%, rgba(244,205,106,0.07), transparent 70%)' }}>
+          {half(pg, 0, 'Playoff')}
+          <Join from={1} to={1} />
+          {half(sg, 0, 'Semi-final')}
+          <Join from={1} to={1} />
+          <div className="space-y-2">
+            {T3 && (
+              <div className="mx-auto w-[72%]">
+                <div className="mb-1 text-center text-[10.5px] font-semibold uppercase tracking-wider text-fg-subtle">Played before the Final</div>
+                <FCard b={b} g={T3} title="🥉 3rd place" />
+              </div>
+            )}
+            <FCard b={b} g={F} title="🏆 Final" big gold />
+          </div>
+          <Join up from={1} to={1} />
+          {half(sg, 1, 'Semi-final')}
+          <Join up from={1} to={1} />
+          {half(pg, 1, 'Playoff')}
+        </div>
       </div>
     )
   }
@@ -1314,6 +1372,7 @@ export function FlowBracket({ b, flow }: { b: Bundle; flow: Flow }) {
   )
   return (
     <TallCtx.Provider value={false}>
+      {podiumEl}
       <div className="p-4 text-fg" style={{ background: 'radial-gradient(ellipse at top, rgba(244,205,106,0.06), transparent 55%), rgb(var(--canvas))' }}>
         <FitWidth tall={false}>
           <div className="mx-auto flex min-w-max items-stretch justify-center">

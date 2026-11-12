@@ -78,7 +78,7 @@ function Card({ b, ev, m, title, big, gold }: { b: Bundle; ev: EventCfg; m: Matc
 }
 
 /** lines between two rows: `from` cards above (or below when `up`) joining `to` cards */
-function Join({ from, to, up }: { from: number; to: number; up?: boolean }) {
+export function Join({ from, to, up }: { from: number; to: number; up?: boolean }) {
   const d = from === 2 && to === 1 ? 'M25 0 V50 H75 V0 M50 50 V100' : 'M50 0 V100'
   return (
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" className={`h-5 w-full text-fg-subtle/60 ${up ? 'rotate-180' : ''}`} aria-hidden="true">
