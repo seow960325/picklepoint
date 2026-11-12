@@ -15,7 +15,7 @@ import { useOthers, LiveNext, MedalTable } from '../components/HubOverview'
 import { CbLive, CbMatches, CbStandings } from '../components/CaptainBall'
 import FlowChart from '../components/FlowChart'
 import { flowOf } from '../lib/flow'
-import { LiveGrid, Matches, Standings, PosterBracket } from './Board'
+import { LiveGrid, Matches, Standings, PosterBracket, FlowBracket } from './Board'
 import MyTeamBar, { resolvePin } from '../components/MyTeam'
 import { HubGames, HubStandings } from '../components/HubViews'
 import { PinCtx, usePins } from '../lib/pin'
@@ -172,5 +172,5 @@ function Section({ tab, b, code }: { tab: HubTab; b: Bundle; code: string }) {
   // printed knockout (bracket_preview): the corners-to-trophy poster bracket; the flow chart only for the 6-team formats
   // one round-robin group straight into Final + 3rd place (4 teams): once drawn, the same bracket as the other categories
   const rrFinal = !!ko && !cb && bracketSeeded(b, ko.id) && bracketRounds(b, ko.id).every(r => r.round === 'Final' || r.round === 'Third place')
-  return flow && !ko?.bracket_preview && !rrFinal ? <FlowChart b={b} flow={flow} /> : <PosterBracket b={b} />
+  return flow && !ko?.bracket_preview && !rrFinal ? (cb ? <FlowBracket b={b} flow={flow} /> : <FlowChart b={b} flow={flow} />) : <PosterBracket b={b} />
 }

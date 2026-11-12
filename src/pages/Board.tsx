@@ -31,6 +31,7 @@ import { KnockoutBracket, ChampionStage, FinalBanner, useWide, Confetti } from '
 import { CourtQueues, GroupCardPro, GroupTable, PlayClock } from '../components/GroupsKo'
 import FillGrid from '../components/FillGrid'
 import PhoneBracket from '../components/PhoneBracket'
+import type { Flow, FlowGame, FlowSlot } from '../lib/flow'
 import { useAutoHide } from '../lib/useAutoHide'
 import { plannedTime } from '../lib/timetable'
 import { roundName, isPoolDispatch, isDiffTiebreak, koSlotLabel, stageLabel, courtChoices } from '../lib/pool'
@@ -255,8 +256,8 @@ export default function Board() {
         : <LiveGrid b={bundle} code={code!} tv={false} />)}
       {tab === 'standings' && (multi ? <TieStandings b={vb} /> : <Standings b={bundle} />)}
       {/* bracket = the full picture (groups -> knockout -> medals) whenever the format has one */}
-      {tab === 'knockout' && multi && (flow ? <FlowChart b={flowB} flow={flow} /> : <MultiKnockout b={bundle} view={sv} title={c.name} wide={wide} />)}
-      {tab === 'bracket' && (flow && !bundle.events.some(e => e.format === 'groups_ko' && e.bracket_preview) ? <FlowChart b={flowB} flow={flow} /> : <PosterBracket b={bundle} />)}
+      {tab === 'knockout' && multi && (flow ? (flowB.events.some(e => e.sport === 'captainball') ? <FlowBracket b={flowB} flow={flow} /> : <FlowChart b={flowB} flow={flow} />) : <MultiKnockout b={bundle} view={sv} title={c.name} wide={wide} />)}
+      {tab === 'bracket' && (flow && !bundle.events.some(e => e.format === 'groups_ko' && e.bracket_preview) ? (flowB.events.some(e => e.sport === 'captainball') ? <FlowBracket b={flowB} flow={flow} /> : <FlowChart b={flowB} flow={flow} />) : <PosterBracket b={bundle} />)}
       {tab === 'matches' && (multi
         ? <TieMatches b={bundle} code={code!} view={sv} />
         : <Matches b={bundle} code={code!} />)}
@@ -1233,6 +1234,116 @@ export function PosterBracket({ b, broadcast = false, tall = false }: { b: Bundl
       </div>)}
     </div>
     </McCtx.Provider>
+    </TallCtx.Provider>
+  )
+}
+
+/** Captain ball (2 groups of 3): the same corners-to-trophy bracket as the other categories, built from the flow.
+ *  Slots read "A 3rd" / "Winner Playoff 1" until the team is known; the round being played gets the room. */
+function FGame({ b, g, tier }: { b: Bundle; g: FlowGame; tier: Tier }) {
+  const T = TIER[tier]
+  const m = g.m
+  const sc = (s: FlowSlot) => m && (m.status === 'finished' || m.status === 'live') && s.id ? (m.team_a_id === s.id ? m.score_a : m.score_b) : null
+  const row = (s: FlowSlot) => {
+    const win = !!g.winner && g.winner === s.id
+    const lose = !!g.winner && !!s.id && g.winner !== s.id
+    const score = sc(s)
+    return (
+      <div className={`flex items-center gap-2 border-l-2 px-2.5 ${T.py} ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
+        {s.id && <Emblem logo={teamLogo(b, s.id)} flagName={teamSideName(b, s.id)} className={`${T.logo} shrink-0 rounded-[2px] object-contain`} />}
+        <span className="min-w-0 flex-1">
+          <span className="block text-[9px] font-semibold uppercase tracking-wider text-fg-subtle">{s.label}</span>
+          {s.id
+            ? <span className={`block leading-tight ${T.tx} ${s.prov ? 'italic text-fg-muted' : win ? 'font-bold text-fg' : 'font-medium text-fg-muted'}`}>{teamName(b, s.id)}</span>
+            : <span className={`block italic text-fg-subtle ${T.tx}`}>—</span>}
+        </span>
+        {score !== null && <span className={`tabular shrink-0 ${T.tx} ${win ? 'font-bold text-gold' : 'text-fg-subtle'}`}>{score}</span>}
+      </div>
+    )
+  }
+  return (
+    <div className={`overflow-hidden rounded-md border ${g.live ? 'border-brand pp-live' : 'border-line'} bg-surface`}>
+      <div className="truncate border-b border-line/60 bg-surface-2/40 px-2 py-0.5 text-center text-[9px] font-bold uppercase tracking-[0.08em] text-fg-muted">{g.title}</div>
+      {row(g.a)}
+      <div className="h-px bg-line" />
+      {row(g.b)}
+    </div>
+  )
+}
+
+export function FlowBracket({ b, flow }: { b: Bundle; flow: Flow }) {
+  const roomy = useWide(640)
+  const [po, sf, md] = flow.stages
+  const F = md.games.find(g => g.key === 'F')!
+  const T3 = md.games.find(g => g.key === '3P')
+  const stages = [po, sf, { games: [F] }]
+  const a = Math.max(0, stages.findIndex(s => !s.games.every(g => !!g.winner)))
+  const act = stages.every(s => s.games.every(g => !!g.winner)) ? 2 : a
+  const tierOf = (i: number): Tier => i === act ? (i === 2 ? 'xxl' : 'xl') : 'compact'
+  const thirdTier: Tier = act === 2 ? 'big' : 'compact'
+  const pg = po.games, sg = sf.games
+
+  if (!roomy) {
+    const ph = (t: Tier): Tier => t === 'xl' || t === 'xxl' ? 'big' : 'compact'
+    const sect = (title: string, games: FlowGame[], t: Tier) => (
+      <div>
+        <div className="mb-1.5 text-center text-[11px] font-bold uppercase tracking-[0.2em] text-fg-subtle">{title}</div>
+        <div className={`grid gap-2 ${games.length > 1 ? 'grid-cols-2' : ''}`}>{games.map(g => <FGame key={g.key} b={b} g={g} tier={games.length > 1 && ph(t) === 'big' ? 'std' : ph(t)} />)}</div>
+      </div>
+    )
+    return (
+      <div className="mx-auto max-w-xl space-y-3 px-3 py-4">
+        {flow.champion && <div className="mx-auto w-fit rounded-xl border border-[#f4cd6a]/70 bg-[#f4cd6a]/15 px-5 py-2 text-center font-display text-xl font-black">🏆 {teamName(b, flow.champion)}</div>}
+        {sect('Playoff', pg, tierOf(0))}
+        <div className="text-center text-fg-subtle">↓</div>
+        {sect('Semi-final', sg, tierOf(1))}
+        <div className="text-center text-fg-subtle">↓</div>
+        {sect('Final', [F], tierOf(2))}
+        {T3 && sect('Third place', [T3], thirdTier)}
+      </div>
+    )
+  }
+
+  const FCol = ({ title, i, games }: { title: string; i: number; games: FlowGame[] }) => (
+    <div className={`flex flex-col transition-all duration-500 ${TIER[tierOf(i)].col}`}>
+      <div className="mb-2 flex h-8 items-center justify-center border-b-2 border-line-strong pb-1 text-center text-sm font-bold uppercase tracking-[0.16em] text-fg-muted">{title}</div>
+      <div className="flex flex-1 flex-col">
+        {games.map(g => <div key={g.key} className="flex flex-1 items-center"><div className="w-full"><FGame b={b} g={g} tier={tierOf(i)} /></div></div>)}
+      </div>
+    </div>
+  )
+  return (
+    <TallCtx.Provider value={false}>
+      <div className="p-4 text-fg" style={{ background: 'radial-gradient(ellipse at top, rgba(244,205,106,0.06), transparent 55%), rgb(var(--canvas))' }}>
+        <FitWidth tall={false}>
+          <div className="mx-auto flex min-w-max items-stretch justify-center">
+            <FCol title="Playoff" i={0} games={pg.slice(0, 1)} />
+            <PConnector count={1} side="left" />
+            <FCol title="Semi-final" i={1} games={sg.slice(0, 1)} />
+            <PConnector count={1} side="left" />
+            <div className="flex flex-col px-2 lg:px-5">
+              <div className="mb-2 flex h-8 items-center justify-center border-b-2 border-gold/60 pb-1 text-center font-cer text-base font-bold uppercase tracking-[0.3em] text-gold">Final</div>
+              <div className="flex flex-1 flex-col items-center justify-center gap-2">
+                <div className={`${TIER[tierOf(2)].box} transition-all duration-500`}><FGame b={b} g={F} tier={tierOf(2)} /></div>
+                <div className="my-1 flex flex-col items-center">
+                  <Trophy lit={!!flow.champion} fight={!flow.champion && !!F.a.id && !!F.b.id} />
+                  {flow.champion
+                    ? <div className="mt-1 rounded-full border border-[#c2922c]/60 bg-[#f7d774]/10 px-3 py-1 font-cer text-sm font-bold text-[#f7d774]">{teamName(b, flow.champion)}</div>
+                    : <div className="mt-1 text-[10px] uppercase tracking-widest text-fg-subtle">champion</div>}
+                </div>
+                {T3 && <>
+                  <div className="mt-1 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-fg-subtle">Third place</div>
+                  <div className={`${TIER[thirdTier].box} transition-all duration-500`}><FGame b={b} g={T3} tier={thirdTier} /></div>
+                </>}
+              </div>
+            </div>
+            <PConnector count={1} side="right" />
+            <FCol title="Semi-final" i={1} games={sg.slice(1)} />
+            <PConnector count={1} side="right" />
+            <FCol title="Playoff" i={0} games={pg.slice(1)} />
+          </div>
+        </FitWidth>
+      </div>
     </TallCtx.Provider>
   )
 }

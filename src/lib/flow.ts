@@ -10,7 +10,7 @@ import { finalSeries, isFinalKey, type FinalSeries } from './finals.ts'
 
 export type FlowKey = 'P1' | 'P2' | 'SF1' | 'SF2' | 'F' | '3P'
 export interface FlowSlot { label: string; id: string | null; prov: boolean }
-export interface FlowGame { key: string; title: string; a: FlowSlot; b: FlowSlot; winner: string | null; live: boolean; icon?: string
+export interface FlowGame { key: string; title: string; a: FlowSlot; b: FlowSlot; winner: string | null; live: boolean; icon?: string; m?: Match
   /** best-of-3 Final: winner of each game played so far */
   series?: Array<string | null> }
 export interface FlowStage { title: string; tone: 'playoff' | 'qf' | 'semi' | 'medal'; games: FlowGame[] }
@@ -54,7 +54,7 @@ export function buildFlow(pools: [string, string], tables: Record<string, string
       const [x, y] = real.includes(a.id ?? '') && a.id === real[1] ? [real[1], real[0]] : real
       a = { ...a, id: x, prov: false }; b = { ...b, id: y, prov: false }
     }
-    return { key, title, a, b, winner: winOf(m), live: m?.status === 'live' && !!m.started_at }
+    return { key, title, a, b, winner: winOf(m), live: m?.status === 'live' && !!m.started_at, m }
   }
   const P1 = game('P1', 'Playoff 1', slot(`${P} 3rd`, at(P, 2), prov), slot(`${Q} 2nd`, at(Q, 1), prov))
   const P2 = game('P2', 'Playoff 2', slot(`${Q} 3rd`, at(Q, 2), prov), slot(`${P} 2nd`, at(P, 1), prov))
