@@ -25,6 +25,7 @@ import FlowChart from '../components/FlowChart'
 import { flowOf } from '../lib/flow'
 import { hubOf, parentHub, pageOnly, catHue } from '../lib/hub'
 import HubBoard from './HubBoard'
+import { HubGames } from '../components/HubViews'
 import { finalSeries } from '../lib/finals'
 import { KnockoutBracket, ChampionStage, FinalBanner, useWide, Confetti } from '../components/TieKnockout'
 import { CourtQueues, GroupCardPro, GroupTable, PlayClock } from '../components/GroupsKo'
@@ -1822,6 +1823,8 @@ function IphoneHomeTip() {
 export function Matches({ b, code }: { b: Bundle; code: string }) {
   const koEv = b.events.find(e => e.format === 'groups_ko')
   if (!koEv) return <FlatMatches b={b} code={code} />
+  // the group tables live in Standings; Matches is the list of games (on court, coming up, results)
+  if (isDiffTiebreak(koEv)) return <HubGames b={b} code={code} />
 
   const advance = koEv.advance_per_group ?? 2
   const tables = groupStandings(b, koEv.id)

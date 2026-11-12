@@ -51,6 +51,7 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
   // TV (big / huge): photo logo large, one-line names in a lighter weight, no P column
   const tv = big || huge
   const pins = usePinned()
+  const [open, setOpen] = useState<string | null>(null)
   // every team gets the same fixed row (logo height + a little air), never stretched
   const cell = huge ? 'py-0 align-middle text-lg' : big ? 'py-0 align-middle text-base' : 'py-1.5'
   const rowH = huge ? 'h-16' : big ? 'h-14' : ''
@@ -69,6 +70,7 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
     return same.some(k => k < advance) && same.some(k => k >= advance)
   }
   return (
+    <>
     <table className={`w-full table-fixed ${huge ? 'text-lg' : big ? 'text-base' : 'text-sm'}`}>
       <thead className={`${tv ? 'text-xs' : 'text-[10px]'} uppercase tracking-wider text-fg-subtle`}>
         <tr>
@@ -84,14 +86,14 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
         {rows.map((r, i) => {
           const q = i < advance
           return (
-            <tr key={r.team.id} className={`${rowH} ${q ? 'bg-brand/[0.08]' : ''} ${pins.has(r.team.id) ? 'outline outline-2 -outline-offset-2 outline-gold/70' : ''} ${i === advance - 1 && i < rows.length - 1 ? 'border-b-2 border-dashed !border-line-strong' : ''}`}>
+            <tr key={r.team.id} onClick={tv ? undefined : () => setOpen(r.team.id)} className={`${tv ? '' : 'cursor-pointer active:bg-surface-2'} ${rowH} ${q ? 'bg-brand/[0.08]' : ''} ${pins.has(r.team.id) ? 'outline outline-2 -outline-offset-2 outline-gold/70' : ''} ${i === advance - 1 && i < rows.length - 1 ? 'border-b-2 border-dashed !border-line-strong' : ''}`}>
               <td className={`tabular px-1 ${cell} text-center ${tv ? 'text-sm' : 'text-xs'} ${tv ? 'font-medium' : 'font-bold'} ${q ? 'text-brand-ink' : 'text-fg-subtle'}`}>{i + 1}</td>
               <td className={`px-1 ${cell}`}>
                 <span className={`flex min-w-0 gap-2 ${tv ? 'items-center' : 'items-start gap-1.5'}`}>
                   <Emblem logo={teamLogo(b, r.team.id)} flagName={teamSideName(b, r.team.id)}
                     className={`shrink-0 rounded-[2px] object-contain ${tv ? '' : 'mt-0.5'} ${logo}`} />
                   <span className="min-w-0 flex-1">
-                    <span className={`block ${tv ? 'whitespace-nowrap leading-none' : 'truncate'} ${tv ? 'font-normal' : q ? 'font-semibold' : ''} ${q ? 'text-fg' : 'text-fg-muted'}`}>
+                    <span className={`block ${tv ? 'whitespace-nowrap leading-none' : 'truncate underline decoration-line-strong decoration-dotted underline-offset-4'} ${tv ? 'font-normal' : q ? 'font-semibold' : ''} ${q ? 'text-fg' : 'text-fg-muted'}`}>
                       {r.team.name}
                     </span>
                     {tossAt(i) && (
@@ -111,6 +113,63 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
         })}
       </tbody>
     </table>
+    {open && <TeamGames b={b} id={open} onClose={() => setOpen(null)} />}
+    </>
+  )
+}
+
+/** Tap a team in a group table: every group game it played, the score, and how its +/- adds up. */
+export function TeamGames({ b, id, onClose }: { b: Bundle; id: string; onClose: () => void }) {
+  const games = b.matches
+    .filter(m => m.bracket_key == null && !m.tie_stage && m.status === 'finished' && (m.team_a_id === id || m.team_b_id === id))
+    .sort((x, y) => x.sequence - y.sequence)
+    .map(m => {
+      const a = m.team_a_id === id
+      const us = a ? m.score_a : m.score_b, them = a ? m.score_b : m.score_a
+      return { m, opp: a ? m.team_b_id : m.team_a_id, us, them, won: m.winner_id === id }
+    })
+  const pf = games.reduce((t, g) => t + g.us, 0), pa = games.reduce((t, g) => t + g.them, 0)
+  const sign = (n: number) => n > 0 ? `+${n}` : String(n)
+  const tone = (n: number) => n > 0 ? 'text-brand-ink' : n < 0 ? 'text-red-400' : 'text-fg-muted'
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center" onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} className="w-full max-w-md rounded-t-2xl border border-line bg-canvas sm:rounded-2xl"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="flex items-center gap-3 border-b border-line px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <div className="truncate font-display text-xl font-bold leading-tight"><PairName name={teamName(b, id)} /></div>
+            <div className="text-xs text-fg-muted">Group games played: {games.length} · won {games.filter(g => g.won).length}</div>
+          </div>
+          <button onClick={onClose} className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-fg">Done</button>
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto px-3 py-2">
+          {games.length === 0 && <div className="py-4 text-center text-sm text-fg-muted">No group game played yet.</div>}
+          {games.length > 0 && (
+            <table className="w-full table-fixed text-sm">
+              <thead className="text-[10px] uppercase tracking-wider text-fg-subtle">
+                <tr><th className="py-1 text-left">Opponent</th><th className="w-20 py-1 text-center">Score</th><th className="w-12 py-1 text-right">+/-</th></tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {games.map(g => (
+                  <tr key={g.m.id}>
+                    <td className="truncate py-2 pr-2"><span className={`mr-1.5 inline-block w-4 text-xs font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`}>{g.won ? 'W' : 'L'}</span><PairName name={teamName(b, g.opp)} /></td>
+                    <td className="tabular py-2 text-center font-display font-bold">{g.us}–{g.them}</td>
+                    <td className={`tabular py-2 text-right font-bold ${tone(g.us - g.them)}`}>{sign(g.us - g.them)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="border-t-2 border-line-strong">
+                <tr>
+                  <td className="py-2 text-xs font-bold uppercase tracking-wider text-fg-muted">Total (won {pf} − lost {pa})</td>
+                  <td className="tabular py-2 text-center font-display font-bold">{pf}–{pa}</td>
+                  <td className={`tabular py-2 text-right font-display text-base font-bold ${tone(pf - pa)}`}>{sign(pf - pa)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
