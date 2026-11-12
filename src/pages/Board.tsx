@@ -1,5 +1,5 @@
 import { koPlanOf } from '../lib/koplan'
-import { planCaption, provisionalTeam } from '../lib/pool'
+import { bracketCaption, provisionalTeam } from '../lib/pool'
 import { useState, useEffect, useRef, useLayoutEffect, createContext, useContext } from 'react'
 import { SportIcon } from '../components/SportIcon'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -1285,11 +1285,11 @@ function PMatch({ b, m, medalOf }: { b: Bundle; m?: Match; medalOf?: (id: string
   const bye = m.team_b_id == null && m.team_a_id != null && m.status === 'finished'
   // fixed bracket shown before the teams are known (bracket_preview events)
   const ev = eventOf(b, m)
-  const slot = (s: 'a' | 'b') => ev && (ev.bracket_preview || koPlanOf(b.competition?.code)) ? koSlotLabel(b, ev, m, s) : undefined
+  const slot = (s: 'a' | 'b') => ev && (ev.bracket_preview || ev.format === 'groups_ko' || koPlanOf(b.competition?.code)) ? koSlotLabel(b, ev, m, s) : undefined
   const decided = m.status === 'finished'
   const live = m.status === 'live'
   // printed plan: the fixed slot is always written on the game, and a group winner shows as soon as its group is done
-  const caption = planCaption(b, m)
+  const caption = bracketCaption(b, m)
   const idA = m.team_a_id ?? (ev ? provisionalTeam(b, ev, m, 'a', groupStandings) : null)
   const idB = m.team_b_id ?? (ev ? provisionalTeam(b, ev, m, 'b', groupStandings) : null)
   const tierOf = useContext(McCtx)
@@ -1302,7 +1302,7 @@ function PMatch({ b, m, medalOf }: { b: Bundle; m?: Match; medalOf?: (id: string
         </div>
       )}
       <div className={`overflow-hidden rounded-md border ${live ? 'border-brand pp-live' : 'border-line'} bg-surface`}>
-        {caption && <div className="truncate border-b border-line/60 bg-surface-2/40 px-2 py-0.5 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-fg-subtle" title={caption}>{caption}</div>}
+        {caption && <div className="truncate border-b border-line/60 bg-surface-2/40 px-2 py-0.5 text-center text-[9px] font-bold uppercase tracking-[0.08em] text-fg-muted" title={caption}>{caption}</div>}
         <PTeam b={b} teamId={idA} score={m.score_a} tier={tier} live={live} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} medal={medalOf?.(m.team_a_id) ?? null} placeholder={slot('a')} />
         <div className="h-px bg-line" />
         {bye
@@ -1321,6 +1321,8 @@ function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder, tier
   // a live game is the one to watch: bigger, bold, bright. Everything else stays calm.
   const tx = mc ? (live ? T.liveTx : T.tx) : tall ? 'text-base' : 'text-xs'
   const logoCls = mc ? T.logo : 'h-4 w-4'
+  // names only when no team in this category has a logo or flag (MC26): no initials circle, no empty box
+  const marks = b.teams.some(t => !!teamLogo(b, t.id) || hasFlag(teamSideName(b, t.id)))
   // semi-final / final (and quarter-final): a long team name stacks on two lines instead of stretching the column
   // compact rounds too, when the name is two players ("Ryan & Marcus"): one name per line, so neither gets cut
   const pair = !!teamId && teamName(b, teamId).split(' & ').length === 2
@@ -1328,14 +1330,14 @@ function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder, tier
   if (teamId == null && placeholder) {
     return (
       <div className={`flex items-center gap-2 border-l-2 border-transparent px-2.5 ${py}`}>
-        <span className={`${logoCls} shrink-0 rounded-[2px] border border-dashed border-line-strong`} />
+        {marks && <span className={`${logoCls} shrink-0 rounded-[2px] border border-dashed border-line-strong`} />}
         <span className={`min-w-0 flex-1 truncate ${tx} italic text-fg-subtle`}>{placeholder}</span>
       </div>
     )
   }
   return (
     <div className={`flex items-center ${mc ? (tier === 'compact' || tier === 'std' ? 'gap-1.5 pl-2 pr-2' : stack ? 'gap-2 pl-4 pr-6' : 'gap-2 pl-4 pr-4') : 'gap-2 px-2.5'} border-l-2 ${py} ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
-      {teamId && !teamLogo(b, teamId) && !hasFlag(teamSideName(b, teamId))
+      {!marks ? null : teamId && !teamLogo(b, teamId) && !hasFlag(teamSideName(b, teamId))
         ? <Monogram name={teamName(b, teamId)} className={`${mc ? (tier === 'compact' || tier === 'std' ? 'h-7 w-7 text-[11px]' : 'h-9 w-9 text-sm') : 'h-6 w-6 text-[10px]'}`} />
         : <Emblem logo={teamLogo(b, teamId)} flagName={teamSideName(b, teamId)} className={`${logoCls} shrink-0 rounded-[2px] object-contain`} />}
       <span className={`min-w-0 flex-1 ${mc ? 'text-center' : ''} ${stack ? 'leading-[1.1]' : 'truncate'} ${tx} ${mc && live ? 'font-extrabold tracking-wide text-white' : win ? (mc ? 'font-semibold' : 'font-bold') + ' text-fg' : mc ? 'font-medium text-fg-muted' : 'text-fg-muted'}`}>{stack ? (() => { const parts = teamName(b, teamId).split(' & '); return parts.length === 2 ? <><ShrinkText text={parts[0]} /><ShrinkText text={parts[1]} /></> : <ShrinkText text={teamName(b, teamId)} /> })() : teamName(b, teamId)}</span>
