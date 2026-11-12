@@ -435,3 +435,30 @@ export function gameTitle(b: Bundle, m: Match): string {
   const base = pool && pool !== '—' ? `Group ${pool}` : (m.round ?? 'Game')
   return m.game_label ? `${base} · ${m.game_label}` : m.slot != null ? `${base} · Slot ${m.slot}` : base
 }
+
+/** Printed plan, first knockout round: the fixed slot, e.g. "Group A winner v Best runner-up 3". */
+export function planCaption(b: Bundle, m: Match): string | null {
+  const plan = koPlanOf(b.competition?.code)
+  const j = /^KO-\d+-(\d+)$/.exec(m.bracket_key ?? '')
+  if (!plan || !j) return null
+  const tk = plan.pairs[Number(j[1])]
+  return tk ? `${slotName(tk[0])} v ${slotName(tk[1])}` : null
+}
+
+/** A group place already decided (that group has finished) before the whole draw is written:
+ *  the bracket shows the team in its fixed slot straight away. Best runners-up wait for every group. */
+export function provisionalTeam(b: Bundle, ev: EventCfg, m: Match, s: 'a' | 'b',
+  tables: (b: Bundle, eventId: string) => Record<string, Array<{ team: { id: string } }>>): string | null {
+  const plan = koPlanOf(b.competition?.code)
+  const j = /^KO-\d+-(\d+)$/.exec(m.bracket_key ?? '')
+  if (!plan || !j || ev.format !== 'groups_ko') return null
+  if ((s === 'a' ? m.team_a_id : m.team_b_id) != null) return null
+  const tk = plan.pairs[Number(j[1])]?.[s === 'a' ? 0 : 1]
+  const g = tk ? /^([A-VX-Z])(\d)$/.exec(tk) : null
+  if (!g || g[1] === 'R' || g[1] === 'W') return null
+  const pool = g[1]
+  const games = b.matches.filter(x => x.event_id === ev.id && x.bracket_key == null && !x.tie_stage
+    && b.teams.some(t => t.pool === pool && (t.id === x.team_a_id || t.id === x.team_b_id)))
+  if (!games.length || games.some(x => x.status !== 'finished')) return null
+  return tables(b, ev.id)[pool]?.[Number(g[2]) - 1]?.team.id ?? null
+}

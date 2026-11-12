@@ -2,9 +2,11 @@
  *  turned upright. The top half of the draw comes down, the bottom half comes
  *  up, and they meet at the Final in the middle. Full names, readable scores. */
 import type { Bundle, EventCfg, Match } from '../lib/types'
-import { teamName } from '../lib/store'
+import { teamName, groupStandings } from '../lib/store'
 import TeamMark from './TeamMark'
 import { koSlotLabel } from '../lib/pool'
+import { koPlanOf } from '../lib/koplan'
+import { planCaption, provisionalTeam } from '../lib/pool'
 import { plannedTime, plannedCourt } from '../lib/timetable'
 import { CourtTag } from './CourtMap'
 
@@ -18,7 +20,7 @@ function roundTitle(col: Col, m: Match, all: Match[]): string {
 }
 
 function Side({ b, ev, m, s, big }: { b: Bundle; ev: EventCfg; m: Match; s: 'a' | 'b'; big?: boolean }) {
-  const id = s === 'a' ? m.team_a_id : m.team_b_id
+  const id = (s === 'a' ? m.team_a_id : m.team_b_id) ?? provisionalTeam(b, ev, m, s, groupStandings)
   const score = s === 'a' ? m.score_a : m.score_b
   const done = m.status === 'finished'
   const live = (m.status === 'live' || m.status === 'awaiting_confirm') && (m.score_a > 0 || m.score_b > 0 || !!m.started_at)
@@ -27,7 +29,7 @@ function Side({ b, ev, m, s, big }: { b: Bundle; ev: EventCfg; m: Match; s: 'a' 
   if (!id) {
     return (
       <div className={`flex items-center gap-2 border-l-[3px] border-transparent px-2.5 ${big ? 'py-3' : 'py-2.5'}`}>
-                <span className={`min-w-0 flex-1 italic text-fg-subtle ${big ? 'text-sm' : 'text-xs'}`}>{ev.bracket_preview ? koSlotLabel(b, ev, m, s) : 'To be decided'}</span>
+                <span className={`min-w-0 flex-1 italic text-fg-subtle ${big ? 'text-sm' : 'text-xs'}`}>{ev.bracket_preview || koPlanOf(b.competition?.code) ? koSlotLabel(b, ev, m, s) : 'To be decided'}</span>
       </div>
     )
   }
@@ -58,6 +60,7 @@ function Card({ b, ev, m, title, big, gold }: { b: Bundle; ev: EventCfg; m: Matc
           : m.status === 'finished' ? <span className="shrink-0 font-semibold normal-case tracking-normal">full time</span>
           : (at || courtNo != null) ? <span className="shrink-0 font-semibold normal-case tracking-normal">{at}{at && courtNo != null ? ' · ' : ''}{courtNo != null ? <CourtTag code={b.competition.code} n={courtNo}>Court {courtNo}</CourtTag> : ''}</span> : null}
       </div>
+      {planCaption(b, m) && <div className="px-2.5 pt-0.5 text-[11px] font-medium text-fg-subtle">{planCaption(b, m)}</div>}
       <Side b={b} ev={ev} m={m} s="a" big={big} />
       <div className="mx-2.5 h-px bg-line" />
       <Side b={b} ev={ev} m={m} s="b" big={big} />

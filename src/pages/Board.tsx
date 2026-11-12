@@ -1,4 +1,5 @@
 import { koPlanOf } from '../lib/koplan'
+import { planCaption, provisionalTeam } from '../lib/pool'
 import { useState, useEffect, useRef, useLayoutEffect, createContext, useContext } from 'react'
 import { SportIcon } from '../components/SportIcon'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -1287,6 +1288,10 @@ function PMatch({ b, m, medalOf }: { b: Bundle; m?: Match; medalOf?: (id: string
   const slot = (s: 'a' | 'b') => ev && (ev.bracket_preview || koPlanOf(b.competition?.code)) ? koSlotLabel(b, ev, m, s) : undefined
   const decided = m.status === 'finished'
   const live = m.status === 'live'
+  // printed plan: the fixed slot is always written on the game, and a group winner shows as soon as its group is done
+  const caption = planCaption(b, m)
+  const idA = m.team_a_id ?? (ev ? provisionalTeam(b, ev, m, 'a', groupStandings) : null)
+  const idB = m.team_b_id ?? (ev ? provisionalTeam(b, ev, m, 'b', groupStandings) : null)
   const tierOf = useContext(McCtx)
   const tier: Tier | null = tierOf ? tierOf(m.round) : null
   return (
@@ -1297,11 +1302,12 @@ function PMatch({ b, m, medalOf }: { b: Bundle; m?: Match; medalOf?: (id: string
         </div>
       )}
       <div className={`overflow-hidden rounded-md border ${live ? 'border-brand pp-live' : 'border-line'} bg-surface`}>
-        <PTeam b={b} teamId={m.team_a_id} score={m.score_a} tier={tier} live={live} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} medal={medalOf?.(m.team_a_id) ?? null} placeholder={slot('a')} />
+        {caption && <div className="truncate border-b border-line/60 bg-surface-2/40 px-2 py-0.5 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-fg-subtle" title={caption}>{caption}</div>}
+        <PTeam b={b} teamId={idA} score={m.score_a} tier={tier} live={live} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} medal={medalOf?.(m.team_a_id) ?? null} placeholder={slot('a')} />
         <div className="h-px bg-line" />
         {bye
           ? <div className="px-2.5 py-1.5 text-[11px] italic text-fg-subtle">Advances</div>
-          : <PTeam b={b} teamId={m.team_b_id} score={m.score_b} tier={tier} live={live} win={decided && m.winner_id === m.team_b_id} lose={decided && m.winner_id !== m.team_b_id} finished={decided} medal={medalOf?.(m.team_b_id) ?? null} placeholder={slot('b')} />}
+          : <PTeam b={b} teamId={idB} score={m.score_b} tier={tier} live={live} win={decided && m.winner_id === m.team_b_id} lose={decided && m.winner_id !== m.team_b_id} finished={decided} medal={medalOf?.(m.team_b_id) ?? null} placeholder={slot('b')} />}
       </div>
     </div>
   )

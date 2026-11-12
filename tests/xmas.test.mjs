@@ -93,7 +93,7 @@ test('MD: no same-pool quarter-final needs no swap', () => {
   assert.equal(pd.swapped, false)
 })
 
-test('MX: winners ranked across pools, best 2 runners-up, W1vR2 W4vW5 W3vW6 W2vR1', () => {
+test('MX: fixed group winners, best 2 runners-up: A1vR2 D1vE1 C1vF1 B1vR1', () => {
   const t = tablesOf({
     A: [['A1', 3, 30], ['A2', 2, 15]], B: [['B1', 3, 20], ['B2', 2, 5]],
     C: [['C1', 2, 10], ['C2', 2, 12]], D: [['D1', 3, 25], ['D2', 1, 3]],
@@ -103,8 +103,8 @@ test('MX: winners ranked across pools, best 2 runners-up, W1vR2 W4vW5 W3vW6 W2vR
   // W: A1(3,30) D1(3,25) B1(3,20) C1(2,10) E1(2,8) F1(2,4); R: A2(2,15) C2(2,12) B2 F2 D2 E2
   assert.deepEqual(pd.winners.ranked.map(r => r.team.id), ['A1', 'D1', 'B1', 'C1', 'E1', 'F1'])
   assert.deepEqual(pd.runners.ranked.slice(0, 2).map(r => r.team.id), ['A2', 'C2'])
-  // W1 A1 v R2 C2 · W4 C1 v W5 E1 · W3 B1 v W6 F1 · W2 D1 v R1 A2
-  assert.deepEqual(pd.pairs, [['A1', 'C2'], ['C1', 'E1'], ['B1', 'F1'], ['D1', 'A2']])
+  // QF1 A1 v R2 C2 · QF2 D1 v E1 · QF3 C1 v F1 · QF4 B1 v R1 A2
+  assert.deepEqual(pd.pairs, [['A1', 'C2'], ['D1', 'E1'], ['C1', 'F1'], ['B1', 'A2']])
   assert.equal(pd.swapped, false)
 })
 
@@ -228,12 +228,12 @@ test('bracket preview + flow chart show the printed draw before any result', () 
   const md = bundleOf(MD, 15)
   const ev = md.events[0]
   const qf = key => md.matches.find(m => m.bracket_key === key)
-  assert.equal(koSlotLabel(md, ev, qf('KO-8-0'), 'a'), 'Best group winner 1')
+  assert.equal(koSlotLabel(md, ev, qf('KO-8-0'), 'a'), 'Group A winner')
   assert.equal(koSlotLabel(md, ev, qf('KO-8-0'), 'b'), 'Best runner-up 3')
   assert.equal(koSlotLabel(md, ev, qf('KO-8-3'), 'b'), 'Best runner-up 2')
   assert.equal(koSlotLabel(md, ev, md.matches.find(m => m.bracket_key === 'KO-4-0'), 'a'), 'Winner QF1')
   const mx = bundleOf(MX, 24)
-  assert.equal(koSlotLabel(mx, mx.events[0], mx.matches.find(m => m.bracket_key === 'KO-8-1'), 'b'), 'Best group winner 5')
+  assert.equal(koSlotLabel(mx, mx.events[0], mx.matches.find(m => m.bracket_key === 'KO-8-1'), 'b'), 'Group E winner')
   assert.equal(koSlotLabel(mx, mx.events[0], mx.matches.find(m => m.bracket_key === 'KO-8-3'), 'b'), 'Best runner-up 1')
   assert.equal(slotName('C2'), 'Group C runner-up')
 
@@ -247,8 +247,26 @@ test('bracket preview + flow chart show the printed draw before any result', () 
   }
   const f = flowOf(mx, helpers)
   const qfs = f.stages[0].games.map(g => [g.a.label, g.b.label])
-  assert.deepEqual(qfs, [['Best group winner 1', 'Best runner-up 2'], ['Best group winner 4', 'Best group winner 5'], ['Best group winner 3', 'Best group winner 6'], ['Best group winner 2', 'Best runner-up 1']])
+  assert.deepEqual(qfs, [['A winner', 'Best runner-up 2'], ['D winner', 'E winner'], ['C winner', 'F winner'], ['B winner', 'Best runner-up 1']])
   const fm = flowOf(md, helpers)
   assert.deepEqual(fm.stages[0].games.map(g => [g.a.label, g.b.label]),
-    [['Best group winner 1', 'Best runner-up 3'], ['Best group winner 4', 'Best group winner 5'], ['Best group winner 3', 'Best runner-up 1'], ['Best group winner 2', 'Best runner-up 2']])
+    [['A winner', 'Best runner-up 3'], ['D winner', 'E winner'], ['C winner', 'Best runner-up 1'], ['B winner', 'Best runner-up 2']])
+})
+
+test('fixed bracket: a group winner shows in its slot as soon as that group is done', async () => {
+  const { provisionalTeam: pt, planCaption } = await import('../src/lib/pool.ts')
+  const tables = (b, id) => { const t = {}; for (const x of b.teams) { const w = b.matches.filter(m => m.winner_id === x.id && !m.bracket_key).length; (t[x.pool] ||= []).push({ team: x, won: w }) } for (const k in t) t[k].sort((p, q) => q.won - p.won); return t }
+  const provisionalTeam = (b, ev, m, s) => pt(b, ev, m, s, tables)
+  const md = bundleOf(MD, 15)
+  const ev = md.events[0]
+  const qf1 = md.matches.find(m => m.bracket_key === 'KO-8-0')
+  assert.equal(planCaption(md, qf1), 'Group A winner v Best runner-up 3')
+  assert.equal(provisionalTeam(md, ev, qf1, 'a'), null)
+  const inA = new Set(md.teams.filter(t => t.pool === 'A').map(t => t.id))
+  for (const m of md.matches) if (!m.bracket_key && inA.has(m.team_a_id)) {
+    Object.assign(m, { status: 'finished', score_a: 15, score_b: 5, winner_id: m.team_a_id })
+  }
+  const id = provisionalTeam(md, ev, qf1, 'a')
+  assert.ok(id && inA.has(id))
+  assert.equal(provisionalTeam(md, ev, qf1, 'b'), null)   // best runner-up waits for every group
 })

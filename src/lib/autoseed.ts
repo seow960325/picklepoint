@@ -31,3 +31,4 @@ export function autoSeedRows(b: Bundle, ev: EventCfg): SeedRow[] | null {
   }
   return rows.some(r => !r.key) ? null : rows
 }
+

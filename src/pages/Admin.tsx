@@ -711,12 +711,18 @@ function RandomGroups({ bundle, ev, token, run }: any) {
         {pools.map(p => (
           <div key={p} className="min-w-0 rounded-lg border border-line px-2.5 py-2">
             <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">Group {p}</div>
-            {teams.filter((t: any) => (t.pool ?? 'A') === p).map((t: any) => (
-              <div key={t.id} className="flex min-w-0 items-center gap-1.5 py-0.5 text-sm">
-                <Emblem logo={t.logo} flagName={null} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" />
-                <span className="truncate"><PairName name={t.name} /></span>
-              </div>
-            ))}
+            {/* one tidy column per player: left name | slash | right name, all rows lined up */}
+            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-1.5 gap-y-0.5 text-sm">
+              {teams.filter((t: any) => (t.pool ?? 'A') === p).map((t: any) => {
+                const [p1, p2] = String(t.name).split(/\s*(?:&|\/)\s*/)
+                return [
+                  t.logo ? <Emblem key={t.id + 'l'} logo={t.logo} flagName={null} className="h-4 w-4 shrink-0 rounded-[2px] object-contain" /> : <span key={t.id + 'l'} />,
+                  <span key={t.id + 'a'} className="truncate text-left">{p1}</span>,
+                  <span key={t.id + 's'} className="text-fg-subtle">{p2 ? '/' : ''}</span>,
+                  <span key={t.id + 'b'} className="truncate text-left">{p2 ?? ''}</span>,
+                ]
+              })}
+            </div>
           </div>
         ))}
       </div>
