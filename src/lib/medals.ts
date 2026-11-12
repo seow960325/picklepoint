@@ -75,6 +75,8 @@ export function medalTable(results: CategoryResult[], all: Bundle[] = []): Medal
   const rows = new Map<string, MedalRow>()
   // every church that takes part is listed, even with no medal yet (0 0 0)
   for (const b of all) for (const t of b.teams) {
+    // a pair of players with no church chosen yet is not a church: no empty row for it
+    if (!t.church && /[|&/]/.test(t.name)) continue
     const ch = teamChurch(t), k = keyOf(ch)
     const r = rows.get(k) ?? { key: k, name: ch, logo: null, gold: 0, silver: 0, bronze: 0, fourth: 0 }
     r.logo = r.logo ?? churchLogo(ch) ?? t.logo ?? null
