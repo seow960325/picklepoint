@@ -267,11 +267,11 @@ export function EventLogo({ src, className = 'h-12 w-12', still = false }: {
 export function ScoreWL({ us, them, wl, digits = 2, className = '' }: { us: number; them: number; wl?: 'W' | 'L' | null; digits?: number; className?: string }) {
   return (
     <span className={`tabular inline-grid items-baseline ${className}`}
-      style={{ gridTemplateColumns: `${wl === undefined ? '0' : '1.5em'} ${digits}ch 0.8em ${digits}ch` }}>
+      style={{ gridTemplateColumns: `${wl === undefined ? '0' : '1.5em'} ${digits}ch 1em ${digits}ch` }}>
       <span className="text-left">{wl ?? ''}</span>
       <span className="text-right">{us}</span>
       <span className="text-center">–</span>
-      <span className="text-left">{them}</span>
+      <span className="text-right">{them}</span>
     </span>
   )
 }
@@ -281,8 +281,8 @@ export function Clock({ t, className = '' }: { t: string | null | undefined; cla
   const m = /^\s*(\d{1,2}:\d{2})\s*([ap]m)\s*$/i.exec(t ?? '')
   if (!m) return <span className={className}>{t || '—'}</span>
   return (
-    <span className={`tabular inline-grid items-baseline ${className}`} style={{ gridTemplateColumns: '4.4ch 2.4ch', columnGap: '0.2em' }}>
-      <span className="text-right">{m[1]}</span>
+    <span className={`tabular inline-grid items-baseline ${className}`} style={{ gridTemplateColumns: '5.6ch 2.6ch', columnGap: '0.35em' }}>
+      <span className="text-left">{m[1]}</span>
       <span className="text-left text-[0.7em] uppercase opacity-80">{m[2]}</span>
     </span>
   )
