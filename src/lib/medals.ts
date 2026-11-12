@@ -5,6 +5,7 @@ import type { Bundle } from './types.ts'
 import { cbStandings, cbKo } from './captainball.ts'
 import { churchOf } from './draw.ts'
 import { finalSeries } from './finals.ts'
+import { teamChurch, churchLogo } from './churches.ts'
 
 export interface Podium3 { first: string | null; second: string | null; third: string | null; fourth?: string | null }
 export interface CategoryResult {
@@ -12,6 +13,8 @@ export interface CategoryResult {
   /** team names (church), null until decided */
   podium: Podium3
   logos: Record<string, string | null>
+  /** team name -> church it plays for (medals are counted per church) */
+  churches?: Record<string, string>
 }
 export interface MedalRow { key: string; name: string; logo: string | null; gold: number; silver: number; bronze: number; fourth: number }
 
@@ -23,7 +26,11 @@ const lg = (b: Bundle, id: string | null) => (id ? b.teams.find(t => t.id === id
 export function categoryResult(b: Bundle): CategoryResult {
   const none: Podium3 = { first: null, second: null, third: null }
   const out: CategoryResult = { code: b.competition.code, name: b.competition.name, done: false, podium: none, logos: {} }
-  const put = (id: string | null) => { const n = nm(b, id); if (n) out.logos[n] = lg(b, id); return n }
+  const put = (id: string | null) => {
+    const n = nm(b, id)
+    if (n) { out.logos[n] = lg(b, id); const t = b.teams.find(x => x.id === id); if (t) (out.churches ??= {})[n] = teamChurch(t) }
+    return n
+  }
 
   const ko = b.events.find(e => e.format === 'groups_ko')
   if (ko) {
@@ -68,17 +75,17 @@ export function medalTable(results: CategoryResult[], all: Bundle[] = []): Medal
   const rows = new Map<string, MedalRow>()
   // every church that takes part is listed, even with no medal yet (0 0 0)
   for (const b of all) for (const t of b.teams) {
-    const k = keyOf(t.name)
-    const r = rows.get(k) ?? { key: k, name: churchOf(t.name), logo: null, gold: 0, silver: 0, bronze: 0, fourth: 0 }
-    r.logo = r.logo ?? t.logo ?? null
+    const ch = teamChurch(t), k = keyOf(ch)
+    const r = rows.get(k) ?? { key: k, name: ch, logo: null, gold: 0, silver: 0, bronze: 0, fourth: 0 }
+    r.logo = r.logo ?? churchLogo(ch) ?? t.logo ?? null
     rows.set(k, r)
   }
   const add = (cr: CategoryResult, name: string | null, medal: 'gold' | 'silver' | 'bronze' | 'fourth') => {
     if (!name) return
-    const k = keyOf(name)
-    const r = rows.get(k) ?? { key: k, name: churchOf(name), logo: null, gold: 0, silver: 0, bronze: 0, fourth: 0 }
+    const ch = cr.churches?.[name] ?? churchOf(name), k = keyOf(ch)
+    const r = rows.get(k) ?? { key: k, name: ch, logo: null, gold: 0, silver: 0, bronze: 0, fourth: 0 }
     r[medal]++
-    r.logo = r.logo ?? cr.logos[name] ?? null
+    r.logo = r.logo ?? churchLogo(ch) ?? cr.logos[name] ?? null
     rows.set(k, r)
   }
   for (const cr of results) {

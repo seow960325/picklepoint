@@ -12,7 +12,7 @@ import type { Hub } from '../lib/hub'
 import { categoryResult, medalTable, needsFourth, type MedalRow } from '../lib/medals'
 import { finalSeries } from '../lib/finals'
 import { cbKo } from '../lib/captainball'
-import { churchOf } from '../lib/draw'
+import { teamChurch } from '../lib/churches'
 import { slotRows, slotTime, clockOfCode, type SlotRow } from '../lib/timetable'
 import MapButton from './CourtMap'
 import { gameTitle, koSlotLabel } from '../lib/pool'
@@ -82,10 +82,10 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
   const [full, setFull] = useState<Record<string, boolean>>({})
   const pick = (c: string) => { setMine(c); try { localStorage.setItem(MINE + hub.code, c) } catch { /* private mode */ } }
   const cats = hub.cats.map(cat => ({ cat, b: bundleOf(cat.code) })).filter((x): x is { cat: typeof x.cat; b: Bundle } => !!x.b)
-  const churches = [...new Set(cats.flatMap(x => x.b.teams.map(t => churchOf(t.name))))].sort()
+  const churches = [...new Set(cats.flatMap(x => x.b.teams.map(t => teamChurch(t))))].sort()
   const name = (b: Bundle, id: string | null) => b.teams.find(t => t.id === id)?.name ?? '—'
   const ours = (b: Bundle, m: Bundle['matches'][number]) => !mine || hub.noChurch
-    || [m.team_a_id, m.team_b_id].some(id => churchOf(name(b, id)).toLowerCase() === mine.toLowerCase())
+    || [m.team_a_id, m.team_b_id].some(id => { const t = b.teams.find(x => x.id === id); return !!t && teamChurch(t).toLowerCase() === mine.toLowerCase() })
   type M = Bundle['matches'][number]
   /** name | score (or vs) | name: score keeps its place, each name is centred in its half */
   const Pair = ({ b, m, score }: { b: Bundle; m: M; score?: boolean }) => {

@@ -69,6 +69,8 @@ export interface Team {
   side?: 'A' | 'B' | null
   // optional uploaded emblem (base64 data URL); null = show name/flag only
   logo?: string | null
+  // church this team represents (YC26); medals are counted per church
+  church?: string | null
   // multi-sport only: 6 = MD+MD+XD tie, 4 = MD+XD tie
   roster?: number | null
 }

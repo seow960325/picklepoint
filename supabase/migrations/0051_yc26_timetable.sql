@@ -20,7 +20,7 @@ select 1 / (case when (select string_agg(pool || ':' || n, ',' order by pool) fr
 
 -- old group games first (courts are renumbered next), then courts: real numbers
 delete from matches m using events e, competitions c
- where m.event_id = e.id and e.competition_id = c.id and c.code in ('BMMD','BMXD','PBMD','PBXD') and m.bracket_key is null and m.status = 'scheduled';
+ where m.event_id = e.id and e.competition_id = c.id and c.code in ('BMMD','BMXD','PBMD','PBXD') and m.bracket_key is null and m.status <> 'finished';
 update courts set number = number + 100 where competition_id in (select id from competitions where code in ('BMMD','BMXD','PBMD','PBXD'));
 update courts x set number = q.n, label = 'Court ' || q.n, sport = 'badminton'
   from (select id, (array[2,3,4,5])[row_number() over (order by number)] as n from courts

@@ -118,6 +118,16 @@ async function teamsWithLogos(eventIds: string[]): Promise<any[] | null> {
 const legacyLogo = new Map<string, string | null>()
 let legacyFull = 0
 
+/** Church each team plays for (migration 0053). Older databases without the column: names only. */
+async function addChurch<T extends { id: string }>(eventIds: string[], teams: T[]): Promise<T[]> {
+  try {
+    const { data, error } = await sb!.from('teams').select('id,church').in('event_id', eventIds)
+    if (error || !data) return teams
+    const m = new Map((data as any[]).map(r => [r.id, r.church ?? null]))
+    return teams.map(t => ({ ...t, church: m.get(t.id) ?? null }))
+  } catch { return teams }
+}
+
 async function joinLight(code: string, opts?: { full?: boolean }): Promise<Bundle> {
   const head = await rpc<any>('join_competition', { p_code: code })
   const eventIds = head.events.map((e: any) => e.id)
@@ -126,7 +136,7 @@ async function joinLight(code: string, opts?: { full?: boolean }): Promise<Bundl
     sb!.from('matches').select('*').in('event_id', eventIds).order('sequence'),
   ])
   if (mr.error) throw new Error(mr.error.message)
-  if (teams) return { ...head, teams, matches: mr.data ?? [] }
+  if (teams) return { ...head, teams: await addChurch(eventIds, teams), matches: mr.data ?? [] }
   // ---- legacy path
   const now = Date.now()
   if (opts?.full || now - legacyFull > 180000 || !legacyLogo.size) {
@@ -134,7 +144,7 @@ async function joinLight(code: string, opts?: { full?: boolean }): Promise<Bundl
     if (error) throw new Error(error.message)
     legacyFull = now
     for (const t of data ?? []) legacyLogo.set(t.id, t.logo ?? null)
-    return { ...head, teams: data ?? [], matches: mr.data ?? [] }
+    return { ...head, teams: data ?? [], matches: mr.data ?? [] }   // select('*') already carries church
   }
   const tr = await sb!.from('teams').select(TEAM_COLS).in('event_id', eventIds)
   if (tr.error) throw new Error(tr.error.message)
@@ -144,7 +154,7 @@ async function joinLight(code: string, opts?: { full?: boolean }): Promise<Bundl
     const { data } = await sb!.from('teams').select('id,logo').in('id', unknown)
     for (const t of data ?? []) legacyLogo.set(t.id, (t as any).logo ?? null)
   }
-  return { ...head, teams: tl.map(t => ({ ...t, logo: legacyLogo.get(t.id) ?? null })), matches: mr.data ?? [] }
+  return { ...head, teams: await addChurch(eventIds, tl.map(t => ({ ...t, logo: legacyLogo.get(t.id) ?? null }))), matches: mr.data ?? [] }
 }
 
 export async function refresh(code: string, opts?: { light?: boolean }): Promise<Bundle> {
@@ -394,6 +404,12 @@ export async function adminDeleteTeam(token: string, teamId: string) {
 export async function adminSetTeamLogo(token: string, teamId: string, logo: string | null) {
   if (IS_DEMO) return demo.setTeamLogo(teamId, logo)
   await rpc('admin_set_team_logo', { p_token: token, p_team_id: teamId, p_logo: logo })
+}
+
+/** Team plays for this church (migration 0053): also sets the church logo. */
+export async function adminSetTeamChurch(token: string, teamId: string, church: string | null, logo: string | null) {
+  if (IS_DEMO) return demo.setTeamChurch(teamId, church, logo)
+  await rpc('admin_set_team_church', { p_token: token, p_team_id: teamId, p_church: church, p_logo: logo })
 }
 
 export async function adminSetCourtPin(token: string, courtId: string, pin: string) {

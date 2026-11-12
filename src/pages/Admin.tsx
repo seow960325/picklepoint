@@ -20,6 +20,7 @@ import { sportsPresent, isCb } from '../lib/multisport'
 import { CbRulesPanel } from '../components/CaptainBall'
 import { isPoolDispatch, isDiffTiebreak, shuffleMap, eventUntouched, roundName } from '../lib/pool'
 import { parentHub } from '../lib/hub'
+import { CHURCHES, churchLogo, teamChurch } from '../lib/churches'
 import { seatsOf, entriesOf, fixedOf, currentMeets, smartDraw, jointDraw, slotClock } from '../lib/clash'
 import { koPlanOf, planDraw, tokenLabel } from '../lib/koplan'
 import { GroupTable } from '../components/GroupsKo'
@@ -815,6 +816,16 @@ function TeamRow({ t, ev, token, run, isDuel, multi, code }: any) {
         <LogoControl t={t} token={token} run={run} tight={ev?.court_dispatch === 'pool'} code={code} />
         <GrowInput className={`${input} min-w-0 flex-1 leading-snug`} value={name} onChange={setName} />
       </div>
+      {parentHub(code)?.code === 'YC26' && !isDuel && (
+        <div className="ml-11 mt-1.5 flex items-center gap-2">
+          {teamChurch(t) && churchLogo(teamChurch(t)) && <img src={churchLogo(teamChurch(t))!} alt="" className="h-6 w-6 shrink-0 rounded border border-line bg-white object-contain" />}
+          <select className={`${input} min-w-0 flex-1`} value={t.church ?? ''}
+            onChange={e => { const c = CHURCHES.find(x => x.name === e.target.value); run(() => api.adminSetTeamChurch(token, t.id, c?.name ?? null, c?.logo ?? null), c ? `Church: ${c.name}` : 'Church cleared') }}>
+            <option value="">Church — not chosen{!t.church ? ` (counted as “${teamChurch(t)}”)` : ''}</option>
+            {CHURCHES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+          </select>
+        </div>
+      )}
       <div className="ml-11 mt-1.5 flex items-center gap-1.5">
         {isDuel ? (
           <button onClick={() => setSide(side === 'A' ? 'B' : 'A')}

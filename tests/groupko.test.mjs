@@ -275,3 +275,10 @@ test('final series: best of 3 needs 2 wins', () => {
   assert.equal(_fs(b([g('KO-2-0', 'X'), g('KO-2-0-2', 'Y'), g('KO-2-0-3', 'Y')]), 'e').winner, 'Y')
   assert.equal(_fs(b([g('KO-2-0', 'X')], 1), 'e').winner, 'X')
 })
+
+test('medals are counted per church, not per team name', () => {
+  const r = (first, second, third, churches) => ({ code: 'X', name: 'X', done: true, podium: { first, second, third }, logos: {}, churches })
+  const ch = { 'Mega A': 'Mega', 'Mega B': 'Mega', 'Ah Beng & Co': 'Kinrara' }
+  const t = _mt([r('Mega A', 'Ah Beng & Co', null, ch), r('Mega B', 'Ah Beng & Co', null, ch)])
+  assert.deepEqual(t.map(x => [x.name, x.gold, x.silver]), [['Mega', 2, 0], ['Kinrara', 0, 2]])
+})
