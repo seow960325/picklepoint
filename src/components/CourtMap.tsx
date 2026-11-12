@@ -15,38 +15,49 @@ const W = 780, H = 1160
 // MC26 map (960 x 1098): pickleball courts only
 const MC = { W: 960, H: 1098, XY: { 1: [682, 763], 2: [510, 763], 3: [338, 763], 4: [408, 462], 5: [408, 298], 6: [408, 137], 7: [682, 190] } as Record<number, [number, number]> }
 
-/** The floor plan in a medium card (not full screen), a red ring on each court of `courts`.
+// Each map is cropped to the floor plan itself (no white margin, no title banner); coordinates
+// are in the picture's own pixels. XY above was measured on 780 x 1160, hence the YC scale.
+const MAPS = {
+  yc: { w: 784, h: 1176, crop: [20, 150, 763, 1130], ring: 11, scale: [784 / 780, 1176 / 1160] as [number, number] },
+  mc: { w: 960, h: 1098, crop: [144, 28, 800, 1090], ring: 15, scale: [1, 1] as [number, number] },
+}
+
+/** The floor plan in a card sized to the map (no white space), a red ring on each court of `courts`.
  *  Tap anywhere outside, the Close button, or Esc to close. */
 function MapModal({ src, sport, courts, onClose }: { src: string; sport?: Sport; courts?: number[]; onClose: () => void }) {
   const mc = src.includes('mc26')
-  const W_ = mc ? MC.W : W, H_ = mc ? MC.H : H
-  const rings = sport && courts ? courts.map(n => (mc ? MC.XY[n] : XY[sport][n])).filter(Boolean) : []
+  const M = mc ? MAPS.mc : MAPS.yc
+  const [x0, y0, x1, y1] = M.crop
+  const cw = x1 - x0, ch = y1 - y0
+  const rings = sport && courts
+    ? courts.map(n => (mc ? MC.XY[n] : XY[sport][n])).filter(Boolean).map(([x, y]) => [x * M.scale[0], y * M.scale[1]] as [number, number])
+    : []
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k)
   }, [onClose])
   const title = courts?.length ? `${sport === 'captainball' ? 'Captain Ball' : sport === 'badminton' ? 'Badminton' : 'Pickleball'} court ${courts.join(', ')}` : 'Venue map'
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
-      style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-3"
+      style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))', paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       onClick={e => { e.preventDefault(); e.stopPropagation(); onClose() }}>
-      <div className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl border border-line bg-canvas shadow-2xl" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+      <div className="flex max-h-full flex-col overflow-hidden rounded-2xl border border-line bg-canvas shadow-2xl"
+        style={{ width: `min(100%, 30rem, calc((100dvh - 7rem) * ${cw / ch}))` }} onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-3 px-3 py-2">
           <span className="min-w-0 truncate font-display text-base font-bold tracking-wide">{title}</span>
           <button type="button" onClick={onClose} aria-label="Close map"
             className="shrink-0 rounded-lg bg-brand px-4 py-1.5 text-sm font-bold text-brand-fg">Close</button>
         </div>
-        <div className="flex min-h-0 flex-1 items-center justify-center bg-white p-1.5">
-          <div className="relative" style={{ width: `min(100%, calc(62vh * ${W_ / H_}))`, aspectRatio: `${W_} / ${H_}` }}>
-            <img src={src} alt="Venue map" className="absolute inset-0 h-full w-full select-none" draggable={false} />
-            {rings.map(([x, y], i) => (
-              <span key={i} className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
-                style={{ left: `${x / W_ * 100}%`, top: `${y / H_ * 100}%`, width: '12%', aspectRatio: '1 / 1' }}>
-                <span className="absolute inset-0 animate-ping rounded-full bg-red-500/50" />
-                <span className="absolute inset-0 rounded-full border-[3px] border-red-500 bg-red-500/20" />
-              </span>
-            ))}
-          </div>
+        <div className="relative w-full overflow-hidden bg-white" style={{ aspectRatio: `${cw} / ${ch}` }}>
+          <img src={src} alt="Venue map" draggable={false} className="absolute max-w-none select-none"
+            style={{ width: `${M.w / cw * 100}%`, height: `${M.h / ch * 100}%`, left: `${-x0 / cw * 100}%`, top: `${-y0 / ch * 100}%` }} />
+          {rings.map(([x, y], i) => (
+            <span key={i} className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
+              style={{ left: `${(x - x0) / cw * 100}%`, top: `${(y - y0) / ch * 100}%`, width: `${M.ring}%`, aspectRatio: '1 / 1' }}>
+              <span className="absolute inset-0 animate-ping rounded-full bg-red-500/50" />
+              <span className="absolute inset-0 rounded-full border-[3px] border-red-500 bg-red-500/20" />
+            </span>
+          ))}
         </div>
       </div>
     </div>, document.body)
