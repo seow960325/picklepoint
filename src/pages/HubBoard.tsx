@@ -9,7 +9,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import type { Bundle } from '../lib/types'
 import { hubTitle, type Hub, type HubCat } from '../lib/hub'
 import { useCompetition, groupStandings, groupStageComplete } from '../lib/store'
-import { FullscreenButton, ThemeToggle, Spinner } from '../components/ui'
+import { FullscreenButton, ThemeToggle, Spinner, EventLogo } from '../components/ui'
 import MapButton from '../components/CourtMap'
 import { useOthers, LiveNext, MedalTable } from '../components/HubOverview'
 import { CbLive, CbMatches, CbStandings } from '../components/CaptainBall'
@@ -50,6 +50,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <Link to="/" className="flex h-8 shrink-0 items-center rounded-lg border border-line px-2.5 text-sm text-fg-muted">←</Link>
+            {hub.logo && <EventLogo src={hub.logo} className="h-10 w-10 lg:h-12 lg:w-12" />}
             <div className="min-w-0">
               <div className="line-clamp-2 font-display text-xl font-bold leading-tight tracking-wide sm:text-2xl lg:text-3xl">{hubTitle(hub, hub.cats.map(c => bundleOf(c.code)?.competition.name))}</div>
               <div className="text-xs text-fg-muted">code <span className="font-bold text-brand-ink">{hub.code}</span></div>

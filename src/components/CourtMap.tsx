@@ -29,7 +29,8 @@ function MapModal({ src, sport, courts, onClose }: { src: string; sport?: Sport;
   const M = mc ? MAPS.mc : MAPS.yc
   const [x0, y0, x1, y1] = M.crop
   const cw = x1 - x0, ch = y1 - y0
-  const rings = sport && courts
+  const [ready, setReady] = useState(false)
+  const rings = ready && sport && courts
     ? courts.map(n => (mc ? MC.XY[n] : XY[sport][n])).filter(Boolean).map(([x, y]) => [x * M.scale[0], y * M.scale[1]] as [number, number])
     : []
   useEffect(() => {
@@ -49,7 +50,7 @@ function MapModal({ src, sport, courts, onClose }: { src: string; sport?: Sport;
             className="shrink-0 rounded-lg bg-brand px-4 py-1.5 text-sm font-bold text-brand-fg">Close</button>
         </div>
         <div className="relative w-full overflow-hidden bg-white" style={{ aspectRatio: `${cw} / ${ch}` }}>
-          <img src={src} alt="Venue map" draggable={false} className="absolute max-w-none select-none"
+          <img src={src} alt="Venue map" draggable={false} onLoad={() => setReady(true)} ref={el => { if (el?.complete && el.naturalWidth) setReady(true) }} className="absolute max-w-none select-none"
             style={{ width: `${M.w / cw * 100}%`, height: `${M.h / ch * 100}%`, left: `${-x0 / cw * 100}%`, top: `${-y0 / ch * 100}%` }} />
           {rings.map(([x, y], i) => (
             <span key={i} className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"

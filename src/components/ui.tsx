@@ -244,3 +244,8 @@ export function PairName({ name }: { name: string | null | undefined }) {
     </span>
   )
 }
+
+/** The event's own logo (transparent PNG, no tile): breathes with a soft glow so the white cross stays visible. */
+export function EventLogo({ src, className = 'h-12 w-12' }: { src: string; className?: string }) {
+  return <img src={src} alt="" draggable={false} className={`pp-logo-glow shrink-0 select-none object-contain ${className}`} />
+}

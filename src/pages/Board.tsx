@@ -7,7 +7,7 @@ import {
 } from '../lib/store'
 import { displayScores, rulesOf, servingSide, serverCourt as serverCourtOf, scoreCall, activeServerNo } from '../lib/scoring'
 import type { Bundle, EventCfg, Match } from '../lib/types'
-import { Screen, Pill, Spinner, FullscreenButton, Flag, Emblem, ThemeToggle, ShrinkText, Monogram, hasFlag, PairName } from '../components/ui'
+import { Screen, Pill, Spinner, FullscreenButton, Flag, Emblem, ThemeToggle, ShrinkText, Monogram, hasFlag, PairName, EventLogo } from '../components/ui'
 import Court from '../components/Court'
 import { IS_DEMO, demo, refresh as fetchBundle } from '../lib/api'
 import { fullscreenSupported } from '../lib/fullscreen'
@@ -1411,6 +1411,7 @@ export function Podium({ b, champion, runnerUp, third, title, compact = false }:
   /** inside a page (Bracket tab): own height, smaller blocks. Default fills its parent (TV). */
   compact?: boolean
 }) {
+  const evLogo = parentHub(b.competition.code)?.logo
   const ev = b.events.find(e => e.format === 'groups_ko')
   const fs = ev ? finalSeries(b, ev.id) : null
   const thirdM = ev ? b.matches.find(m => m.event_id === ev.id && m.bracket_key != null && m.round === 'Third place' && m.status === 'finished') : undefined
@@ -1424,6 +1425,7 @@ export function Podium({ b, champion, runnerUp, third, title, compact = false }:
       <div className="pointer-events-none absolute inset-x-0 top-0 h-2/3 opacity-20" style={{ background: 'repeating-linear-gradient(90deg, rgba(244,205,106,0.55) 0 1px, transparent 1px 13px)', WebkitMaskImage: 'linear-gradient(to bottom, black, transparent)', maskImage: 'linear-gradient(to bottom, black, transparent)' }} />
       <Confetti colors={['#f7d774', '#fff1bd', '#dfe4ec', '#e2a866', '#c6ff3d']} />
       <div className={`relative z-[1] text-center ${compact ? 'mb-5' : 'mb-4 sm:mb-6'}`}>
+        {evLogo && <div className="mb-2 flex justify-center"><EventLogo src={evLogo} className={compact ? 'h-14 w-14' : 'h-16 w-16 sm:h-24 sm:w-24'} /></div>}
         <div className="font-display text-xs font-semibold uppercase tracking-[0.3em] text-fg-subtle">{title}</div>
         <div className={`mt-1 font-cer font-black uppercase tracking-[0.16em] ${compact ? 'text-3xl sm:text-4xl' : 'text-3xl sm:text-5xl'}`}
           style={{ backgroundImage: 'linear-gradient(180deg,#fff,#efdca6 55%,#f4cd6a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>Champions</div>

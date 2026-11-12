@@ -154,6 +154,7 @@ export const cbStop: Act = (p, now) =>
 
 export const cbPoint = (s: Side, n: number): Act => (p, now) => {
   const st = p.st
+  if (st.phase === 'ready') return p   // locked until the referee starts the game clock
   if (n < 0 && cbScore(st)[s] + n < 0) return p
   return bump(p, { log: [...st.log, { s, n, h: st.et ? st.r.halves + 1 : st.half, c: clockAt(st, now) }] })
 }
@@ -161,6 +162,7 @@ export const cbPoint = (s: Side, n: number): Act => (p, now) => {
 export const cbUndo: Act = p => (p.st.log.length ? bump(p, { log: p.st.log.slice(0, -1) }) : p)
 
 export const cbFoul = (s: Side, d: number): Act => p => {
+  if (p.st.phase === 'ready') return p
   const v = Math.max(0, p.st.f[s] + d)
   return v === p.st.f[s] ? p : bump(p, { f: { ...p.st.f, [s]: v } })
 }
@@ -168,7 +170,7 @@ export const cbFoul = (s: Side, d: number): Act => p => {
 /** Team call (a team's time-out): the clock stops and the call's countdown starts. */
 export const cbTimeout = (s: Side): Act => (p, now) => {
   const st = p.st
-  if (st.phase === 'over' || st.phase === 'so' || st.phase === 'break' || toLeft(st, s) < 1) return p
+  if (st.phase === 'ready' || st.phase === 'over' || st.phase === 'so' || st.phase === 'break' || toLeft(st, s) < 1) return p
   const i = halfIdx(st)
   const used = [...st.tou[s]]
   while (used.length <= i) used.push(0)

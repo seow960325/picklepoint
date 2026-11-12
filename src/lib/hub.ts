@@ -15,6 +15,8 @@ export interface Hub {
   clocks?: Record<string, SlotClock>
   /** venue map image */
   map?: string
+  /** event logo (transparent PNG): header and podium */
+  logo?: string
   /** courts of each category on the map (when the category has no printed clock of its own) */
   mapCourts?: Record<string, { sport: 'pickleball' | 'badminton' | 'captainball'; courts: number[] }>
 }
@@ -40,6 +42,7 @@ export const HUBS: Hub[] = [{
   code: 'MC26',
   title: 'Christmas Outreach',
   noChurch: true,
+  logo: '/logos/mc26.png',
   map: '/mc26-map.jpg',
   mapCourts: { MCMD: { sport: 'pickleball', courts: [1, 2, 3] }, MCXD: { sport: 'pickleball', courts: [4, 5, 6] } },
   // Derek's plan: games start 9:30 am, one slot every 15 minutes

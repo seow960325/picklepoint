@@ -72,7 +72,8 @@ function TeamPanel({ name, side, st, score, callMs, callSide, apply }: {
   const allowed = Math.max(0, toAllowed(st, side)), left = toLeft(st, side)
   const mine = callMs > 0 && callSide === side
   const other = callMs > 0 && callSide !== side
-  const live = st.phase !== 'over' && st.phase !== 'break' && st.phase !== 'so'
+  const live = st.phase !== 'over' && st.phase !== 'break' && st.phase !== 'so' && st.phase !== 'ready'
+  const locked = st.phase === 'ready'
   return (
     <div className={`${PANEL} flex min-w-0 flex-1 flex-col gap-2 p-2`}>
       <div className="flex h-8 shrink-0 items-center gap-2 px-1">
@@ -83,21 +84,21 @@ function TeamPanel({ name, side, st, score, callMs, callSide, apply }: {
         <SevenSeg text={segScore(score)} color={col} size="1em" label={`${name} ${score}`} />
       </div>
       <div className="grid h-20 shrink-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.75rem] gap-2 landscape:h-[min(16vh,4rem)]">
-        <Btn onClick={() => apply(cbPoint(side, 1), tapPoint)} className="flex-col leading-none" tone="base">
+        <Btn onClick={() => apply(cbPoint(side, 1), tapPoint)} className="flex-col leading-none" tone="base" disabled={locked}>
           <span className="text-3xl">+1</span><span className="mt-0.5 text-[10px] tracking-[0.2em] text-white/50">boy</span>
         </Btn>
-        <Btn onClick={() => apply(cbPoint(side, 2), tapPoint)} className="flex-col leading-none" tone="base">
+        <Btn onClick={() => apply(cbPoint(side, 2), tapPoint)} className="flex-col leading-none" tone="base" disabled={locked}>
           <span className="text-3xl">+2</span><span className="mt-0.5 text-[10px] tracking-[0.2em] text-white/50">girl</span>
         </Btn>
-        <Btn onClick={() => apply(cbPoint(side, -1), tapUndo)} tone="ghost" className="text-lg" disabled={score < 1}>−1</Btn>
+        <Btn onClick={() => apply(cbPoint(side, -1), tapUndo)} tone="ghost" className="text-lg" disabled={locked || score < 1}>−1</Btn>
       </div>
       <div className="grid h-12 shrink-0 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 landscape:h-10">
-        <Btn onClick={() => apply(cbFoul(side, -1))} tone="ghost" className="h-full text-xl" disabled={st.f[side] < 1}>−</Btn>
+        <Btn onClick={() => apply(cbFoul(side, -1))} tone="ghost" className="h-full text-xl" disabled={locked || st.f[side] < 1}>−</Btn>
         <span className="flex h-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl border border-[#2b313c] bg-[#14171d] landscape:flex-row landscape:gap-2">
           <span className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-[#8b93a1] landscape:text-[11px]">Fouls</span>
           <span className="text-[20px] leading-none landscape:text-[22px]"><SevenSeg text={segScore(st.f[side])} color={CB_FOUL_COLOR} size="1em" glow={false} /></span>
         </span>
-        <Btn onClick={() => apply(cbFoul(side, 1), tapPoint)} tone="ghost" className="h-full text-xl">+</Btn>
+        <Btn onClick={() => apply(cbFoul(side, 1), tapPoint)} tone="ghost" className="h-full text-xl" disabled={locked}>+</Btn>
       </div>
       <Btn tone={mine ? 'warn' : 'call'} className="h-14 shrink-0 gap-3 text-base landscape:h-12"
         disabled={!mine && (other || !live || left < 1)}

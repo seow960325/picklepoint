@@ -26,8 +26,10 @@ test('clock runs, stops and resumes without drifting', () => {
 })
 
 test('every action raises rev; no-ops return the same object', () => {
-  const p = start()
-  assert.equal(cbStop(p, T0), p)                            // nothing to stop
+  const r = start()
+  assert.equal(cbPoint('a', 2)(r, T0), r)                   // locked until the clock is started
+  assert.equal(cbFoul('a', 1)(r, T0), r)
+  const p = cbRun(r, T0)
   assert.equal(cbUndo(p, T0), p)
   assert.equal(cbPoint('a', -1)(p, T0), p)                  // can't go below 0
   const q = cbPoint('a', 2)(p, T0)
@@ -35,7 +37,7 @@ test('every action raises rev; no-ops return the same object', () => {
 })
 
 test('boy +1, girl +2, minus, undo', () => {
-  let p = start()
+  let p = cbRun(start(), T0)
   p = cbPoint('a', 1)(p, T0); p = cbPoint('a', 2)(p, T0); p = cbPoint('b', 2)(p, T0)
   assert.deepEqual(cbScore(p.st), { a: 3, b: 2 })
   p = cbPoint('a', -1)(p, T0)
@@ -47,7 +49,7 @@ test('boy +1, girl +2, minus, undo', () => {
 })
 
 test('team fouls count up and down, never below 0', () => {
-  let p = start()
+  let p = cbRun(start(), T0)
   p = cbFoul('a', 1)(p, T0); p = cbFoul('a', 1)(p, T0); p = cbFoul('b', -1)(p, T0)
   assert.deepEqual(p.st.f, { a: 2, b: 0 })
 })
@@ -145,7 +147,8 @@ test('end of half 1 -> 2 min rest -> half 2 with a full clock and ends kept unti
   assert.equal(cbFlip(p, T0).aOnLeft, false)
   assert.deepEqual(cbScore(p.st), { a: 2, b: 0 })             // score carries over
   assert.equal(p.st.log[0].h, 1)
-  assert.equal(cbPoint('b', 1)(p, T0).st.log[1].h, 2)
+  assert.equal(cbPoint('b', 1)(p, T0).st.log.length, 1)         // locked again until the 2nd half starts
+  assert.equal(cbPoint('b', 1)(cbRun(p, T0 + 710000), T0 + 720000).st.log[1].h, 2)
 })
 
 test('after the last half the game is over; level -> extra time', () => {
