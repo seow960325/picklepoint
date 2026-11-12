@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom'
 import type { Bundle, EventCfg, Match } from '../lib/types'
 import { teamName, teamLogo, liveOnCourt } from '../lib/store'
 import { plannedTime } from '../lib/timetable'
-import { Emblem, Pill, PairName } from './ui'
+import { Emblem, Pill, PairName, Clock } from './ui'
 import { Field, Stepper, Warn } from './form'
 import * as api from '../lib/api'
 import { hornEnd } from '../lib/feedback'
@@ -419,7 +419,7 @@ export function CbMatches({ b, banner }: { b: Bundle; banner?: React.ReactNode }
     const logo = (id: string | null) => <span className="flex h-7 w-7 items-center justify-center">{id && <Emblem logo={teamLogo(b, id)} className="h-7 w-7 shrink-0 rounded-[3px]" />}</span>
     return (
       <div key={m.id} className={`grid grid-cols-[3.5rem_minmax(0,1fr)_1.75rem_3.5rem_1.75rem_minmax(0,1fr)_4rem] items-center gap-2 border-l-2 px-2 py-2.5 ${live ? 'border-[#f97316] bg-[#f97316]/10' : 'border-transparent'}`}>
-        <span className="text-center leading-tight"><span className="block font-display text-sm font-bold text-fg">{plannedTime(b, m)}</span><span className="block text-[10px] font-semibold text-fg-subtle">{m.sequence <= 6 ? `Game ${m.sequence}` : ''}</span></span>
+        <span className="text-center leading-tight"><span className="block font-display text-sm font-bold text-fg"><Clock t={plannedTime(b, m)} /></span><span className="block text-[10px] font-semibold text-fg-subtle">{m.sequence <= 6 ? `Game ${m.sequence}` : ''}</span></span>
         <span className={`${cls(aW)} text-right`}><PairName name={teamName(b, m.team_a_id)} /></span>
         {logo(m.team_a_id)}
         <span className={`tabular text-center font-display ${live || fin ? 'text-xl font-bold text-[#c2410c] dark:text-[#fdba74]' : 'text-xs font-semibold uppercase text-fg-subtle'}`}>

@@ -13,7 +13,7 @@ import { courtLabel } from '../lib/teamstatus'
 import { hubOf, parentHub } from '../lib/hub'
 import { slotOf, slotTime, clockOfCode } from '../lib/timetable'
 import { usePinned } from '../lib/pin'
-import { Emblem, PairName, hasFlag } from './ui'
+import { Emblem, PairName, hasFlag, Clock } from './ui'
 import { GroupTable, TeamLink } from './GroupsKo'
 import FillGrid from './FillGrid'
 
@@ -54,7 +54,7 @@ function Row({ b, code, m, left }: { b: Bundle; code: string; m: Match; left: Re
 const Tag = ({ top, sub, sub2, tone = '' }: { top: string; sub?: string; sub2?: string; tone?: string }) => (
   <>
     <span className={`block truncate ${tone}`}>{top}</span>
-    {sub && <span className="block truncate text-[10px] font-semibold normal-case tracking-normal text-fg-subtle">{sub}</span>}
+    {sub && <span className="block truncate text-[10px] font-semibold normal-case tracking-normal text-fg-subtle">{/^\d{1,2}:\d{2}\s*[ap]m$/i.test(sub) ? <Clock t={sub} /> : sub}</span>}
     {sub2 && <span className="block truncate text-[10px] font-semibold normal-case tracking-normal text-fg-subtle">{sub2}</span>}
   </>
 )

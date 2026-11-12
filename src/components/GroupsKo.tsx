@@ -11,7 +11,7 @@ import type { Standing } from '../lib/store'
 import { teamName, teamLogo, teamSideName } from '../lib/store'
 import { upNext, fmtClock, poolQueue, teamsBusy, stageName } from '../lib/pool'
 import { plannedTime, plannedCourt } from '../lib/timetable'
-import { Emblem, Pill, PairName, ScoreWL } from './ui'
+import { Emblem, Pill, PairName, ScoreWL, Clock } from './ui'
 
 // ------------------------------------------------------------------ clock
 /** Running time since the first point of a live game, or the recorded game
@@ -337,7 +337,7 @@ export function CourtQueues({ b, ev, max = 4, n = 6, big = false, courts }: { b:
                 {mine.map((m, i) => (
                   <div key={m.id}
                     className={`grid ${big ? 'grid-cols-[1.6rem_1.6rem_minmax(0,1fr)_2.2rem_minmax(0,1fr)] gap-2 py-2.5 text-2xl' : timed ? 'grid-cols-[4.6rem_1.1rem_1.1rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-1.5 py-1.5 text-sm' : 'grid-cols-[1.1rem_1.1rem_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-1.5 py-1.5 text-sm'} ${mc && !big ? 'lg:!text-xl lg:!py-2' : ''} grid items-center ${teamsBusy(b, m) ? 'opacity-60' : ''}`}>
-                    {timed && <span className="tabular whitespace-nowrap font-display text-xs font-bold text-fg-muted lg:text-base">{plannedTime(b, m)}</span>}
+                    {timed && <span className="tabular whitespace-nowrap font-display text-xs font-bold text-fg-muted lg:text-base"><Clock t={plannedTime(b, m)} /></span>}
                     <span className={`text-center font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>{i + 1}</span>
                     <span className={`text-center font-bold text-fg-subtle ${big ? 'text-base' : 'text-[10px]'}`}>{poolOf(m.team_a_id)}</span>
                     <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : 'justify-end'} gap-1.5 text-fg-muted`}>

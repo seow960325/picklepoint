@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Bundle } from '../lib/types'
 import * as api from '../lib/api'
-import { Emblem } from './ui'
+import { Emblem, Clock } from './ui'
 import { teamLogo, teamSideName, groupStandings } from '../lib/store'
 import type { Hub } from '../lib/hub'
 import { categoryResult, medalTable, needsFourth, type MedalRow } from '../lib/medals'
@@ -116,7 +116,7 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
     <div className={`overflow-hidden rounded-lg border ${r.state === 'now' ? 'border-emerald-500/50' : 'border-line/70'}`}>
       <div className={`flex items-center justify-between gap-2 px-2.5 py-1.5 ${r.state === 'now' ? 'bg-emerald-500/10' : 'bg-surface-2/60'}`}>
         <span className="flex min-w-0 items-baseline gap-2">
-          <span className="font-display text-base font-bold leading-none tracking-wide">{r.time}</span>
+          <span className="font-display text-base font-bold leading-none tracking-wide"><Clock t={r.time} /></span>
           {r.cells.some(c => c.m) && <span className="truncate text-xs font-bold uppercase tracking-wider text-fg-muted">{slotStage(b, r.cells.filter(c => c.m).map(c => c.m!))}</span>}
         </span>
         <span className={`text-[10px] font-bold uppercase tracking-wider ${r.state === 'now' ? 'text-emerald-400' : 'text-fg-subtle'}`}>

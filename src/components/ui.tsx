@@ -275,3 +275,15 @@ export function ScoreWL({ us, them, wl, digits = 2, className = '' }: { us: numb
     </span>
   )
 }
+
+/** "1:30 pm" in fixed columns: hour:minute right-aligned, am/pm in its own column, so a list of times lines up. */
+export function Clock({ t, className = '' }: { t: string | null | undefined; className?: string }) {
+  const m = /^\s*(\d{1,2}:\d{2})\s*([ap]m)\s*$/i.exec(t ?? '')
+  if (!m) return <span className={className}>{t || '—'}</span>
+  return (
+    <span className={`tabular inline-grid items-baseline ${className}`} style={{ gridTemplateColumns: '4.4ch 2.4ch', columnGap: '0.2em' }}>
+      <span className="text-right">{m[1]}</span>
+      <span className="text-left text-[0.7em] uppercase opacity-80">{m[2]}</span>
+    </span>
+  )
+}

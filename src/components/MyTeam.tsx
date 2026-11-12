@@ -11,7 +11,7 @@ import { CourtTag } from './CourtMap'
 import { slotOf, slotTime, plannedCourt, clockOfCode } from '../lib/timetable'
 import { stageName } from '../lib/pool'
 import { isAlert, alertWord } from '../lib/alert'
-import { Emblem, PairName, ScoreWL } from './ui'
+import { Emblem, PairName, ScoreWL, Clock } from './ui'
 import { Link } from 'react-router-dom'
 import { SportIcon } from './SportIcon'
 
@@ -109,7 +109,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                     <span className="mt-1.5 block space-y-1 border-t border-line/50 pt-1.5">
                       {games.map(g => (
                         <span key={g.m.id} className="grid grid-cols-[4.6rem_minmax(0,1fr)_4.6rem] items-center gap-x-2 text-sm leading-tight">
-                          <span className={`font-display text-base font-bold ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg'}`}>{g.live ? '● Now' : g.time || '—'}</span>
+                          <span className={`font-display text-base font-bold ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg'}`}>{g.live ? '● Now' : <Clock t={g.time} />}</span>
                           <span className="min-w-0 text-center">
                             {isAlert(g.m) ? <span className="block text-[10px] font-bold uppercase tracking-wider text-red-500">⚠ {alertWord(g.m)}</span>
                               : <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>}
@@ -126,7 +126,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                       <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">Played</span>
                       {past.map(g => (
                         <span key={g.m.id} className="grid grid-cols-[4.6rem_minmax(0,1fr)_4.6rem] items-center gap-x-2 text-sm leading-tight text-fg-muted">
-                          <span className="font-display text-base font-bold">{g.time || '—'}</span>
+                          <span className="font-display text-base font-bold"><Clock t={g.time} /></span>
                           <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
                             className="block w-full min-w-0 truncate text-center font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"><PairName name={g.opp} /></button>
                           <ScoreWL us={g.us} them={g.them} wl={g.won ? 'W' : 'L'} className={`justify-self-end font-display text-base font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`} />
@@ -197,7 +197,7 @@ function TeamDetail({ hub, pin, b, onClose, onOpen, onBack, onTeam }: { hub: Hub
                 {games.map(g => (
                   <Link key={g.m.id} to={g.live || g.done ? `/c/${pin.code}/match/${g.m.id}` : '#'} onClick={e => { if (!g.live && !g.done) e.preventDefault() }}
                     className={`grid grid-cols-[4.6rem_minmax(0,1fr)_4.6rem] items-center gap-x-2 rounded-xl border px-3 py-2.5 ${g.live ? 'border-blue-500/50 bg-blue-500/10' : 'border-line bg-surface'}`}>
-                    <span className={`font-display text-base font-bold leading-tight ${g.live ? 'text-blue-400' : g.done ? 'text-fg-subtle' : 'text-fg'}`}>{g.live ? '● Now' : g.time || '—'}</span>
+                    <span className={`font-display text-base font-bold leading-tight ${g.live ? 'text-blue-400' : g.done ? 'text-fg-subtle' : 'text-fg'}`}>{g.live ? '● Now' : <Clock t={g.time} />}</span>
                     <span className="min-w-0 text-center">
                       <span className="block text-[10px] font-bold uppercase tracking-wide text-fg-subtle">{g.title}</span>
                       <button onClick={e => { e.preventDefault(); e.stopPropagation(); const oid = g.m.team_a_id === id ? g.m.team_b_id : g.m.team_a_id; if (oid) onTeam({ code: pin.code, teamId: oid, name: g.opp }) }}
