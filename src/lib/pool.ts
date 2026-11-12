@@ -428,21 +428,54 @@ export function courtChoices(b: Bundle, courtId: string, curId?: string | null):
 }
 
 /** "Group A · Slot 3", "QF 2", "Final": what a referee or player calls this game. */
+/** Which stage a game is, in words: "Round robin", "Quarter-final 1", "Semi-final 2", "3rd place", "Final". */
+export function stageName(b: Bundle, m: Match): string {
+  if (m.bracket_key != null) {
+    const k = koShort(b, m)
+    const x = /^(QF|SF|PO)(\d+)$/.exec(k)
+    if (x) return `${x[1] === 'QF' ? 'Quarter-final' : x[1] === 'SF' ? 'Semi-final' : 'Playoff'} ${x[2]}`
+    const r = /^R(\d+)-(\d+)$/.exec(k)
+    if (r) return `Round of ${r[1]} · ${r[2]}`
+    return k
+  }
+  if (m.tie_stage) return m.game_label ?? m.round ?? 'Game'
+  return 'Round robin'
+}
+
+/** Short code on the bracket: "QF1", "SF2", "Final", "3rd place". */
+export const koCode = (b: Bundle, m: Match): string => koShort(b, m).replace(/^R(\d+)-/, 'R$1 · ')
+
+/** A stage for a whole time slot (plural): "Round robin", "Quarter-finals", "Semi-finals", "Final". */
+export function slotStage(b: Bundle, ms: Match[]): string {
+  const words = ms.map(m => m.bracket_key == null && !m.tie_stage ? 'Round robin'
+    : m.round === 'Quarter-final' ? 'Quarter-finals' : m.round === 'Semi-final' ? 'Semi-finals'
+    : m.round === 'Playoff' ? 'Playoffs' : m.round === 'Third place' ? '3rd place' : m.round === 'Final' ? 'Final'
+    : /^Round of \d+$/.test(m.round ?? '') ? m.round! : stageName(b, m))
+  return [...new Set(words)].join(' · ')
+}
+
 export function gameTitle(b: Bundle, m: Match): string {
-  if (m.bracket_key != null) return koShort(b, m).replace(/^(QF|SF|PO)(\d+)$/, '$1 $2')
+  if (m.bracket_key != null) return stageName(b, m)
   if (m.tie_stage) return m.game_label ?? m.round ?? 'Game'
   const pool = b.teams.find(t => t.id === m.team_a_id)?.pool
-  const base = pool && pool !== '—' ? `Group ${pool}` : (m.round ?? 'Game')
+  const base = pool && pool !== '—' ? `Round robin · Group ${pool}` : (m.round ?? 'Round robin')
   return m.game_label ? `${base} · ${m.game_label}` : m.slot != null ? `${base} · Slot ${m.slot}` : base
 }
 
 /** Printed plan, first knockout round: the fixed slot, e.g. "Group A winner v Best runner-up 3". */
 export function planCaption(b: Bundle, m: Match): string | null {
   const plan = koPlanOf(b.competition?.code)
-  const j = /^KO-\d+-(\d+)$/.exec(m.bracket_key ?? '')
+  const j = plan ? new RegExp(`^KO-${plan.pairs.length * 2}-(\\d+)$`).exec(m.bracket_key ?? '') : null
   if (!plan || !j) return null
   const tk = plan.pairs[Number(j[1])]
   return tk ? `${slotName(tk[0])} v ${slotName(tk[1])}` : null
+}
+
+/** Bracket box caption: the game code always, plus the printed slot for the first round. "QF1 · Group A winner v Best runner-up 3", "SF1". */
+export function bracketCaption(b: Bundle, m: Match): string | null {
+  if (m.bracket_key == null) return null
+  const pc = planCaption(b, m)
+  return pc ? `${koCode(b, m)} · ${pc}` : koCode(b, m)
 }
 
 /** A group place already decided (that group has finished) before the whole draw is written:
@@ -450,7 +483,7 @@ export function planCaption(b: Bundle, m: Match): string | null {
 export function provisionalTeam(b: Bundle, ev: EventCfg, m: Match, s: 'a' | 'b',
   tables: (b: Bundle, eventId: string) => Record<string, Array<{ team: { id: string } }>>): string | null {
   const plan = koPlanOf(b.competition?.code)
-  const j = /^KO-\d+-(\d+)$/.exec(m.bracket_key ?? '')
+  const j = plan ? new RegExp(`^KO-${plan.pairs.length * 2}-(\\d+)$`).exec(m.bracket_key ?? '') : null
   if (!plan || !j || ev.format !== 'groups_ko') return null
   if ((s === 'a' ? m.team_a_id : m.team_b_id) != null) return null
   const tk = plan.pairs[Number(j[1])]?.[s === 'a' ? 0 : 1]

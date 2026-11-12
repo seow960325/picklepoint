@@ -269,4 +269,10 @@ test('fixed bracket: a group winner shows in its slot as soon as that group is d
   const id = provisionalTeam(md, ev, qf1, 'a')
   assert.ok(id && inA.has(id))
   assert.equal(provisionalTeam(md, ev, qf1, 'b'), null)   // best runner-up waits for every group
+  // semi-finals / Final / 3rd place never take a group team or the QF caption
+  for (const m of md.matches.filter(x => x.bracket_key && !/^KO-8-/.test(x.bracket_key))) {
+    assert.equal(provisionalTeam(md, ev, m, 'a'), null)
+    assert.equal(provisionalTeam(md, ev, m, 'b'), null)
+    assert.equal(planCaption(md, m), null)
+  }
 })

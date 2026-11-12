@@ -1323,7 +1323,7 @@ function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder, tier
   const tx = mc ? (live ? T.liveTx : T.tx) : tall ? 'text-base' : 'text-xs'
   const logoCls = mc ? T.logo : 'h-4 w-4'
   // names only when no team in this category has a logo or flag (MC26): no initials circle, no empty box
-  const marks = b.teams.some(t => !!teamLogo(b, t.id) || hasFlag(teamSideName(b, t.id)))
+  const marks = !koPlanOf(b.competition?.code) && b.teams.some(t => !!teamLogo(b, t.id) || hasFlag(teamSideName(b, t.id)))
   // semi-final / final (and quarter-final): a long team name stacks on two lines instead of stretching the column
   // compact rounds too, when the name is two players ("Ryan & Marcus"): one name per line, so neither gets cut
   const pair = !!teamId && teamName(b, teamId).split(' & ').length === 2
