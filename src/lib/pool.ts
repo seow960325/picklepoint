@@ -495,3 +495,15 @@ export function provisionalTeam(b: Bundle, ev: EventCfg, m: Match, s: 'a' | 'b',
   if (!games.length || games.some(x => x.status !== 'finished')) return null
   return tables(b, ev.id)[pool]?.[Number(g[2]) - 1]?.team.id ?? null
 }
+
+/** Where a "Winner QF1" place really comes from, so nobody has to trace the lines:
+ *  from a quarter-final: "Group A winner v Best runner-up 3"; from a later round: "QF1 v QF2". */
+export function feedHint(b: Bundle, m: Match, slot: 'a' | 'b'): string | null {
+  const ko = b.matches.filter(x => x.event_id === m.event_id && x.bracket_key != null)
+  const f = ko.find(x => x.next_match_id === m.id && x.next_slot === slot) ?? ko.find(x => x.loser_match_id === m.id && x.loser_slot === slot)
+  if (!f) return null
+  const pc = planCaption(b, f)
+  if (pc) return pc
+  const feeders = ko.filter(x => x.next_match_id === f.id).sort((x, y) => (x.next_slot ?? '').localeCompare(y.next_slot ?? ''))
+  return feeders.length === 2 ? `${koCode(b, feeders[0])} v ${koCode(b, feeders[1])}` : null
+}

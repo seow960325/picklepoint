@@ -6,14 +6,14 @@ import { teamName, groupStandings } from '../lib/store'
 import TeamMark from './TeamMark'
 import { koSlotLabel } from '../lib/pool'
 import { koPlanOf } from '../lib/koplan'
-import { planCaption, provisionalTeam, koCode } from '../lib/pool'
+import { provisionalTeam, koCode, feedHint } from '../lib/pool'
 import { plannedTime, plannedCourt } from '../lib/timetable'
 import { CourtTag } from './CourtMap'
 
 type Col = { round: string; matches: Match[] }
 
 function roundTitle(col: Col, m: Match, all: Match[], b?: Bundle): string {
-  if (b && m.bracket_key && /^(QF|SF|PO)\d+$/.test(koCode(b, m))) return `${koCode(b, m)} · ${m.round}`
+  if (b && m.bracket_key && /^(QF|SF|PO)\d+$/.test(koCode(b, m))) return koCode(b, m)
   if (m.round === 'Final') return all.filter(x => x.round === 'Final').length > 1 ? `Final · game ${all.filter(x => x.round === 'Final').indexOf(m) + 1}` : 'Final'
   if (m.round === 'Third place') return '3rd place'
   const same = all.filter(x => x.round === m.round)
@@ -27,19 +27,27 @@ function Side({ b, ev, m, s, big }: { b: Bundle; ev: EventCfg; m: Match; s: 'a' 
   const live = (m.status === 'live' || m.status === 'awaiting_confirm') && (m.score_a > 0 || m.score_b > 0 || !!m.started_at)
   const win = done && m.winner_id === id
   const lose = done && !!id && m.winner_id !== id
+  // where this place comes from: "Group A winner", "Best runner-up 3", "Winner QF1", "Loser SF2"
+  const slot = ev.bracket_preview || ev.format === 'groups_ko' || koPlanOf(b.competition?.code) ? koSlotLabel(b, ev, m, s) : 'To be decided'
   if (!id) {
     return (
-      <div className={`flex items-center gap-2 border-l-[3px] border-transparent px-2.5 ${big ? 'py-3' : 'py-2.5'}`}>
-                <span className={`min-w-0 flex-1 italic text-fg-subtle ${big ? 'text-sm' : 'text-xs'}`}>{ev.bracket_preview || ev.format === 'groups_ko' || koPlanOf(b.competition?.code) ? koSlotLabel(b, ev, m, s) : 'To be decided'}</span>
+      <div className={`flex min-h-[2.75rem] items-center border-l-[3px] border-transparent px-2.5 ${big ? 'py-2.5' : 'py-2'}`}>
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className={`block italic text-fg-muted ${big ? 'text-[15px]' : 'text-[13px]'}`}>{slot}</span>
+          {feedHint(b, m, s) && <span className="block text-[10.5px] leading-tight text-fg-subtle">{feedHint(b, m, s)}</span>}
+        </span>
       </div>
     )
   }
   const parts = teamName(b, id).split(' & ')
   return (
-    <div className={`flex items-center gap-2 border-l-[3px] px-2.5 ${big ? 'py-2.5' : 'py-2'} ${win ? 'border-gold bg-gold/10' : 'border-transparent'} ${lose ? 'opacity-50' : ''}`}>
+    <div className={`flex min-h-[2.75rem] items-center gap-2 border-l-[3px] px-2.5 ${big ? 'py-2' : 'py-1.5'} ${win ? 'border-gold bg-gold/10' : 'border-transparent'} ${lose ? 'opacity-50' : ''}`}>
       <TeamMark nameOnly b={b} id={id} box={big ? 'h-7 w-9' : 'h-5 w-7'} ring={big ? 'h-9 w-9 text-sm' : 'h-7 w-7 text-[11px]'} />
-      <span className={`min-w-0 flex-1 break-words leading-tight ${big ? 'text-[19px]' : 'text-[15px]'} ${win || live ? 'font-bold text-fg' : 'font-semibold text-fg-muted'}`}>
-        {parts.length === 2 ? <>{parts[0]}<br />{parts[1]}</> : parts[0]}
+      <span className="min-w-0 flex-1">
+        <span className={`block break-words leading-tight ${big ? 'text-[18px]' : 'text-[15px]'} ${win || live ? 'font-bold text-fg' : 'font-semibold text-fg'}`}>
+          {parts.length === 2 ? <>{parts[0]}<br />{parts[1]}</> : parts[0]}
+        </span>
+        {slot && slot !== 'To be decided' && slot !== 'TBD' && <span className="block truncate text-[10.5px] leading-tight text-fg-subtle">{slot}</span>}
       </span>
       {(done || live) && <span className={`tabular shrink-0 font-display font-bold leading-none ${big ? 'text-2xl' : 'text-lg'} ${win ? 'text-gold' : live ? 'text-brand-ink' : 'text-fg-subtle'}`}>{score}</span>}
     </div>
@@ -54,14 +62,13 @@ function Card({ b, ev, m, title, big, gold }: { b: Bundle; ev: EventCfg; m: Matc
   return (
     <div className={`overflow-hidden rounded-xl border bg-surface ${started ? 'border-brand pp-live' : gold ? 'border-gold/60' : 'border-line'}`}
       style={gold ? { boxShadow: '0 0 34px -14px rgba(244,205,106,0.7)' } : undefined}>
-      <div className={`flex items-center justify-between gap-2 px-2.5 pt-2 text-[10px] font-bold uppercase tracking-[0.12em] ${gold ? 'text-gold' : 'text-fg-subtle'}`}>
-        <span className="truncate">{title}</span>
+      <div className={`flex items-center justify-between gap-1.5 border-b px-2.5 py-1.5 ${gold ? 'border-gold/30 bg-gold/10' : 'border-line/70 bg-surface-2/50'}`}>
+        <span className={`shrink-0 whitespace-nowrap font-display font-bold leading-none ${big ? 'text-lg' : 'text-[15px]'} ${gold ? 'text-gold' : 'text-fg'}`}>{title}</span>
         {started
-          ? <span className="flex shrink-0 items-center gap-1 text-[#34d399]"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />live</span>
-          : m.status === 'finished' ? <span className="shrink-0 font-semibold normal-case tracking-normal">full time</span>
-          : (at || courtNo != null) ? <span className="shrink-0 font-semibold normal-case tracking-normal">{at}{at && courtNo != null ? ' · ' : ''}{courtNo != null ? <CourtTag code={b.competition.code} n={courtNo}>Court {courtNo}</CourtTag> : ''}</span> : null}
+          ? <span className="flex shrink-0 items-center gap-1 text-xs font-bold text-[#34d399]"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />live</span>
+          : m.status === 'finished' ? <span className="shrink-0 text-xs font-semibold text-fg-subtle">full time</span>
+          : (at || courtNo != null) ? <span className={`min-w-0 truncate text-right text-[11.5px] font-semibold ${gold ? 'text-gold' : 'text-fg-muted'}`}>{at}{at && courtNo != null ? ' · ' : ''}{courtNo != null ? <CourtTag code={b.competition.code} n={courtNo}>Court {courtNo}</CourtTag> : ''}</span> : null}
       </div>
-      {planCaption(b, m) && <div className="px-2.5 pt-0.5 text-[11px] font-medium text-fg-subtle">{planCaption(b, m)}</div>}
       <Side b={b} ev={ev} m={m} s="a" big={big} />
       <div className="mx-2.5 h-px bg-line" />
       <Side b={b} ev={ev} m={m} s="b" big={big} />
@@ -79,11 +86,17 @@ function Join({ from, to, up }: { from: number; to: number; up?: boolean }) {
   )
 }
 
-function Row({ b, ev, col, all }: { b: Bundle; ev: EventCfg; col: Col; all: Match[] }) {
+const PLURAL: Record<string, string> = { 'Quarter-final': 'Quarter-finals', 'Semi-final': 'Semi-final', Playoff: 'Playoffs' }
+function Row({ b, ev, col, all, labelBelow }: { b: Bundle; ev: EventCfg; col: Col; all: Match[]; labelBelow?: boolean }) {
   const n = col.matches.length
+  const label = <div className="py-1 text-center text-[10px] font-bold uppercase tracking-[0.25em] text-fg-subtle">{PLURAL[col.round] ?? col.round}</div>
   return (
-    <div className={n === 1 ? 'mx-auto w-[64%]' : 'grid grid-cols-2 gap-2'}>
-      {col.matches.map(m => <Card key={m.id} b={b} ev={ev} m={m} title={roundTitle(col, m, all, b)} />)}
+    <div>
+      {!labelBelow && label}
+      <div className={n === 1 ? 'mx-auto w-[72%]' : 'grid grid-cols-2 gap-2'}>
+        {col.matches.map(m => <Card key={m.id} b={b} ev={ev} m={m} title={roundTitle(col, m, all, b)} />)}
+      </div>
+      {labelBelow && label}
     </div>
   )
 }
@@ -109,12 +122,12 @@ export default function PhoneBracket({ b, ev, top, bottom, finals, third }: {
       {[...bottom].reverse().map((col, i, arr) => (
         <div key={'b' + i}>
           <Join up from={Math.min(2, col.matches.length)} to={Math.min(2, arr[i - 1]?.matches.length ?? 1)} />
-          <Row b={b} ev={ev} col={col} all={all} />
+          <Row b={b} ev={ev} col={col} all={all} labelBelow />
         </div>
       ))}
       {third && (
         <div className="mt-5 border-t border-line/60 pt-4">
-          <div className="mx-auto w-[64%]"><Card b={b} ev={ev} m={third} title="🥉 3rd place" /></div>
+          <div className="mx-auto w-[72%]"><Card b={b} ev={ev} m={third} title="🥉 3rd place" /></div>
         </div>
       )}
     </div>
