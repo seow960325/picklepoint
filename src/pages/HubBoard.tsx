@@ -51,7 +51,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <Link to="/" className="flex h-8 shrink-0 items-center rounded-lg border border-line px-2.5 text-sm text-fg-muted">←</Link>
-            {hub.logo && <EventLogo src={hub.logo} className="h-12 w-12 lg:h-14 lg:w-14" still={hub.cats.every(c => c.sport === 'pickleball') && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches} />}
+            {hub.logo && <EventLogo src={hub.logo} className="h-12 w-12 lg:h-14 lg:w-14" />}
             <div className="min-w-0">
               {(() => {
                 const title = hubTitle(hub, hub.cats.map(c => bundleOf(c.code)?.competition.name))

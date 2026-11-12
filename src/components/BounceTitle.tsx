@@ -81,23 +81,37 @@ export default function BounceTitle({ text, className = '' }: { text: string; cl
         { transform: 'translate(-50%,-50%) scale(1.15) rotate(30deg)', opacity: 1, offset: 0.15 },
         { transform: 'translate(-50%,-50%) scale(0) rotate(90deg)', opacity: 0 }], { duration: 700, easing: 'ease-out' })
       logo.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-2px)', offset: 0.2 }, { transform: 'translateX(1px)', offset: 0.5 }, { transform: 'translateX(0)' }], { duration: 260 })
-      // blocked: it comes off the cross to the right and falls in one curve (steady sideways speed,
-      // gravity pulling it down) onto the word, takes two tiny bounces still moving right, then rolls
-      // to a stop. It turns only as far as it travels along the word.
-      const land = spot(back, 0.22)
-      if (land.y > pos.y + 2) await shoot(land, 420, 'cubic-bezier(.25,.5,.6,1)', 'cubic-bezier(.5,0,.95,.6)')
-      else await hop(land, 380, d * 0.5)                             // title on one line: the word's top is not below the cross
+      // blocked: ONE continuous move worked out with simple physics, so nothing stutters between
+      // pieces: it leaves the cross to the right, gravity pulls it onto the word, it bounces lower
+      // each time (losing a little speed), then rolls and slows to a stop. It turns as far as it travels.
+      const ground = spot(back, 0.5).y, x0 = pos.x, y0 = pos.y
+      const span = Math.max(d * 4, spot(back, 0.8).x - x0)
+      const G = 1500, DT = 1 / 120
+      let px = 0, py = y0, vx = 1, vy = -Math.sqrt(2 * G * (Math.max(0, y0 - ground) + d * 0.9))   // pops up off the cross: the first arc is the highest
+      let rolling = false, dec = 0
+      const path: Array<[number, number]> = [[0, y0]]
+      for (let t = 0; t < 4 && vx > 0; t += DT) {
+        if (!rolling) {
+          vy += G * DT; py += vy * DT
+          if (py >= ground && vy > 0) {
+            py = ground; vy = -vy * 0.5; vx *= 0.82
+            if (-vy < 40) { rolling = true; vy = 0; dec = vx / 0.9 }
+          }
+        } else vx = Math.max(0, vx - dec * DT)
+        px += vx * DT
+        path.push([px, py])
+      }
+      const total = path[path.length - 1][0] || 1, n = path.length - 1, ms = n * DT * 1000
+      const at = (i: number) => x0 + span * path[i][0] / total
+      const deg = (i: number) => angle + (at(i) - x0) / (d / 2) * (180 / Math.PI)
+      const ax = x.animate(path.map((_, i) => ({ transform: `translateX(${at(i)}px)`, offset: i / n })), { duration: ms, easing: 'linear', fill: 'forwards' })
+      const ay = y.animate(path.map((q, i) => ({ transform: `translateY(${q[1]}px)`, offset: i / n })), { duration: ms, easing: 'linear', fill: 'forwards' })
+      const ar = spinEl.animate(path.map((_, i) => ({ rotate: `${deg(i)}deg`, offset: i / n })), { duration: ms, easing: 'linear', fill: 'forwards' })
+      live.push(ax, ay, ar)
+      await Promise.all([ax.finished, ay.finished, ar.finished]).catch(() => {})
       if (dead) return true
-      const stop = spot(back, 0.8)
-      const span = Math.max(0, stop.x - pos.x)
-      const turn = span / (d / 2) * (180 / Math.PI)
-      live.push(spinEl.animate([{ rotate: `${angle}deg` }, { rotate: `${angle + turn}deg` }], { duration: 1500, easing: 'cubic-bezier(.2,.6,.35,1)' }))
-      angle = (angle + turn) % 360; spinEl.style.rotate = `${angle}deg`
-      await hop({ x: pos.x + span * 0.3, y: pos.y }, 260, d * 0.42)
-      if (dead) return true
-      await hop({ x: pos.x + span * 0.2, y: pos.y }, 180, d * 0.16)
-      if (dead) return true
-      await shoot({ x: stop.x, y: pos.y }, 1000, 'cubic-bezier(.15,.7,.35,1)')
+      angle = deg(n) % 360; spinEl.style.rotate = `${angle}deg`
+      place({ x: at(n), y: ground }); ax.cancel(); ay.cancel(); ar.cancel(); live.length = 0
       return true
     }
     const show = (el: HTMLElement) => {
