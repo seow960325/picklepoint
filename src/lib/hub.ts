@@ -19,6 +19,8 @@ export interface Hub {
   map?: string
   /** event logo (transparent PNG): header and podium */
   logo?: string
+  /** header: logo to the right of the title instead of the left */
+  logoRight?: boolean
   /** courts of each category on the map (when the category has no printed clock of its own) */
   mapCourts?: Record<string, { sport: 'pickleball' | 'badminton' | 'captainball'; courts: number[] }>
 }
@@ -26,6 +28,8 @@ export interface Hub {
 export const HUBS: Hub[] = [{
   code: 'YC26',
   title: 'YC26 Church Games',
+  logo: '/logos/yc26.png',
+  logoRight: true,
   // the old badminton / pickleball ties inside YC26 are replaced by the category codes
   onlySport: 'captainball',
   clocks: YC26_CLOCKS,

@@ -1633,7 +1633,7 @@ export function Podium({ b, champion, runnerUp, third, title, compact = false }:
   /** inside a page (Bracket tab): own height, smaller blocks. Default fills its parent (TV). */
   compact?: boolean
 }) {
-  const evLogo = parentHub(b.competition.code)?.logo
+  const evLogo = (parentHub(b.competition.code) ?? hubOf(b.competition.code))?.logo
   const ev = b.events.find(e => e.format === 'groups_ko')
   const fs = ev ? finalSeries(b, ev.id) : null
   const thirdM = ev ? b.matches.find(m => m.event_id === ev.id && m.bracket_key != null && m.round === 'Third place' && m.status === 'finished') : undefined

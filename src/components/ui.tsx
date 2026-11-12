@@ -247,17 +247,20 @@ export function PairName({ name }: { name: string | null | undefined }) {
 
 /** The event's own logo (transparent PNG, no tile). Only the white cross shines, slowly, like a cut diamond:
  *  a soft white glow breathes around it and a small star twinkles where the arms meet. */
+/** where the arms of the cross meet, per logo (default: the MC26 logo) */
+const CROSS_STAR: Record<string, [string, string]> = { '/logos/yc26.png': ['49.1%', '33.6%'] }
 export function EventLogo({ src, className = 'h-12 w-12', still = false }: {
   src: string; className?: string
   /** no shine of its own: the title's ball makes the cross flash when it hits it (BounceTitle) */
   still?: boolean
 }) {
   const cross = src.replace(/\.png$/, '-cross.png')
+  const star = CROSS_STAR[src] ?? ['57.3%', '40.6%']
   return (
     <span data-event-logo className={`relative inline-block shrink-0 select-none ${className}`} aria-hidden="true">
       <img src={src} alt="" draggable={false} className="absolute inset-0 h-full w-full object-contain" />
       <img data-cross src={cross} alt="" draggable={false} className={`${still ? '' : 'pp-cross-shine'} absolute inset-0 h-full w-full object-contain`} />
-      <span data-star className={`pp-cross-star ${still ? 'pp-still' : ''} pointer-events-none absolute`} style={{ left: '57.3%', top: '40.6%' }} />
+      <span data-star className={`pp-cross-star ${still ? 'pp-still' : ''} pointer-events-none absolute`} style={{ left: star[0], top: star[1] }} />
     </span>
   )
 }
