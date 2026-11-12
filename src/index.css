@@ -5,6 +5,10 @@
 :root { --pp-top: env(safe-area-inset-top, 0px); }
 /* iPad / phones: keep controls clear of the system status bar (time, battery) */
 @media (hover: none) and (pointer: coarse) { :root { --pp-top: max(env(safe-area-inset-top, 0px), 1.5rem); } }
+/* nothing may sit under the phone's status bar: normal pages start below it,
+   and full-screen overlays (scorer, pickers, modals) get the same top gap unless they set their own */
+#root { padding-top: var(--pp-top); box-sizing: border-box; }
+.fixed.inset-0:not([style*="padding-top"]) { padding-top: var(--pp-top); box-sizing: border-box; }
 :root {
   color-scheme: light;
   --canvas: 248 250 252;
