@@ -637,6 +637,14 @@ export async function adminDeleteAnnouncement(token: string, eventId: string, id
   await rpc('admin_delete_announcement', { p_token: token, p_event_id: eventId, p_id: id })
 }
 
+/** Message for the whole hub (every category of YC26 / MC26). Needs migration 0056. */
+export async function adminHubAnnounce(token: string, codes: string[], text: string): Promise<void> {
+  await rpc('admin_hub_announce', { p_token: token, p_codes: codes, p_text: text })
+}
+export async function adminHubUnannounce(token: string, codes: string[], text: string): Promise<void> {
+  await rpc('admin_hub_unannounce', { p_token: token, p_codes: codes, p_text: text })
+}
+
 /** Pinned organiser message above "My team"; empty text un-pins it. Needs migration 0044. */
 export async function adminSetAnnouncement(token: string, eventId: string, text: string): Promise<void> {
   if (IS_DEMO) return demo.setAnnouncement(eventId, text)

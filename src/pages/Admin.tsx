@@ -238,7 +238,7 @@ function CompetitionTab({ bundle, ev, token, run, secrets, refreshSecrets }: any
   return (
     <div className="max-w-xl space-y-4">
       <H>Competition</H>
-      {ev && <AnnouncementCard ev={ev} token={token} run={run} />}
+      {ev && <AnnouncementCard ev={ev} bundle={bundle} token={token} run={run} />}
       <Field label="Name">
         <input className={inputFull} value={name} onChange={e => setName(e.target.value)} />
       </Field>
@@ -1346,12 +1346,19 @@ function StartOver({ token, run }: any) {
 }
 
 /** Message board to everyone: what you send here flashes at the top of the front page for players, referees and the TV. */
-function AnnouncementCard({ ev, token, run }: any) {
+function AnnouncementCard({ ev, bundle, token, run }: any) {
   const [text, setText] = useState('')
-  const list: Array<{ id: string; text: string }> = [
-    ...(ev.announcements ?? []),
-    ...(ev.announcement ? [{ id: '', text: ev.announcement }] : []),   // 0044 message, until 0049 moves it
-  ]
+  const code = String(bundle?.competition?.code ?? '').toUpperCase()
+  const hub = parentHub(code) ?? hubOf(code)
+  const codes: string[] | null = hub && !api.IS_DEMO ? hub.cats.map(c => c.code) : null
+  // hub event: one message for every category, so list the distinct texts of all events
+  const seen = new Set<string>()
+  const list: Array<{ id: string; text: string }> = []
+  for (const e of codes ? bundle.events : [ev]) {
+    for (const a of [...(e.announcements ?? []), ...(e.announcement ? [{ id: '', text: e.announcement }] : [])]) {
+      if (!seen.has(a.text)) { seen.add(a.text); list.push({ id: a.id, text: a.text }) }
+    }
+  }
   const full = list.length >= 3
   const t = text.trim()
   return (
@@ -1360,7 +1367,7 @@ function AnnouncementCard({ ev, token, run }: any) {
         <span className="pp-flash grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-gold/70 text-2xl">📢</span>
         <div className="min-w-0 flex-1">
           <div className="font-display text-xl font-bold leading-tight tracking-wide">Message to everyone</div>
-          <div className="text-xs text-fg-muted">Shows at the top of the front page for all players, flashing, until you delete it.</div>
+          <div className="text-xs text-fg-muted">{codes ? 'Goes to every category of this event (all courts and games), flashing at the top, until you remove it.' : 'Shows at the top of the front page for all players, flashing, until you delete it.'}</div>
         </div>
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold uppercase ${full ? 'bg-red-500/20 text-red-500' : 'bg-gold/20 text-gold'}`}>{list.length}/3 live</span>
       </div>
@@ -1369,7 +1376,7 @@ function AnnouncementCard({ ev, token, run }: any) {
         <div key={a.id || 'old'} className="pp-flash flex items-start gap-2.5 rounded-xl border-2 border-gold/60 bg-gold/10 px-3 py-2.5">
           <span className="mt-0.5 shrink-0 rounded bg-gold px-1.5 py-0.5 font-display text-[10px] font-black uppercase tracking-wider text-black">Live {i + 1}</span>
           <span className="min-w-0 flex-1 whitespace-pre-line text-base font-semibold leading-snug">{a.text}</span>
-          <button onClick={() => run(() => a.id ? api.adminDeleteAnnouncement(token, ev.id, a.id) : api.adminSetAnnouncement(token, ev.id, ''), 'Message removed')}
+          <button onClick={() => run(() => codes ? api.adminHubUnannounce(token, codes, a.text) : a.id ? api.adminDeleteAnnouncement(token, ev.id, a.id) : api.adminSetAnnouncement(token, ev.id, ''), 'Message removed')}
             className="shrink-0 rounded-lg border border-red-500/50 px-2.5 py-1 text-xs font-bold uppercase text-red-500">Remove</button>
         </div>
       ))}
@@ -1386,7 +1393,7 @@ function AnnouncementCard({ ev, token, run }: any) {
             <span className="min-w-0 flex-1 whitespace-pre-line text-sm font-semibold leading-snug">{t}</span>
           </div>
         )}
-        <button disabled={!t} onClick={() => run(() => api.adminAddAnnouncement(token, ev.id, text), 'Sent to everyone').then(() => setText(''))}
+        <button disabled={!t} onClick={() => run(() => codes ? api.adminHubAnnounce(token, codes, text) : api.adminAddAnnouncement(token, ev.id, text), 'Sent to everyone').then(() => setText(''))}
           className="w-full rounded-xl bg-brand px-4 py-3 font-display text-lg font-bold tracking-wide text-brand-fg disabled:opacity-30">SEND TO EVERYONE</button>
       </>)}
     </div>
