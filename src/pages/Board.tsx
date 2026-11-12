@@ -1222,7 +1222,7 @@ export function PosterBracket({ b, broadcast = false, tall = false }: { b: Bundl
           </div>
         ))}
 
-        <PCentre b={b} finalM={finalM} thirdM={thirdM} champId={champId} podium={podium} />
+        <PCentre b={b} finals={finalR?.matches ?? []} thirdM={thirdM} champId={champId} podium={podium} />
 
         {[...rightCols].reverse().map((col, i) => (
           <div key={'R' + i} className="flex items-stretch">
@@ -1348,12 +1348,13 @@ function PTeam({ b, teamId, score, win, lose, finished, medal, placeholder, tier
   )
 }
 
-function PCentre({ b, finalM, thirdM, champId, podium }: {
-  b: Bundle; finalM?: Match; thirdM?: Match; champId: string | null
+function PCentre({ b, finals, thirdM, champId, podium }: {
+  b: Bundle; finals: Match[]; thirdM?: Match; champId: string | null
   podium: { champion: string; runnerUp: string | null; third: string | null } | null
 }) {
   // medals only once BOTH the Final and Third place matches are confirmed
-  const medalsReady = finalM?.status === 'finished' && thirdM?.status === 'finished' && !!podium
+  const finalM = finals[0]
+  const medalsReady = !!podium && thirdM?.status === 'finished' && !!podium
   const medalOf = (id: string | null): 'gold' | 'silver' | 'bronze' | null => {
     if (!medalsReady || !id) return null
     if (id === podium!.champion) return 'gold'
@@ -1365,12 +1366,12 @@ function PCentre({ b, finalM, thirdM, champId, podium }: {
   const finalT = tierOf ? TIER[tierOf('Final')] : null
   const thirdT = tierOf ? TIER[tierOf('Third place')] : null
   // both finalists known and the Final not yet decided: the trophy is being fought for
-  const fight = !!tierOf && !!finalM && !!finalM.team_a_id && !!finalM.team_b_id && finalM.status !== 'finished'
+  const fight = !!tierOf && !!finalM && !!finalM.team_a_id && !!finalM.team_b_id && !champId
   return (
     <div className="flex flex-col px-2 lg:px-5">
       <div className="mb-2 flex h-8 items-center justify-center border-b-2 border-gold/60 pb-1 text-center font-cer text-base font-bold uppercase tracking-[0.3em] text-gold">Final</div>
       <div className="flex flex-1 flex-col items-center justify-center gap-2">
-        <div className={`${finalT ? finalT.box : 'w-52'} transition-all duration-500`}><PMatch b={b} m={finalM} medalOf={medalOf} /></div>
+        <div className={`${finalT ? finalT.box : 'w-52'} flex flex-col gap-2 transition-all duration-500`}>{(finals.length ? finals : [undefined]).map((g, i) => <PMatch key={g?.id ?? i} b={b} m={g} medalOf={medalOf} />)}</div>
         <div className="my-1 flex flex-col items-center">
           <Trophy lit={!!champId} fight={fight} />
           {champId
