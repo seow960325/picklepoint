@@ -30,8 +30,8 @@ export const HUBS: Hub[] = [{
   onlySport: 'captainball',
   clocks: YC26_CLOCKS,
   program: [
-    { from: '07:45', to: '08:15', label: 'Registration', zh: '开放报道' },
-    { from: '08:15', to: '08:45', label: 'Opening', zh: '开幕' },
+    { from: '07:45', to: '08:15', label: 'Registration' },
+    { from: '08:15', to: '08:45', label: 'Opening' },
   ],
   map: '/yc26-map.jpg',
   cats: [
