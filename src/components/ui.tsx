@@ -245,7 +245,15 @@ export function PairName({ name }: { name: string | null | undefined }) {
   )
 }
 
-/** The event's own logo (transparent PNG, no tile): breathes with a soft glow so the white cross stays visible. */
+/** The event's own logo (transparent PNG, no tile). Only the white cross shines, slowly, like a cut diamond:
+ *  a soft white glow breathes around it and a small star twinkles where the arms meet. */
 export function EventLogo({ src, className = 'h-12 w-12' }: { src: string; className?: string }) {
-  return <img src={src} alt="" draggable={false} className={`pp-logo-glow shrink-0 select-none object-contain ${className}`} />
+  const cross = src.replace(/\.png$/, '-cross.png')
+  return (
+    <span className={`relative inline-block shrink-0 select-none ${className}`} aria-hidden="true">
+      <img src={src} alt="" draggable={false} className="absolute inset-0 h-full w-full object-contain" />
+      <img src={cross} alt="" draggable={false} className="pp-cross-shine absolute inset-0 h-full w-full object-contain" />
+      <span className="pp-cross-star pointer-events-none absolute" style={{ left: '57.3%', top: '40.6%' }} />
+    </span>
+  )
 }

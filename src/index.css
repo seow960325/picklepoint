@@ -91,7 +91,9 @@ input[type="date"], input[type="time"], input[type="datetime-local"] {
 /* organiser announcement: flashing frame + background so nobody misses it */
 @keyframes pp-flash{0%,100%{background-color:rgba(244,205,106,.10);border-color:rgba(244,205,106,.55);box-shadow:0 0 0 0 rgba(244,205,106,0)}50%{background-color:rgba(244,205,106,.38);border-color:rgba(255,236,160,1);box-shadow:0 0 18px 2px rgba(244,205,106,.75)}}
 .pp-flash{animation:pp-flash 1.1s ease-in-out infinite}
-/* event logo (transparent PNG): white glow, pulsing big-small */
-@keyframes pp-logo-glow{0%,100%{filter:drop-shadow(0 0 3px rgba(255,255,255,.35)) drop-shadow(0 0 8px rgba(255,255,255,.2));transform:scale(.9)}50%{filter:drop-shadow(0 0 10px rgba(255,255,255,.95)) drop-shadow(0 0 26px rgba(255,255,255,.65));transform:scale(1.14)}}
-.pp-logo-glow{animation:pp-logo-glow 1.8s ease-in-out infinite}
-@media (prefers-reduced-motion:reduce){.pp-logo-glow{animation:none !important}.pp-flash{animation-duration:2.4s}}
+/* event logo: only the white cross shines, slowly, like a diamond */
+@keyframes pp-cross-shine{0%,100%{filter:drop-shadow(0 0 0 rgba(255,255,255,0)) brightness(1)}50%{filter:drop-shadow(0 0 3px rgba(255,255,255,.95)) drop-shadow(0 0 10px rgba(255,255,255,.8)) brightness(1.15)}}
+.pp-cross-shine{animation:pp-cross-shine 5s ease-in-out infinite}
+@keyframes pp-cross-star{0%,38%,100%{transform:translate(-50%,-50%) scale(0) rotate(0);opacity:0}50%{transform:translate(-50%,-50%) scale(1) rotate(45deg);opacity:1}62%{transform:translate(-50%,-50%) scale(0) rotate(90deg);opacity:0}}
+.pp-cross-star{width:90%;height:90%;background:radial-gradient(circle,#fff 0 6%,rgba(255,255,255,.0) 7%),conic-gradient(from 0deg,transparent 0 44deg,#fff 45deg,transparent 46deg 134deg,#fff 135deg,transparent 136deg 224deg,#fff 225deg,transparent 226deg 314deg,#fff 315deg,transparent 316deg);-webkit-mask:radial-gradient(circle,#000 0,transparent 55%);mask:radial-gradient(circle,#000 0,transparent 55%);animation:pp-cross-star 5s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.pp-cross-shine,.pp-cross-star{animation:none !important}.pp-flash{animation-duration:2.4s}}
