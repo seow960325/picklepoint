@@ -21,13 +21,15 @@ function useNow() {
   useEffect(() => { const t = window.setInterval(() => setNow(new Date()), 15000); return () => window.clearInterval(t) }, [])
   return now
 }
-/** "9:45 am" today as a Date (null when there is no planned time). */
-function todayAt(t: string, now: Date): Date | null {
+/** "9:45 am" on the event day (its date from Settings; today when unknown) as a Date. */
+function dayAt(t: string, now: Date, day?: string | null): Date | null {
   const m = /^\s*(\d{1,2}):(\d{2})\s*([ap]m)\s*$/i.exec(t)
   if (!m) return null
   let h = Number(m[1]) % 12
   if (m[3].toLowerCase() === 'pm') h += 12
-  const d = new Date(now); d.setHours(h, Number(m[2]), 0, 0)
+  const dm = /^(\d{4})-(\d{2})-(\d{2})/.exec(day ?? '')
+  const d = dm ? new Date(Number(dm[1]), Number(dm[2]) - 1, Number(dm[3])) : new Date(now)
+  d.setHours(h, Number(m[2]), 0, 0)
   return d
 }
 const hm = (d: Date) => {
@@ -35,11 +37,12 @@ const hm = (d: Date) => {
   return `${h % 12 === 0 ? 12 : h % 12}:${String(mi).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`
 }
 /** Time now + how long until this team's next planned game, worked out on the phone. */
-function NowAndNext({ next }: { next?: { time: string; live: boolean } }) {
+function NowAndNext({ next, day }: { next?: { time: string; live: boolean }; day?: string | null }) {
   const now = useNow()
-  const at = next && !next.live ? todayAt(next.time, now) : null
+  const at = next && !next.live ? dayAt(next.time, now, day) : null
   const mins = at ? Math.round((at.getTime() - now.getTime()) / 60000) : null
   const left = mins == null ? null
+    : mins >= 24 * 60 ? `Next in ${Math.floor(mins / 1440)} d ${Math.floor((mins % 1440) / 60)} h`
     : mins > 59 ? `Next in ${Math.floor(mins / 60)} h ${mins % 60} min`
     : mins > 0 ? `Next in ${mins} min`
     : 'Next game due now'
@@ -143,7 +146,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                       {st?.state === 'playing' && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400 align-middle" />}
                       {!b ? 'Loading…' : st ? st.head : 'Team not found'}
                     </span>
-                    {games.length > 0 && <NowAndNext next={games.find(g => !g.live && g.time)} />}
+                    {games.length > 0 && <NowAndNext next={games.find(g => !g.live && g.time)} day={b?.competition?.event_date} />}
                   </span>
                   {st && !games.length && <span className="line-clamp-2 text-xs leading-snug text-fg-muted">{st.sub}</span>}
                   {games.length > 0 && (
