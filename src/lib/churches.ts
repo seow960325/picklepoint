@@ -17,5 +17,8 @@ export const churchLogo = (name: string | null | undefined): string | null =>
   CHURCHES.find(c => c.name.toLowerCase() === String(name ?? '').trim().toLowerCase())?.logo ?? null
 
 /** The church a team plays for: the chosen one, else the name without its A / B / 2 suffix. */
-export const teamChurch = (t: { name: string; church?: string | null }): string =>
-  (t.church ?? '').trim() || churchOf(t.name)
+export const teamChurch = (t: { name: string; church?: string | null; logo?: string | null }): string =>
+  (t.church ?? '').trim()
+  // no church saved but the team carries a church logo: that logo names the church
+  || CHURCHES.find(c => !!t.logo && c.logo === t.logo)?.name
+  || churchOf(t.name)
