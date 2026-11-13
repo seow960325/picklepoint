@@ -79,18 +79,26 @@ test('MD best runner-up 3: equal wins -> point difference; equal difference -> p
   assert.match(cutReasons(pd.runners.ranked, 3)[2], /coin toss/)
 })
 
-test('MD: printed slots QF1 A1 v R3, QF2 D1 v E1, QF3 C1 v R1, QF4 B1 v R2 when nobody meets their own group', () => {
-  const pd = planDraw(KO_PLANS.MCMD, mdTables({ A: row('A2', 'A', 1, 0, 1), B: row('B2', 'B', 3, 9, 50), C: row('C2', 'C', 1, 0, 0), D: row('D2', 'D', 3, 5, 50), E: row('E2', 'E', 3, 1, 50) }))
+test('MD: printed slots QF1 A1 v E1, QF2 B1 v R1, QF3 C1 v R2, QF4 D1 v R3 when nobody meets their own group', () => {
+  // runners-up ranked D2, E2, A2 -> no runner-up meets its own group winner
+  const pd = planDraw(KO_PLANS.MCMD, mdTables({ A: row('A2', 'A', 2, 1, 50), B: row('B2', 'B', 0, 0, 1), C: row('C2', 'C', 1, 0, 0), D: row('D2', 'D', 3, 5, 50), E: row('E2', 'E', 3, 1, 50) }))
   assert.equal(pd.swapped, false)
-  assert.deepEqual(pd.pairs, [['A1', 'E2'], ['D1', 'E1'], ['C1', 'B2'], ['B1', 'D2']])
+  assert.deepEqual(pd.pairs, [['A1', 'E1'], ['B1', 'D2'], ['C1', 'E2'], ['D1', 'A2']])
+})
+
+test('MD: best runner-up 1 from Group B swaps with runner-up 2 (never B1 v B2)', () => {
+  // runners-up ranked B2, D2, E2
+  const pd = planDraw(KO_PLANS.MCMD, mdTables({ A: row('A2', 'A', 1, 0, 1), B: row('B2', 'B', 3, 9, 50), C: row('C2', 'C', 1, 0, 0), D: row('D2', 'D', 3, 5, 50), E: row('E2', 'E', 3, 1, 50) }))
+  assert.equal(pd.swapped, true)
+  assert.deepEqual(pd.pairs, [['A1', 'E1'], ['B1', 'D2'], ['C1', 'B2'], ['D1', 'E2']])
 })
 
 test('MD: all three best runners-up drawn against their own group winner -> they move round (no single swap works)', () => {
-  // R1 = C2, R2 = B2, R3 = A2 : printed plan would be A1 v A2, C1 v C2, B1 v B2
-  const pd = planDraw(KO_PLANS.MCMD, mdTables({ A: row('A2', 'A', 2, 1, 50), B: row('B2', 'B', 2, 5, 50), C: row('C2', 'C', 2, 9, 50), D: row('D2', 'D', 0, 0, 0), E: row('E2', 'E', 0, -1, 0) }))
+  // R1 = B2, R2 = C2, R3 = D2 : printed plan would be B1 v B2, C1 v C2, D1 v D2
+  const pd = planDraw(KO_PLANS.MCMD, mdTables({ A: row('A2', 'A', 0, 0, 0), B: row('B2', 'B', 2, 9, 50), C: row('C2', 'C', 2, 5, 50), D: row('D2', 'D', 2, 1, 50), E: row('E2', 'E', 0, -1, 0) }))
   assert.equal(pd.swapped, true)
   for (const [a, b] of pd.pairs) assert.notEqual(a[0], b[0], `${a} v ${b} are from the same group`)
-  assert.deepEqual(new Set(pd.pairs.flat()), new Set(['A1', 'B1', 'C1', 'D1', 'E1', 'A2', 'B2', 'C2']))
+  assert.deepEqual(new Set(pd.pairs.flat()), new Set(['A1', 'B1', 'C1', 'D1', 'E1', 'B2', 'C2', 'D2']))
 })
 
 test('MD + MX: 3000 random group stages each: same qualifiers as an independent calculation, never a same-group quarter-final', () => {

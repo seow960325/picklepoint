@@ -66,7 +66,7 @@ const row = (id, pool, won, diff) => ({ team: { id, pool }, won, diff })
 const tablesOf = spec => Object.fromEntries(Object.entries(spec).map(([p, rows]) =>
   [p, rows.map(([id, w, d]) => row(id, p, w, d))]))
 
-test('MD printed quarter-finals: 5 winners + 3 best runners-up, W1vR3 W4vW5 W3vR1 W2vR2', () => {
+test('MD printed quarter-finals: 5 winners + 3 best runners-up, A1vE1 B1vR1 C1vR2 D1vR3', () => {
   const t = tablesOf({
     A: [['A1', 4, 30], ['A2', 2, 10], ['A3', 0, -40]],
     B: [['B1', 4, 25], ['B2', 2, 8], ['B3', 0, -33]],
@@ -76,21 +76,21 @@ test('MD printed quarter-finals: 5 winners + 3 best runners-up, W1vR3 W4vW5 W3vR
   })
   const pd = planDraw(koPlanOf('MCMD'), t)
   // W: A1 B1 C1 D1 E1; R: A2(2,10) B2(2,8) C2(2,6) | D2 E2 out
-  // unswapped W2 B1 would meet R2 B2 (same pool) -> R1/R2 swap fixes it
-  assert.deepEqual(pd.pairs, [['A1', 'C2'], ['D1', 'E1'], ['C1', 'B2'], ['B1', 'A2']])
-  assert.equal(pd.swapped, true)
+  // B1 v R1 A2, C1 v R2 B2, D1 v R3 C2: nobody meets their own group
+  assert.deepEqual(pd.pairs, [['A1', 'E1'], ['B1', 'A2'], ['C1', 'B2'], ['D1', 'C2']])
+  assert.equal(pd.swapped, false)
   assert.equal(koPlanOf('PBMD'), null)
 })
 
-test('MD: no same-pool quarter-final needs no swap', () => {
+test('MD: B1 would meet R1 B2 -> R1/R2 swap', () => {
   const t = tablesOf({
     A: [['A1', 4, 30], ['A2', 2, 1]], B: [['B1', 4, 25], ['B2', 2, 10]], C: [['C1', 3, 20], ['C2', 2, 6]],
     D: [['D1', 3, 15], ['D2', 2, 8]], E: [['E1', 3, 10], ['E2', 1, 2]],
   })
-  // R: B2(2,10) D2(2,8) C2(2,6); W1 A1 v R3 C2, W4 D1 v W5 E1, W3 C1 v R1 B2, W2 B1 v R2 D2
+  // R: B2(2,10) D2(2,8) C2(2,6); printed B1 v R1 B2 is same group -> R1/R2 swap
   const pd = planDraw(koPlanOf('MCMD'), t)
-  assert.deepEqual(pd.pairs, [['A1', 'C2'], ['D1', 'E1'], ['C1', 'B2'], ['B1', 'D2']])
-  assert.equal(pd.swapped, false)
+  assert.deepEqual(pd.pairs, [['A1', 'E1'], ['B1', 'D2'], ['C1', 'B2'], ['D1', 'C2']])
+  assert.equal(pd.swapped, true)
 })
 
 test('MX: fixed group winners, best 2 runners-up: A1vR2 D1vE1 C1vF1 B1vR1', () => {
@@ -229,8 +229,8 @@ test('bracket preview + flow chart show the printed draw before any result', () 
   const ev = md.events[0]
   const qf = key => md.matches.find(m => m.bracket_key === key)
   assert.equal(koSlotLabel(md, ev, qf('KO-8-0'), 'a'), 'Group A winner')
-  assert.equal(koSlotLabel(md, ev, qf('KO-8-0'), 'b'), 'Best runner-up 3')
-  assert.equal(koSlotLabel(md, ev, qf('KO-8-3'), 'b'), 'Best runner-up 2')
+  assert.equal(koSlotLabel(md, ev, qf('KO-8-0'), 'b'), 'Group E winner')
+  assert.equal(koSlotLabel(md, ev, qf('KO-8-3'), 'b'), 'Best runner-up 3')
   assert.equal(koSlotLabel(md, ev, md.matches.find(m => m.bracket_key === 'KO-4-0'), 'a'), 'Winner QF1')
   const mx = bundleOf(MX, 24)
   assert.equal(koSlotLabel(mx, mx.events[0], mx.matches.find(m => m.bracket_key === 'KO-8-1'), 'b'), 'Group E winner')
@@ -250,7 +250,7 @@ test('bracket preview + flow chart show the printed draw before any result', () 
   assert.deepEqual(qfs, [['A winner', 'Best runner-up 2'], ['D winner', 'E winner'], ['C winner', 'F winner'], ['B winner', 'Best runner-up 1']])
   const fm = flowOf(md, helpers)
   assert.deepEqual(fm.stages[0].games.map(g => [g.a.label, g.b.label]),
-    [['A winner', 'Best runner-up 3'], ['D winner', 'E winner'], ['C winner', 'Best runner-up 1'], ['B winner', 'Best runner-up 2']])
+    [['A winner', 'E winner'], ['B winner', 'Best runner-up 1'], ['C winner', 'Best runner-up 2'], ['D winner', 'Best runner-up 3']])
 })
 
 test('fixed bracket: a group winner shows in its slot as soon as that group is done', async () => {
@@ -260,7 +260,7 @@ test('fixed bracket: a group winner shows in its slot as soon as that group is d
   const md = bundleOf(MD, 15)
   const ev = md.events[0]
   const qf1 = md.matches.find(m => m.bracket_key === 'KO-8-0')
-  assert.equal(planCaption(md, qf1), 'Group A winner v Best runner-up 3')
+  assert.equal(planCaption(md, qf1), 'Group A winner v Group E winner')
   assert.equal(provisionalTeam(md, ev, qf1, 'a'), null)
   const inA = new Set(md.teams.filter(t => t.pool === 'A').map(t => t.id))
   for (const m of md.matches) if (!m.bracket_key && inA.has(m.team_a_id)) {
@@ -268,7 +268,7 @@ test('fixed bracket: a group winner shows in its slot as soon as that group is d
   }
   const id = provisionalTeam(md, ev, qf1, 'a')
   assert.ok(id && inA.has(id))
-  assert.equal(provisionalTeam(md, ev, qf1, 'b'), null)   // best runner-up waits for every group
+  assert.equal(provisionalTeam(md, ev, qf1, 'b'), null)   // Group E is not finished yet
   // semi-finals / Final / 3rd place never take a group team or the QF caption
   for (const m of md.matches.filter(x => x.bracket_key && !/^KO-8-/.test(x.bracket_key))) {
     assert.equal(provisionalTeam(md, ev, m, 'a'), null)
