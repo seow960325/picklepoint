@@ -33,7 +33,14 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
   const [params, setParams] = useSearchParams()
   const tabs = hub.noChurch ? TABS.filter(t => t.id !== 'medals') : TABS
   const tab = (tabs.find(t => t.id === params.get('t'))?.id ?? 'live') as HubTab
-  const cat = hub.cats.find(c => c.code === (params.get('cat') ?? '').toUpperCase()) ?? null
+  const { pins } = usePins(hub.code)
+  // default filter = the category of the followed team(s); "All" only when chosen (?cat=all)
+  // or when the followed teams are in different categories
+  const pinCats = [...new Set(pins.map(p => p.code.toUpperCase()))].filter(c => hub.cats.some(x => x.code === c))
+  const rawCat = params.get('cat')
+  const cat = rawCat == null
+    ? (pinCats.length === 1 ? hub.cats.find(c => c.code === pinCats[0]) ?? null : null)
+    : hub.cats.find(c => c.code === rawCat.toUpperCase()) ?? null
   const set = (k: string, v: string | null) => {
     const next = new URLSearchParams(params)
     if (v) next.set(k, v); else next.delete(k)
@@ -41,7 +48,6 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
   }
   const others = useOthers(hub.cats.map(c => c.code).filter(c => c !== hub.code), 10000)
   const bundleOf = (code: string) => (code === hub.code ? self : others[code] ?? null)
-  const { pins } = usePins(hub.code)
   const pinned = useMemo(() => new Set(pins.map(p => resolvePin(bundleOf(p.code), p)).filter((x): x is string => !!x)),
     [pins, others, self])
 
@@ -87,7 +93,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
         {/* category filter (not on Medals: medals are always the whole event) */}
         {tab !== 'medals' && (
           <div className="mx-auto mt-2 flex max-w-6xl flex-wrap gap-1.5 pb-1">
-            <Chip on={!cat} onClick={() => set('cat', null)}>All</Chip>
+            <Chip on={!cat} onClick={() => set('cat', 'all')}>All</Chip>
             {hub.cats.map(c => {
               // MC26 (all pickleball): no ball icon, Men's = blue, Mixed = pink
               const hue = hub.noChurch ? catHue(c.code) : null
