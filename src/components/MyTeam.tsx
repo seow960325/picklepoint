@@ -36,6 +36,13 @@ const hm = (d: Date) => {
   const h = d.getHours(), mi = d.getMinutes()
   return `${h % 12 === 0 ? 12 : h % 12}:${String(mi).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`
 }
+/** On court but not started yet (0-0, no point) and its planned time is still ahead (e.g. the day
+ *  before, or before 9:30 am): show it as "coming up" with a countdown, not as "Now". */
+function waiting(g: { live: boolean; time: string; m: { score_a: number; score_b: number } }, now: Date, day?: string | null) {
+  if (!g.live || g.m.score_a > 0 || g.m.score_b > 0) return false
+  const at = dayAt(g.time, now, day)
+  return !!at && at.getTime() > now.getTime()
+}
 /** Time now + how long until this team's next planned game, worked out on the phone. */
 function NowAndNext({ next, day }: { next?: { time: string; live: boolean }; day?: string | null }) {
   const now = useNow()
@@ -98,6 +105,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
   compact?: boolean   // other tabs: the status only, no "follow" invitation
 }) {
   const { pins, toggle } = usePins(hub.code)
+  const now = useNow()
   const [picking, setPicking] = useState(false)
   const [stack, setStack] = useState<Pin[]>([])
   const detail = stack[stack.length - 1] ?? null
@@ -123,11 +131,14 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
             const id = resolvePin(b, p)
             const ev = b?.events.find(e => e.format === 'groups_ko')
             const st = b && id ? teamStatus(b, id, ev ? groupStandings(b, ev.id) : undefined) : null
-            const games = b && id ? upcoming(b, id, clockOfCode(b.competition?.code)) : []
+            const day = b?.competition?.event_date
+            const games = (b && id ? upcoming(b, id, clockOfCode(b.competition?.code)) : []).map(g => (waiting(g, now, day) ? { ...g, live: false } : g))
+            const playing = st?.state === 'playing' && games.some(g => g.live)
+            const head = st?.state === 'playing' && !playing && games[0] ? `Next game ${games[0].time} · ${games[0].court}` : st?.head
             const past = b && id ? played(b, id, clockOfCode(b.competition?.code)) : []
             const alerted = games.some(g => isAlert(g.m))
             const tone = alerted ? 'border-red-500/80 bg-red-500/15'
-              : st?.state === 'playing' ? 'border-blue-400 bg-blue-500/20'
+              : playing ? 'border-blue-400 bg-blue-500/20'
               : st?.state === 'next' && (st.ahead ?? 9) <= 1 ? 'border-indigo-300/70 bg-indigo-500/15'
               : 'border-indigo-400/40 bg-indigo-500/10'
             return (
@@ -143,10 +154,10 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                   </span>
                   <span className="flex items-end justify-between gap-2">
                     <span className="block min-w-0 truncate font-display text-xl font-bold leading-tight">
-                      {st?.state === 'playing' && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400 align-middle" />}
-                      {!b ? 'Loading…' : st ? st.head : 'Team not found'}
+                      {playing && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400 align-middle" />}
+                      {!b ? 'Loading…' : st ? head : 'Team not found'}
                     </span>
-                    {games.length > 0 && <NowAndNext next={games.find(g => !g.live && g.time)} day={b?.competition?.event_date} />}
+                    {games.length > 0 && <NowAndNext next={games.find(g => !g.live && g.time)} day={day} />}
                   </span>
                   {st && !games.length && <span className="line-clamp-2 text-xs leading-snug text-fg-muted">{st.sub}</span>}
                   {games.length > 0 && (
@@ -208,6 +219,7 @@ function TeamDetail({ hub, pin, b, onClose, onOpen, onBack, onTeam }: { hub: Hub
   const cat = hub.cats.find(c => c.code === pin.code)
   const ev = b?.events.find(e => e.format === 'groups_ko')
   const st = b && id ? teamStatus(b, id, ev ? groupStandings(b, ev.id) : undefined) : null
+  const now = useNow()
   const games = b && id ? b.matches
     .filter(m => (m.team_a_id === id || m.team_b_id === id) && m.team_a_id && m.team_b_id)
     .sort((x, y) => x.sequence - y.sequence)
@@ -221,7 +233,7 @@ function TeamDetail({ hub, pin, b, onClose, onOpen, onBack, onTeam }: { hub: Hub
         us: a ? m.score_a : m.score_b, them: a ? m.score_b : m.score_a,
         live: m.status === 'live' || m.status === 'awaiting_confirm', done: m.status === 'finished', won: m.winner_id === id,
       }
-    }) : []
+    }).map(g => (waiting(g, now, b.competition?.event_date) ? { ...g, live: false } : g)) : []
   const played = games.filter(g => g.done), won = played.filter(g => g.won).length
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center" onClick={onClose}>
