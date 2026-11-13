@@ -92,6 +92,9 @@ const up = (c?: string) => (c ?? '').toUpperCase()
  *  greyed out and disabled in the UI. No other competition is affected. */
 export const GROUPS_LOCKED_CODES = new Set(['MCMD', 'MCXD', 'TESTMD', 'TESTXD'])
 export const groupsLocked = (code?: string) => GROUPS_LOCKED_CODES.has(up(code))
+
+/** Required before any destructive admin action (reset or delete competition). */
+export const DANGER_KEY = '971230'
 /** The hub a code is the front page of. */
 export const hubOf = (code?: string): Hub | null => HUBS.find(h => h.code === up(code)) ?? null
 /** The hub a category code belongs to (not the hub itself). */

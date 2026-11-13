@@ -19,7 +19,7 @@ import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts, Kn
 import { sportsPresent, isCb } from '../lib/multisport'
 import { CbRulesPanel } from '../components/CaptainBall'
 import { isPoolDispatch, isDiffTiebreak, shuffleMap, eventUntouched, roundName, groupRound, bracketCaption } from '../lib/pool'
-import { parentHub, hubOf, groupsLocked } from '../lib/hub'
+import { parentHub, hubOf, groupsLocked, DANGER_KEY } from '../lib/hub'
 import { CHURCHES, churchLogo, teamChurch } from '../lib/churches'
 import { seatsOf, entriesOf, fixedOf, currentMeets, smartDraw, jointDraw, slotClock } from '../lib/clash'
 import { koPlanOf, planDraw, tokenLabel } from '../lib/koplan'
@@ -221,6 +221,7 @@ function CompetitionTab({ bundle, ev, token, run, secrets, refreshSecrets }: any
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [delBusy, setDelBusy] = useState(false)
   const [delErr, setDelErr] = useState<string | null>(null)
+  const [dangerOpen, setDangerOpen] = useState(false)
 
   const deleteCompetition = async () => {
     setDelBusy(true); setDelErr(null)
@@ -270,13 +271,20 @@ function CompetitionTab({ bundle, ev, token, run, secrets, refreshSecrets }: any
         <div className="flex flex-wrap items-center gap-2">
           <input className={`${input} font-mono uppercase`} value={confirmText}
             onChange={e => setConfirmText(e.target.value.toUpperCase())} placeholder={c.code} />
-          <button onClick={() => setConfirmOpen(true)} disabled={confirmText !== c.code || delBusy}
+          <button onClick={() => setDangerOpen(true)} disabled={confirmText !== c.code || delBusy}
             className="rounded-xl bg-red-600 px-5 py-2.5 font-display font-bold text-white disabled:opacity-30">
             DELETE COMPETITION
           </button>
         </div>
         {delErr && !confirmOpen && <Warn>{delErr}</Warn>}
       </div>
+
+      {dangerOpen && (
+        <DangerKeyDialog
+          onPass={() => { setDangerOpen(false); setConfirmOpen(true) }}
+          onClose={() => setDangerOpen(false)}
+        />
+      )}
 
       {confirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6"
@@ -1327,20 +1335,68 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
   )
 }
 
+/** Modal gate: asks for DANGER_KEY before proceeding with a destructive action.
+ *  onPass is called only when the trimmed input equals DANGER_KEY; wrong or empty
+ *  shows "Wrong key" and does nothing else. */
+function DangerKeyDialog({ onPass, onClose }: { onPass: () => void; onClose: () => void }) {
+  const [key, setKey] = useState('')
+  const [wrong, setWrong] = useState(false)
+  const submit = () => {
+    if (key.trim() === DANGER_KEY) { setKey(''); setWrong(false); onPass() }
+    else { setWrong(true); setKey('') }
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6"
+      onClick={onClose}>
+      <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5"
+        onClick={e => e.stopPropagation()}>
+        <div className="font-display text-base font-bold text-red-600">Enter danger key to continue</div>
+        <input
+          className={`${inputFull} mt-3 font-mono tracking-widest`}
+          type="password"
+          value={key}
+          autoFocus
+          onChange={e => { setKey(e.target.value); setWrong(false) }}
+          onKeyDown={e => e.key === 'Enter' && submit()}
+          placeholder="Danger key"
+        />
+        {wrong && <div className="mt-2"><Warn>Wrong key</Warn></div>}
+        <div className="mt-4 flex justify-end gap-2">
+          <button onClick={onClose}
+            className="rounded-xl border border-line px-4 py-2 text-sm font-semibold text-fg-muted">
+            Cancel
+          </button>
+          <button onClick={submit}
+            className="rounded-xl bg-red-600 px-4 py-2 font-display text-sm font-bold text-white">
+            Continue
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /** Test run finished? Wipe every result and knockout line-up and play again; teams and settings stay. */
 function StartOver({ token, run }: any) {
   const [mode, setMode] = useState<null | 'one' | 'all'>(null)
   const [txt, setTxt] = useState('')
+  const [dangerGate, setDangerGate] = useState<null | 'one' | 'all'>(null)
   const close = () => { setMode(null); setTxt('') }
   return (
     <div className="mt-8 rounded-xl border border-amber-500/50 bg-amber-500/5 p-4">
       <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-amber-500">Reset points</div>
       <p className="text-sm text-fg-muted">Sets every game back to 0-0 and clears results, medals and the knockout line-up so you can play again.
         Teams, courts, groups and settings stay.</p>
+      {dangerGate && (
+        <DangerKeyDialog
+          onPass={() => { setDangerGate(null); setMode(dangerGate) }}
+          onClose={() => setDangerGate(null)}
+        />
+      )}
       {!mode ? (
         <div className="mt-3 flex flex-wrap gap-2">
-          <button onClick={() => setMode('one')} className="rounded-xl border border-amber-500/60 px-4 py-2.5 text-sm font-bold uppercase text-amber-500">Reset this category…</button>
-          <button onClick={() => setMode('all')} className="rounded-xl border border-red-500/60 px-4 py-2.5 text-sm font-bold uppercase text-red-500">Reset ALL categories…</button>
+          <button onClick={() => setDangerGate('one')} className="rounded-xl border border-amber-500/60 px-4 py-2.5 text-sm font-bold uppercase text-amber-500">Reset this category…</button>
+          <button onClick={() => setDangerGate('all')} className="rounded-xl border border-red-500/60 px-4 py-2.5 text-sm font-bold uppercase text-red-500">Reset ALL categories…</button>
         </div>
       ) : (
         <div className="mt-3 space-y-2">
