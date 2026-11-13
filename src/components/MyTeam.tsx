@@ -43,35 +43,35 @@ function waiting(g: { live: boolean; time: string; m: { score_a: number; score_b
   const at = dayAt(g.time, now, day)
   return !!at && at.getTime() > now.getTime()
 }
-/** Time now (the colon blinks, so it reads as live) and, under it, a bar that fills up toward this
- *  team's next planned game with the time left in it. All worked out on the phone: no database. */
-function NowAndNext({ next, prev, day }: { next?: { time: string; live: boolean }; prev?: string; day?: string | null }) {
+/** Time now, small, with a blinking colon so it reads as live (phone clock: no database). */
+function LiveTime() {
+  const now = useNow()
+  const h12 = now.getHours() % 12 === 0 ? 12 : now.getHours() % 12
+  return (
+    <span className="tabular shrink-0 whitespace-nowrap rounded-md border border-line bg-black/30 px-1.5 py-0.5 font-display text-sm font-bold leading-none text-fg-muted">
+      {h12}<span className="pp-blink">:</span>{String(now.getMinutes()).padStart(2, '0')}<span className="ml-0.5 text-[0.75em] uppercase">{now.getHours() < 12 ? 'am' : 'pm'}</span>
+    </span>
+  )
+}
+/** Countdown to this team's next planned game in a bar that FILLS as the game comes closer: empty right
+ *  after the previous game, full at game time (first game of the day: empty until an hour before). */
+function NextBar({ next, prev, day }: { next?: { time: string; live: boolean }; prev?: string; day?: string | null }) {
   const now = useNow()
   const at = next && !next.live ? dayAt(next.time, now, day) : null
-  const secs = at ? Math.round((at.getTime() - now.getTime()) / 1000) : null
-  const h12 = now.getHours() % 12 === 0 ? 12 : now.getHours() % 12
+  if (!at) return null
+  const secs = Math.round((at.getTime() - now.getTime()) / 1000)
   const two = (n: number) => String(n).padStart(2, '0')
-  const left = secs == null ? null : secs <= 0 ? 'NOW'
+  const left = secs <= 0 ? 'NOW'
     : secs >= 86400 ? `${Math.floor(secs / 86400)}d ${two(Math.floor((secs % 86400) / 3600))}:${two(Math.floor((secs % 3600) / 60))}`
     : `${two(Math.floor(secs / 3600))}:${two(Math.floor((secs % 3600) / 60))}:${two(secs % 60)}`
-  // the bar FILLS as the next game comes closer: empty right after the team's previous game,
-  // full at game time (first game of the day: empty until an hour before, then fills)
   const from = prev ? dayAt(prev, now, day) : null
-  const span = at && from && at.getTime() > from.getTime() ? (at.getTime() - from.getTime()) / 1000 : 3600
-  const pct = secs == null ? 0 : Math.max(0, Math.min(100, 100 - (secs / span) * 100))
-  const warn = secs != null && secs <= 600
+  const span = from && at.getTime() > from.getTime() ? (at.getTime() - from.getTime()) / 1000 : 3600
+  const pct = Math.max(0, Math.min(100, 100 - (secs / span) * 100))
+  const warn = secs <= 600
   return (
-    <span className="flex w-[9.5rem] shrink-0 flex-col items-stretch gap-1 rounded-lg border border-line bg-black/30 px-2 py-1.5">
-      <span className="tabular whitespace-nowrap text-center font-display text-xl font-bold leading-none text-fg">
-        {h12}<span className="pp-blink">:</span>{two(now.getMinutes())}<span className="ml-1 text-[0.7em] uppercase opacity-80">{now.getHours() < 12 ? 'am' : 'pm'}</span>
-      </span>
-      {left && (
-        <span className="relative block h-[22px] overflow-hidden rounded-md bg-black/50 ring-1 ring-white/10" title="Time left to your next game">
-          <span className={`absolute inset-y-0 left-0 transition-[width] duration-1000 ease-linear ${warn ? 'bg-gold' : 'bg-emerald-500'}`} style={{ width: `${secs! <= 0 ? 100 : pct}%` }} />
-          <span className="tabular absolute inset-0 flex items-center justify-center font-display text-base font-bold leading-none text-white [text-shadow:0_1px_2px_rgba(0,0,0,.9)]">{left}</span>
-        </span>
-      )}
-      {left && <span className="text-center text-[9px] font-bold uppercase leading-none tracking-wider text-fg-subtle">to next game</span>}
+    <span className="relative block h-6 w-[6.6rem] shrink-0 overflow-hidden rounded-md bg-black/50 ring-1 ring-white/15" title="Time left to your next game">
+      <span className={`absolute inset-y-0 left-0 transition-[width] duration-1000 ease-linear ${warn ? 'bg-gold' : 'bg-emerald-500'}`} style={{ width: `${secs <= 0 ? 100 : pct}%` }} />
+      <span className="tabular absolute inset-0 flex items-center justify-center font-display text-[15px] font-bold leading-none text-white [text-shadow:0_1px_2px_rgba(0,0,0,.9)]">{left}</span>
     </span>
   )
 }
@@ -161,18 +161,24 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                 className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left active:opacity-90 ${tone}`}>
                 <span className="min-w-0 flex-1">
                   <span className="flex min-w-0 items-start justify-between gap-2">
-                    <span className="flex min-w-0 items-center gap-1.5 pt-0.5 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
-                      <Star on className="h-3 w-3 shrink-0 text-gold" />
-                      <span className="min-w-0 break-words">{p.name.replace(/\s*\|\s*/g, ' / ')}{cat ? ` · ${cat.short}` : ''}</span>
+                    {/* the church logo (YC26) sits above the team's names; MC26 has none */}
+                    <span className="flex min-w-0 flex-col items-start gap-1">
+                      <Emblem logo={b && id ? teamLogo(b, id) : null} flagName={b && id ? teamSideName(b, id) ?? p.name : p.name} className="h-9 w-9 shrink-0 rounded-[3px]" />
+                      <span className="flex min-w-0 items-center gap-1.5 pt-0.5 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
+                        <Star on className="h-3 w-3 shrink-0 text-gold" />
+                        <span className="min-w-0 break-words">{p.name.replace(/\s*\|\s*/g, ' / ')}{cat ? ` · ${cat.short}` : ''}</span>
+                      </span>
                     </span>
                     <span className="-mr-11 flex shrink-0 items-start gap-2">
-                      {games.length > 0 && <NowAndNext next={games.find(g => !g.live && g.time)} prev={(games.find(g => g.live) ?? past[0])?.time} day={day} />}
-                      <Emblem logo={b && id ? teamLogo(b, id) : null} flagName={b && id ? teamSideName(b, id) ?? p.name : p.name} className="h-9 w-9 shrink-0 rounded-[3px]" />
+                      {games.length > 0 && <LiveTime />}
                     </span>
                   </span>
-                  <span className="mt-1 block truncate font-display text-xl font-bold leading-tight">
-                    {playing && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400 align-middle" />}
-                    {!b ? 'Loading…' : st ? head : 'Team not found'}
+                  <span className="mt-1 flex items-center justify-between gap-2">
+                    <span className="block min-w-0 truncate font-display text-xl font-bold leading-tight">
+                      {playing && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400 align-middle" />}
+                      {!b ? 'Loading…' : st ? head : 'Team not found'}
+                    </span>
+                    {games.length > 0 && <span className="-mr-11"><NextBar next={games.find(g => !g.live && g.time)} prev={(games.find(g => g.live) ?? past[0])?.time} day={day} /></span>}
                   </span>
                   {st && !games.length && <span className="line-clamp-2 text-xs leading-snug text-fg-muted">{st.sub}</span>}
                   {games.length > 0 && (
