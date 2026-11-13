@@ -72,7 +72,8 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
     pd.tokens.forEach((pair, i) => pair.forEach((tk, j) => {
       const id = pd.pairs[i][j]
       if (!id) return
-      const pool = /^([A-Z])\d$/.exec(tk)?.[1]
+      // 'R1' / 'W2' = best runner-up / best winner (any group), 'C1' = Group C winner
+      const pool = /^[WR]\d+$/.test(tk) ? undefined : /^([A-Z])\d$/.exec(tk)?.[1]
       if (pool ? started(pool) : allStarted) out.add(id)
     }))
     return out
