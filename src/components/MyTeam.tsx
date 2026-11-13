@@ -61,7 +61,10 @@ function LiveTime() {
 }
 /** Countdown to this team's next planned game in a bar that FILLS as the game comes closer: empty right
  *  after the previous game, full at game time (first game of the day: empty until an hour before). */
-function NextBar({ next, prev, day }: { next?: { time: string; live: boolean }; prev?: string; day?: string | null }) {
+/** Countdown to the team's next game. First game: the bar fills over the last 24 hours before it.
+ *  After that: it fills from the moment the team's previous game ended (or started, while it is
+ *  still on court) up to the next game's time. */
+function NextBar({ next, prevAt, day }: { next?: { time: string; live: boolean }; prevAt?: string | null; day?: string | null }) {
   const now = useNow()
   const at = next && !next.live ? dayAt(next.time, now, day) : null
   if (!at) return null
@@ -70,8 +73,7 @@ function NextBar({ next, prev, day }: { next?: { time: string; live: boolean }; 
   const left = secs <= 0 ? 'NOW'
     : secs >= 86400 ? `${Math.floor(secs / 86400)}d ${two(Math.floor((secs % 86400) / 3600))}:${two(Math.floor((secs % 3600) / 60))}`
     : `${two(Math.floor(secs / 3600))}:${two(Math.floor((secs % 3600) / 60))}:${two(secs % 60)}`
-  const from = prev ? dayAt(prev, now, day) : null
-  // from the previous game; before a team's first game the bar counts down the last 24 hours
+  const from = prevAt ? new Date(prevAt) : null
   const span = from && at.getTime() > from.getTime() ? (at.getTime() - from.getTime()) / 1000 : 86400
   // a sliver of green always shows, so the bar reads as a bar that will fill
   const pct = Math.max(6, Math.min(100, 100 - (secs / span) * 100))
@@ -190,7 +192,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                       {playing && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400 align-middle" />}
                       {!b ? 'Loading…' : st ? head : 'Team not found'}
                     </span>
-                    {games.length > 0 && <span className="flex justify-center"><NextBar next={games.find(g => !g.live && g.time)} prev={(games.find(g => g.live) ?? past[0])?.time} day={day} /></span>}
+                    {games.length > 0 && <span className="flex justify-center"><NextBar next={games.find(g => !g.live && g.time)} prevAt={games.find(g => g.live)?.m.started_at ?? past[0]?.m.finished_at ?? past[0]?.m.started_at} day={day} /></span>}
                   </span>
                   {st && !games.length && <span className="line-clamp-2 text-xs leading-snug text-fg-muted">{st.sub}</span>}
                   {games.length > 0 && (
