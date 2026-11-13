@@ -22,8 +22,9 @@ export const KO_PLANS: Record<string, KoPlan> = {
   // (Derek, 13 Nov 2026); semi-finals: QF1 v QF2, QF3 v QF4
   MCMD: { pairs: [['A1', 'E1'], ['B1', 'R1'], ['C1', 'R2'], ['D1', 'R3']], swapSamePool: true },
   // Mixed Doubles, 24 teams, 6 pools of 4: 6 winners + 2 best runners-up
-  // QF1 A winner v Best runner-up 2 · QF2 D winner v E winner · QF3 C winner v F winner · QF4 B winner v Best runner-up 1
-  MCXD: { pairs: [['A1', 'R2'], ['D1', 'E1'], ['C1', 'F1'], ['B1', 'R1']], swapSamePool: true },
+  // QF1 A winner v E winner · QF2 B winner v F winner · QF3 C winner v Best runner-up 1 · QF4 D winner v Best runner-up 2
+  // (13 Nov 2026); semi-finals: QF1 v QF2, QF3 v QF4
+  MCXD: { pairs: [['A1', 'E1'], ['B1', 'F1'], ['C1', 'R1'], ['D1', 'R2']], swapSamePool: true },
 }
 
 export const koPlanOf = (code?: string | null): KoPlan | null => KO_PLANS[(code ?? '').toUpperCase()] ?? null

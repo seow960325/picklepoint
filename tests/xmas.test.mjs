@@ -93,37 +93,30 @@ test('MD: B1 would meet R1 B2 -> R1/R2 swap', () => {
   assert.equal(pd.swapped, true)
 })
 
-test('MX: fixed group winners, best 2 runners-up: A1vR2 D1vE1 C1vF1 B1vR1', () => {
+test('MX: fixed group winners, best 2 runners-up: A1vE1 B1vF1 C1vR1 D1vR2', () => {
   const t = tablesOf({
     A: [['A1', 3, 30], ['A2', 2, 15]], B: [['B1', 3, 20], ['B2', 2, 5]],
     C: [['C1', 2, 10], ['C2', 2, 12]], D: [['D1', 3, 25], ['D2', 1, 3]],
     E: [['E1', 2, 8], ['E2', 1, -2]], F: [['F1', 2, 4], ['F2', 2, 1]],
   })
   const pd = planDraw(koPlanOf('MCXD'), t)
-  // W: A1(3,30) D1(3,25) B1(3,20) C1(2,10) E1(2,8) F1(2,4); R: A2(2,15) C2(2,12) B2 F2 D2 E2
-  assert.deepEqual(pd.winners.ranked.map(r => r.team.id), ['A1', 'D1', 'B1', 'C1', 'E1', 'F1'])
   assert.deepEqual(pd.runners.ranked.slice(0, 2).map(r => r.team.id), ['A2', 'C2'])
-  // QF1 A1 v R2 C2 · QF2 D1 v E1 · QF3 C1 v F1 · QF4 B1 v R1 A2
-  assert.deepEqual(pd.pairs, [['A1', 'C2'], ['D1', 'E1'], ['C1', 'F1'], ['B1', 'A2']])
+  // QF1 A1 v E1 · QF2 B1 v F1 · QF3 C1 v R1 A2 · QF4 D1 v R2 C2
+  assert.deepEqual(pd.pairs, [['A1', 'E1'], ['B1', 'F1'], ['C1', 'A2'], ['D1', 'C2']])
   assert.equal(pd.swapped, false)
 })
 
 test('MX: a winner drawn against its own runner-up swaps R1 and R2', () => {
   const t = tablesOf({
     A: [['A1', 3, 30], ['A2', 2, 20]], B: [['B1', 3, 20], ['B2', 2, 15]],
-    C: [['C1', 2, 10], ['C2', 0, -9]], D: [['D1', 2, 9], ['D2', 1, 3]],
+    C: [['C1', 2, 10], ['C2', 2, 25]], D: [['D1', 2, 9], ['D2', 1, 3]],
     E: [['E1', 2, 8], ['E2', 1, -2]], F: [['F1', 2, 4], ['F2', 1, 1]],
   })
-  // W1 A1, W2 B1; R1 A2, R2 B2 -> W2 B1 v R1 A2 fine, but W1 A1 v R2 B2 fine too: no swap
-  let pd = planDraw(koPlanOf('MCXD'), t)
-  assert.equal(pd.swapped, false)
-  // make R2 come from pool A: W1 A1 v R2 A2 -> swap
-  t.B[1].diff = 25
-  pd = planDraw(koPlanOf('MCXD'), t)
-  assert.deepEqual(pd.runners.ranked.slice(0, 2).map(r => r.team.id), ['B2', 'A2'])
+  // R1 C2, R2 A2 -> C1 v C2 is the same group -> swap: C1 v A2, D1 v C2
+  const pd = planDraw(koPlanOf('MCXD'), t)
+  assert.deepEqual(pd.runners.ranked.slice(0, 2).map(r => r.team.id), ['C2', 'A2'])
   assert.equal(pd.swapped, true)
-  assert.deepEqual(pd.pairs[0], ['A1', 'B2'])
-  assert.deepEqual(pd.pairs[3], ['B1', 'A2'])
+  assert.deepEqual(pd.pairs, [['A1', 'E1'], ['B1', 'F1'], ['C1', 'A2'], ['D1', 'C2']])
 })
 
 test('cross-pool ties are flagged and an organiser order (coin toss) wins', () => {
@@ -233,8 +226,8 @@ test('bracket preview + flow chart show the printed draw before any result', () 
   assert.equal(koSlotLabel(md, ev, qf('KO-8-3'), 'b'), 'Best runner-up 3')
   assert.equal(koSlotLabel(md, ev, md.matches.find(m => m.bracket_key === 'KO-4-0'), 'a'), 'Winner QF1')
   const mx = bundleOf(MX, 24)
-  assert.equal(koSlotLabel(mx, mx.events[0], mx.matches.find(m => m.bracket_key === 'KO-8-1'), 'b'), 'Group E winner')
-  assert.equal(koSlotLabel(mx, mx.events[0], mx.matches.find(m => m.bracket_key === 'KO-8-3'), 'b'), 'Best runner-up 1')
+  assert.equal(koSlotLabel(mx, mx.events[0], mx.matches.find(m => m.bracket_key === 'KO-8-1'), 'b'), 'Group F winner')
+  assert.equal(koSlotLabel(mx, mx.events[0], mx.matches.find(m => m.bracket_key === 'KO-8-3'), 'b'), 'Best runner-up 2')
   assert.equal(slotName('C2'), 'Group C runner-up')
 
   const helpers = {
@@ -247,7 +240,7 @@ test('bracket preview + flow chart show the printed draw before any result', () 
   }
   const f = flowOf(mx, helpers)
   const qfs = f.stages[0].games.map(g => [g.a.label, g.b.label])
-  assert.deepEqual(qfs, [['A winner', 'Best runner-up 2'], ['D winner', 'E winner'], ['C winner', 'F winner'], ['B winner', 'Best runner-up 1']])
+  assert.deepEqual(qfs, [['A winner', 'E winner'], ['B winner', 'F winner'], ['C winner', 'Best runner-up 1'], ['D winner', 'Best runner-up 2']])
   const fm = flowOf(md, helpers)
   assert.deepEqual(fm.stages[0].games.map(g => [g.a.label, g.b.label]),
     [['A winner', 'E winner'], ['B winner', 'Best runner-up 1'], ['C winner', 'Best runner-up 2'], ['D winner', 'Best runner-up 3']])

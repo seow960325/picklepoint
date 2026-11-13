@@ -156,15 +156,15 @@ function koBundle(code, seqOf) {
     teams: [{ id: 't1', event_id: 'ev', pool: 'A', name: 'T1' }, { id: 't2', event_id: 'ev', pool: 'A', name: 'T2' }], matches: [...groups, ...matches] }
 }
 
-test('MCXD as it is in the database (QF play order 37 = KO-8-1, 38 = KO-8-0): QF1 is still Group A winner v Best runner-up 2', () => {
+test('MCXD as it is in the database (QF play order 37 = KO-8-1, 38 = KO-8-0): QF1 is still Group A winner v Group E winner', () => {
   const b = koBundle('MCXD', { 'KO-8-1': 37, 'KO-8-0': 38, 'KO-8-2': 39, 'KO-8-3': 40, 'KO-4-0': 41, 'KO-4-1': 42, 'KO-3P': 43, 'KO-2-0': 44 })
   const m = k => b.matches.find(x => x.bracket_key === k)
   assert.equal(koShort(b, m('KO-8-0')), 'QF1')
   assert.equal(koShort(b, m('KO-8-1')), 'QF2')
-  assert.equal(bracketCaption(b, m('KO-8-0')), 'QF1 · Group A winner v Best runner-up 2')
-  assert.equal(bracketCaption(b, m('KO-8-1')), 'QF2 · Group D winner v Group E winner')
-  assert.equal(bracketCaption(b, m('KO-8-2')), 'QF3 · Group C winner v Group F winner')
-  assert.equal(bracketCaption(b, m('KO-8-3')), 'QF4 · Group B winner v Best runner-up 1')
+  assert.equal(bracketCaption(b, m('KO-8-0')), 'QF1 · Group A winner v Group E winner')
+  assert.equal(bracketCaption(b, m('KO-8-1')), 'QF2 · Group B winner v Group F winner')
+  assert.equal(bracketCaption(b, m('KO-8-2')), 'QF3 · Group C winner v Best runner-up 1')
+  assert.equal(bracketCaption(b, m('KO-8-3')), 'QF4 · Group D winner v Best runner-up 2')
   assert.equal(koSlotLabel(b, b.events[0], m('KO-4-0'), 'a'), 'Winner QF1')
   assert.equal(koSlotLabel(b, b.events[0], m('KO-4-0'), 'b'), 'Winner QF2')
   assert.equal(koSlotLabel(b, b.events[0], m('KO-2-0'), 'a'), 'Winner SF1')
