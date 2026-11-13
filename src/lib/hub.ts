@@ -30,8 +30,6 @@ export interface Hub {
 export const HUBS: Hub[] = [{
   code: 'YC26',
   title: 'Methodist Games 26',
-  // phone: two rows like MC26 ("Methodist" / "Games 26"); one row on wider screens
-  titleLines: ['Methodist', 'Games 26'],
   logo: '/logos/yc26.png',
   // the old badminton / pickleball ties inside YC26 are replaced by the category codes
   onlySport: 'captainball',

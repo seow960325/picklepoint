@@ -118,7 +118,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                           </span>
                           <span className="min-w-0">
                             <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
-                              className="block w-full text-left text-[15px] font-semibold leading-snug underline decoration-line-strong decoration-dotted underline-offset-4"><span className="block truncate">{g.opp.replace(/\s*\|\s*/g, ' / ')}</span></button>
+                              className="block w-full text-left text-[13px] font-semibold leading-snug underline decoration-line-strong decoration-dotted underline-offset-4"><span className="block truncate">{g.opp.replace(/\s*\|\s*/g, ' / ')}</span></button>
                           </span>
                           <span className={`text-xs font-bold uppercase tracking-wide ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}><CourtTag code={b?.competition?.code} n={g.n}>{g.court}</CourtTag></span>
                         </span>
@@ -136,7 +136,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                           </span>
                           <span className="min-w-0">
                             <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
-                              className="block w-full text-left text-[15px] font-semibold leading-snug underline decoration-line-strong decoration-dotted underline-offset-4"><span className="block truncate">{g.opp.replace(/\s*\|\s*/g, ' / ')}</span></button>
+                              className="block w-full text-left text-[13px] font-semibold leading-snug underline decoration-line-strong decoration-dotted underline-offset-4"><span className="block truncate">{g.opp.replace(/\s*\|\s*/g, ' / ')}</span></button>
                           </span>
                           <ScoreWL us={g.us} them={g.them} wl={g.won ? 'W' : 'L'} className={`font-display text-lg font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`} />
                         </span>
