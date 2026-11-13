@@ -6,11 +6,7 @@ export type Theme = 'light' | 'dark'
 const CANVAS: Record<Theme, string> = { light: '#f8fafc', dark: '#0a0e17' }
 
 export function getTheme(): Theme {
-  try {
-    return localStorage.getItem(KEY) === 'light' ? 'light' : 'dark'
-  } catch {
-    return 'dark'
-  }
+  return 'dark'                                // dark only (the light mode was retired)
 }
 
 export function applyTheme(t: Theme) {

@@ -66,7 +66,8 @@ export const FullscreenButton = ({ className = '' }: { className?: string }) => 
 }
 
 /** Light/dark toggle. Defaults to light; persists the user's choice. */
-export const ThemeToggle = ({ className = '' }: { className?: string }) => {
+export const ThemeToggle = (_: { className?: string }) => null   // dark mode only
+export const OldThemeToggle = ({ className = '' }: { className?: string }) => {
   const { theme, toggle } = useTheme()
   const isDark = theme === 'dark'
   return (
@@ -243,6 +244,14 @@ export function PairName({ name }: { name: string | null | undefined }) {
       <span className="truncate text-left">{parts[1]}</span>
     </span>
   )
+}
+
+/** A pair on two rows (one player per row), so both names show in full on a phone. */
+export function StackName({ name, align = 'left' }: { name: string | null | undefined; align?: 'left' | 'right' | 'center' }) {
+  const parts = (name ?? '').split(/\s+\/\s+|\s*\|\s*/).filter(Boolean)
+  const a = align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'
+  if (parts.length !== 2) return <span className={`block truncate ${a}`}>{name ?? ''}</span>
+  return <span className={`flex min-w-0 flex-col leading-tight ${a}`}>{parts.map((x, i) => <span key={i} className="block truncate">{x}</span>)}</span>
 }
 
 /** The event's own logo (transparent PNG, no tile). Only the white cross shines, slowly, like a cut diamond:

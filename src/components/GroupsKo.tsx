@@ -12,7 +12,7 @@ import { teamName, teamLogo, teamSideName, groupStandings } from '../lib/store'
 import { koPlanOf, planDraw } from '../lib/koplan'
 import { upNext, fmtClock, poolQueue, teamsBusy, stageName } from '../lib/pool'
 import { plannedTime, plannedCourt } from '../lib/timetable'
-import { Emblem, Pill, PairName, ScoreWL, Clock } from './ui'
+import { Emblem, Pill, PairName, StackName, ScoreWL, Clock } from './ui'
 
 // ------------------------------------------------------------------ clock
 /** Running time since the first point of a live game, or the recorded game
@@ -361,13 +361,13 @@ export function CourtQueues({ b, ev, max = 4, n = 6, big = false, courts }: { b:
                     <span className={`text-center font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>{i + 1}</span>
                     <span className={`text-center font-bold text-fg-subtle ${big ? 'text-base' : 'text-[10px]'}`}>{poolOf(m.team_a_id)}</span>
                     <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : 'justify-end'} gap-1.5 text-fg-muted`}>
-                      <span className={`truncate ${mc ? 'text-center' : 'text-right'}`}><TeamLink b={b} id={m.team_a_id}><PairName name={teamName(b, m.team_a_id)} /></TeamLink></span>
+                      <span className={`min-w-0 ${big ? 'truncate' : ''} ${mc ? 'text-center' : 'text-right'}`}><TeamLink b={b} id={m.team_a_id}>{big ? <PairName name={teamName(b, m.team_a_id)} /> : <StackName name={teamName(b, m.team_a_id)} align={mc ? 'center' : 'right'} />}</TeamLink></span>
                       <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={`shrink-0 rounded-[2px] object-contain ${big ? 'h-6 w-6' : 'h-3.5 w-3.5'}`} />
                     </span>
                     <span className={`text-center text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>vs</span>
                     <span className={`flex min-w-0 items-center ${mc ? 'justify-center' : ''} gap-1.5 text-fg-muted`}>
                       <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={`shrink-0 rounded-[2px] object-contain ${big ? 'h-6 w-6' : 'h-3.5 w-3.5'}`} />
-                      <span className={`truncate ${mc ? 'text-center' : ''}`}><TeamLink b={b} id={m.team_b_id}><PairName name={teamName(b, m.team_b_id)} /></TeamLink></span>
+                      <span className={`min-w-0 ${big ? 'truncate' : ''} ${mc ? 'text-center' : ''}`}><TeamLink b={b} id={m.team_b_id}>{big ? <PairName name={teamName(b, m.team_b_id)} /> : <StackName name={teamName(b, m.team_b_id)} align={mc ? 'center' : 'left'} />}</TeamLink></span>
                     </span>
                   </div>
                 ))}
