@@ -70,9 +70,9 @@ function NextBar({ next, prev, day }: { next?: { time: string; live: boolean }; 
   const pct = Math.max(6, Math.min(100, 100 - (secs / span) * 100))
   const warn = secs <= 600
   return (
-    <span className="relative block h-6 w-[5.4rem] shrink-0 overflow-hidden rounded-md bg-black/50 ring-1 ring-white/15" title="Time left to your next game">
+    <span className="relative block h-6 w-full shrink-0 overflow-hidden rounded-md bg-black/50 ring-1 ring-white/15" title="Time left to your next game">
       <span className={`absolute inset-y-0 left-0 transition-[width] duration-1000 ease-linear ${warn ? 'bg-gold' : 'bg-emerald-500'}`} style={{ width: `${secs <= 0 ? 100 : pct}%` }} />
-      <span className="tabular absolute inset-0 flex items-center justify-center font-display text-[14px] font-bold leading-none text-white [text-shadow:0_1px_2px_rgba(0,0,0,.9)]">{left}</span>
+      <span className="tabular absolute inset-0 flex items-center justify-center font-display text-[13px] font-bold leading-none text-white [text-shadow:0_1px_2px_rgba(0,0,0,.9)]">{left}</span>
     </span>
   )
 }
@@ -159,7 +159,9 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
               : 'border-indigo-400/40 bg-indigo-500/10'
             return (
               <div key={p.code + p.teamId} role="button" tabIndex={0} onClick={() => setDetail(p)}
-                className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left active:opacity-90 ${tone}`}>
+                className={`relative flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left active:opacity-90 ${tone}`}>
+                {/* live time: top right corner of the card */}
+                {games.length > 0 && <span className="absolute right-3 top-2"><LiveTime /></span>}
                 <span className="min-w-0 flex-1">
                   <span className="flex min-w-0 items-start justify-between gap-2">
                     {/* the church logo (YC26) sits above the team's names; MC26 has none */}
@@ -170,22 +172,20 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                         <span className="min-w-0 break-words">{p.name.replace(/\s*\|\s*/g, ' / ')}{cat ? ` · ${cat.short}` : ''}</span>
                       </span>
                     </span>
-                    <span className="flex shrink-0 items-start pt-0.5">
-                      {games.length > 0 && <LiveTime />}
-                    </span>
+                    {games.length > 0 && <span className="w-14 shrink-0" aria-hidden="true" />}
                   </span>
-                  <span className="mt-1 flex items-center justify-between gap-2">
+                  <span className="mt-1 grid grid-cols-[minmax(0,1fr)_5rem] items-center gap-x-3">
                     <span className="block min-w-0 truncate font-display text-xl font-bold leading-tight">
                       {playing && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400 align-middle" />}
                       {!b ? 'Loading…' : st ? head : 'Team not found'}
                     </span>
-                    {games.length > 0 && <span><NextBar next={games.find(g => !g.live && g.time)} prev={(games.find(g => g.live) ?? past[0])?.time} day={day} /></span>}
+                    {games.length > 0 && <span className="flex justify-center"><NextBar next={games.find(g => !g.live && g.time)} prev={(games.find(g => g.live) ?? past[0])?.time} day={day} /></span>}
                   </span>
                   {st && !games.length && <span className="line-clamp-2 text-xs leading-snug text-fg-muted">{st.sub}</span>}
                   {games.length > 0 && (
                     <span className="mt-1.5 block divide-y divide-line/70 border-t border-line/50 pt-0.5">
                       {games.map(g => (
-                        <span key={g.m.id} className="grid grid-cols-[6.2rem_minmax(0,1fr)_auto] items-center gap-x-3 py-2 text-sm leading-tight">
+                        <span key={g.m.id} className="grid grid-cols-[6.2rem_minmax(0,1fr)_5rem] items-center gap-x-3 py-2 text-sm leading-tight">
                           <span className="min-w-0">
                             <span className={`block font-display text-lg font-bold leading-tight ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg'}`}>{g.live ? '● Now' : <Clock t={g.time} />}</span>
                             {isAlert(g.m) ? <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-red-500">⚠ {alertWord(g.m)}</span>
@@ -195,7 +195,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                             <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
                               className="block w-full text-left text-[13px] font-semibold leading-snug underline decoration-line-strong decoration-dotted underline-offset-4"><span className="block truncate">{g.opp.replace(/\s*\|\s*/g, ' / ')}</span></button>
                           </span>
-                          <span className={`text-xs font-bold uppercase tracking-wide ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}><CourtTag code={b?.competition?.code} n={g.n}>{g.court}</CourtTag></span>
+                          <span className={`text-center text-xs font-bold uppercase tracking-wide ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}><CourtTag code={b?.competition?.code} n={g.n}>{g.court}</CourtTag></span>
                         </span>
                       ))}
                     </span>
@@ -204,7 +204,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                     <span className="mt-1.5 block divide-y divide-line/70 border-t border-line/50 pt-1.5">
                       <span className="block pb-1 text-[10px] font-bold uppercase tracking-wider text-fg-subtle">Played</span>
                       {past.map(g => (
-                        <span key={g.m.id} className="grid grid-cols-[6.2rem_minmax(0,1fr)_auto] items-center gap-x-3 py-2 text-sm leading-tight text-fg-muted">
+                        <span key={g.m.id} className="grid grid-cols-[6.2rem_minmax(0,1fr)_5rem] items-center gap-x-3 py-2 text-sm leading-tight text-fg-muted">
                           <span className="min-w-0">
                             <span className="block font-display text-lg font-bold leading-tight"><Clock t={g.time} /></span>
                             <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>
@@ -213,7 +213,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                             <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
                               className="block w-full text-left text-[13px] font-semibold leading-snug underline decoration-line-strong decoration-dotted underline-offset-4"><span className="block truncate">{g.opp.replace(/\s*\|\s*/g, ' / ')}</span></button>
                           </span>
-                          <ScoreWL us={g.us} them={g.them} wl={g.won ? 'W' : 'L'} className={`font-display text-lg font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`} />
+                          <ScoreWL us={g.us} them={g.them} wl={g.won ? 'W' : 'L'} className={`justify-self-center font-display text-lg font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`} />
                         </span>
                       ))}
                     </span>
