@@ -137,7 +137,7 @@ function koBundle(code, seqOf) {
   const round = k => k.startsWith('KO-8') ? 'Quarter-final' : k.startsWith('KO-4') ? 'Semi-final' : k === 'KO-3P' ? 'Third place' : 'Final'
   const next = { 'KO-8-0': ['KO-4-0', 'a'], 'KO-8-1': ['KO-4-0', 'b'], 'KO-8-2': ['KO-4-1', 'a'], 'KO-8-3': ['KO-4-1', 'b'], 'KO-4-0': ['KO-2-0', 'a'], 'KO-4-1': ['KO-2-0', 'b'] }
   const ev = { id: 'ev', format: 'groups_ko', bracket_preview: true, advance_per_group: 2, final_best_of: 1,
-    ko_court_plan: { 'KO-3P': 4, 'KO-2-0': 4, 'KO-4-0': 4, 'KO-4-1': 5, 'KO-8-0': 4, 'KO-8-1': 5, 'KO-8-2': 6, 'KO-8-3': 4 } }
+    ko_court_plan: { 'KO-3P': 4, 'KO-2-0': 4, 'KO-4-0': 4, 'KO-4-1': 5, 'KO-8-0': 4, 'KO-8-1': 5, 'KO-8-2': 4, 'KO-8-3': 5 } }
   const matches = keys.map(k => ({ id: k, event_id: 'ev', bracket_key: k, round: round(k), sequence: seqOf[k], status: 'scheduled',
     team_a_id: null, team_b_id: null, score_a: 0, score_b: 0, court_id: null, home_court: null,
     next_match_id: next[k]?.[0] ?? null, next_slot: next[k]?.[1] ?? null,
@@ -164,21 +164,22 @@ test('MCXD as it is in the database (QF play order 37 = KO-8-1, 38 = KO-8-0): QF
   assert.ok(koOrder(m('KO-8-0'), m('KO-8-1')) < 0)
 })
 
-test('MC26 timetable: lunch 12:30, play resumes 12:45; QF1-3 together, QF4 next, SF1 + SF2 share a slot, 3rd place before the Final', () => {
+test('MC26 timetable: lunch 12:30, play resumes 12:45; QF1 + QF2 together, then QF3 + QF4, SF1 + SF2 share a slot, 3rd place before the Final', () => {
   const b = koBundle('MCXD', { 'KO-8-1': 37, 'KO-8-0': 38, 'KO-8-2': 39, 'KO-8-3': 40, 'KO-4-0': 41, 'KO-4-1': 42, 'KO-3P': 43, 'KO-2-0': 44 })
   const m = k => b.matches.find(x => x.bracket_key === k)
   const g = n => b.matches.find(x => x.slot === n)
   assert.equal(plannedTime(b, g(1)), '9:30 am')
   assert.equal(plannedTime(b, g(12)), '12:15 pm')
   // slot 13 would be 12:30 = lunch: play resumes 12:45
-  assert.deepEqual(['KO-8-0', 'KO-8-1', 'KO-8-2'].map(k => plannedTime(b, m(k))), ['12:45 pm', '12:45 pm', '12:45 pm'])
+  assert.deepEqual(['KO-8-0', 'KO-8-1'].map(k => plannedTime(b, m(k))), ['12:45 pm', '12:45 pm'])
+  assert.equal(plannedTime(b, m('KO-8-2')), '1:00 pm')
   assert.equal(plannedTime(b, m('KO-8-3')), '1:00 pm')
   assert.equal(plannedTime(b, m('KO-4-0')), '1:15 pm')
   assert.equal(plannedTime(b, m('KO-4-1')), '1:15 pm')
   assert.equal(plannedTime(b, m('KO-3P')), '1:30 pm')
   assert.equal(plannedTime(b, m('KO-2-0')), '1:45 pm')
   assert.ok(slotOf(b, m('KO-3P')) < slotOf(b, m('KO-2-0')))
-  assert.deepEqual(['KO-8-0', 'KO-8-1', 'KO-8-2', 'KO-8-3', 'KO-4-0', 'KO-4-1', 'KO-3P', 'KO-2-0'].map(k => plannedCourt(b, m(k))), [4, 5, 6, 4, 4, 5, 4, 4])
+  assert.deepEqual(['KO-8-0', 'KO-8-1', 'KO-8-2', 'KO-8-3', 'KO-4-0', 'KO-4-1', 'KO-3P', 'KO-2-0'].map(k => plannedCourt(b, m(k))), [4, 5, 4, 5, 4, 5, 4, 4])
 })
 
 test('a group game is named by its teams\' group, even when the stored label is stale', () => {

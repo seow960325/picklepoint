@@ -117,7 +117,9 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
   // a pair of players: one player per line, so a name is never broken in the middle ("David" / "S")
   const lines = (s: string) => {
     const parts = s.split(/\s+\/\s+|\s*\|\s*/).filter(Boolean)
-    return parts.length === 2 ? <>{parts.map((x, i) => <span key={i} className="block truncate">{x}</span>)}</> : s
+    return parts.length === 2
+      ? <span className="flex flex-col">{parts.map((x, i) => <span key={i} className="block truncate">{x}</span>)}</span>
+      : <span className="line-clamp-2">{s}</span>
   }
   const Pair = ({ b, m, score }: { b: Bundle; m: M; score?: boolean }) => {
     const ev = b.events.find(e => e.id === m.event_id)
@@ -129,7 +131,7 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
     const done = m.status === 'finished'
     const cls = (s: 'a' | 'b') => {
       const id = s === 'a' ? m.team_a_id : m.team_b_id
-      return `line-clamp-2 break-words text-center leading-tight ${!id ? 'italic text-fg-subtle' : done ? (m.winner_id === id ? 'font-bold text-fg' : 'text-fg-subtle') : score ? 'font-semibold' : ''}`
+      return `min-w-0 break-words text-center leading-tight ${!id ? 'italic text-fg-subtle' : done ? (m.winner_id === id ? 'font-bold text-fg' : 'text-fg-subtle') : score ? 'font-semibold' : ''}`
     }
     return (
       <div className={`grid grid-cols-[minmax(0,1fr)_1.5rem_3.5rem_1.5rem_minmax(0,1fr)] items-center gap-1 py-0.5 text-sm ${score ? '' : 'text-[13px]'}`}>

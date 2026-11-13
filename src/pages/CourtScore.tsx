@@ -701,6 +701,10 @@ function Scorer({ bundle, match, token, courtNo, courtName, courtShort, code, re
 
       {notStarted && !serverPicked && (
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 overflow-y-auto bg-canvas px-6 py-4">
+          <Link to={`/c/${code}`} aria-label="Back to board"
+            className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] flex min-h-[40px] items-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-2 text-sm font-semibold text-fg-muted active:bg-surface-2">
+            ← Back to board
+          </Link>
           <div className="text-center">
             <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-fg-subtle">{courtName ?? `Court ${courtNo}`} · next game</div>
             <div className="mt-1 font-display text-2xl font-bold uppercase tracking-wide text-brand-ink">{title}</div>

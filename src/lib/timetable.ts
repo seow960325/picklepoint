@@ -27,8 +27,8 @@ export interface SlotClock {
 export interface SlotCell { court: number; m: Match | null }
 export interface SlotRow { slot: number; time: string; cells: SlotCell[]; state: 'done' | 'now' | 'later' }
 
-/** knockout games come after the last group slot: QF1-3, QF4, SF1 + SF2 (same slot, two courts), 3rd place, Final */
-const KO_OFFSET: Record<string, number> = { 'KO-8-0': 1, 'KO-8-1': 1, 'KO-8-2': 1, 'KO-8-3': 2, 'KO-4-0': 3, 'KO-4-1': 3, 'KO-3P': 4, 'KO-2-0': 5 }
+/** knockout games come after the last group slot: QF1 + QF2, QF3 + QF4 (two courts each), SF1 + SF2 (same slot, two courts), 3rd place, Final */
+const KO_OFFSET: Record<string, number> = { 'KO-8-0': 1, 'KO-8-1': 1, 'KO-8-2': 2, 'KO-8-3': 2, 'KO-4-0': 3, 'KO-4-1': 3, 'KO-3P': 4, 'KO-2-0': 5 }
 
 /** "9:30 am" for slot 1, "9:45 am" for slot 2 … */
 export function slotTime(c: SlotClock, slot: number): string {
