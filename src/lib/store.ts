@@ -124,11 +124,11 @@ export function useCompetition(code: string | undefined, opts?: { preview?: bool
         setResubscribeKey(k => k + 1)
       }
     }
-    // viewers: 60 s while the live channel is healthy, 12 s while it is down
+    // viewers: 60 s while the live channel is healthy, 5 s while it is down
     // (refused at the connection limit, dropped, reconnecting). Others: 20 s.
     const poll = setInterval(() => {
       if (document.visibilityState !== 'visible') return
-      const gap = !viewer ? 20000 : liveOk.current ? 60000 : 12000
+      const gap = !viewer ? 20000 : liveOk.current ? 60000 : 5000
       if (Date.now() - lastLiveFetch.current >= gap - 500) { lastLiveFetch.current = Date.now(); refreshLive() }
     }, 4000)
     document.addEventListener('visibilitychange', onWake)
