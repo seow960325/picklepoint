@@ -354,15 +354,15 @@ export function CourtQueues({ b, ev, max = 4, n = 6, big = false, courts }: { b:
               <div className="py-1.5 text-xs text-fg-subtle">No group games waiting.</div>
             ) : (
               // phone / board: one grid for the whole court, so "vs" sits in one column with the same
-              // space on both sides on every row (the left column is as wide as its longest name)
+              // space on both sides on every row; the names + vs block sits in the middle of the free space
               <div className={big ? 'divide-y divide-line/60' : 'grid divide-y divide-line/60 gap-x-1.5'}
-                style={big ? undefined : { gridTemplateColumns: `${timed ? '4.6rem ' : ''}1.6rem 2rem minmax(0,max-content) auto minmax(0,1fr)` }}>
+                style={big ? undefined : { gridTemplateColumns: `${timed ? '4.2rem ' : ''}1.4rem 2rem minmax(0,1fr) minmax(0,max-content) auto minmax(0,max-content) minmax(0,1fr)` }}>
                 {!big && (
                   <div className="grid items-end pb-1 text-[9px] font-bold uppercase tracking-wider text-fg-subtle lg:text-[11px]" style={{ gridColumn: '1 / -1', gridTemplateColumns: 'subgrid' }}>
                     {timed && <span>Time</span>}
                     <span className="text-center">No.</span>
                     <span className="text-center">Group</span>
-                    <span /><span /><span />
+                    <span /><span /><span /><span /><span />
                   </div>
                 )}
                 {mine.map((m, i) => (
@@ -372,15 +372,17 @@ export function CourtQueues({ b, ev, max = 4, n = 6, big = false, courts }: { b:
                     {timed && <span className="tabular whitespace-nowrap font-display text-xs font-bold text-fg-muted lg:text-base"><Clock t={plannedTime(b, m)} /></span>}
                     <span className={`text-center font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>{i + 1}</span>
                     <span className={`text-center font-bold text-fg-subtle ${big ? 'text-base' : 'text-[10px]'}`}>{poolOf(m.team_a_id)}</span>
+                    {!big && <span aria-hidden="true" />}
                     <span className={`flex min-w-0 items-center justify-start gap-1.5 text-fg-muted`}>
-                      <span className={`min-w-0 text-left ${big ? 'truncate' : ''}`}><TeamLink b={b} id={m.team_a_id}>{big ? <PairName name={teamName(b, m.team_a_id)} /> : <StackName name={teamName(b, m.team_a_id)} align="left" />}</TeamLink></span>
                       <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={`shrink-0 rounded-[2px] object-contain ${big ? 'h-6 w-6' : 'h-3.5 w-3.5'}`} />
+                      <span className={`min-w-0 text-left ${big ? 'truncate' : ''}`}><TeamLink b={b} id={m.team_a_id}>{big ? <PairName name={teamName(b, m.team_a_id)} /> : <StackName name={teamName(b, m.team_a_id)} align="left" />}</TeamLink></span>
                     </span>
-                    <span className={`text-center text-fg-subtle ${big ? 'text-lg' : 'px-3 text-xs'}`}>vs</span>
+                    <span className={`text-center text-fg-subtle ${big ? 'text-lg' : 'px-2.5 text-xs'}`}>vs</span>
                     <span className={`flex min-w-0 items-center justify-start gap-1.5 text-fg-muted`}>
                       <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={`shrink-0 rounded-[2px] object-contain ${big ? 'h-6 w-6' : 'h-3.5 w-3.5'}`} />
                       <span className={`min-w-0 text-left ${big ? 'truncate' : ''}`}><TeamLink b={b} id={m.team_b_id}>{big ? <PairName name={teamName(b, m.team_b_id)} /> : <StackName name={teamName(b, m.team_b_id)} align="left" />}</TeamLink></span>
                     </span>
+                    {!big && <span aria-hidden="true" />}
                   </div>
                 ))}
               </div>

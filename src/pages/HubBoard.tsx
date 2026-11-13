@@ -4,7 +4,7 @@
  *  category updates live, point by point). Scoring stays per category code
  *  behind the scenes; referees start from the Referee button. */
 import { SportIcon } from '../components/SportIcon'
-import { useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import type { Bundle } from '../lib/types'
 import { hubTitle, catHue, type Hub, type HubCat } from '../lib/hub'
@@ -51,56 +51,24 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
   const pinned = useMemo(() => new Set(pins.map(p => resolvePin(bundleOf(p.code), p)).filter((x): x is string => !!x)),
     [pins, others, self])
 
-  // header: the bottom of every button (and the foot of the cross) sits exactly on the baseline of the
-  // title's last row. A zero-height probe in the last word finds the baseline on this device's font.
-  const headRow = useRef<HTMLDivElement>(null)
-  useLayoutEffect(() => {
-    const row = headRow.current
-    if (!row) return
-    const fit = () => {
-      const words = row.querySelectorAll<HTMLElement>('[data-w]')
-      const last = words[words.length - 1]
-      if (!last) return
-      const probe = document.createElement('span')
-      probe.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline'
-      last.appendChild(probe)
-      const base = probe.getBoundingClientRect().top
-      probe.remove()
-      const gap = Math.round(row.getBoundingClientRect().bottom - base)
-      if (gap >= 0 && gap < 40) row.style.setProperty('--pp-base', `${gap}px`)
-    }
-    fit()
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null
-    ro?.observe(row)
-    void (document as any).fonts?.ready?.then(fit)
-    const t = window.setTimeout(fit, 1500)
-    return () => { ro?.disconnect(); window.clearTimeout(t) }
-  }, [])
-
   return (
     <PinCtx.Provider value={pinned}>
     <div className="min-h-screen bg-canvas text-fg">
-      <div className="sticky top-0 z-40 border-b border-line bg-canvas px-4 pb-2 pt-3 lg:px-6" style={{ paddingTop: 'max(var(--pp-top), 0.75rem)' }}>
-        {/* back | logo + name in the middle | map, referee: every bottom on the words' baseline */}
-        <div ref={headRow} className="mx-auto grid max-w-6xl grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-2 lg:gap-3">
-          <div className="flex min-w-0 items-center" style={{ marginBottom: 'var(--pp-base, 5px)' }}>
+      <div className="sticky top-0 z-40 border-b border-line bg-canvas px-4 pb-2 pt-3 lg:px-6" style={{ paddingTop: 'calc(max(var(--pp-top), 0.75rem) + 0.75rem)' }}>
+        {/* back | logo + name in the middle | map, referee: the name is centred on the buttons; its ball jumps above */}
+        <div className="mx-auto grid max-w-6xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 lg:gap-3">
+          <div className="flex min-w-0 items-center">
             <Link to="/" aria-label="Back to lobby"
               className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line bg-surface text-fg-muted active:bg-surface-2 lg:h-11 lg:w-11">
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>
             </Link>
           </div>
-          {/* event logo + name share one bottom line: the foot of the cross sits on the words' baseline */}
-          <div className="flex min-w-0 items-end justify-center gap-2 lg:gap-3.5">
-            {hub.logo && (
-              // the YC26 cross picture has ~5% empty space under its foot
-              <span className="flex" style={{ marginBottom: hub.logo.includes('yc26') ? 'calc(var(--pp-base, 5px) - 0.13rem)' : 'var(--pp-base, 5px)' }}>
-                <EventLogo src={hub.logo} still={hub.cats.some(c => c.sport === 'badminton')} className="-mx-1.5 h-10 w-10 lg:-mx-3 lg:h-16 lg:w-16" />
-              </span>
-            )}
+          <div className="flex min-w-0 items-center justify-center gap-2 lg:gap-3.5">
+            {hub.logo && <EventLogo src={hub.logo} still={hub.cats.some(c => c.sport === 'badminton')} className="-mx-1.5 h-10 w-10 lg:-mx-3 lg:h-16 lg:w-16" />}
             <div className="min-w-0">
               {(() => {
                 const title = hubTitle(hub, hub.cats.map(c => bundleOf(c.code)?.competition.name))
-                const cls = 'font-display text-xl font-bold leading-tight tracking-wide sm:text-2xl lg:text-3xl'
+                const cls = '-mt-[0.85em] font-display text-xl font-bold leading-tight tracking-wide sm:text-2xl lg:text-3xl'
                 const sports = [...new Set(hub.cats.map(c => c.sport))]
                 return sports.length > 1
                   ? <SportsTitle text={hub.titleLines ? hub.titleLines.join('\n') : title} className={`${cls} uppercase`} sports={sports} />
@@ -108,7 +76,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
               })()}
             </div>
           </div>
-          <div className="flex min-w-0 items-center justify-end gap-1.5" style={{ marginBottom: 'var(--pp-base, 5px)' }}>
+          <div className="flex min-w-0 items-center justify-end gap-1.5">
             {hub.map && <MapButton src={hub.map} label={<span className="hidden sm:inline">Map</span>} className="h-8 justify-center px-2 sm:px-2.5 lg:h-10 lg:text-sm" />}
             <Link to={`/c/${hub.code}/referee`} className="flex h-8 items-center justify-center rounded-lg border border-line px-2.5 text-xs text-fg-muted lg:h-10 lg:px-3 lg:text-sm">Referee</Link>
             <FullscreenButton className="hidden h-8 w-8 place-items-center rounded-lg border border-line p-1.5 text-fg-muted sm:grid lg:h-10 lg:w-10" />
