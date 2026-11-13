@@ -71,7 +71,8 @@ function NextBar({ next, prev, day }: { next?: { time: string; live: boolean }; 
     : secs >= 86400 ? `${Math.floor(secs / 86400)}d ${two(Math.floor((secs % 86400) / 3600))}:${two(Math.floor((secs % 3600) / 60))}`
     : `${two(Math.floor(secs / 3600))}:${two(Math.floor((secs % 3600) / 60))}:${two(secs % 60)}`
   const from = prev ? dayAt(prev, now, day) : null
-  const span = from && at.getTime() > from.getTime() ? (at.getTime() - from.getTime()) / 1000 : 3600
+  // from the previous game; before a team's first game the bar counts down the last 24 hours
+  const span = from && at.getTime() > from.getTime() ? (at.getTime() - from.getTime()) / 1000 : 86400
   // a sliver of green always shows, so the bar reads as a bar that will fill
   const pct = Math.max(6, Math.min(100, 100 - (secs / span) * 100))
   const warn = secs <= 600
