@@ -25,7 +25,9 @@ alter table matches add column if not exists plan_slot  int;
 alter table matches add column if not exists plan_seq   int;
 alter table matches add column if not exists plan_court uuid;
 
-create temp table pp (code text, pool text, pa int, pb int, slot int, court int, seq int) on commit drop;
+drop table if exists pp;
+create table pp (code text, pool text, pa int, pb int, slot int, court int, seq int);
+alter table pp enable row level security;
 insert into pp values
   ('MCMD','A',1,2,1,1,1),
   ('MCMD','B',1,2,1,2,2),
@@ -178,7 +180,9 @@ insert into pp values
   ('PBXD','A',2,4,11,1,11),
   ('PBXD','A',1,3,12,1,12);
 
-create temp table fix_report (code text, games int, moved int, groups int, unsure_groups text);
+drop table if exists fix_report;
+create table fix_report (code text, games int, moved int, groups int, unsure_groups text);
+alter table fix_report enable row level security;
 
 do $m$
 declare ev record; r record; v_moved int; v_votes int; v_amb text[]; v_plan int; v_games int; v_tgt int;
@@ -426,6 +430,7 @@ declare n int; ev record; begin
 end $$;
 revoke all on function _reset_competition(uuid) from public, anon, authenticated;
 
+drop table pp;
 commit;
 
 select * from fix_report order by code;
