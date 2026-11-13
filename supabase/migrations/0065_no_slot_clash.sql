@@ -178,7 +178,7 @@ insert into pp values
   ('PBXD','A',2,4,11,1,11),
   ('PBXD','A',1,3,12,1,12);
 
-create temp table fix_report (code text, games int, moved int, groups int, unsure_groups text) on commit drop;
+create temp table fix_report (code text, games int, moved int, groups int, unsure_groups text);
 
 do $m$
 declare ev record; r record; v_moved int; v_votes int; v_amb text[]; v_plan int; v_games int; v_tgt int;
@@ -426,5 +426,6 @@ declare n int; ev record; begin
 end $$;
 revoke all on function _reset_competition(uuid) from public, anon, authenticated;
 
-select * from fix_report order by code;
 commit;
+
+select * from fix_report order by code;
