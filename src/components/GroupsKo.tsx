@@ -360,8 +360,8 @@ export function CourtQueues({ b, ev, max = 4, n = 6, big = false, courts }: { b:
                     {timed && <span className="tabular whitespace-nowrap font-display text-xs font-bold text-fg-muted lg:text-base"><Clock t={plannedTime(b, m)} /></span>}
                     <span className={`text-center font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>{i + 1}</span>
                     <span className={`text-center font-bold text-fg-subtle ${big ? 'text-base' : 'text-[10px]'}`}>{poolOf(m.team_a_id)}</span>
-                    <span className={`flex min-w-0 items-center justify-end gap-1.5 text-fg-muted`}>
-                      <span className={`min-w-0 text-right ${big ? 'truncate' : ''}`}><TeamLink b={b} id={m.team_a_id}>{big ? <PairName name={teamName(b, m.team_a_id)} /> : <StackName name={teamName(b, m.team_a_id)} align="right" />}</TeamLink></span>
+                    <span className={`flex min-w-0 items-center justify-start gap-1.5 text-fg-muted`}>
+                      <span className={`min-w-0 text-left ${big ? 'truncate' : ''}`}><TeamLink b={b} id={m.team_a_id}>{big ? <PairName name={teamName(b, m.team_a_id)} /> : <StackName name={teamName(b, m.team_a_id)} align="left" />}</TeamLink></span>
                       <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={`shrink-0 rounded-[2px] object-contain ${big ? 'h-6 w-6' : 'h-3.5 w-3.5'}`} />
                     </span>
                     <span className={`text-center text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>vs</span>

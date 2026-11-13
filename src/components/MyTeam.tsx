@@ -108,7 +108,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                   </span>
                   {st && !games.length && <span className="line-clamp-2 text-xs leading-snug text-fg-muted">{st.sub}</span>}
                   {games.length > 0 && (
-                    <span className="mt-1.5 block divide-y divide-line/30 border-t border-line/50 pt-0.5">
+                    <span className="mt-1.5 block divide-y divide-line/70 border-t border-line/50 pt-0.5">
                       {games.map(g => (
                         <span key={g.m.id} className="grid grid-cols-[6.2rem_minmax(0,1fr)_auto] items-center gap-x-3 py-2 text-sm leading-tight">
                           <span className="min-w-0">
@@ -118,7 +118,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                           </span>
                           <span className="min-w-0">
                             <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
-                              className="block w-full text-left text-[15px] font-semibold leading-snug underline decoration-line-strong decoration-dotted underline-offset-4">{g.opp.split(/\s*\|\s*|\s+\/\s+/).filter(Boolean).map((x, i) => <span key={i} className="block truncate">{x}</span>)}</button>
+                              className="block w-full text-left text-[15px] font-semibold leading-snug underline decoration-line-strong decoration-dotted underline-offset-4"><span className="block truncate">{g.opp.replace(/\s*\|\s*/g, ' / ')}</span></button>
                           </span>
                           <span className={`text-xs font-bold uppercase tracking-wide ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}><CourtTag code={b?.competition?.code} n={g.n}>{g.court}</CourtTag></span>
                         </span>
@@ -126,7 +126,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                     </span>
                   )}
                   {past.length > 0 && (
-                    <span className="mt-1.5 block divide-y divide-line/30 border-t border-line/50 pt-1.5">
+                    <span className="mt-1.5 block divide-y divide-line/70 border-t border-line/50 pt-1.5">
                       <span className="block pb-1 text-[10px] font-bold uppercase tracking-wider text-fg-subtle">Played</span>
                       {past.map(g => (
                         <span key={g.m.id} className="grid grid-cols-[6.2rem_minmax(0,1fr)_auto] items-center gap-x-3 py-2 text-sm leading-tight text-fg-muted">
@@ -136,7 +136,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                           </span>
                           <span className="min-w-0">
                             <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
-                              className="block w-full text-left text-[15px] font-semibold leading-snug underline decoration-line-strong decoration-dotted underline-offset-4">{g.opp.split(/\s*\|\s*|\s+\/\s+/).filter(Boolean).map((x, i) => <span key={i} className="block truncate">{x}</span>)}</button>
+                              className="block w-full text-left text-[15px] font-semibold leading-snug underline decoration-line-strong decoration-dotted underline-offset-4"><span className="block truncate">{g.opp.replace(/\s*\|\s*/g, ' / ')}</span></button>
                           </span>
                           <ScoreWL us={g.us} them={g.them} wl={g.won ? 'W' : 'L'} className={`font-display text-lg font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`} />
                         </span>
