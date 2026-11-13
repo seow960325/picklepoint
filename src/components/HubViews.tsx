@@ -154,10 +154,10 @@ function RaceTable({ b, title, note, rows, cut, level, label, settled }: {
             <th className="w-9 px-1 py-1 text-left">#</th>
             <th className="w-7 px-0.5 py-1 text-center" title="Group">Grp</th>
             <th className="px-1 py-1 text-left">Team</th>
-            <th className="w-6 px-0.5 py-1 text-right" title="Games played">P</th>
-            <th className="w-6 px-0.5 py-1 text-right" title="Wins">W</th>
-            <th className="w-10 px-1 py-1 text-right" title="Point difference: points won minus points lost">+/-</th>
-            <th className="w-9 px-1 py-1 text-right" title="Points scored">Pts</th>
+            <th className="w-10 px-0 py-1 text-center" title="Games played">P</th>
+            <th className="w-10 px-0 py-1 text-center" title="Wins">W</th>
+            <th className="w-10 px-0 py-1 text-center" title="Point difference: points won minus points lost">+/-</th>
+            <th className="w-10 px-0 py-1 text-center" title="Points scored">Pts</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
@@ -175,10 +175,10 @@ function RaceTable({ b, title, note, rows, cut, level, label, settled }: {
                     {tied && <span className="shrink-0 rounded bg-gold/20 px-1 text-[9px] font-bold uppercase leading-4 text-gold">coin toss</span>}
                   </span>
                 </td>
-                <td className="tabular px-0.5 py-2 align-middle text-right text-fg-muted">{r.played}</td>
-                <td className="tabular px-0.5 py-2 align-middle text-right font-bold">{r.won}</td>
-                <td className={`tabular px-1 py-2 align-middle text-right ${r.diff > 0 ? 'text-brand-ink' : r.diff < 0 ? 'text-red-400' : 'text-fg-muted'}`}>{r.diff > 0 ? `+${r.diff}` : r.diff}</td>
-                <td className="tabular px-1 py-2 align-middle text-right text-fg-muted">{r.pf}</td>
+                <td className="tabular px-0 py-2 text-center align-middle text-fg-muted">{r.played}</td>
+                <td className="tabular px-0 py-2 text-center align-middle font-bold">{r.won}</td>
+                <td className={`tabular px-0 py-2 text-center align-middle ${r.diff > 0 ? 'text-brand-ink' : r.diff < 0 ? 'text-red-400' : 'text-fg-muted'}`}>{r.diff > 0 ? `+${r.diff}` : r.diff}</td>
+                <td className="tabular px-0 py-2 text-center align-middle text-fg-muted">{r.pf}</td>
               </tr>
             )
           })}
