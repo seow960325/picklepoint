@@ -43,25 +43,32 @@ function waiting(g: { live: boolean; time: string; m: { score_a: number; score_b
   const at = dayAt(g.time, now, day)
   return !!at && at.getTime() > now.getTime()
 }
-/** Time now + how long until this team's next planned game, worked out on the phone. */
+/** Time now (the colon blinks, so it reads as live) and, under it, a bar that drains toward this
+ *  team's next planned game with the time left in it. All worked out on the phone: no database. */
 function NowAndNext({ next, day }: { next?: { time: string; live: boolean }; day?: string | null }) {
   const now = useNow()
   const at = next && !next.live ? dayAt(next.time, now, day) : null
-  const mins = at ? Math.round((at.getTime() - now.getTime()) / 60000) : null
-  const left = mins == null ? null
-    : mins >= 24 * 60 ? `Next in ${Math.floor(mins / 1440)} d ${Math.floor((mins % 1440) / 60)} h`
-    : mins > 59 ? `Next in ${Math.floor(mins / 60)} h ${mins % 60} min`
-    : mins > 0 ? `Next in ${mins} min`
-    : 'Next game due now'
-  const warn = mins != null && mins <= 10
-  const sec = `${now.getHours() % 12 === 0 ? 12 : now.getHours() % 12}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
-  // a boxed clock, green, so nobody mistakes it for a game time
+  const secs = at ? Math.round((at.getTime() - now.getTime()) / 1000) : null
+  const h12 = now.getHours() % 12 === 0 ? 12 : now.getHours() % 12
+  const two = (n: number) => String(n).padStart(2, '0')
+  const left = secs == null ? null : secs <= 0 ? 'NOW'
+    : secs >= 86400 ? `${Math.floor(secs / 86400)}d ${two(Math.floor((secs % 86400) / 3600))}:${two(Math.floor((secs % 3600) / 60))}`
+    : `${two(Math.floor(secs / 3600))}:${two(Math.floor((secs % 3600) / 60))}:${two(secs % 60)}`
+  // the bar is full an hour or more ahead and empties over the last hour
+  const pct = secs == null ? 0 : Math.max(0, Math.min(100, (secs / 3600) * 100))
+  const warn = secs != null && secs <= 600
   return (
-    <span className={`shrink-0 rounded-lg border px-2 py-1 text-right leading-none ${warn ? 'border-gold/60 bg-gold/10' : 'border-emerald-400/50 bg-emerald-500/10'}`}>
-      <span className={`tabular block whitespace-nowrap font-display text-base font-bold ${warn ? 'text-gold' : 'text-emerald-300'}`}>
-        {sec}<span className="ml-1 text-[0.7em] uppercase opacity-80">{now.getHours() < 12 ? 'am' : 'pm'}</span>
+    <span className="flex w-[7.6rem] shrink-0 flex-col items-stretch gap-1 rounded-lg border border-line bg-black/30 px-1.5 py-1">
+      <span className="tabular whitespace-nowrap text-center font-display text-base font-bold leading-none text-fg">
+        {h12}<span className="pp-blink">:</span>{two(now.getMinutes())}<span className="ml-1 text-[0.7em] uppercase opacity-80">{now.getHours() < 12 ? 'am' : 'pm'}</span>
       </span>
-      {left && <span className={`mt-0.5 block whitespace-nowrap text-[9px] font-bold uppercase tracking-wider ${warn ? 'text-gold' : 'text-emerald-200/80'}`}>{left}</span>}
+      {left && (
+        <span className="relative block h-[18px] overflow-hidden rounded-md bg-black/50 ring-1 ring-white/10" title="Time left to your next game">
+          <span className={`absolute inset-y-0 left-0 transition-[width] duration-1000 ease-linear ${warn ? 'bg-gold' : 'bg-emerald-500'}`} style={{ width: `${secs! <= 0 ? 100 : pct}%` }} />
+          <span className="tabular absolute inset-0 flex items-center justify-center font-display text-[13px] font-bold leading-none text-white [text-shadow:0_1px_2px_rgba(0,0,0,.9)]">{left}</span>
+        </span>
+      )}
+      {left && <span className="text-center text-[8px] font-bold uppercase leading-none tracking-wider text-fg-subtle">to next game</span>}
     </span>
   )
 }
