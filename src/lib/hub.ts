@@ -21,15 +21,18 @@ export interface Hub {
   logo?: string
   /** header: logo to the right of the title instead of the left */
   logoRight?: boolean
+  /** the title split over two rows on a phone */
+  titleLines?: [string, string]
   /** courts of each category on the map (when the category has no printed clock of its own) */
   mapCourts?: Record<string, { sport: 'pickleball' | 'badminton' | 'captainball'; courts: number[] }>
 }
 
 export const HUBS: Hub[] = [{
   code: 'YC26',
-  title: 'YC26 Church Games',
+  title: '2026 Methodist Church Games',
+  // phone: two rows like MC26 ("2026 Methodist" / "Church Games"); one row on wider screens
+  titleLines: ['2026 Methodist', 'Church Games'],
   logo: '/logos/yc26.png',
-  logoRight: true,
   // the old badminton / pickleball ties inside YC26 are replaced by the category codes
   onlySport: 'captainball',
   clocks: YC26_CLOCKS,

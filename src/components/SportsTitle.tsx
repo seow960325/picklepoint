@@ -250,9 +250,18 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
     // with the cross is not cut off; the words stay where they were
     <div ref={wrap} className={`relative pt-[0.85em] ${hasSh ? '-ml-[3rem] pl-[3rem] lg:-ml-[4.5rem] lg:pl-[4.5rem]' : ''} ${className}`} style={{ overflowX: 'clip' }}>
       <div className="line-clamp-2">
-        {text.split(/\s+/).filter(Boolean).map((word, i) => (
-          <span key={i}><span data-w className="inline-block whitespace-nowrap">{word}</span>{' '}</span>
-        ))}
+        {text.includes('\n')
+          // set rows (phone): each row stays whole and the font shrinks until it fits; one row from sm up
+          ? text.split('\n').map((line, j) => (
+            <span key={j} data-line className="block whitespace-nowrap sm:inline">
+              {line.split(/\s+/).filter(Boolean).map((word, i) => (
+                <span key={i}><span data-w className="inline-block whitespace-nowrap">{word}</span>{' '}</span>
+              ))}
+            </span>
+          ))
+          : text.split(/\s+/).filter(Boolean).map((word, i) => (
+            <span key={i}><span data-w className="inline-block whitespace-nowrap">{word}</span>{' '}</span>
+          ))}
       </div>
       {hasPb && (
         <span ref={pbX} className="pointer-events-none absolute left-0 top-0 z-10" aria-hidden="true">

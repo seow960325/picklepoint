@@ -70,7 +70,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
                 const cls = 'font-display text-xl font-bold leading-tight tracking-wide sm:text-2xl lg:text-3xl'
                 const sports = [...new Set(hub.cats.map(c => c.sport))]
                 return sports.length > 1
-                  ? <SportsTitle text={title} className={cls} sports={sports} />
+                  ? <SportsTitle text={hub.titleLines ? hub.titleLines.join('\n') : title} className={`${cls} uppercase`} sports={sports} />
                   : sports[0] === 'pickleball' ? <BounceTitle text={title} className={cls} /> : <div className={`line-clamp-2 ${cls}`}>{title}</div>
               })()}
             </div>
