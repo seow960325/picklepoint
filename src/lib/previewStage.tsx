@@ -21,7 +21,8 @@ const read = (): PreviewStage | null => {
     return v === 'r16' || v === 'qf' || v === 'sf' || v === 'final' ? v : null
   } catch { return null }
 }
-export const isTestCode = (code: string | undefined) => !!code && /^TEST/i.test(code)
+// switched off (13 Nov 2026): TESTMC is a real test copy of MC26, so TEST… codes must show real data
+export const isTestCode = (_code: string | undefined) => false
 export function setPreviewStage(s: PreviewStage | null) {
   try { if (s) localStorage.setItem(KEY, s); else localStorage.removeItem(KEY) } catch { /* private mode */ }
   subs.forEach(f => f())
@@ -91,7 +92,7 @@ export function applyPreviewStage(b: Bundle, stage: PreviewStage): Bundle {
 export function PreviewLayout() {
   const { pathname } = useLocation()
   const hit = /^\/(?:c\/(TEST[^/]*)\/?$|tv\/(TEST[^/]*))/i.exec(pathname)
-  const code = hit ? (hit[1] ?? hit[2]).split(/[+,]/)[0] : undefined
+  const code = hit && isTestCode(hit[1] ?? hit[2]) ? (hit[1] ?? hit[2]).split(/[+,]/)[0] : undefined
   const stage = usePreviewStage(code)
   return (
     <>
