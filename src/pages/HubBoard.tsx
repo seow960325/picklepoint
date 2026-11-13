@@ -56,7 +56,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
     <div className="min-h-screen bg-canvas text-fg">
       <div className="sticky top-0 z-40 border-b border-line bg-canvas px-4 pb-2 pt-3 lg:px-6" style={{ paddingTop: 'max(var(--pp-top), 0.75rem)' }}>
         {/* back | logo + name in the middle | map, referee */}
-        <div className="mx-auto grid max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 lg:gap-3">
+        <div className="mx-auto grid max-w-6xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 lg:gap-3">
           <div className="flex min-w-0 items-center">
             <Link to="/" aria-label="Back to lobby"
               className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line bg-surface text-fg-muted active:bg-surface-2 lg:h-11 lg:w-11">
@@ -95,7 +95,6 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
         {/* category filter (not on Medals: medals are always the whole event) */}
         {tab !== 'medals' && (
           <div className="mx-auto mt-2 flex max-w-6xl flex-wrap gap-1.5 pb-1">
-            <Chip on={!cat} onClick={() => set('cat', 'all')}>All</Chip>
             {hub.cats.map(c => {
               // MC26 (all pickleball): no ball icon, Men's = blue, Mixed = pink
               const hue = hub.noChurch ? catHue(c.code) : null
@@ -105,6 +104,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
                 </Chip>
               )
             })}
+            <Chip on={!cat} onClick={() => set('cat', 'all')}>All</Chip>
           </div>
         )}
       </div>
