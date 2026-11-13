@@ -98,7 +98,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                   <span className="flex min-w-0 items-start justify-between gap-2">
                     <span className="flex min-w-0 items-center gap-1.5 pt-0.5 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
                       <Star on className="h-3 w-3 shrink-0 text-gold" />
-                      <span className="truncate">{p.name}{cat ? ` · ${cat.short}` : ''}</span>
+                      <span className="min-w-0 break-words">{p.name.replace(/\s*\|\s*/g, ' / ')}{cat ? ` · ${cat.short}` : ''}</span>
                     </span>
                     <Emblem logo={b && id ? teamLogo(b, id) : null} flagName={b && id ? teamSideName(b, id) ?? p.name : p.name} className="h-9 w-9 shrink-0 rounded-[3px]" />
                   </span>
@@ -116,7 +116,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                             {isAlert(g.m) ? <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-red-500">⚠ {alertWord(g.m)}</span>
                               : <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>}
                             <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
-                              className="block w-full truncate text-left text-[15px] font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"><span className="mr-2 text-[11px] font-bold uppercase text-fg-subtle no-underline">vs</span>{g.opp.replace(/\s*\|\s*/g, ' / ')}</button>
+                              className="block w-full text-left text-[15px] font-semibold leading-snug underline decoration-line-strong decoration-dotted underline-offset-4">{g.opp.split(/\s*\|\s*|\s+\/\s+/).filter(Boolean).map((x, i) => <span key={i} className="block truncate">{x}</span>)}</button>
                           </span>
                           <span className={`text-xs font-bold uppercase tracking-wide ${g.live ? 'text-blue-400' : isAlert(g.m) ? 'text-red-500' : 'text-fg-muted'}`}><CourtTag code={b?.competition?.code} n={g.n}>{g.court}</CourtTag></span>
                         </span>
@@ -132,7 +132,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                           <span className="min-w-0">
                             <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-fg-subtle">{g.title}</span>
                             <button onClick={e => { e.stopPropagation(); setStack([...(stack.length ? stack : [p]), { code: p.code, teamId: g.oppId, name: g.opp }]) }}
-                              className="block w-full truncate text-left text-[15px] font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"><span className="mr-2 text-[11px] font-bold uppercase text-fg-subtle no-underline">vs</span>{g.opp.replace(/\s*\|\s*/g, ' / ')}</button>
+                              className="block w-full text-left text-[15px] font-semibold leading-snug underline decoration-line-strong decoration-dotted underline-offset-4">{g.opp.split(/\s*\|\s*|\s+\/\s+/).filter(Boolean).map((x, i) => <span key={i} className="block truncate">{x}</span>)}</button>
                           </span>
                           <ScoreWL us={g.us} them={g.them} wl={g.won ? 'W' : 'L'} className={`font-display text-lg font-bold ${g.won ? 'text-gold' : 'text-fg-subtle'}`} />
                         </span>

@@ -120,7 +120,8 @@ export function useCompetition(code: string | undefined, opts?: { preview?: bool
       const v = document.visibilityState === 'visible'
       setVisible(v)
       if (v) {
-        reload()
+        // back within 5 min: scores only (light); longer away: full re-read
+        if (Date.now() - lastFull.current > 300000) reload(); else refreshLive()
         setResubscribeKey(k => k + 1)
       }
     }
