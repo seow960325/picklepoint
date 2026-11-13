@@ -199,6 +199,47 @@ export async function refreshScores(prev: Bundle): Promise<Bundle | null> {
   return { ...prev, matches, fetched_at: t0 }
 }
 
+/** Several categories at once (hub front page), one request, and only the games that
+ *  changed since the last look (matches.updated_at, migration 0064): a poll is usually
+ *  a few hundred bytes. Without 0064 (no updated_at) it falls back to refreshScores
+ *  per category. null for a category = something new appeared: read it in full. */
+export async function refreshScoresMany(prevs: Bundle[]): Promise<Array<Bundle | null>> {
+  if (IS_DEMO || !prevs.length) return prevs.map(() => null)
+  const since = prevs.map(b => b.scores_since).filter((x): x is string => !!x).sort()[0]
+  if (!since || prevs.some(b => !b.scores_since)) return firstLook(prevs)
+  const ids = prevs.flatMap(b => b.events.map(e => e.id))
+  const t0 = Date.now()
+  // 15 s overlap: a change saved just before the last look but committed after it is not missed
+  const from = new Date(new Date(since).getTime() - 15000).toISOString()
+  const { data, error } = await sb!.from('matches').select(SCORE_COLS + ',event_id,updated_at')
+    .in('event_id', ids).gt('updated_at', from)
+  if (error || !data) return Promise.all(prevs.map(b => refreshScores(b)))
+  return prevs.map(b => merge(b, (data as any[]).filter(r => b.events.some(e => e.id === r.event_id)), t0))
+}
+async function firstLook(prevs: Bundle[]): Promise<Array<Bundle | null>> {
+  const ids = prevs.flatMap(b => b.events.map(e => e.id))
+  const t0 = Date.now()
+  const { data, error } = await sb!.from('matches').select(SCORE_COLS + ',event_id,updated_at').in('event_id', ids)
+  if (error || !data) return Promise.all(prevs.map(b => refreshScores(b)))   // 0064 not run yet
+  return prevs.map(b => merge(b, (data as any[]).filter(r => b.events.some(e => e.id === r.event_id)), t0))
+}
+function merge(prev: Bundle, rows: any[], t0: number): Bundle | null {
+  const mine = new Set(prev.matches.map(m => m.id))
+  const known = new Set(prev.teams.map(t => t.id))
+  if (rows.some(r => !mine.has(r.id))) return null                          // a game this screen does not know
+  if (rows.some(r => (r.team_a_id && !known.has(r.team_a_id)) || (r.team_b_id && !known.has(r.team_b_id)))) return null
+  const by = new Map(rows.map(r => [r.id, r]))
+  let mark = prev.scores_since ?? ''
+  for (const r of rows) if (r.updated_at && r.updated_at > mark) mark = r.updated_at
+  const matches = prev.matches.map(m => {
+    const r = by.get(m.id)
+    if (!r) return m
+    const { updated_at: _u, event_id: _e, ...rest } = r
+    return { ...m, ...rest }
+  }).sort((x, y) => x.sequence - y.sequence)
+  return { ...prev, matches, fetched_at: t0, scores_since: mark || prev.scores_since }
+}
+
 export type LiveStatus = 'live' | 'down'
 export type RowChange = { type: 'INSERT' | 'UPDATE' | 'DELETE'; row: any; oldId?: string }
 

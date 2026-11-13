@@ -132,4 +132,6 @@ export interface Bundle {
   /** client-only: Date.now() when the fetch that produced this bundle STARTED.
    *  The scorer uses it to ignore copies that were read before its own last save. */
   fetched_at?: number
+  /** newest matches.updated_at seen (hub front page polls only what changed after it) */
+  scores_since?: string
 }

@@ -46,7 +46,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
     if (v) next.set(k, v); else next.delete(k)
     setParams(next, { replace: true })
   }
-  const others = useOthers(hub.cats.map(c => c.code).filter(c => c !== hub.code), 3000)
+  const others = useOthers(hub.cats.map(c => c.code).filter(c => c !== hub.code), 2000)
   const bundleOf = (code: string) => (code === hub.code ? self : others[code] ?? null)
   const pinned = useMemo(() => new Set(pins.map(p => resolvePin(bundleOf(p.code), p)).filter((x): x is string => !!x)),
     [pins, others, self])

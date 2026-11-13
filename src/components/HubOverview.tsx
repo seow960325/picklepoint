@@ -35,10 +35,15 @@ export function useOthers(codes: string[], everyMs = 30000) {
       try {
         const full = force || Date.now() - lastFull >= FULL_EVERY_MS
         if (full) lastFull = Date.now()
-        const rows = await Promise.all(codes.map(async c => {
+        // between full reads: one small request for every category, only what changed
+        const quick = !full && codes.every(c => have[c])
+          ? await api.refreshScoresMany(codes.map(c => have[c]!)).catch(() => codes.map(() => null))
+          : codes.map(() => null)
+        const rows = await Promise.all(codes.map(async (c, i) => {
           const prev = have[c]
           try {
-            const b = (!full && prev ? await api.refreshScores(prev) : null) ?? await api.refresh(c, { light: true })
+            let b = quick[i] ?? await api.refresh(c, { light: true })
+            if (b && !b.scores_since && prev?.scores_since) b = { ...b, scores_since: prev.scores_since }
             return [c, b] as const
           } catch { return [c, prev ?? null] as const }      // a failed poll keeps what is on screen
         }))
