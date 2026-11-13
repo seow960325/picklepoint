@@ -373,12 +373,12 @@ export function CourtQueues({ b, ev, max = 4, n = 6, big = false, courts }: { b:
                     <span className={`text-center font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>{i + 1}</span>
                     <span className={`text-center font-bold text-fg-subtle ${big ? 'text-base' : 'text-[10px]'}`}>{poolOf(m.team_a_id)}</span>
                     {!big && <span aria-hidden="true" />}
-                    <span className={`flex min-w-0 items-center justify-start gap-1.5 text-fg-muted`}>
+                    <span className={`flex min-w-0 items-center justify-start ${big ? 'gap-1.5' : 'gap-1'} text-fg-muted`}>
+                      <span className={`min-w-0 flex-1 text-left ${big ? 'truncate' : ''}`}><TeamLink b={b} id={m.team_a_id}>{big ? <PairName name={teamName(b, m.team_a_id)} /> : <StackName name={teamName(b, m.team_a_id)} align="left" />}</TeamLink></span>
                       <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className={`shrink-0 rounded-[2px] object-contain ${big ? 'h-6 w-6' : 'h-3.5 w-3.5'}`} />
-                      <span className={`min-w-0 text-left ${big ? 'truncate' : ''}`}><TeamLink b={b} id={m.team_a_id}>{big ? <PairName name={teamName(b, m.team_a_id)} /> : <StackName name={teamName(b, m.team_a_id)} align="left" />}</TeamLink></span>
                     </span>
-                    <span className={`text-center text-fg-subtle ${big ? 'text-lg' : 'px-2.5 text-xs'}`}>vs</span>
-                    <span className={`flex min-w-0 items-center justify-start gap-1.5 text-fg-muted`}>
+                    <span className={`text-center text-fg-subtle ${big ? 'text-lg' : 'px-1.5 text-xs'}`}>vs</span>
+                    <span className={`flex min-w-0 items-center justify-start ${big ? 'gap-1.5' : 'gap-1'} text-fg-muted`}>
                       <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className={`shrink-0 rounded-[2px] object-contain ${big ? 'h-6 w-6' : 'h-3.5 w-3.5'}`} />
                       <span className={`min-w-0 text-left ${big ? 'truncate' : ''}`}><TeamLink b={b} id={m.team_b_id}>{big ? <PairName name={teamName(b, m.team_b_id)} /> : <StackName name={teamName(b, m.team_b_id)} align="left" />}</TeamLink></span>
                     </span>
