@@ -174,6 +174,28 @@ export default function CourtScore() {
   }
 
   const Sc = isCb(eventOf(bundle, match)?.sport) ? CbScorer : Scorer
+  // knockout rounds start together (migration 0066): a quarter-final / semi-final waits
+  // until every game of its round has both teams, then all of them start at once
+  const roundWait = !isCb(eventOf(bundle, match)?.sport) && match.bracket_key != null
+    && match.score_a === 0 && match.score_b === 0
+    ? bundle.matches.find(x => x.id !== match.id && x.event_id === match.event_id && x.bracket_key != null
+        && !/^KO-2-0-/.test(x.bracket_key) && x.round === match.round && x.status !== 'finished'
+        && (!x.team_a_id || !x.team_b_id))
+    : undefined
+  if (roundWait) return (
+    <Screen className="flex flex-col items-center justify-center gap-4 px-6 text-center">
+      <div className="font-display text-3xl font-bold text-fg-subtle">{cname}</div>
+      <div className="text-xs font-bold uppercase tracking-[0.2em] text-fg-subtle">Next game · {match.round}</div>
+      <div className="max-w-md font-display text-2xl font-bold">
+        {teamName(bundle, match.team_a_id)} <span className="text-fg-subtle">vs</span> {teamName(bundle, match.team_b_id)}
+      </div>
+      <div className="flex max-w-md items-center gap-2 text-sm text-fg-muted">
+        <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-brand" />
+        Please wait: every {(match.round ?? 'knockout').toLowerCase()} starts together, as soon as the last teams are known. This screen opens the game by itself.
+      </div>
+      <Link to={`/c/${code}`} className="flex min-h-[40px] items-center rounded-xl border border-line px-4 py-2 text-sm">Back to board</Link>
+    </Screen>
+  )
   return (
     <>
       <Sc key={match.id} bundle={bundle} match={match} token={token}

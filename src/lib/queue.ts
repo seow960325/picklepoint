@@ -67,7 +67,7 @@ export const retryStalled = () => {
  *  confirmed / finished / gone). Replaying such an op only blocks every op
  *  behind it, so it is dropped instead of being kept as "stuck". */
 export const isPermanentError = (message?: string) =>
-  !!message && /not.?awaiting.?confirm|match.?finished|no.?match\b/i.test(message)
+  !!message && /not.?awaiting.?confirm|match.?finished|no.?match\b|round.?not.?ready/i.test(message)
 
 /** Run `send` over every queued op, oldest first, stopping at the first
  *  failure so ops for the same match always apply in order. Nothing is
