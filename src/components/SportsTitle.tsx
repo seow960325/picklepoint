@@ -3,8 +3,8 @@
  *    from word to word a few times, then is thrown out of the box (and later comes back from the other side);
  *  - pickleball: like MC26, hops about the words at random, bounces and settles, then bounces away;
  *    it takes turns with the captain ball;
- *  - shuttlecock: a rally with the event cross: flies in from the right, cork first, hits the cross
- *    (the cross shines, and fades as it flies off), is played back from the end of the title, hits again.
+ *  - shuttlecock: now and then flies in from the right, cork first, hits the event cross (the cross
+ *    shines, and the light fades as the shuttle flies back out), then rests a while.
  *  Without animation support (or with reduced motion) it is just the plain title. */
 import { useFitWords } from '../lib/useFitWords'
 import { useLayoutEffect, useRef } from 'react'
@@ -191,7 +191,7 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
       }
       let last = null as Animation | null
       while (!dead) {
-        await wait(rnd(1200, 2800))
+        await wait(rnd(5000, 9000))                                        // rests a while between hits
         if (dead) return
         if (document.hidden) continue
         const logo = document.querySelector<HTMLElement>('[data-event-logo]')
@@ -202,30 +202,17 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
         const sx = parseFloat(star?.style.left ?? '50') / 100, sy = parseFloat(star?.style.top ?? '35') / 100
         const hit: Pt = { x: r.left - b.left + r.width * sx + d * 0.35, y: r.top - b.top + r.height * sy }
         const ground = Math.min(...seen.map(s => spot(s, d, 0.5).top))
-        const lastWord = seen[seen.length - 1].getBoundingClientRect()
-        const far: Pt = { x: Math.min(b.width - d * 0.6, lastWord.right - b.left + d * 0.4), y: ground - d * 0.2 }
         const out: Pt = { x: b.width + d * 3, y: ground - d * 1.2 }
-        const span = Math.max(40, far.x - hit.x)
-        const legMs = () => Math.min(1500, 700 + span * 1.6) * rnd(0.9, 1.1)
+        const ms = Math.min(1700, 800 + (out.x - hit.x) * 1.4) * rnd(0.9, 1.1)
         el.style.opacity = '1'
-        // in from outside, straight at the cross
-        last?.cancel()
-        let ms = legMs()
-        last = await fly({ from: out, to: hit, ms: ms * 1.1, lift: d * rnd(0.6, 1) }, d)
-        for (let n = Math.round(rnd(3, 5)); n > 0 && !dead; n--) {
-          ms = legMs()
-          shine(logo, ms)                                                  // lit at the hit, gone as it leaves
-          last?.cancel()
-          last = await fly({ from: hit, to: far, ms, lift: d * rnd(0.8, 1.4) }, d)
-          if (dead) return
-          if (n === 1) break
-          last?.cancel()
-          last = await fly({ from: far, to: hit, ms: legMs(), lift: d * rnd(0.5, 1.1) }, d)
-          if (dead) return
-        }
+        // in from the right, straight at the cross ...
+        last = await fly({ from: out, to: hit, ms, lift: d * rnd(0.6, 1) }, d)
         if (dead) return
+        // ... it lights up at the hit and the light fades as the shuttle flies away and out
+        const back = ms * rnd(0.95, 1.15)
+        shine(logo, back)
         last?.cancel()
-        last = await fly({ from: far, to: out, ms: 700, lift: d * 0.6 }, d)   // out of play
+        last = await fly({ from: hit, to: { x: out.x, y: out.y - d * 0.5 }, ms: back, lift: d * rnd(0.9, 1.5) }, d)
         if (dead) return
         last?.cancel(); last = null
         el.style.opacity = '0'
@@ -261,7 +248,7 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
   return (
     // with the shuttle, the box reaches back over the event logo (left of the title) so the rally
     // with the cross is not cut off; the words stay where they were
-    <div ref={wrap} className={`relative pt-[0.85em] ${hasSh ? '-ml-[4rem] pl-[4rem] lg:-ml-[5.5rem] lg:pl-[5.5rem]' : ''} ${className}`} style={{ overflowX: 'clip' }}>
+    <div ref={wrap} className={`relative pt-[0.85em] ${hasSh ? '-ml-[3rem] pl-[3rem] lg:-ml-[4.5rem] lg:pl-[4.5rem]' : ''} ${className}`} style={{ overflowX: 'clip' }}>
       <div className="line-clamp-2">
         {text.split(/\s+/).filter(Boolean).map((word, i) => (
           <span key={i}><span data-w className="inline-block whitespace-nowrap">{word}</span>{' '}</span>

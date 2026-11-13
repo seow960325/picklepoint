@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 /** Venue map (X Park PJ South): a Map button that opens the floor plan full screen.
  *  `courts` rings the courts of one category (pulsing), so people see where to go. */
 import { useEffect, useState } from 'react'
@@ -90,7 +91,7 @@ export function CourtTag({ code, n, children, className = '' }: { code?: string 
 }
 
 export default function MapButton({ src = '/yc26-map.jpg', sport, courts, className = '', label = 'Map' }: {
-  src?: string; sport?: Sport; courts?: number[]; className?: string; label?: string
+  src?: string; sport?: Sport; courts?: number[]; className?: string; label?: ReactNode
 }) {
   const [open, setOpen] = useState(false)
   return (
