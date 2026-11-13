@@ -1633,6 +1633,7 @@ const readable = (m: string) => ({
   NOT_KNOCKOUT: 'That is not a knockout game.',
   WINNER_NEEDS_MORE_POINTS: 'The winner must have more points than the other team.',
   BAD_RESULT: 'That result is not valid.',
+  SLOT_CLASH: 'Not moved: a team of that game (or of the game it swaps with) would then have two games at the same time.',
 }[m] ?? (/admin_replace_group_schedule/.test(m)
   ? 'Run database update 0041 first — without it, regenerating would remove the knockout bracket.'
   : /admin_set_ko_slot/.test(m) ? 'Run database update 0061 first.'

@@ -145,6 +145,13 @@ function save(s: DemoState) {
   chan?.postMessage({ t: Date.now() })
 }
 
+/** a team would be in two games of one slot after pick and ref swap slots (migration 0065) */
+function slotClash(ms: Match[], pick: Match, ref: Match): boolean {
+  const has = (x: Match, m: Match) => [x.team_a_id, x.team_b_id].some(t => t != null && (t === m.team_a_id || t === m.team_b_id))
+  return ms.some(x => x.event_id === pick.event_id && x.bracket_key == null && x.id !== pick.id && x.id !== ref.id
+    && x.status !== 'finished' && ((x.slot === ref.slot && has(x, pick)) || (x.slot === pick.slot && has(x, ref))))
+}
+
 export const demo = {
   reset() { localStorage.removeItem(KEY); load(); chan?.postMessage({ t: Date.now() }) },
 
@@ -597,6 +604,7 @@ export const demo = {
     const ref = ms.filter(x => x.event_id === pick.event_id && x.id !== pick.id && x.bracket_key == null
       && x.status === 'scheduled' && !x.court_id && x.home_court === court).sort((a, b) => a.sequence - b.sequence)[0]
     const now = new Date().toISOString()
+    if (ref && ref.sequence < pick.sequence && slotClash(ms, pick, ref)) throw new Error('SLOT_CLASH')
     if (ref && ref.sequence < pick.sequence) {
       const sl = pick.slot ?? null, sq = pick.sequence, hc = pick.home_court ?? null
       pick.slot = ref.slot ?? null; pick.sequence = ref.sequence
@@ -771,6 +779,7 @@ export const demo = {
     if (busy) throw new Error('TEAM_BUSY')
     const ref = cur ?? ms.filter(m => m.status === 'scheduled' && m.id !== pick.id && !m.bracket_key && m.event_id === pick.event_id
       && (m.court_id === courtId || (m.court_id == null && m.home_court === courtId))).sort((a, b) => a.sequence - b.sequence)[0]
+    if (ref && ref.slot != null && pick.slot != null && pick.slot > ref.slot && slotClash(ms, pick, ref)) throw new Error('SLOT_CLASH')
     if (cur) {
       const ev = s.bundle.events.find(e => e.id === cur.event_id)
       cur.status = 'scheduled'; cur.started_at = null

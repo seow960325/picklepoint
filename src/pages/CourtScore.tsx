@@ -809,6 +809,7 @@ function PickIcon({ className = '' }: { className?: string }) {
 const PICK_ERR: Record<string, string> = {
   GAME_STARTED: 'The game on court already has points. Finish it, or RESET it first.',
   TEAM_BUSY: 'A team of that game is playing on another court right now.',
+  SLOT_CLASH: 'A team of that game is due on another court at that time. Pick another game.',
   NOT_SCHEDULED: 'That game has already started or finished.',
   NO_COURT_SESSION: 'Court PIN expired — go back and enter the PIN again.',
 }
