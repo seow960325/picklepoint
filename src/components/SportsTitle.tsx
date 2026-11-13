@@ -9,12 +9,20 @@
 import { useFitWords } from '../lib/useFitWords'
 import { useLayoutEffect, useRef } from 'react'
 import { SportIcon } from './SportIcon'
+import { EventLogo } from './ui'
 import type { Sport } from '../lib/multisport'
 
 const UP = 'cubic-bezier(.15,.6,.45,1)', DOWN = 'cubic-bezier(.55,0,.85,.4)'
 const rnd = (a: number, b: number) => a + Math.random() * (b - a)
 
-export default function SportsTitle({ text, className = '', sports }: { text: string; className?: string; sports: Sport[] }) {
+export default function SportsTitle({ text, className = '', sports, crossWord, crossLogo }: {
+  text: string; className?: string; sports: Sport[]
+  /** the last letter of this word (e.g. the T of "Methodist") is drawn as the event cross */
+  crossWord?: string; crossLogo?: string
+}) {
+  const word = (w: string) => crossWord && crossLogo && w.toLowerCase() === crossWord.toLowerCase()
+    ? <>{w.slice(0, -1)}<EventLogo src={crossLogo} still className="mx-[-0.36em] h-[1.3em] w-[1.3em] align-[-0.26em]" /></>
+    : w
   const wrap = useRef<HTMLDivElement>(null)
   const pbX = useRef<HTMLSpanElement>(null), pbY = useRef<HTMLSpanElement>(null), pbR = useRef<HTMLSpanElement>(null)   // pickleball
   const cbX = useRef<HTMLSpanElement>(null), cbY = useRef<HTMLSpanElement>(null), cbR = useRef<HTMLSpanElement>(null)   // captain ball
@@ -254,13 +262,13 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
           // set rows (phone): each row stays whole and the font shrinks until it fits; one row from sm up
           ? text.split('\n').map((line, j) => (
             <span key={j} data-line className="block whitespace-nowrap sm:inline">
-              {line.split(/\s+/).filter(Boolean).map((word, i) => (
-                <span key={i}><span data-w className="inline-block whitespace-nowrap">{word}</span>{' '}</span>
+              {line.split(/\s+/).filter(Boolean).map((w, i) => (
+                <span key={i}><span data-w className="inline-block whitespace-nowrap">{word(w)}</span>{' '}</span>
               ))}
             </span>
           ))
-          : text.split(/\s+/).filter(Boolean).map((word, i) => (
-            <span key={i}><span data-w className="inline-block whitespace-nowrap">{word}</span>{' '}</span>
+          : text.split(/\s+/).filter(Boolean).map((w, i) => (
+            <span key={i}><span data-w className="inline-block whitespace-nowrap">{word(w)}</span>{' '}</span>
           ))}
       </div>
       {hasPb && (

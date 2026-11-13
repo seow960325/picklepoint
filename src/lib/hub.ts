@@ -23,6 +23,8 @@ export interface Hub {
   logoRight?: boolean
   /** the title split over two rows on a phone */
   titleLines?: [string, string]
+  /** draw the event cross as the last letter of this word in the title (YC26: the T of Methodist) */
+  crossT?: string
   /** courts of each category on the map (when the category has no printed clock of its own) */
   mapCourts?: Record<string, { sport: 'pickleball' | 'badminton' | 'captainball'; courts: number[] }>
 }
@@ -30,6 +32,7 @@ export interface Hub {
 export const HUBS: Hub[] = [{
   code: 'YC26',
   title: 'Methodist Games 26',
+  crossT: 'Methodist',
   logo: '/logos/yc26.png',
   // the old badminton / pickleball ties inside YC26 are replaced by the category codes
   onlySport: 'captainball',

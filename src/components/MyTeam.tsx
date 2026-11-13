@@ -164,12 +164,15 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                 {games.length > 0 && <span className="absolute right-3 top-2"><LiveTime /></span>}
                 <span className="min-w-0 flex-1">
                   <span className="flex min-w-0 items-start justify-between gap-2">
-                    {/* the church logo (YC26) sits above the team's names; MC26 has none */}
-                    <span className="flex min-w-0 flex-col items-start gap-1">
+                    {/* church logo (YC26, MC26 has none) on the left, two rows tall: names + star, then the category */}
+                    <span className="flex min-w-0 items-center gap-2">
                       <Emblem logo={b && id ? teamLogo(b, id) : null} flagName={b && id ? teamSideName(b, id) ?? p.name : p.name} className="h-9 w-9 shrink-0 rounded-[3px]" />
-                      <span className="flex min-w-0 items-center gap-1.5 pt-0.5 text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
-                        <Star on className="h-3 w-3 shrink-0 text-gold" />
-                        <span className="min-w-0 break-words">{p.name.replace(/\s*\|\s*/g, ' / ')}{cat ? ` · ${cat.short}` : ''}</span>
+                      <span className="min-w-0 text-[11px] font-bold uppercase leading-snug tracking-wider text-fg-subtle">
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <span className="min-w-0 truncate">{p.name.replace(/\s*\|\s*/g, ' / ')}</span>
+                          <Star on className="h-3 w-3 shrink-0 text-gold" />
+                        </span>
+                        {cat && <span className="block truncate">{cat.short}</span>}
                       </span>
                     </span>
                     {games.length > 0 && <span className="w-14 shrink-0" aria-hidden="true" />}

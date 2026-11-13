@@ -64,14 +64,14 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
             </Link>
           </div>
           <div className="flex min-w-0 items-center justify-center gap-2 lg:gap-3.5">
-            {hub.logo && <EventLogo src={hub.logo} still={hub.cats.some(c => c.sport === 'badminton')} className="-mx-1.5 h-10 w-10 lg:-mx-3 lg:h-16 lg:w-16" />}
+            {hub.logo && !hub.crossT && <EventLogo src={hub.logo} still={hub.cats.some(c => c.sport === 'badminton')} className="-mx-1.5 h-10 w-10 lg:-mx-3 lg:h-16 lg:w-16" />}
             <div className="min-w-0">
               {(() => {
                 const title = hubTitle(hub, hub.cats.map(c => bundleOf(c.code)?.competition.name))
                 const cls = '-mt-[0.85em] font-display text-xl font-bold leading-tight tracking-wide sm:text-2xl lg:text-3xl'
                 const sports = [...new Set(hub.cats.map(c => c.sport))]
                 return sports.length > 1
-                  ? <SportsTitle text={hub.titleLines ? hub.titleLines.join('\n') : title} className={`${cls} uppercase`} sports={sports} />
+                  ? <SportsTitle text={hub.titleLines ? hub.titleLines.join('\n') : title} className={`${cls} uppercase`} sports={sports} crossWord={hub.crossT} crossLogo={hub.logo} />
                   : sports[0] === 'pickleball' ? <BounceTitle text={title} className={cls} /> : <div className={`line-clamp-2 ${cls}`}>{title}</div>
               })()}
             </div>
