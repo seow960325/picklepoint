@@ -168,7 +168,7 @@ export function useCompetition(code: string | undefined, opts?: { preview?: bool
   useEffect(() => {
     if (!viewer) return
     if (visible) { setParked(false); return }
-    const t = setTimeout(() => setParked(true), 45000)
+    const t = setTimeout(() => setParked(true), 10000)
     return () => clearTimeout(t)
   }, [viewer, visible])
 
