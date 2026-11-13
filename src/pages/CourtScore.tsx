@@ -11,7 +11,8 @@ import { tapPoint, tapFault, tapUndo, hornEnd, chimeSwitch, isSoundOn, setSoundO
 import { Screen, Spinner, FullscreenButton, Flag, Emblem } from '../components/ui'
 import Court from '../components/Court'
 import { PlayClock } from '../components/GroupsKo'
-import { koCourtLabel, isCb } from '../lib/multisport'
+import { koCourtLabel, isCb, sportBundle } from '../lib/multisport'
+import { cbKo, cbKoGame } from '../lib/captainball'
 import { courtChoices, gameTitle } from '../lib/pool'
 import CbScorer from './CbScorer'
 import { autoSeedRows } from '../lib/autoseed'
@@ -40,6 +41,33 @@ export default function CourtScore() {
       api.courtSeedBracket(token, ev.id, rows).catch(() => {}).finally(() => { seeding.current = false; refreshLive() })
       break
     }
+  })
+  // captain ball: the next knockout stage (playoff, semi-finals, 3rd place + Final) is created from the
+  // captain ball referee's screen as soon as the stage before it is decided (needs migration 0062;
+  // without it the call fails quietly and the organiser's Settings page creates it, as before)
+  const cbFired = useRef('')
+  useEffect(() => {
+    if (!bundle || !token || court?.sport !== 'captainball') return
+    const sb = sportBundle(bundle, 'captainball')
+    const cev = sb.events[0]
+    const k = cev ? cbKo(sb, cev) : null
+    if (!cev || !k || !k.supported || !k.next?.ready) return
+    const key = `${cev.id}|${k.next.label}|${Object.keys(k.games).sort().join(',')}`
+    if (cbFired.current === key) return
+    cbFired.current = key
+    const pairs = k.next.pairs
+    void (async () => {
+      let pending = 0
+      for (const p of pairs) {
+        const g = cbKoGame({ ...sb, matches: [...sb.matches] }, p.stage, p.a, p.b, 0)
+        try { await api.courtAddTieStage(token, cev.id, p.stage, [{ ...g, seq: ++pending }]) }
+        catch (e: any) {
+          // already there = fine; anything else (poor network): try again in a while
+          if (!/STAGE_EXISTS/.test(String(e?.message))) setTimeout(() => { if (cbFired.current === key) cbFired.current = '' }, 20000)
+        }
+      }
+      refreshLive()
+    })()
   })
   // keep the session fresh while the referee is on this screen
   useEffect(() => {

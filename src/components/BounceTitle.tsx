@@ -3,6 +3,7 @@
  *  a word for a while, then jumping to another one, sometimes on the top line, sometimes the bottom.
  *  Every few jumps it is driven hard at the logo's cross, which blocks it (and shines) and sends it back.
  *  Without animation support (or with reduced motion) it is just the plain title. */
+import { useFitWords } from '../lib/useFitWords'
 import { useLayoutEffect, useRef } from 'react'
 import { SportIcon } from './SportIcon'
 import type { Sport } from '../lib/multisport'
@@ -19,6 +20,7 @@ export default function BounceTitle({ text, className = '', sports = ['picklebal
   const list: Sport[] = sports.length ? sports : ['pickleball']
   const multi = list.length > 1
   const wrap = useRef<HTMLDivElement>(null), bx = useRef<HTMLSpanElement>(null), by = useRef<HTMLSpanElement>(null), ball = useRef<HTMLSpanElement>(null)
+  useFitWords(wrap, text)
   useLayoutEffect(() => {
     const w = wrap.current, x = bx.current, y = by.current, spinEl = ball.current
     if (!w || !x || !y || !spinEl || typeof w.animate !== 'function') return

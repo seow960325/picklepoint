@@ -87,9 +87,16 @@ export function planDraw<R extends PlanRow>(plan: KoPlan, tables: Record<string,
   })
   let swapped = false
   if (plan.swapSamePool && samePool(tokens)) {
-    for (const [x, y] of [['R1', 'R2'], ['R2', 'R3'], ['R1', 'R3']]) {
-      if (!plan.pairs.flat().includes(y)) continue
-      const sw = (t: string) => t === x ? y : t === y ? x : t
+    const has = (t: string) => plan.pairs.flat().includes(t)
+    // one swap first (R1/R2, R2/R3, R1/R3); when all three runners-up sit against their own
+    // pool winner no single swap can fix it, so the three move round (R1 -> R2 -> R3 -> R1, or back)
+    const moves: Array<Record<string, string>> = [
+      { R1: 'R2', R2: 'R1' }, { R2: 'R3', R3: 'R2' }, { R1: 'R3', R3: 'R1' },
+      { R1: 'R2', R2: 'R3', R3: 'R1' }, { R1: 'R3', R3: 'R2', R2: 'R1' },
+    ]
+    for (const mv of moves) {
+      if (!Object.keys(mv).every(has)) continue
+      const sw = (t: string) => mv[t] ?? t
       const trial = tokens.map(([a, b]) => [sw(a), sw(b)] as [string, string])
       if (!samePool(trial)) { tokens = trial; swapped = true; break }
     }
@@ -100,4 +107,21 @@ export function planDraw<R extends PlanRow>(plan: KoPlan, tables: Record<string,
     pairs, tokens, winners, swapped,
     runners: { ranked: runAll.ranked, level: runAll.level.map((l, i) => l && i < nR) },
   }
+}
+
+/** In words, why each best runner-up is ahead of the next one: "R3 X is ahead of R4 Y on point difference (+5 v +2)". */
+export function cutReasons(run: Array<{ team: { name: string }; won: number; diff: number; pf: number; played: number }>, cut: number): string[] {
+  const out: string[] = []
+  const sg = (n: number) => (n > 0 ? `+${n}` : `${n}`)
+  for (let i = 0; i < Math.min(cut, run.length - 1); i++) {
+    const x = run[i], y = run[i + 1]
+    if (!x.played && !y.played) continue
+    const head = `R${i + 1} ${x.team.name} is ahead of R${i + 2} ${y.team.name}`
+    const tail = i === cut - 1 ? `, so R${i + 1} takes the last quarter-final place` : ''
+    if (x.won !== y.won) out.push(`${head} on wins (${x.won} v ${y.won})${tail}.`)
+    else if (x.diff !== y.diff) out.push(`${head}: same wins (${x.won}), better point difference (${sg(x.diff)} v ${sg(y.diff)})${tail}.`)
+    else if (x.pf !== y.pf) out.push(`${head}: same wins (${x.won}) and point difference (${sg(x.diff)}), more points scored (${x.pf} v ${y.pf})${tail}.`)
+    else out.push(`R${i + 1} ${x.team.name} and R${i + 2} ${y.team.name} are level on wins, point difference and points scored: coin toss.`)
+  }
+  return out
 }

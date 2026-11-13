@@ -18,7 +18,7 @@ import { ScheduleRow, scheduleStatus } from '../components/ScheduleRow'
 import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts, KnockoutTab } from './MultiSportAdmin'
 import { sportsPresent, isCb } from '../lib/multisport'
 import { CbRulesPanel } from '../components/CaptainBall'
-import { isPoolDispatch, isDiffTiebreak, shuffleMap, eventUntouched, roundName } from '../lib/pool'
+import { isPoolDispatch, isDiffTiebreak, shuffleMap, eventUntouched, roundName, groupRound, bracketCaption } from '../lib/pool'
 import { parentHub, hubOf } from '../lib/hub'
 import { CHURCHES, churchLogo, teamChurch } from '../lib/churches'
 import { seatsOf, entriesOf, fixedOf, currentMeets, smartDraw, jointDraw, slotClock } from '../lib/clash'
@@ -1290,6 +1290,7 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
 
       {!isDuel && <MoveUp bundle={bundle} ev={ev} token={token} run={run} />}
       {!isDuel && <FixResults bundle={bundle} ev={ev} token={token} run={run} />}
+      {ev.format === 'groups_ko' && <KoSlots bundle={bundle} ev={ev} token={token} run={run} />}
       <div className="text-xs text-fg-subtle">Reorder upcoming matches on a court with the arrows.</div>
       <div className="divide-y divide-line rounded-xl border border-line text-sm">
         {bundle.matches.slice().sort((a: any, b: any) => a.sequence - b.sequence).slice(0, 60)
@@ -1300,7 +1301,7 @@ function ScheduleTab({ bundle, ev, token, run }: any) {
             const i = sibs.findIndex((x: any) => x.id === m.id)
             const canUp = m.status === 'scheduled' && i > 0
             const canDown = m.status === 'scheduled' && i >= 0 && i < sibs.length - 1
-            const st = scheduleStatus(m, roundName((m.round ?? '').replace(/pod/i, 'Court')))
+            const st = scheduleStatus(m, groupRound(bundle, { ...m, round: (m.round ?? '').replace(/pod/i, 'Court') }))
             return (
               <ScheduleRow key={m.id} bundle={bundle} a={m.team_a_id} b={m.team_b_id}
                 meta={<span className="font-display text-sm font-bold">{bundle.courts.find((c: any) => c.id === m.court_id)?.number ?? '–'}</span>}
@@ -1448,6 +1449,45 @@ function MoveUp({ bundle, ev, token, run }: any) {
   )
 }
 
+/** Backup plan: put a team into a knockout place by hand (automatic draw wrong, team withdrawn). */
+function KoSlots({ bundle, ev, token, run }: any) {
+  const [open, setOpen] = useState(false)
+  const started = (m: any) => m.status === 'awaiting_confirm' || m.status === 'finished' || m.score_a > 0 || m.score_b > 0
+  const ko = bundle.matches.filter((m: any) => m.event_id === ev.id && m.bracket_key != null && !/^KO-2-0-/.test(m.bracket_key))
+    .sort((x: any, y: any) => x.sequence - y.sequence)
+  if (!ko.length) return null
+  const teams = bundle.teams.filter((t: any) => t.event_id === ev.id)
+    .sort((x: any, y: any) => String(x.pool ?? '').localeCompare(String(y.pool ?? '')) || x.name.localeCompare(y.name))
+  const opts = [{ value: '', label: 'Empty (not decided)' }, ...teams.map((t: any) => ({ value: t.id, label: `${t.pool ? `${t.pool} · ` : ''}${t.name}` }))]
+  return (
+    <div className="rounded-xl border border-line bg-surface p-4">
+      <button onClick={() => setOpen(!open)} className="flex w-full items-center justify-between text-left">
+        <span className="font-display text-lg font-bold tracking-wide">Change a knockout team</span>
+        <span className="text-sm text-fg-subtle">{open ? 'hide' : `${ko.filter((m: any) => !started(m)).length} games open`}</span>
+      </button>
+      {open && (
+        <div className="mt-3 space-y-2">
+          <p className="text-xs text-fg-subtle">Only if the automatic draw is wrong or a team withdraws. Pick the team for a place. A team that is already in another game of the same round changes places with the team it replaces. A game that already has a point cannot be changed. After a change here the app no longer redraws this round by itself.</p>
+          {ko.map((m: any) => (
+            <div key={m.id} className={`rounded-lg border border-line p-2.5 text-sm ${started(m) ? 'opacity-50' : ''}`}>
+              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-fg-subtle">{bracketCaption(bundle, m) ?? m.round}{started(m) ? ' · started' : ''}</div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(['a', 'b'] as const).map(side => (
+                  <select key={side} disabled={started(m)} value={(side === 'a' ? m.team_a_id : m.team_b_id) ?? ''}
+                    onChange={e => { const v = e.target.value || null; run(() => api.adminSetKoSlot(token, m.id, side, v), 'Knockout team changed') }}
+                    className="min-h-[40px] w-full min-w-0 rounded-lg border border-line bg-canvas px-2 py-2 text-sm text-fg">
+                    {opts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** Backup plan: correct a finished game (system error, team disqualified after winning). */
 function FixResults({ bundle, ev, token, run }: any) {
   const [open, setOpen] = useState(false)
@@ -1458,6 +1498,7 @@ function FixResults({ bundle, ev, token, run }: any) {
   const done = bundle.matches.filter((m: any) => m.event_id === ev.id && m.status === 'finished' && m.team_a_id && m.team_b_id)
     .sort((x: any, y: any) => (y.finished_at ?? '').localeCompare(x.finished_at ?? ''))
   if (!done.length) return null
+  const koPlaying = bundle.matches.some((m: any) => m.event_id === ev.id && m.bracket_key != null && (m.score_a > 0 || m.score_b > 0 || m.status === 'finished'))
   const edit = (m: any) => { setId(m.id); setA(m.score_a); setB(m.score_b); setWin(m.score_b > m.score_a ? 'b' : 'a') }
   const bad = win === 'a' ? a <= b : b <= a
   return (
@@ -1468,12 +1509,13 @@ function FixResults({ bundle, ev, token, run }: any) {
       </button>
       {open && (
         <div className="mt-3 space-y-2">
-          <p className="text-xs text-fg-subtle">For a system error, or a team disqualified after winning. Pick the game, set the score and the winner. The next round is updated, as long as that game has not started.</p>
+          <p className="text-xs text-fg-subtle">For a system error, or a team disqualified after winning. Pick the game, set the score and the winner. Tables and the next round update by themselves, as long as the next game has no point yet.
+            {koPlaying ? ' The knockout has started: a group correction changes the tables only. If a knockout team must change, use "Change a knockout team" below.' : ''}</p>
           {done.map((m: any) => (
             <div key={m.id} className="rounded-lg border border-line p-2.5 text-sm">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-subtle">{roundName(m.round) || 'Group'}</div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-subtle">{groupRound(bundle, m) || 'Group'}</div>
                   <div className="truncate font-semibold">{teamName(bundle, m.team_a_id)} <span className="text-fg-subtle">{m.score_a}–{m.score_b}</span> {teamName(bundle, m.team_b_id)}</div>
                 </div>
                 <button onClick={() => id === m.id ? setId(null) : edit(m)}
@@ -1583,11 +1625,16 @@ const readable = (m: string) => ({
   BAD_RULES: 'Those scoring rules are not valid.',
   NOT_FINISHED: 'Only a finished game can be corrected.',
   BRACKET_SEEDED: 'The knockout bracket is already drawn. Clear it first (Bracket tab), then correct the group game.',
-  BRACKET_IN_PLAY: 'A knockout game has already been played, so group results are locked. Reset that knockout game first.',
-  NEXT_STARTED: 'The next game of this team has already started. Reset that game first.',
+  BRACKET_IN_PLAY: 'A knockout game has already been played, so group results are locked. Run database update 0061 to allow this correction.',
+  NEXT_STARTED: 'The next game of this team already has points, so the winner cannot change. Reset that game first (the score can still be corrected with the same winner).',
+  GAME_STARTED: 'That game already has a point, so its teams cannot change. Reset the game first.',
+  OTHER_GAME_STARTED: 'That team is already playing another game of this round.',
+  SAME_TEAM_TWICE: 'That team is already on the other side of this game.',
+  NOT_KNOCKOUT: 'That is not a knockout game.',
   WINNER_NEEDS_MORE_POINTS: 'The winner must have more points than the other team.',
   BAD_RESULT: 'That result is not valid.',
 }[m] ?? (/admin_replace_group_schedule/.test(m)
   ? 'Run database update 0041 first — without it, regenerating would remove the knockout bracket.'
+  : /admin_set_ko_slot/.test(m) ? 'Run database update 0061 first.'
   : /admin_set_(result|qf_rules)/.test(m) ? 'Run database update 0042 first.'
   : m))

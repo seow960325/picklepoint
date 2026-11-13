@@ -3,6 +3,7 @@
  *  (first game + minutes per slot), so it is a reference, not a countdown. */
 import type { Bundle, Match } from './types'
 import { hubOf, parentHub } from './hub.ts'
+import { koOrder } from './pool.ts'
 
 export const clockOfCode = (code?: string | null): SlotClock | undefined => {
   const c = (code ?? '').toUpperCase(), h = parentHub(c) ?? hubOf(c)
@@ -44,7 +45,7 @@ const courtNo = (c: Bundle['courts'][number]) => Number(/(\d+)\s*$/.exec(c.label
 const CB_KO: Array<[RegExp, number]> = [[/playoff\s*1/i, 7], [/playoff\s*2/i, 8], [/semi\D*1/i, 9], [/semi\D*2/i, 10], [/3rd|third/i, 11], [/final/i, 12]]
 /** index of a knockout game among the games of its round (play order) */
 const roundIdx = (b: Bundle, m: Match) => b.matches.filter(x => x.event_id === m.event_id && x.bracket_key != null && x.round === m.round)
-  .sort((x, y) => x.sequence - y.sequence).findIndex(x => x.id === m.id)
+  .sort(koOrder).findIndex(x => x.id === m.id)
 
 export function slotOf(b: Bundle, m: Match): number | null {
   const clk = clockOfCode(b.competition?.code)

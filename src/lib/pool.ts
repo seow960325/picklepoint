@@ -286,12 +286,24 @@ export function upNext(b: Bundle, eventId: string, n = 6): Array<{ m: Match; wai
 
 // ------------------------------------------------------------ bracket preview
 
+/** Position of a knockout game inside its round: the j of 'KO-<size>-<j>' (QF1 = KO-8-0 ...). */
+export const koIndex = (m: Pick<Match, 'bracket_key'>): number | null => {
+  const x = /^KO-\d+-(\d+)$/.exec(m.bracket_key ?? '')
+  return x ? Number(x[1]) : null
+}
+/** Games of one knockout round in bracket order (QF1, QF2 ...): by the slot in the key, so the
+ *  numbering always matches the printed plan even if a game's play order (sequence) was changed. */
+export const koOrder = (x: Pick<Match, 'bracket_key' | 'sequence'>, y: Pick<Match, 'bracket_key' | 'sequence'>): number => {
+  const i = koIndex(x), j = koIndex(y)
+  return i != null && j != null && i !== j ? i - j : x.sequence - y.sequence
+}
+
 /** Short names for knockout slots: QF1…, SF1…, 'Final', '3rd'. */
 export function koShort(b: Bundle, m: Match): string {
   if (m.round === 'Final') return (b.events.find(e => e.id === m.event_id)?.final_best_of ?? 1) > 1 ? `Final G${finalGameNo(m)}` : 'Final'
   if (m.round === 'Third place') return '3rd place'
   const same = b.matches.filter(x => x.event_id === m.event_id && x.bracket_key != null && x.round === m.round)
-    .sort((x, y) => x.sequence - y.sequence)
+    .sort(koOrder)
   const i = same.findIndex(x => x.id === m.id) + 1
   const rn = /^Round of (\d+)$/.exec(m.round ?? '')
   const tag = m.round === 'Quarter-final' ? 'QF' : m.round === 'Semi-final' ? 'SF' : m.round === 'Playoff' ? 'PO' : rn ? `R${rn[1]}-` : (m.round ?? 'R')
@@ -361,7 +373,9 @@ export interface RankRow { team: Team; won: number; diff: number; pf?: number; t
 export function rankByDiff<S extends RankRow>(rows: S[], done: Match[], h2h = true): S[] {
   // 'diff_only' (printed plan): points scored is the third criterion, before the coin toss
   const pf = (r: S) => (h2h ? 0 : r.pf ?? 0)
-  const sorted = rows.slice().sort((a, z) => z.won - a.won || z.diff - a.diff || pf(z) - pf(a))
+  // fully level teams: always the same order on every screen (by name) until the organiser settles it
+  const sorted = rows.slice().sort((a, z) => z.won - a.won || z.diff - a.diff || pf(z) - pf(a)
+    || String(a.team.name ?? '').localeCompare(String(z.team.name ?? '')) || String(a.team.id).localeCompare(String(z.team.id)))
   const out: S[] = []
   let tieNo = 0
   for (let i = 0; i < sorted.length;) {
@@ -391,6 +405,13 @@ export function rankByDiff<S extends RankRow>(rows: S[], done: Match[], h2h = tr
 }
 
 /** One word for the group stage everywhere: "Group A · Leg 1" / "Round Robin" -> "Group A · Round robin". */
+/** The group a round-robin game belongs to, from its teams (the stored label can be stale after games were swapped). */
+export function groupRound(b: Bundle, m: Match): string {
+  if (m.bracket_key != null || m.tie_stage || m.tie_id) return roundName(m.round)
+  const pa = b.teams.find(t => t.id === m.team_a_id)?.pool, pb = b.teams.find(t => t.id === m.team_b_id)?.pool
+  if (pa && pa === pb && pa !== '—' && /^group\s/i.test(m.round ?? '')) return `Group ${pa} · Round robin`
+  return roundName(m.round)
+}
 export const roundName = (r?: string | null): string => (r ?? '').replace(/\bleg\s*\d+/i, 'Round robin').replace(/round\s*robin/i, 'Round robin')
 
 /** Status for a court card header: "ROUND ROBIN", "QF 2", "SF 1",

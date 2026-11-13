@@ -18,15 +18,40 @@ import { slotRows, slotTime, clockOfCode, type SlotRow } from '../lib/timetable'
 import MapButton, { CourtTag } from './CourtMap'
 import { gameTitle, koSlotLabel, provisionalTeam, slotStage, stageName } from '../lib/pool'
 
+const FULL_EVERY_MS = 60000
 export function useOthers(codes: string[], everyMs = 30000) {
   const [got, setGot] = useState<Record<string, Bundle | null>>({})
   useEffect(() => {
     let alive = true
-    const load = () => Promise.all(codes.map(c => api.refresh(c, { light: true }).then(b => [c, b] as const, () => [c, null] as const)))
-      .then(rows => { if (alive) setGot(Object.fromEntries(rows)) })
-    load()
-    const id = setInterval(load, everyMs)
-    return () => { alive = false; clearInterval(id) }
+    // 300 phones follow these codes all day, so a poll is as small as it can be: scores only
+    // (one request per code); teams, rules and announcements are re-read once a minute.
+    // A phone that is locked or on another tab does not poll at all.
+    const have: Record<string, Bundle | null> = {}
+    let lastFull = 0, busy = false
+    const load = async (force = false) => {
+      if (busy) return
+      if (!force && typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      busy = true
+      try {
+        const full = force || Date.now() - lastFull >= FULL_EVERY_MS
+        if (full) lastFull = Date.now()
+        const rows = await Promise.all(codes.map(async c => {
+          const prev = have[c]
+          try {
+            const b = (!full && prev ? await api.refreshScores(prev) : null) ?? await api.refresh(c, { light: true })
+            return [c, b] as const
+          } catch { return [c, prev ?? null] as const }      // a failed poll keeps what is on screen
+        }))
+        for (const [c, b] of rows) have[c] = b
+        if (alive) setGot(Object.fromEntries(rows))
+      } finally { busy = false }
+    }
+    void load(true)
+    const id = setInterval(() => { void load() }, everyMs)
+    const onWake = () => { if (document.visibilityState === 'visible') void load(true) }
+    document.addEventListener('visibilitychange', onWake)
+    window.addEventListener('online', onWake)
+    return () => { alive = false; clearInterval(id); document.removeEventListener('visibilitychange', onWake); window.removeEventListener('online', onWake) }
   }, [codes.join(',')])
   return got
 }
@@ -89,6 +114,11 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
     || [m.team_a_id, m.team_b_id].some(id => { const t = b.teams.find(x => x.id === id); return !!t && teamChurch(t).toLowerCase() === mine.toLowerCase() })
   type M = Bundle['matches'][number]
   /** name | score (or vs) | name: score keeps its place, each name is centred in its half */
+  // a pair of players: one player per line, so a name is never broken in the middle ("David" / "S")
+  const lines = (s: string) => {
+    const parts = s.split(/\s+\/\s+|\s*\|\s*/).filter(Boolean)
+    return parts.length === 2 ? <>{parts.map((x, i) => <span key={i} className="block truncate">{x}</span>)}</> : s
+  }
   const Pair = ({ b, m, score }: { b: Bundle; m: M; score?: boolean }) => {
     const ev = b.events.find(e => e.id === m.event_id)
     const side = (s: 'a' | 'b') => {
@@ -103,11 +133,11 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
     }
     return (
       <div className={`grid grid-cols-[minmax(0,1fr)_1.5rem_3.5rem_1.5rem_minmax(0,1fr)] items-center gap-1 py-0.5 text-sm ${score ? '' : 'text-[13px]'}`}>
-        <span className={cls('a') + ' !text-right'}><TeamLink b={b} id={m.team_a_id}>{side('a')}</TeamLink></span>
+        <span className={cls('a') + ' !text-right'}><TeamLink b={b} id={m.team_a_id}>{lines(side('a'))}</TeamLink></span>
         <span className="flex h-6 w-6 items-center justify-center">{m.team_a_id && <Emblem logo={teamLogo(b, m.team_a_id)} flagName={teamSideName(b, m.team_a_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
         {score ? <span className="tabular text-center font-display font-bold">{m.score_a}–{m.score_b}</span> : <span className="text-center text-xs text-fg-subtle">vs</span>}
         <span className="flex h-6 w-6 items-center justify-center">{m.team_b_id && <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="h-6 w-6 shrink-0 rounded-[3px]" />}</span>
-        <span className={cls('b') + ' !text-left'}><TeamLink b={b} id={m.team_b_id}>{side('b')}</TeamLink></span>
+        <span className={cls('b') + ' !text-left'}><TeamLink b={b} id={m.team_b_id}>{lines(side('b'))}</TeamLink></span>
       </div>
     )
   }

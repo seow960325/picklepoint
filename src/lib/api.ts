@@ -162,6 +162,43 @@ export async function refresh(code: string, opts?: { light?: boolean }): Promise
   return joinLight(code, { full: !opts?.light })
 }
 
+/** Scores only, for screens that follow several codes by polling (the YC26 / MC26 front page):
+ *  one small request per code instead of four, with just the columns that change during play.
+ *  Returns null when the games no longer match what the screen holds (schedule rebuilt, new
+ *  knockout rows): the caller then does a normal refresh. Teams, logos, rules and
+ *  announcements are NOT re-read here. */
+const SCORE_COLS = 'id,court_id,home_court,sequence,slot,team_a_id,team_b_id,score_a,score_b,a_on_left,sides_switched,status,winner_id,started_at,finished_at,duration_seconds,alert_at,alert_note,last_scorer'
+export async function refreshScores(prev: Bundle): Promise<Bundle | null> {
+  if (IS_DEMO) return null
+  const ids = prev.events.map(e => e.id)
+  if (!ids.length) return null
+  const t0 = Date.now()
+  // finished games no longer change, so only the games still to play come down ...
+  const { data, error } = await sb!.from('matches').select(SCORE_COLS).in('event_id', ids).neq('status', 'finished')
+  if (error || !data) return null
+  const rows = data as any[]
+  const by = new Map(rows.map(r => [r.id, r]))
+  const mine = new Set(prev.matches.map(m => m.id))
+  if (rows.some(r => !mine.has(r.id))) return null                       // a game this screen does not know
+  // ... plus the ones that have just finished (they dropped out of the list above)
+  const closed = prev.matches.filter(m => m.status !== 'finished' && !by.has(m.id)).map(m => m.id)
+  if (closed.length) {
+    const fin = await sb!.from('matches').select(SCORE_COLS).in('id', closed)
+    if (fin.error || !fin.data || fin.data.length !== closed.length) return null
+    for (const r of fin.data as any[]) by.set(r.id, r)
+  }
+  const known = new Set(prev.teams.map(t => t.id))
+  const matches: Match[] = []
+  for (const m of prev.matches) {
+    const r = by.get(m.id)
+    if (!r) { matches.push(m); continue }                                 // finished before: unchanged
+    if ((r.team_a_id && !known.has(r.team_a_id)) || (r.team_b_id && !known.has(r.team_b_id))) return null
+    matches.push({ ...m, ...r })
+  }
+  matches.sort((x, y) => x.sequence - y.sequence)
+  return { ...prev, matches, fetched_at: t0 }
+}
+
 export type LiveStatus = 'live' | 'down'
 export type RowChange = { type: 'INSERT' | 'UPDATE' | 'DELETE'; row: any; oldId?: string }
 
@@ -570,6 +607,16 @@ export async function adminSetFinalRules(
   await rpc('admin_set_final_rules', { p_token: token, p_target: r.target_score, p_win_by: r.win_by, p_cap: r.cap, p_best_of: r.best_of })
 }
 
+/** Captain ball: the referee's court session creates the next knockout stage (migration 0062),
+ *  so it appears without the organiser's Settings page being open. Demo mode: Settings does it. */
+export async function courtAddTieStage(
+  token: string, eventId: string, stage: string,
+  games: Array<{ a: string; b: string; court: string; seq: number; game: string; set?: number | null; round?: string }>,
+): Promise<void> {
+  if (IS_DEMO) return
+  await rpc('court_add_tie_stage', { p_token: token, p_event_id: eventId, p_stage: stage, p_games: games })
+}
+
 export async function adminClearTieStage(token: string, eventId: string, stage: string): Promise<void> {
   if (IS_DEMO) throw new Error('Multi-sport needs the live database')
   await rpc('admin_clear_tie_stage', { p_token: token, p_event_id: eventId, p_stage: stage })
@@ -670,6 +717,12 @@ export async function adminSetResult(
   await rpc('admin_set_result', {
     p_token: token, p_match_id: matchId, p_score_a: a, p_score_b: b, p_winner: winner,
   })
+}
+
+/** Put a team into a knockout place by hand (auto draw wrong, team withdrawn). Needs migration 0061. */
+export async function adminSetKoSlot(token: string, matchId: string, slot: 'a' | 'b', teamId: string | null): Promise<void> {
+  if (IS_DEMO) return demo.setKoSlot(matchId, slot, teamId)
+  await rpc('admin_set_ko_slot', { p_token: token, p_match_id: matchId, p_slot: slot, p_team_id: teamId })
 }
 
 /** Public self-registration (MCMD/MCXD): no admin PIN. Needs migration 0028. */

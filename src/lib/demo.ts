@@ -624,22 +624,64 @@ export const demo = {
     const lose = winner === 'a' ? m.team_b_id : m.team_a_id
     if (m.bracket_key == null) {
       const ko = ms.filter(x => x.event_id === m.event_id && x.bracket_key != null)
-      if (ko.some(x => x.team_a_id != null)) {
-        if (ko.some(x => x.score_a > 0 || x.score_b > 0)) throw new Error('BRACKET_IN_PLAY')
+      // migration 0061: knockout already being played = keep it, only the tables change
+      if (ko.some(x => x.team_a_id != null) && !ko.some(x => x.score_a > 0 || x.score_b > 0 || x.status === 'awaiting_confirm' || x.status === 'finished')) {
         for (const k of ko) {
           k.team_a_id = null; k.team_b_id = null; k.court_id = null; k.winner_id = null
           k.score_a = 0; k.score_b = 0; k.status = 'scheduled'; k.started_at = null; k.finished_at = null; k.duration_seconds = null
         }
+        const ev = s.bundle.events.find(e => e.id === m.event_id)
+        if (ev) ev.bracket_seeded_at = null
       }
-    } else {
+    } else if (win !== m.winner_id) {
       const next = ms.filter(x => x.id === m.next_match_id || x.id === m.loser_match_id)
-      if (next.some(n => n.status !== 'scheduled' || n.score_a > 0 || n.score_b > 0)) throw new Error('NEXT_STARTED')
+      // migration 0061: a next game waiting on its court at 0-0 has not started
+      if (next.some(n => n.status === 'awaiting_confirm' || n.status === 'finished' || n.score_a > 0 || n.score_b > 0)) throw new Error('NEXT_STARTED')
       const nm = ms.find(x => x.id === m.next_match_id)
       if (nm) { if (m.next_slot === 'a') nm.team_a_id = win; else nm.team_b_id = win }
       const lm = ms.find(x => x.id === m.loser_match_id)
       if (lm && lose) { if (m.loser_slot === 'a') lm.team_a_id = lose; else lm.team_b_id = lose }
     }
     m.score_a = a; m.score_b = b; m.winner_id = win
+    save(s)
+  },
+
+  /** admin_set_ko_slot twin (migration 0061): a team into a knockout place by hand */
+  setKoSlot(matchId: string, slot: 'a' | 'b', teamId: string | null) {
+    const s = load()
+    const ms = s.bundle.matches
+    const m = ms.find(x => x.id === matchId)
+    if (!m) throw new Error('NO_MATCH')
+    if (m.bracket_key == null) throw new Error('NOT_KNOCKOUT')
+    const started = (x: Match) => x.status === 'awaiting_confirm' || x.status === 'finished' || x.score_a > 0 || x.score_b > 0
+    if (started(m)) throw new Error('GAME_STARTED')
+    if (teamId && !s.bundle.teams.some(t => t.id === teamId && t.event_id === m.event_id)) throw new Error('BAD_TEAM')
+    const old = slot === 'a' ? m.team_a_id : m.team_b_id
+    if (teamId === old) return
+    if (teamId && teamId === (slot === 'a' ? m.team_b_id : m.team_a_id)) throw new Error('SAME_TEAM_TWICE')
+    const park = (x: Match) => { x.status = 'scheduled'; x.court_id = null }
+    if (teamId) {
+      const o = ms.find(x => x.event_id === m.event_id && x.bracket_key != null && x.id !== m.id && x.round === m.round
+        && (x.team_a_id === teamId || x.team_b_id === teamId))
+      if (o) {
+        if (started(o)) throw new Error('OTHER_GAME_STARTED')
+        if (o.team_a_id === teamId) o.team_a_id = old; else o.team_b_id = old
+        if (!old) park(o)
+      }
+    }
+    if (slot === 'a') m.team_a_id = teamId; else m.team_b_id = teamId
+    if (!teamId) park(m)
+    const ev = s.bundle.events.find(e => e.id === m.event_id)
+    if (ev && !ev.bracket_seeded_at) ev.bracket_seeded_at = new Date().toISOString()
+    // both teams known and not on a court yet: its planned court, live when that court is free
+    for (const x of [m, ...ms.filter(y => y.event_id === m.event_id && y.bracket_key != null && y.id !== m.id)]) {
+      if (x.status !== 'scheduled' || x.court_id != null || !x.team_a_id || !x.team_b_id) continue
+      const no = ev?.ko_court_plan?.[x.bracket_key ?? '']
+      const court = s.bundle.courts.find(c => c.number === no) ?? s.bundle.courts[0]
+      if (!court) continue
+      x.court_id = court.id
+      if (!ms.some(y => y.id !== x.id && y.court_id === court.id && (y.status === 'live' || y.status === 'awaiting_confirm'))) x.status = 'live'
+    }
     save(s)
   },
 

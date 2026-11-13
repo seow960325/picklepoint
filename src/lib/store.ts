@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Bundle, EventCfg, Match, Team } from './types'
 import type { DuelTally } from './draw'
 import * as api from './api'
-import { rankByDiff, isDiffTiebreak } from './pool'
+import { rankByDiff, isDiffTiebreak, koOrder } from './pool'
 import { applyPreviewStage, usePreviewStage } from './previewStage'
 
 const CODE_KEY = 'pp.code'
@@ -322,6 +322,10 @@ export function bracketRounds(b: Bundle, eventId: string): BracketRound[] {
   const ko = b.matches
     .filter(m => m.event_id === eventId && isKoMatch(m))
     .sort((x, y) => x.sequence - y.sequence)
+  // inside a round: bracket order (QF1 = KO-8-0 ...), whatever the play order
+  const firstSeq = new Map<string, number>()
+  for (const m of ko) { const r = m.round ?? 'Knockout'; if (!firstSeq.has(r)) firstSeq.set(r, m.sequence) }
+  ko.sort((x, y) => (firstSeq.get(x.round ?? 'Knockout')! - firstSeq.get(y.round ?? 'Knockout')!) || koOrder(x, y))
   const order: string[] = []
   const byRound = new Map<string, Match[]>()
   for (const m of ko) {

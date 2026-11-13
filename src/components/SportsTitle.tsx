@@ -6,6 +6,7 @@
  *  - shuttlecock: flies in from outside, cork first, over the words and out the other side, again and again,
  *    from the left, then the right. It is the only one that overlaps another ball.
  *  Without animation support (or with reduced motion) it is just the plain title. */
+import { useFitWords } from '../lib/useFitWords'
 import { useLayoutEffect, useRef } from 'react'
 import { SportIcon } from './SportIcon'
 import type { Sport } from '../lib/multisport'
@@ -20,6 +21,7 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
   const shT = useRef<HTMLSpanElement>(null)                                                                             // shuttlecock
   const hasPb = sports.includes('pickleball'), hasCb = sports.includes('captainball'), hasSh = sports.includes('badminton')
 
+  useFitWords(wrap, text)
   useLayoutEffect(() => {
     const w = wrap.current
     if (!w || typeof w.animate !== 'function') return

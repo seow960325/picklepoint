@@ -50,6 +50,8 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
   // huge = one category on the whole TV: much larger type, rows stretch to the card's height
   // TV (big / huge): photo logo large, one-line names in a lighter weight, no P column
   const tv = big || huge
+  // wins, then +/-, then points scored (printed-plan events): show the third number too
+  const showPf = !tv && b.events.find(e => e.id === rows[0]?.team.event_id)?.tiebreak === 'diff_only'
   const pins = usePinned()
   const [open, setOpen] = useState<string | null>(null)
   // every team gets the same fixed row (logo height + a little air), never stretched
@@ -80,6 +82,7 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
           <th className={`${wN} px-1 py-1 text-right`}>W</th>
           <th className={`${wN} px-1 py-1 text-right`}>L</th>
           <th className={`${tv ? 'w-14' : 'w-11'} px-2 py-1 text-right`} title="Point difference: points won minus points lost">+/-</th>
+          {showPf && <th className="w-9 px-1 py-1 text-right" title="Points scored">Pts</th>}
         </tr>
       </thead>
       <tbody className="divide-y divide-line">
@@ -108,6 +111,7 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
               <td className={`tabular px-2 ${cell} text-right ${r.diff > 0 ? 'text-brand-ink' : r.diff < 0 ? 'text-red-400' : 'text-fg-muted'}`}>
                 {r.diff > 0 ? `+${r.diff}` : r.diff}
               </td>
+              {showPf && <td className={`tabular px-1 ${cell} text-right text-fg-muted`}>{r.pf}</td>}
             </tr>
           )
         })}
@@ -130,6 +134,7 @@ export function TeamGames({ b, id, onClose }: { b: Bundle; id: string; onClose: 
   const grp = played.filter(g => g.m.bracket_key == null)
   const pf = grp.reduce((t, g) => t + g.us, 0), pa = grp.reduce((t, g) => t + g.them, 0)
   const sign = (n: number) => n > 0 ? `+${n}` : String(n)
+  const diffOnly = b.events.find(e => e.id === b.teams.find(t => t.id === id)?.event_id)?.tiebreak === 'diff_only'
   const tone = (n: number) => n > 0 ? 'text-brand-ink' : n < 0 ? 'text-red-400' : 'text-fg-muted'
   const head = 'px-1 pb-1 pt-3 text-[10px] font-bold uppercase tracking-wider text-fg-subtle'
   const cols = 'grid grid-cols-[minmax(0,1fr)_6.5rem_2.75rem] items-center gap-2 px-1'
@@ -169,6 +174,11 @@ export function TeamGames({ b, id, onClose }: { b: Bundle; id: string; onClose: 
                   <div className={`tabular text-right font-display text-base font-bold ${tone(pf - pa)}`}>{sign(pf - pa)}</div>
                 </div>
               )}
+              {grp.length > 0 && (
+                <div className="px-1 py-2 text-[11px] leading-snug text-fg-subtle">
+                  +/- = points won minus points lost in the group games: {pf} − {pa} = {sign(pf - pa)}.{diffOnly ? ` Ranking: wins, then +/-, then points scored (${pf}).` : ''}
+                </div>
+              )}
             </div>
           )}
           {coming.length > 0 && (
@@ -179,7 +189,7 @@ export function TeamGames({ b, id, onClose }: { b: Bundle; id: string; onClose: 
                   const o = side(m).opp, t = plannedTime(b, m), c = plannedCourt(b, m)
                   const live = m.status === 'live' || m.status === 'awaiting_confirm'
                   return (
-                    <div key={m.id} className="grid grid-cols-[minmax(0,1fr)_6.5rem] items-center gap-2 px-1 py-2">
+                    <div key={m.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-1 py-2">
                       <div className="min-w-0">
                         <div className="flex min-w-0 items-baseline gap-1.5 text-sm">
                           <span className="inline-block w-3 shrink-0 text-center text-xs font-bold text-fg-subtle">vs</span>
@@ -187,8 +197,8 @@ export function TeamGames({ b, id, onClose }: { b: Bundle; id: string; onClose: 
                         </div>
                         <div className="pl-[1.125rem] text-[10px] text-fg-subtle">{stageName(b, m)}</div>
                       </div>
-                      <div className="tabular text-center text-xs font-bold text-fg-muted">
-                        {live ? <span className="text-emerald-400">LIVE {m.score_a}–{m.score_b}</span> : <>{t || ''}{t && c != null ? ' · ' : ''}{c != null ? `Ct ${c}` : ''}{!t && c == null ? '—' : ''}</>}
+                      <div className="tabular whitespace-nowrap text-right text-xs font-bold text-fg-muted">
+                        {live ? <span className="text-emerald-400">LIVE {m.score_a}–{m.score_b}</span> : <>{t || ''}{t && c != null ? ' · ' : ''}{c != null ? `Court ${c}` : ''}{!t && c == null ? '—' : ''}</>}
                       </div>
                     </div>
                   )

@@ -7,7 +7,7 @@ import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { Bundle, EventCfg, Match } from '../lib/types'
 import { groupStandings, groupStageComplete, bracketSeeded, teamName, teamLogo, teamSideName, type Standing } from '../lib/store'
-import { koPlanOf, planDraw } from '../lib/koplan'
+import { koPlanOf, planDraw, slotName, cutReasons } from '../lib/koplan'
 import { gameTitle } from '../lib/pool'
 import { courtLabel } from '../lib/teamstatus'
 import { hubOf, parentHub } from '../lib/hub'
@@ -152,11 +152,12 @@ function RaceTable({ b, title, note, rows, cut, level, label, settled }: {
         <thead className="text-[10px] uppercase tracking-wider text-fg-subtle">
           <tr>
             <th className="w-9 px-1 py-1 text-left">#</th>
-            <th className="w-12 px-1 py-1 text-left">Group</th>
+            <th className="w-7 px-0.5 py-1 text-center" title="Group">Grp</th>
             <th className="px-1 py-1 text-left">Team</th>
-            <th className="w-7 px-1 py-1 text-right">P</th>
-            <th className="w-7 px-1 py-1 text-right">W</th>
-            <th className="w-11 px-2 py-1 text-right">+/-</th>
+            <th className="w-6 px-0.5 py-1 text-right" title="Games played">P</th>
+            <th className="w-6 px-0.5 py-1 text-right" title="Wins">W</th>
+            <th className="w-10 px-1 py-1 text-right" title="Point difference: points won minus points lost">+/-</th>
+            <th className="w-9 px-1 py-1 text-right" title="Points scored">Pts</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
@@ -164,9 +165,9 @@ function RaceTable({ b, title, note, rows, cut, level, label, settled }: {
             const q = i < cut
             const tied = settled && ((level[i] && i + 1 < rows.length) || (i > 0 && level[i - 1]))
             return (
-              <tr key={r.team.id} className={`${q ? 'bg-brand/[0.08]' : ''} ${pins.has(r.team.id) ? 'outline outline-2 -outline-offset-2 outline-gold/70' : ''} ${i === cut - 1 && i < rows.length - 1 ? 'border-b-2 border-dashed !border-line-strong' : ''}`}>
+              <tr key={r.team.id} className={`${q ? 'bg-brand/[0.08]' : ''} ${pins.has(r.team.id) ? 'outline outline-2 -outline-offset-2 outline-gold/70' : ''} ${i === cut && cut > 0 ? '!border-t-2 border-dashed !border-line-strong' : ''}`}>
                 <td className={`px-1 py-2 align-middle text-xs font-bold ${q ? 'text-brand-ink' : 'text-fg-subtle'}`}>{label}{i + 1}</td>
-                <td className="px-1 py-2 align-middle text-xs text-fg-muted">{r.team.pool}</td>
+                <td className="px-0.5 py-2 text-center align-middle text-xs text-fg-muted">{r.team.pool}</td>
                 <td className="px-1 py-2 align-middle">
                   <span className="flex min-w-0 items-center gap-1.5">
                     {(teamLogo(b, r.team.id) || hasFlag(teamSideName(b, r.team.id))) && <Emblem logo={teamLogo(b, r.team.id)} flagName={teamSideName(b, r.team.id)} className="h-6 w-7 shrink-0 rounded-[2px] object-contain" />}
@@ -174,9 +175,10 @@ function RaceTable({ b, title, note, rows, cut, level, label, settled }: {
                     {tied && <span className="shrink-0 rounded bg-gold/20 px-1 text-[9px] font-bold uppercase leading-4 text-gold">coin toss</span>}
                   </span>
                 </td>
-                <td className="tabular px-1 py-2 align-middle text-right text-fg-muted">{r.played}</td>
-                <td className="tabular px-1 py-2 align-middle text-right font-bold">{r.won}</td>
-                <td className={`tabular px-2 py-2 align-middle text-right ${r.diff > 0 ? 'text-brand-ink' : r.diff < 0 ? 'text-red-400' : 'text-fg-muted'}`}>{r.diff > 0 ? `+${r.diff}` : r.diff}</td>
+                <td className="tabular px-0.5 py-2 align-middle text-right text-fg-muted">{r.played}</td>
+                <td className="tabular px-0.5 py-2 align-middle text-right font-bold">{r.won}</td>
+                <td className={`tabular px-1 py-2 align-middle text-right ${r.diff > 0 ? 'text-brand-ink' : r.diff < 0 ? 'text-red-400' : 'text-fg-muted'}`}>{r.diff > 0 ? `+${r.diff}` : r.diff}</td>
+                <td className="tabular px-1 py-2 align-middle text-right text-fg-muted">{r.pf}</td>
               </tr>
             )
           })}
@@ -195,7 +197,10 @@ export function HubStandings({ b, ev, fallback }: { b: Bundle; ev: EventCfg | un
   const nW = pd.winners.ranked.length
   const complete = groupStageComplete(b, ev.id)
   const seeded = bracketSeeded(b, ev.id)
-  const state = seeded ? 'Final — the quarter-finals are drawn.' : complete ? 'Groups finished — waiting for the organiser to confirm the draw.' : 'So far — changes after every game.'
+  const state = seeded ? 'Final: the quarter-finals are drawn.' : complete ? 'Groups finished: the quarter-finals appear in a moment.' : 'So far, it changes after every game.'
+  const run = pd.runners.ranked as unknown as Standing[]
+  const why = cutReasons(run, nR)
+  const qf = (complete ? pd.tokens : plan.pairs).map(([x, y], i) => ({ n: i + 1, a: slotName(x), b: slotName(y), moved: plan.pairs[i][0] !== x || plan.pairs[i][1] !== y }))
   return (
     <div className="space-y-5 p-3 lg:p-5">
       <section>
@@ -205,11 +210,31 @@ export function HubStandings({ b, ev, fallback }: { b: Bundle; ev: EventCfg | un
           Ranked by wins, then point difference (points won minus points lost), then points scored. Still level: coin toss. {state}
         </div>
         <FillGrid max={2} className="gap-3">
-          <RaceTable b={b} title="Group winners" note="All go through. The order decides who they meet."
+          <RaceTable b={b} title="Group winners" note="All go through, each to its own quarter-final."
             rows={pd.winners.ranked as any} cut={nW} level={pd.winners.level} label="W" settled={complete} />
-          <RaceTable b={b} title="Runners-up" note={`Only the best ${nR} go through.`}
-            rows={pd.runners.ranked as any} cut={nR} level={pd.runners.level} label="R" settled={complete} />
+          <div>
+            <RaceTable b={b} title="Runners-up" note={`Only the best ${nR} go through (R1 to R${nR}).`}
+              rows={pd.runners.ranked as any} cut={nR} level={pd.runners.level} label="R" settled={complete} />
+            {why.length > 0 && (
+              <div className="mt-2 rounded-xl border border-line bg-surface px-3 py-2 text-xs leading-relaxed text-fg-muted">
+                <div className="mb-0.5 font-semibold text-fg">{complete ? 'Why this order' : 'Why this order (so far)'}</div>
+                {why.map((w, i) => <div key={i}>{w}</div>)}
+              </div>
+            )}
+          </div>
         </FillGrid>
+        <div className="mt-3 rounded-xl border border-line bg-surface px-3 py-2 text-xs text-fg-muted">
+          <div className="mb-1 font-semibold text-fg">Quarter-finals</div>
+          {qf.map(x => (
+            <div key={x.n} className="grid grid-cols-[2.4rem_minmax(0,1fr)] gap-x-2 py-0.5">
+              <span className="font-bold text-fg">QF{x.n}</span>
+              <span>{x.a} v {x.b}{x.moved ? ' (moved)' : ''}</span>
+            </div>
+          ))}
+          {complete && pd.swapped && <div className="mt-1 text-gold">Runners-up changed places so that no team meets the winner of its own group again in the quarter-finals.</div>}
+          {!complete && <div className="mt-1">If a best runner-up would meet the winner of its own group, the runners-up change places.</div>}
+          <div className="mt-1">Tap a team name to see every game it played and check its +/-.</div>
+        </div>
       </section>
       <section>
         <H>Groups</H>

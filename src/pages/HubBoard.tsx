@@ -66,9 +66,12 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
             {hub.logo && hub.logoRight && <EventLogo src={hub.logo} className="h-12 w-12 lg:h-14 lg:w-14" />}
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
-            {hub.map && <MapButton src={hub.map} className="lg:h-10 lg:text-sm" />}
-            <Link to={`/c/${hub.code}/referee`} className="flex h-8 items-center rounded-lg border border-line px-3 text-xs text-fg-muted lg:h-10 lg:text-sm">Referee</Link>
-            <FullscreenButton className="grid h-8 w-8 place-items-center rounded-lg border border-line p-1.5 text-fg-muted lg:h-10 lg:w-10" />
+            {/* phone: Map above Referee, so the event name keeps its room; full screen is for big screens */}
+            <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:items-center sm:gap-1.5">
+              {hub.map && <MapButton src={hub.map} className="justify-center lg:h-10 lg:text-sm" />}
+              <Link to={`/c/${hub.code}/referee`} className="flex h-8 items-center justify-center rounded-lg border border-line px-3 text-xs text-fg-muted lg:h-10 lg:text-sm">Referee</Link>
+            </div>
+            <FullscreenButton className="hidden h-8 w-8 place-items-center rounded-lg border border-line p-1.5 text-fg-muted sm:grid lg:h-10 lg:w-10" />
             <ThemeToggle />
           </div>
         </div>

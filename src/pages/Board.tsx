@@ -35,7 +35,7 @@ import PhoneBracket, { Join } from '../components/PhoneBracket'
 import type { Flow, FlowGame, FlowSlot } from '../lib/flow'
 import { useAutoHide } from '../lib/useAutoHide'
 import { plannedTime } from '../lib/timetable'
-import { roundName, isPoolDispatch, isDiffTiebreak, koSlotLabel, stageLabel, courtChoices } from '../lib/pool'
+import { roundName, groupRound, isPoolDispatch, isDiffTiebreak, koSlotLabel, stageLabel, courtChoices } from '../lib/pool'
 
 type Tab = 'live' | 'standings' | 'bracket' | 'matches' | 'knockout'
 
@@ -1048,7 +1048,7 @@ function Schedule({ b }: { b: Bundle }) {
                 </span>
               </span>
             </div>
-            <div className="mt-1 text-[11px] tracking-wide text-fg-subtle">{roundName((m.round ?? '').replace(/pod/i, 'Court'))} · #{m.sequence}{m.game_label ? ` · ${m.game_label}` : ''}</div>
+            <div className="mt-1 text-[11px] tracking-wide text-fg-subtle">{groupRound(b, { ...m, round: (m.round ?? '').replace(/pod/i, 'Court') })} · #{m.sequence}{m.game_label ? ` · ${m.game_label}` : ''}</div>
           </div>
           {m.status === 'live'
             ? <Pill tone="live">live</Pill>
@@ -2292,7 +2292,7 @@ function Results({ b, code }: { b: Bundle; code: string }) {
               <div className={`truncate text-sm ${!aWon ? 'font-bold text-fg' : 'text-fg-muted'}`}>
                 <Emblem logo={teamLogo(b, m.team_b_id)} flagName={teamSideName(b, m.team_b_id)} className="mr-1 inline-block h-3.5 w-auto shrink-0 rounded-[1px] align-[-2px]" />{teamName(b, m.team_b_id)}
               </div>
-              <div className="text-[11px] text-fg-subtle">Match #{m.sequence}{m.round ? ` · ${roundName(m.round)}` : ''}</div>
+              <div className="text-[11px] text-fg-subtle">Match #{m.sequence}{m.round ? ` · ${groupRound(b, m)}` : ''}</div>
             </div>
             <div className="tabular text-right font-display text-2xl font-bold leading-tight">
               <div className={aWon ? 'text-brand-ink' : 'text-fg-muted'}>{m.score_a}</div>
