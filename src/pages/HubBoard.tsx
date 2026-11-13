@@ -62,7 +62,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>
             </Link>
             {/* event logo left of the name, as tall as the header block */}
-            {hub.logo && <EventLogo src={hub.logo} className="h-[3.75rem] w-[3.25rem] lg:h-20 lg:w-[4.5rem]" />}
+            {hub.logo && <EventLogo src={hub.logo} still={hub.cats.some(c => c.sport === 'badminton')} className="h-[3.75rem] w-[3.25rem] lg:h-20 lg:w-[4.5rem]" />}
             <div className="min-w-0">
               {(() => {
                 const title = hubTitle(hub, hub.cats.map(c => bundleOf(c.code)?.competition.name))

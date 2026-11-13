@@ -3,8 +3,8 @@
  *    from word to word a few times, then is thrown out of the box (and later comes back from the other side);
  *  - pickleball: like MC26, hops about the words at random, bounces and settles, then bounces away;
  *    it takes turns with the captain ball;
- *  - shuttlecock: flies in from outside, cork first, over the words and out the other side, again and again,
- *    from the left, then the right. It is the only one that overlaps another ball.
+ *  - shuttlecock: a rally with the event cross: flies in from the right, cork first, hits the cross
+ *    (the cross shines, and fades as it flies off), is played back from the end of the title, hits again.
  *  Without animation support (or with reduced motion) it is just the plain title. */
 import { useFitWords } from '../lib/useFitWords'
 import { useLayoutEffect, useRef } from 'react'
@@ -154,37 +154,81 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
       if (!dead) await exitArc(pb, Math.random() < 0.5)
     }
 
-    // ---------------------------------------------------------------- shuttlecock: cork first, over the words, out the other side
+    // ---------------------------------------------------------------- shuttlecock: a rally with the cross
+    // It flies in from the right, cork first, and hits the cross (left of the title): the cross lights
+    // up at the hit and the light fades as the shuttle flies away; at the far end it is played back,
+    // hits the cross again and shines again. After a few hits it flies out and later comes back.
     const shuttle = async () => {
       const el = shT.current
       if (!el) return
-      let ltr = Math.random() < 0.5
       el.style.opacity = '0'
-      while (!dead) {
-        await wait(rnd(900, 2600))
-        if (dead) return
-        if (document.hidden) continue
-        const b = w.getBoundingClientRect()
-        const d = el.offsetWidth
-        const lows = seen.map(s => spot(s, d, 0.5).top)
-        const ground = Math.min(...lows)                                   // top edge of the words
-        const x0 = ltr ? -d * 2 : b.width + d * 2, x1 = ltr ? b.width + d * 2 : -d * 2
-        const yHit = ground - d * rnd(0.2, 0.6), yEnd = ground + d * rnd(0.1, 0.5), lift = d * rnd(0.15, 0.35)   // just above the words
-        const N = 48, kf: Keyframe[] = []
-        const P = (t: number): Pt => ({ x: x0 + (x1 - x0) * t, y: yHit + (yEnd - yHit) * t * t - lift * 4 * t * (1 - t) })
+      type Leg = { from: Pt; to: Pt; ms: number; lift: number }
+      /** one flight, cork leading (the picture's "down" points along the flight) */
+      const fly = async ({ from, to, ms, lift }: Leg, d: number) => {
+        const N = 40, kf: Keyframe[] = []
+        const P = (t: number): Pt => ({ x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t - lift * 4 * t * (1 - t) })
         for (let i = 0; i <= N; i++) {
           const t = i / N, p = P(t), q = P(Math.min(1, t + 0.02)), r = P(Math.max(0, t - 0.02))
-          const dx = q.x - r.x, dy = q.y - r.y
-          // the cork (bottom of the picture) leads: turn the picture so its "down" points along the flight
-          const ang = Math.atan2(dy, dx) * 180 / Math.PI - 90
-          kf.push({ transform: `translate(${p.x - d / 2}px, ${p.y}px) rotate(${ang}deg)`, offset: t })
+          const ang = Math.atan2(q.y - r.y, q.x - r.x) * 180 / Math.PI - 90
+          kf.push({ transform: `translate(${p.x - d / 2}px, ${p.y - d / 2}px) rotate(${ang}deg)`, offset: t })
         }
-        el.style.opacity = '1'
-        const a = track(el.animate(kf, { duration: rnd(1500, 2100), easing: 'cubic-bezier(.3,.1,.7,.9)', fill: 'forwards' }))
+        const a = track(el.animate(kf, { duration: ms, easing: 'cubic-bezier(.35,.15,.65,.95)', fill: 'forwards' }))
         await done(a)
+        return a
+      }
+      const shine = (logo: HTMLElement, ms: number) => {
+        const cross = logo.querySelector<HTMLElement>('[data-cross]'), star = logo.querySelector<HTMLElement>('[data-star]')
+        cross?.animate([
+          { filter: 'drop-shadow(0 0 5px #fff) drop-shadow(0 0 16px rgba(255,255,255,.95)) brightness(1.45)' },
+          { filter: 'drop-shadow(0 0 3px rgba(255,255,255,.7)) drop-shadow(0 0 8px rgba(255,255,255,.5)) brightness(1.15)', offset: 0.35 },
+          { filter: 'drop-shadow(0 0 0 rgba(255,255,255,0)) brightness(1)' }], { duration: ms, easing: 'ease-out' })
+        star?.animate([
+          { transform: 'translate(-50%,-50%) scale(0) rotate(0)', opacity: 0 },
+          { transform: 'translate(-50%,-50%) scale(1.15) rotate(30deg)', opacity: 1, offset: 0.12 },
+          { transform: 'translate(-50%,-50%) scale(0) rotate(90deg)', opacity: 0, offset: 0.6 },
+          { transform: 'translate(-50%,-50%) scale(0) rotate(90deg)', opacity: 0 }], { duration: ms, easing: 'ease-out' })
+        logo.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-2px)', offset: 0.2 }, { transform: 'translateX(1px)', offset: 0.5 }, { transform: 'translateX(0)' }], { duration: 260 })
+      }
+      let last = null as Animation | null
+      while (!dead) {
+        await wait(rnd(1200, 2800))
         if (dead) return
-        a.cancel(); el.style.opacity = '0'
-        ltr = !ltr                                                          // comes back from the other side
+        if (document.hidden) continue
+        const logo = document.querySelector<HTMLElement>('[data-event-logo]')
+        const b = w.getBoundingClientRect(), d = el.offsetWidth
+        const r = logo?.getBoundingClientRect()
+        if (!logo || !r || !r.width) return
+        const star = logo.querySelector<HTMLElement>('[data-star]')
+        const sx = parseFloat(star?.style.left ?? '50') / 100, sy = parseFloat(star?.style.top ?? '35') / 100
+        const hit: Pt = { x: r.left - b.left + r.width * sx + d * 0.35, y: r.top - b.top + r.height * sy }
+        const ground = Math.min(...seen.map(s => spot(s, d, 0.5).top))
+        const lastWord = seen[seen.length - 1].getBoundingClientRect()
+        const far: Pt = { x: Math.min(b.width - d * 0.6, lastWord.right - b.left + d * 0.4), y: ground - d * 0.2 }
+        const out: Pt = { x: b.width + d * 3, y: ground - d * 1.2 }
+        const span = Math.max(40, far.x - hit.x)
+        const legMs = () => Math.min(1500, 700 + span * 1.6) * rnd(0.9, 1.1)
+        el.style.opacity = '1'
+        // in from outside, straight at the cross
+        last?.cancel()
+        let ms = legMs()
+        last = await fly({ from: out, to: hit, ms: ms * 1.1, lift: d * rnd(0.6, 1) }, d)
+        for (let n = Math.round(rnd(3, 5)); n > 0 && !dead; n--) {
+          ms = legMs()
+          shine(logo, ms)                                                  // lit at the hit, gone as it leaves
+          last?.cancel()
+          last = await fly({ from: hit, to: far, ms, lift: d * rnd(0.8, 1.4) }, d)
+          if (dead) return
+          if (n === 1) break
+          last?.cancel()
+          last = await fly({ from: far, to: hit, ms: legMs(), lift: d * rnd(0.5, 1.1) }, d)
+          if (dead) return
+        }
+        if (dead) return
+        last?.cancel()
+        last = await fly({ from: far, to: out, ms: 700, lift: d * 0.6 }, d)   // out of play
+        if (dead) return
+        last?.cancel(); last = null
+        el.style.opacity = '0'
       }
     }
 
@@ -215,7 +259,9 @@ export default function SportsTitle({ text, className = '', sports }: { text: st
 
   const SZ = '.62em'
   return (
-    <div ref={wrap} className={`relative pt-[0.85em] ${className}`} style={{ overflowX: 'clip' }}>
+    // with the shuttle, the box reaches back over the event logo (left of the title) so the rally
+    // with the cross is not cut off; the words stay where they were
+    <div ref={wrap} className={`relative pt-[0.85em] ${hasSh ? '-ml-[4rem] pl-[4rem] lg:-ml-[5.5rem] lg:pl-[5.5rem]' : ''} ${className}`} style={{ overflowX: 'clip' }}>
       <div className="line-clamp-2">
         {text.split(/\s+/).filter(Boolean).map((word, i) => (
           <span key={i}><span data-w className="inline-block whitespace-nowrap">{word}</span>{' '}</span>
