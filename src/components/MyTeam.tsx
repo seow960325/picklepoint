@@ -45,7 +45,7 @@ function waiting(g: { live: boolean; time: string; m: { score_a: number; score_b
 }
 /** Time now (the colon blinks, so it reads as live) and, under it, a bar that drains toward this
  *  team's next planned game with the time left in it. All worked out on the phone: no database. */
-function NowAndNext({ next, day }: { next?: { time: string; live: boolean }; day?: string | null }) {
+function NowAndNext({ next, prev, day }: { next?: { time: string; live: boolean }; prev?: string; day?: string | null }) {
   const now = useNow()
   const at = next && !next.live ? dayAt(next.time, now, day) : null
   const secs = at ? Math.round((at.getTime() - now.getTime()) / 1000) : null
@@ -54,8 +54,10 @@ function NowAndNext({ next, day }: { next?: { time: string; live: boolean }; day
   const left = secs == null ? null : secs <= 0 ? 'NOW'
     : secs >= 86400 ? `${Math.floor(secs / 86400)}d ${two(Math.floor((secs % 86400) / 3600))}:${two(Math.floor((secs % 3600) / 60))}`
     : `${two(Math.floor(secs / 3600))}:${two(Math.floor((secs % 3600) / 60))}:${two(secs % 60)}`
-  // the bar is full an hour or more ahead and empties over the last hour
-  const pct = secs == null ? 0 : Math.max(0, Math.min(100, (secs / 3600) * 100))
+  // the bar drains from the team's previous game to the next one (first game of the day: over its last hour)
+  const from = prev ? dayAt(prev, now, day) : null
+  const span = at && from && at.getTime() > from.getTime() ? (at.getTime() - from.getTime()) / 1000 : 3600
+  const pct = secs == null ? 0 : Math.max(0, Math.min(100, (secs / span) * 100))
   const warn = secs != null && secs <= 600
   return (
     <span className="flex w-[7.6rem] shrink-0 flex-col items-stretch gap-1 rounded-lg border border-line bg-black/30 px-1.5 py-1">
@@ -163,7 +165,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                       <span className="min-w-0 break-words">{p.name.replace(/\s*\|\s*/g, ' / ')}{cat ? ` · ${cat.short}` : ''}</span>
                     </span>
                     <span className="flex shrink-0 items-start gap-2">
-                      {games.length > 0 && <NowAndNext next={games.find(g => !g.live && g.time)} day={day} />}
+                      {games.length > 0 && <NowAndNext next={games.find(g => !g.live && g.time)} prev={(games.find(g => g.live) ?? past[0])?.time} day={day} />}
                       <Emblem logo={b && id ? teamLogo(b, id) : null} flagName={b && id ? teamSideName(b, id) ?? p.name : p.name} className="h-9 w-9 shrink-0 rounded-[3px]" />
                     </span>
                   </span>
