@@ -1310,7 +1310,7 @@ function DangerKeyDialog({ onPass, onClose }: { onPass: () => void; onClose: () 
 
 /** Test run finished? Wipe every result and knockout line-up and play again; teams and settings stay. */
 function StartOver({ token, run, code }: any) {
-  const gated = groupsLocked(code)
+  const gated = true
   const [mode, setMode] = useState<null | 'one' | 'all'>(null)
   const [txt, setTxt] = useState('')
   const [dangerGate, setDangerGate] = useState<null | 'one' | 'all'>(null)
