@@ -56,9 +56,13 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
     <div className="min-h-screen bg-canvas text-fg">
       <div className="sticky top-0 z-40 border-b border-line bg-canvas px-4 pb-2 pt-3 lg:px-6" style={{ paddingTop: 'max(var(--pp-top), 0.75rem)' }}>
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <Link to="/" className="flex h-8 shrink-0 items-center rounded-lg border border-line px-2.5 text-sm text-fg-muted">←</Link>
-            {hub.logo && !hub.logoRight && <EventLogo src={hub.logo} className="h-12 w-12 lg:h-14 lg:w-14" />}
+          <div className="flex min-w-0 items-center gap-2.5 lg:gap-3.5">
+            <Link to="/" aria-label="Back to lobby"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-line bg-surface text-fg-muted active:bg-surface-2 lg:h-12 lg:w-12">
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>
+            </Link>
+            {/* event logo left of the name, as tall as the header block */}
+            {hub.logo && <EventLogo src={hub.logo} className="h-[3.75rem] w-[3.25rem] lg:h-20 lg:w-[4.5rem]" />}
             <div className="min-w-0">
               {(() => {
                 const title = hubTitle(hub, hub.cats.map(c => bundleOf(c.code)?.competition.name))
@@ -69,7 +73,6 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
                   : sports[0] === 'pickleball' ? <BounceTitle text={title} className={cls} /> : <div className={`line-clamp-2 ${cls}`}>{title}</div>
               })()}
             </div>
-            {hub.logo && hub.logoRight && <EventLogo src={hub.logo} className="h-12 w-12 lg:h-14 lg:w-14" />}
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {/* phone: Map above Referee, so the event name keeps its room; full screen is for big screens */}
