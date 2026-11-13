@@ -1467,13 +1467,19 @@ function PMatch({ b, m, medalOf }: { b: Bundle; m?: Match; medalOf?: (id: string
   const tier: Tier | null = tierOf ? tierOf(m.round) : null
   return (
     <div className="relative">
-      {live && !(tier === "compact" || tier === "std") && (
-        <div className="absolute right-0 top-0 z-10 -translate-y-[130%]">
+      {/* "live" sits inside the box (caption row), never above it: it used to overlap the game above */}
+      {live && !caption && !(tier === "compact" || tier === "std") && (
+        <div className="absolute right-1 top-1 z-10">
           <Pill tone="live"><span className="mr-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-current align-middle" />live</Pill>
         </div>
       )}
       <div className={`overflow-hidden rounded-md border ${live ? 'border-brand pp-live' : 'border-line'} bg-surface`}>
-        {caption && <div className="truncate border-b border-line/60 bg-surface-2/40 px-2 py-0.5 text-center text-[9px] font-bold uppercase tracking-[0.08em] text-fg-muted" title={caption}>{caption}</div>}
+        {caption && (
+          <div className="flex items-center gap-1.5 border-b border-line/60 bg-surface-2/40 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-fg-muted" title={caption}>
+            <span className="min-w-0 flex-1 truncate text-center">{caption}</span>
+            {live && <span className="flex shrink-0 items-center gap-1 text-[#34d399]"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />live</span>}
+          </div>
+        )}
         <PTeam b={b} teamId={idA} score={m.score_a} tier={tier} live={live} win={decided && m.winner_id === m.team_a_id} lose={decided && m.winner_id !== m.team_a_id} finished={decided} medal={medalOf?.(m.team_a_id) ?? null} placeholder={slot('a')} />
         <div className="h-px bg-line" />
         {bye
