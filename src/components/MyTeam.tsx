@@ -1,7 +1,7 @@
 /** "My team" bar on the front page: pin a team (kept on this phone, no login)
  *  and see at a glance whether it is on court, which court it plays on next
  *  and how many games are before it. */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Bundle } from '../lib/types'
 import type { Hub } from '../lib/hub'
 import { groupStandings, teamLogo, teamSideName } from '../lib/store'
@@ -14,6 +14,42 @@ import { isAlert, alertWord } from '../lib/alert'
 import { Emblem, PairName, ScoreWL, Clock } from './ui'
 import { Link } from 'react-router-dom'
 import { SportIcon } from './SportIcon'
+
+/** The phone's own clock (no database at all): ticks every 15 s. */
+function useNow() {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => { const t = window.setInterval(() => setNow(new Date()), 15000); return () => window.clearInterval(t) }, [])
+  return now
+}
+/** "9:45 am" today as a Date (null when there is no planned time). */
+function todayAt(t: string, now: Date): Date | null {
+  const m = /^\s*(\d{1,2}):(\d{2})\s*([ap]m)\s*$/i.exec(t)
+  if (!m) return null
+  let h = Number(m[1]) % 12
+  if (m[3].toLowerCase() === 'pm') h += 12
+  const d = new Date(now); d.setHours(h, Number(m[2]), 0, 0)
+  return d
+}
+const hm = (d: Date) => {
+  const h = d.getHours(), mi = d.getMinutes()
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(mi).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`
+}
+/** Time now + how long until this team's next planned game, worked out on the phone. */
+function NowAndNext({ next }: { next?: { time: string; live: boolean } }) {
+  const now = useNow()
+  const at = next && !next.live ? todayAt(next.time, now) : null
+  const mins = at ? Math.round((at.getTime() - now.getTime()) / 60000) : null
+  const left = mins == null ? null
+    : mins > 59 ? `Next in ${Math.floor(mins / 60)} h ${mins % 60} min`
+    : mins > 0 ? `Next in ${mins} min`
+    : 'Next game due now'
+  return (
+    <span className="shrink-0 text-right leading-tight">
+      <span className="block font-display text-lg font-bold text-fg"><Clock t={hm(now)} /></span>
+      {left && <span className={`block text-[10px] font-bold uppercase tracking-wider ${mins != null && mins <= 10 ? 'text-gold' : 'text-fg-subtle'}`}>{left}</span>}
+    </span>
+  )
+}
 
 /** Every game this team still has to play (on court first, then in play order): planned time, court, opponent. */
 function upcoming(b: Bundle, id: string, clock?: Hub['clock']) {
@@ -102,9 +138,12 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                     </span>
                     <Emblem logo={b && id ? teamLogo(b, id) : null} flagName={b && id ? teamSideName(b, id) ?? p.name : p.name} className="h-9 w-9 shrink-0 rounded-[3px]" />
                   </span>
-                  <span className="block truncate font-display text-xl font-bold leading-tight">
-                    {st?.state === 'playing' && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400 align-middle" />}
-                    {!b ? 'Loading…' : st ? st.head : 'Team not found'}
+                  <span className="flex items-end justify-between gap-2">
+                    <span className="block min-w-0 truncate font-display text-xl font-bold leading-tight">
+                      {st?.state === 'playing' && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400 align-middle" />}
+                      {!b ? 'Loading…' : st ? st.head : 'Team not found'}
+                    </span>
+                    {games.length > 0 && <NowAndNext next={games.find(g => !g.live && g.time)} />}
                   </span>
                   {st && !games.length && <span className="line-clamp-2 text-xs leading-snug text-fg-muted">{st.sub}</span>}
                   {games.length > 0 && (
