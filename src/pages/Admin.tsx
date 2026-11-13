@@ -19,7 +19,7 @@ import { SportsTab, TieScheduleTab, EventSwitcher, RosterToggle, SportCourts, Kn
 import { sportsPresent, isCb } from '../lib/multisport'
 import { CbRulesPanel } from '../components/CaptainBall'
 import { isPoolDispatch, isDiffTiebreak, shuffleMap, eventUntouched, roundName, groupRound, bracketCaption } from '../lib/pool'
-import { parentHub, hubOf } from '../lib/hub'
+import { parentHub, hubOf, groupsLocked } from '../lib/hub'
 import { CHURCHES, churchLogo, teamChurch } from '../lib/churches'
 import { seatsOf, entriesOf, fixedOf, currentMeets, smartDraw, jointDraw, slotClock } from '../lib/clash'
 import { koPlanOf, planDraw, tokenLabel } from '../lib/koplan'
@@ -652,6 +652,9 @@ function RandomGroups({ bundle, ev, token, run }: any) {
   // Courts 1-3, Mixed on 4-6): players entered in both must not be due on two
   // courts in the same time slot, so the draw looks at the other category too.
   const code = String(bundle.competition.code).toUpperCase()
+  // MC26 Men's/Mixed Doubles (and their TEST copies) run a fixed printed draw:
+  // the regenerate / redraw control stays visible but greyed out and disabled.
+  const locked = groupsLocked(code)
   const hub = parentHub(code)
   const partnerCat = hub?.cats.find(c => c.code !== code && c.code !== hub.code && c.sport === hub.cats.find(x => x.code === code)?.sport)
   const [partner, setPartner] = useState<any>(null)
@@ -692,7 +695,15 @@ function RandomGroups({ bundle, ev, token, run }: any) {
           <div className="font-display text-lg font-bold tracking-wide">Groups</div>
           <div className="text-xs text-fg-subtle">{pools.length} groups of {Math.round(teams.length / Math.max(pools.length, 1))} · teams never move to another group's games</div>
         </div>
-        {open ? (
+        {locked ? (
+          <div className="flex shrink-0 items-center gap-2">
+            <button type="button" disabled aria-disabled="true" title="Groups locked"
+              className="shrink-0 cursor-not-allowed whitespace-nowrap rounded-xl bg-brand px-5 py-2.5 font-display font-bold text-brand-fg opacity-40">
+              {both ? '🎲 DRAW BOTH CATEGORIES' : '🎲 GENERATE RANDOM GROUPS'}
+            </button>
+            <span className="shrink-0 whitespace-nowrap text-xs text-fg-subtle">Groups locked</span>
+          </div>
+        ) : open ? (
           <div className="flex shrink-0 items-center gap-2">
             {sure && (
               <button onClick={() => setSure(false)}

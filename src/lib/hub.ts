@@ -86,6 +86,12 @@ export const HUBS: Hub[] = [{
 export const pageOnly = (h: Hub) => !h.cats.some(c => c.code === h.code)
 
 const up = (c?: string) => (c ?? '').toUpperCase()
+
+/** MC26 Men's / Mixed Doubles (MCMD, MCXD) and their hidden TEST copies (TESTMD,
+ *  TESTXD) run a fixed printed draw, so the group regenerate / redraw controls are
+ *  greyed out and disabled in the UI. No other competition is affected. */
+export const GROUPS_LOCKED_CODES = new Set(['MCMD', 'MCXD', 'TESTMD', 'TESTXD'])
+export const groupsLocked = (code?: string) => GROUPS_LOCKED_CODES.has(up(code))
 /** The hub a code is the front page of. */
 export const hubOf = (code?: string): Hub | null => HUBS.find(h => h.code === up(code)) ?? null
 /** The hub a category code belongs to (not the hub itself). */
