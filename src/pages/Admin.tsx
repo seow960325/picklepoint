@@ -216,25 +216,6 @@ function CompetitionTab({ bundle, ev, token, run, secrets, refreshSecrets }: any
   const [name, setName] = useState(c.name)
   const [venue, setVenue] = useState(c.venue ?? '')
   const [eventDate, setEventDate] = useState(c.event_date ?? '')
-  const navigate = useNavigate()
-  const [confirmText, setConfirmText] = useState('')
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [delBusy, setDelBusy] = useState(false)
-  const [delErr, setDelErr] = useState<string | null>(null)
-  const [dangerOpen, setDangerOpen] = useState(false)
-
-  const deleteCompetition = async () => {
-    setDelBusy(true); setDelErr(null)
-    try {
-      await api.adminDeleteCompetition(token)
-      localStorage.removeItem(`pp.admin.${c.code}`)
-      forgetCode(c.code)
-      navigate('/')
-    } catch (e: any) {
-      setDelErr(readable(e.message))
-      setDelBusy(false)
-    }
-  }
 
   return (
     <div className="max-w-xl space-y-4">
@@ -261,55 +242,6 @@ function CompetitionTab({ bundle, ev, token, run, secrets, refreshSecrets }: any
       </div>
 
       <StartOver token={token} run={run} />
-
-      <div className="mt-8 rounded-xl border border-red-500/40 bg-red-500/5 p-4">
-        <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-red-600">Danger zone</div>
-        <p className="mb-3 text-sm text-fg-muted">
-          Permanently deletes this competition and everything in it — teams, matches, scores.
-          This can't be undone. Type <span className="font-mono font-bold">{c.code}</span> to confirm.
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <input className={`${input} font-mono uppercase`} value={confirmText}
-            onChange={e => setConfirmText(e.target.value.toUpperCase())} placeholder={c.code} />
-          <button onClick={() => setDangerOpen(true)} disabled={confirmText !== c.code || delBusy}
-            className="rounded-xl bg-red-600 px-5 py-2.5 font-display font-bold text-white disabled:opacity-30">
-            DELETE COMPETITION
-          </button>
-        </div>
-        {delErr && !confirmOpen && <Warn>{delErr}</Warn>}
-      </div>
-
-      {dangerOpen && (
-        <DangerKeyDialog
-          onPass={() => { setDangerOpen(false); setConfirmOpen(true) }}
-          onClose={() => setDangerOpen(false)}
-        />
-      )}
-
-      {confirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6"
-          onClick={() => !delBusy && setConfirmOpen(false)}>
-          <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5"
-            onClick={e => e.stopPropagation()}>
-            <div className="font-display text-lg font-bold text-red-600">Delete {c.code}?</div>
-            <p className="mt-2 text-sm text-fg-muted">
-              This permanently removes the competition and everything in it — teams, matches
-              and scores. This cannot be undone.
-            </p>
-            <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setConfirmOpen(false)} disabled={delBusy}
-                className="rounded-xl border border-line px-4 py-2 text-sm font-semibold text-fg-muted disabled:opacity-40">
-                Cancel
-              </button>
-              <button onClick={deleteCompetition} disabled={delBusy}
-                className="rounded-xl bg-red-600 px-4 py-2 font-display text-sm font-bold text-white disabled:opacity-40">
-                {delBusy ? 'DELETING…' : 'Delete permanently'}
-              </button>
-            </div>
-            {delErr && <div className="mt-3"><Warn>{delErr}</Warn></div>}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
