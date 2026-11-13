@@ -20,9 +20,12 @@ export default function SportsTitle({ text, className = '', sports, crossWord, c
   /** the last letter of this word (e.g. the T of "Methodist") is drawn as the event cross */
   crossWord?: string; crossLogo?: string
 }) {
-  const word = (w: string) => crossWord && crossLogo && w.toLowerCase() === crossWord.toLowerCase()
-    ? <>{w.slice(0, -1)}<EventLogo src={crossLogo} still className="mx-[-0.36em] h-[1.3em] w-[1.3em] align-[-0.26em]" /></>
-    : w
+  const isCross = (w: string) => !!crossWord && !!crossLogo && w.toLowerCase() === crossWord.toLowerCase()
+  /** one word of the title; the cross word ends in the event cross, which makes its own grand entrance
+   *  (drops in, lands with a flash) and stands a little apart, larger than the letters */
+  const piece = (w: string, i: number) => isCross(w)
+    ? <span key={i}><span data-w className="inline-block whitespace-nowrap">{w.slice(0, -1)}</span><span className="pp-cross-enter mx-[0.06em] inline-block align-[-0.16em]"><EventLogo src={crossLogo!} still className="mx-[-0.44em] h-[1.65em] w-[1.65em]" /></span>{' '}</span>
+    : <span key={i}><span data-w className="inline-block whitespace-nowrap">{w}</span>{' '}</span>
   const wrap = useRef<HTMLDivElement>(null)
   const pbX = useRef<HTMLSpanElement>(null), pbY = useRef<HTMLSpanElement>(null), pbR = useRef<HTMLSpanElement>(null)   // pickleball
   const cbX = useRef<HTMLSpanElement>(null), cbY = useRef<HTMLSpanElement>(null), cbR = useRef<HTMLSpanElement>(null)   // captain ball
@@ -262,14 +265,10 @@ export default function SportsTitle({ text, className = '', sports, crossWord, c
           // set rows (phone): each row stays whole and the font shrinks until it fits; one row from sm up
           ? text.split('\n').map((line, j) => (
             <span key={j} data-line className="block whitespace-nowrap sm:inline">
-              {line.split(/\s+/).filter(Boolean).map((w, i) => (
-                <span key={i}><span data-w className="inline-block whitespace-nowrap">{word(w)}</span>{' '}</span>
-              ))}
+              {line.split(/\s+/).filter(Boolean).map(piece)}
             </span>
           ))
-          : text.split(/\s+/).filter(Boolean).map((w, i) => (
-            <span key={i}><span data-w className="inline-block whitespace-nowrap">{word(w)}</span>{' '}</span>
-          ))}
+          : text.split(/\s+/).filter(Boolean).map(piece)}
       </div>
       {hasPb && (
         <span ref={pbX} className="pointer-events-none absolute left-0 top-0 z-10" aria-hidden="true">

@@ -104,3 +104,7 @@ input[type="date"], input[type="time"], input[type="datetime-local"] {
 /* live clock: the colon blinks once a second */
 @keyframes pp-blink{0%,49%{opacity:1}50%,100%{opacity:.15}}
 .pp-blink{animation:pp-blink 1s steps(1,end) infinite}
+/* YC26: the cross (the T of Methodist) drops in from above, lands with a white flash, settles */
+@keyframes pp-cross-enter{0%{opacity:0;transform:translateY(-140%) scale(1.9)}55%{opacity:1;transform:translateY(6%) scale(.96);filter:drop-shadow(0 0 0 rgba(255,255,255,0))}68%{transform:translateY(0) scale(1.12);filter:drop-shadow(0 0 6px #fff) drop-shadow(0 0 22px rgba(255,255,255,.95)) brightness(1.5)}100%{opacity:1;transform:none;filter:drop-shadow(0 0 0 rgba(255,255,255,0)) brightness(1)}}
+.pp-cross-enter{animation:pp-cross-enter 1.6s cubic-bezier(.2,.7,.3,1) .35s both}
+@media (prefers-reduced-motion:reduce){.pp-cross-enter{animation:none}}
