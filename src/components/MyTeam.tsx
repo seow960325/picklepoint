@@ -15,6 +15,12 @@ import { Emblem, PairName, ScoreWL, Clock } from './ui'
 import { Link } from 'react-router-dom'
 import { SportIcon } from './SportIcon'
 
+
+/** the group letter of a team (MC26 / YC26 group stage); null when it has none */
+const groupOf = (b: { teams: Array<{ id: string; pool?: string | null }> } | null | undefined, id: string | null | undefined) => {
+  const g = b && id ? b.teams.find(t => t.id === id)?.pool : null
+  return g && g !== '—' ? g : null
+}
 /** The phone's own clock (no database at all): ticks every second. */
 function useNow() {
   const [now, setNow] = useState(() => new Date())
@@ -170,6 +176,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                       <span className="min-w-0 text-[11px] font-bold uppercase leading-snug tracking-wider text-fg-subtle">
                         <span className="flex min-w-0 items-center gap-1.5">
                           <span className="min-w-0 truncate">{p.name.replace(/\s*\|\s*/g, ' / ')}</span>
+                          {groupOf(b, id) && <span className="shrink-0 rounded bg-indigo-400/20 px-1.5 text-[10px] text-indigo-200">Group {groupOf(b, id)}</span>}
                           <Star on className="h-3 w-3 shrink-0 text-gold" />
                         </span>
                         {cat && <span className="block truncate">{cat.short}</span>}
@@ -269,7 +276,10 @@ function TeamDetail({ hub, pin, b, onClose, onOpen, onBack, onTeam }: { hub: Hub
           {onBack && <button onClick={onBack} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-lg text-fg-muted">‹</button>}
           <Emblem logo={b && id ? teamLogo(b, id) : null} flagName={b && id ? teamSideName(b, id) ?? pin.name : pin.name} className="h-10 w-10 shrink-0 rounded-[3px]" />
           <div className="min-w-0 flex-1">
-            <div className="truncate font-display text-xl font-bold leading-tight">{pin.name}</div>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="min-w-0 truncate font-display text-xl font-bold leading-tight">{pin.name}</span>
+              {groupOf(b, id) && <span className="shrink-0 rounded bg-indigo-400/20 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-indigo-200">Group {groupOf(b, id)}</span>}
+            </div>
             <div className="truncate text-xs text-fg-muted">{cat?.label ?? ''}{played.length ? ` · played ${played.length}, won ${won}` : ''}</div>
           </div>
           <button onClick={onClose} className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-fg">Done</button>
