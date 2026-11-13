@@ -144,7 +144,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                     </span>
                   )}
                 </span>
-                <span className="shrink-0 text-fg-subtle">›</span>
+                <span className="-mr-1 flex min-h-[44px] w-9 shrink-0 items-center justify-center rounded-lg pl-2 text-xl text-fg-subtle active:bg-white/10" aria-label="Team details">›</span>
               </div>
             )
           })}

@@ -344,6 +344,8 @@ export function CourtQueues({ b, ev, max = 4, n = 6, big = false, courts }: { b:
     <FillGrid max={max} className="gap-2 lg:gap-3">
       {(courts ?? b.courts).map(ct => {
         const mine = queue.filter(m => m.home_court === ct.id).slice(0, n)
+        // church logos take room (YC26): names a size smaller there so they still show in full
+        const logos = mine.some(m => teamLogo(b, m.team_a_id) || teamLogo(b, m.team_b_id))
         return (
           <div key={ct.id} className="min-w-0 rounded-2xl border border-line bg-surface p-3">
             <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -356,19 +358,19 @@ export function CourtQueues({ b, ev, max = 4, n = 6, big = false, courts }: { b:
               // phone / board: one grid for the whole court, so "vs" sits in one column with the same
               // space on both sides on every row; the names + vs block sits in the middle of the free space
               <div className={big ? 'divide-y divide-line/60' : 'grid divide-y divide-line/60 gap-x-1.5'}
-                style={big ? undefined : { gridTemplateColumns: `${timed ? '4.2rem ' : ''}1.4rem 2rem minmax(0,1fr) minmax(0,max-content) auto minmax(0,max-content) minmax(0,1fr)` }}>
+                style={big ? undefined : { gridTemplateColumns: `${timed ? 'max-content ' : ''}max-content max-content minmax(0,1fr) minmax(0,max-content) auto minmax(0,max-content) minmax(0,1fr)` }}>
                 {!big && (
                   <div className="grid items-end pb-1 text-[9px] font-bold uppercase tracking-wider text-fg-subtle lg:text-[11px]" style={{ gridColumn: '1 / -1', gridTemplateColumns: 'subgrid' }}>
                     {timed && <span>Time</span>}
                     <span className="text-center">No.</span>
-                    <span className="text-center">Group</span>
+                    <span className="text-center">Grp</span>
                     <span /><span /><span /><span /><span />
                   </div>
                 )}
                 {mine.map((m, i) => (
                   <div key={m.id}
                     style={big ? undefined : { gridColumn: '1 / -1', gridTemplateColumns: 'subgrid' }}
-                    className={`grid ${big ? 'grid-cols-[1.6rem_1.6rem_minmax(0,1fr)_2.2rem_minmax(0,1fr)] gap-2 py-2.5 text-2xl' : 'py-1.5 text-sm'} ${mc && !big ? 'lg:!text-xl lg:!py-2' : ''} grid items-center ${teamsBusy(b, m) ? 'opacity-60' : ''}`}>
+                    className={`grid ${big ? 'grid-cols-[1.6rem_1.6rem_minmax(0,1fr)_2.2rem_minmax(0,1fr)] gap-2 py-2.5 text-2xl' : logos ? 'py-1.5 text-[13px]' : 'py-1.5 text-sm'} ${mc && !big ? 'lg:!text-xl lg:!py-2' : ''} grid items-center ${teamsBusy(b, m) ? 'opacity-60' : ''}`}>
                     {timed && <span className="tabular whitespace-nowrap font-display text-xs font-bold text-fg-muted lg:text-base"><Clock t={plannedTime(b, m)} /></span>}
                     <span className={`text-center font-display font-bold text-fg-subtle ${big ? 'text-lg' : 'text-xs'}`}>{i + 1}</span>
                     <span className={`text-center font-bold text-fg-subtle ${big ? 'text-base' : 'text-[10px]'}`}>{poolOf(m.team_a_id)}</span>
