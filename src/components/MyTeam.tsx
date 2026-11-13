@@ -48,7 +48,7 @@ function LiveTime() {
   const now = useNow()
   const h12 = now.getHours() % 12 === 0 ? 12 : now.getHours() % 12
   return (
-    <span className="tabular shrink-0 whitespace-nowrap rounded-md border border-line bg-black/30 px-1.5 py-0.5 font-display text-sm font-bold leading-none text-fg-muted">
+    <span className="tabular shrink-0 whitespace-nowrap font-display text-base font-bold leading-none text-emerald-400">
       {h12}<span className="pp-blink">:</span>{String(now.getMinutes()).padStart(2, '0')}<span className="ml-0.5 text-[0.75em] uppercase">{now.getHours() < 12 ? 'am' : 'pm'}</span>
     </span>
   )
@@ -66,12 +66,13 @@ function NextBar({ next, prev, day }: { next?: { time: string; live: boolean }; 
     : `${two(Math.floor(secs / 3600))}:${two(Math.floor((secs % 3600) / 60))}:${two(secs % 60)}`
   const from = prev ? dayAt(prev, now, day) : null
   const span = from && at.getTime() > from.getTime() ? (at.getTime() - from.getTime()) / 1000 : 3600
-  const pct = Math.max(0, Math.min(100, 100 - (secs / span) * 100))
+  // a sliver of green always shows, so the bar reads as a bar that will fill
+  const pct = Math.max(6, Math.min(100, 100 - (secs / span) * 100))
   const warn = secs <= 600
   return (
-    <span className="relative block h-6 w-[6.6rem] shrink-0 overflow-hidden rounded-md bg-black/50 ring-1 ring-white/15" title="Time left to your next game">
+    <span className="relative block h-6 w-[5.4rem] shrink-0 overflow-hidden rounded-md bg-black/50 ring-1 ring-white/15" title="Time left to your next game">
       <span className={`absolute inset-y-0 left-0 transition-[width] duration-1000 ease-linear ${warn ? 'bg-gold' : 'bg-emerald-500'}`} style={{ width: `${secs <= 0 ? 100 : pct}%` }} />
-      <span className="tabular absolute inset-0 flex items-center justify-center font-display text-[15px] font-bold leading-none text-white [text-shadow:0_1px_2px_rgba(0,0,0,.9)]">{left}</span>
+      <span className="tabular absolute inset-0 flex items-center justify-center font-display text-[14px] font-bold leading-none text-white [text-shadow:0_1px_2px_rgba(0,0,0,.9)]">{left}</span>
     </span>
   )
 }
@@ -169,7 +170,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                         <span className="min-w-0 break-words">{p.name.replace(/\s*\|\s*/g, ' / ')}{cat ? ` · ${cat.short}` : ''}</span>
                       </span>
                     </span>
-                    <span className="-mr-11 flex shrink-0 items-start gap-2">
+                    <span className="flex shrink-0 items-start pt-0.5">
                       {games.length > 0 && <LiveTime />}
                     </span>
                   </span>
@@ -178,7 +179,7 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                       {playing && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400 align-middle" />}
                       {!b ? 'Loading…' : st ? head : 'Team not found'}
                     </span>
-                    {games.length > 0 && <span className="-mr-11"><NextBar next={games.find(g => !g.live && g.time)} prev={(games.find(g => g.live) ?? past[0])?.time} day={day} /></span>}
+                    {games.length > 0 && <span><NextBar next={games.find(g => !g.live && g.time)} prev={(games.find(g => g.live) ?? past[0])?.time} day={day} /></span>}
                   </span>
                   {st && !games.length && <span className="line-clamp-2 text-xs leading-snug text-fg-muted">{st.sub}</span>}
                   {games.length > 0 && (
