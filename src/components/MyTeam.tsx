@@ -15,10 +15,10 @@ import { Emblem, PairName, ScoreWL, Clock } from './ui'
 import { Link } from 'react-router-dom'
 import { SportIcon } from './SportIcon'
 
-/** The phone's own clock (no database at all): ticks every 15 s. */
+/** The phone's own clock (no database at all): ticks every second. */
 function useNow() {
   const [now, setNow] = useState(() => new Date())
-  useEffect(() => { const t = window.setInterval(() => setNow(new Date()), 15000); return () => window.clearInterval(t) }, [])
+  useEffect(() => { const t = window.setInterval(() => setNow(new Date()), 1000); return () => window.clearInterval(t) }, [])
   return now
 }
 /** "9:45 am" on the event day (its date from Settings; today when unknown) as a Date. */
@@ -53,10 +53,15 @@ function NowAndNext({ next, day }: { next?: { time: string; live: boolean }; day
     : mins > 59 ? `Next in ${Math.floor(mins / 60)} h ${mins % 60} min`
     : mins > 0 ? `Next in ${mins} min`
     : 'Next game due now'
+  const warn = mins != null && mins <= 10
+  const sec = `${now.getHours() % 12 === 0 ? 12 : now.getHours() % 12}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
+  // a boxed clock, green, so nobody mistakes it for a game time
   return (
-    <span className="shrink-0 text-right leading-tight">
-      <span className="block font-display text-lg font-bold text-fg"><Clock t={hm(now)} /></span>
-      {left && <span className={`block text-[10px] font-bold uppercase tracking-wider ${mins != null && mins <= 10 ? 'text-gold' : 'text-fg-subtle'}`}>{left}</span>}
+    <span className={`shrink-0 rounded-lg border px-2 py-1 text-right leading-none ${warn ? 'border-gold/60 bg-gold/10' : 'border-emerald-400/50 bg-emerald-500/10'}`}>
+      <span className={`tabular block whitespace-nowrap font-display text-base font-bold ${warn ? 'text-gold' : 'text-emerald-300'}`}>
+        {sec}<span className="ml-1 text-[0.7em] uppercase opacity-80">{now.getHours() < 12 ? 'am' : 'pm'}</span>
+      </span>
+      {left && <span className={`mt-0.5 block whitespace-nowrap text-[9px] font-bold uppercase tracking-wider ${warn ? 'text-gold' : 'text-emerald-200/80'}`}>{left}</span>}
     </span>
   )
 }
@@ -150,14 +155,14 @@ export default function MyTeamBar({ hub, bundleOf, onOpen, compact = false }: {
                       <Star on className="h-3 w-3 shrink-0 text-gold" />
                       <span className="min-w-0 break-words">{p.name.replace(/\s*\|\s*/g, ' / ')}{cat ? ` · ${cat.short}` : ''}</span>
                     </span>
-                    <Emblem logo={b && id ? teamLogo(b, id) : null} flagName={b && id ? teamSideName(b, id) ?? p.name : p.name} className="h-9 w-9 shrink-0 rounded-[3px]" />
-                  </span>
-                  <span className="flex items-end justify-between gap-2">
-                    <span className="block min-w-0 truncate font-display text-xl font-bold leading-tight">
-                      {playing && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400 align-middle" />}
-                      {!b ? 'Loading…' : st ? head : 'Team not found'}
+                    <span className="flex shrink-0 items-start gap-2">
+                      {games.length > 0 && <NowAndNext next={games.find(g => !g.live && g.time)} day={day} />}
+                      <Emblem logo={b && id ? teamLogo(b, id) : null} flagName={b && id ? teamSideName(b, id) ?? p.name : p.name} className="h-9 w-9 shrink-0 rounded-[3px]" />
                     </span>
-                    {games.length > 0 && <NowAndNext next={games.find(g => !g.live && g.time)} day={day} />}
+                  </span>
+                  <span className="mt-1 block truncate font-display text-xl font-bold leading-tight">
+                    {playing && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400 align-middle" />}
+                    {!b ? 'Loading…' : st ? head : 'Team not found'}
                   </span>
                   {st && !games.length && <span className="line-clamp-2 text-xs leading-snug text-fg-muted">{st.sub}</span>}
                   {games.length > 0 && (
