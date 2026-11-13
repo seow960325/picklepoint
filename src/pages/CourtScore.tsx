@@ -179,8 +179,10 @@ export default function CourtScore() {
   const roundWait = !isCb(eventOf(bundle, match)?.sport) && match.bracket_key != null
     && match.score_a === 0 && match.score_b === 0
     ? bundle.matches.find(x => x.id !== match.id && x.event_id === match.event_id && x.bracket_key != null
-        && !/^KO-2-0-/.test(x.bracket_key) && x.round === match.round && x.status !== 'finished'
-        && (!x.team_a_id || !x.team_b_id))
+        && !/^KO-2-0-/.test(x.bracket_key) && x.status !== 'finished'
+        && ((x.round === match.round && (!x.team_a_id || !x.team_b_id))
+            // printed knockout slots (0067): QF3 + QF4 wait until QF1 + QF2 are both over
+            || (match.slot != null && x.slot != null && x.slot < match.slot)))
     : undefined
   if (roundWait) return (
     <Screen className="flex flex-col items-center justify-center gap-4 px-6 text-center">
@@ -191,7 +193,9 @@ export default function CourtScore() {
       </div>
       <div className="flex max-w-md items-center gap-2 text-sm text-fg-muted">
         <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-brand" />
-        Please wait: every {(match.round ?? 'knockout').toLowerCase()} starts together, as soon as the last teams are known. This screen opens the game by itself.
+        {roundWait.slot != null && match.slot != null && roundWait.slot < match.slot
+          ? <>Please wait: this game starts when the games of the earlier slot have finished (Court {bundle.courts.find(c => c.id === roundWait.court_id)?.number ?? '–'} still playing). This screen opens the game by itself.</>
+          : <>Please wait: every {(match.round ?? 'knockout').toLowerCase()} starts together, as soon as the last teams are known. This screen opens the game by itself.</>}
       </div>
       <Link to={`/c/${code}`} className="flex min-h-[40px] items-center rounded-xl border border-line px-4 py-2 text-sm">Back to board</Link>
     </Screen>
