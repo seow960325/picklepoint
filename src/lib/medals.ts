@@ -5,7 +5,11 @@ import type { Bundle } from './types.ts'
 import { cbStandings, cbKo } from './captainball.ts'
 import { churchOf } from './draw.ts'
 import { finalSeries } from './finals.ts'
-import { teamChurch, churchLogo, CHURCHES } from './churches.ts'
+import { teamChurch as baseChurch, churchLogo, CHURCHES } from './churches.ts'
+
+/** Medals only: a team with no church saved but carrying a church logo plays for that church. */
+const teamChurch = (t: { name: string; church?: string | null; logo?: string | null }): string =>
+  (t.church ?? '').trim() || CHURCHES.find(c => !!t.logo && c.logo === t.logo)?.name || baseChurch(t)
 
 export interface Podium3 { first: string | null; second: string | null; third: string | null; fourth?: string | null }
 export interface CategoryResult {
