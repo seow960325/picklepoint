@@ -135,7 +135,7 @@ export function currentMeets(b: Bundle, eventId: string, fixed: Fixed[]): Meet[]
 }
 
 /** printed start time of a slot (Christmas Outreach: 9:30 am, every 15 minutes) */
-const CLOCK: Record<string, { start: number; every: number }> = { MCMD: { start: 570, every: 15 }, MCXD: { start: 570, every: 15 } }
+const CLOCK: Record<string, { start: number; every: number }> = { MCMD: { start: 570, every: 15 }, MCXD: { start: 570, every: 15 }, TESTMD: { start: 570, every: 15 }, TESTXD: { start: 570, every: 15 } }
 export function slotClock(code: string | null | undefined, slot: number): string {
   const c = CLOCK[(code ?? '').toUpperCase()]
   if (!c) return `slot ${slot}`

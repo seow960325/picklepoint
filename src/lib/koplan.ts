@@ -27,6 +27,10 @@ export const KO_PLANS: Record<string, KoPlan> = {
   MCXD: { pairs: [['A1', 'E1'], ['B1', 'F1'], ['C1', 'R1'], ['D1', 'R2']], swapSamePool: true },
 }
 
+// hidden test copy of MC26 (hub TESTMC) uses the same plans
+KO_PLANS.TESTMD = KO_PLANS.MCMD
+KO_PLANS.TESTXD = KO_PLANS.MCXD
+
 export const koPlanOf = (code?: string | null): KoPlan | null => KO_PLANS[(code ?? '').toUpperCase()] ?? null
 
 const ORD = ['winner', '2nd', '3rd', '4th']

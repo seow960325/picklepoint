@@ -66,6 +66,20 @@ export const HUBS: Hub[] = [{
     { code: 'MCMD', label: "Men's Doubles", short: "Men's Doubles", sport: 'pickleball' },
     { code: 'MCXD', label: 'Mixed Doubles', short: 'Mixed Doubles', sport: 'pickleball' },
   ],
+}, {
+  // Hidden test copy of MC26 (no link anywhere; open /c/TESTMC yourself). Filled by the
+  // clone SQL: TESTMD = copy of MCMD, TESTXD = copy of MCXD. Delete the two codes after testing.
+  code: 'TESTMC',
+  title: 'TEST Christmas Outreach',
+  noChurch: true,
+  logo: '/logos/mc26.png',
+  map: '/mc26-map.jpg',
+  mapCourts: { TESTMD: { sport: 'pickleball', courts: [1, 2, 3] }, TESTXD: { sport: 'pickleball', courts: [4, 5, 6] } },
+  clock: { start: '09:30', every: 15, breakAt: '12:30', breakMins: 15 },
+  cats: [
+    { code: 'TESTMD', label: "Men's Doubles", short: "Men's Doubles", sport: 'pickleball' },
+    { code: 'TESTXD', label: 'Mixed Doubles', short: 'Mixed Doubles', sport: 'pickleball' },
+  ],
 }]
 
 /** A hub that is only a front page (no competition under its own code). */
