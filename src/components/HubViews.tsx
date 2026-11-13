@@ -196,10 +196,12 @@ export function HubStandings({ b, ev, fallback }: { b: Bundle; ev: EventCfg | un
   const nR = new Set(plan.pairs.flat().filter(t => /^R\d/.test(t))).size
   const nW = pd.winners.ranked.length
   const complete = groupStageComplete(b, ev.id)
+  // before the first result everyone is level at 0: no team is "through" yet
+  const played = b.matches.some(m => m.event_id === ev.id && m.bracket_key == null && m.status === 'finished')
   const seeded = bracketSeeded(b, ev.id)
-  const state = seeded ? 'Final: the quarter-finals are drawn.' : complete ? 'Groups finished: the quarter-finals appear in a moment.' : 'So far, it changes after every game.'
+  const state = seeded ? 'Final: the quarter-finals are drawn.' : complete ? 'Groups finished: the quarter-finals appear in a moment.' : played ? 'So far, it changes after every game.' : 'No result yet: the order below is only alphabetical until the first game ends.'
   const run = pd.runners.ranked as unknown as Standing[]
-  const why = cutReasons(run, nR)
+  const why = played ? cutReasons(run, nR) : []
   const qf = (complete ? pd.tokens : plan.pairs).map(([x, y], i) => ({ n: i + 1, a: slotName(x), b: slotName(y), moved: plan.pairs[i][0] !== x || plan.pairs[i][1] !== y }))
   return (
     <div className="space-y-5 p-3 lg:p-5">
@@ -211,10 +213,10 @@ export function HubStandings({ b, ev, fallback }: { b: Bundle; ev: EventCfg | un
         </div>
         <FillGrid max={2} className="gap-3">
           <RaceTable b={b} title="Group winners" note="All go through, each to its own quarter-final."
-            rows={pd.winners.ranked as any} cut={nW} level={pd.winners.level} label="W" settled={complete} />
+            rows={pd.winners.ranked as any} cut={played ? nW : 0} level={pd.winners.level} label="W" settled={complete} />
           <div>
             <RaceTable b={b} title="Runners-up" note={`Only the best ${nR} go through (R1 to R${nR}).`}
-              rows={pd.runners.ranked as any} cut={nR} level={pd.runners.level} label="R" settled={complete} />
+              rows={pd.runners.ranked as any} cut={played ? nR : 0} level={pd.runners.level} label="R" settled={complete} />
             {why.length > 0 && (
               <div className="mt-2 rounded-xl border border-line bg-surface px-3 py-2 text-xs leading-relaxed text-fg-muted">
                 <div className="mb-0.5 font-semibold text-fg">{complete ? 'Why this order' : 'Why this order (so far)'}</div>

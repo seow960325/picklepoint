@@ -60,8 +60,22 @@ export function GroupTable({ b, g, rows, advance, big = false, huge = false }: {
   const qual = useMemo(() => {
     const plan = koPlanOf(b.competition?.code)
     if (!plan || !evId) return null
-    const pd = planDraw(plan, groupStandings(b, evId) as any)
-    return new Set(pd.pairs.flat().filter((x): x is string => !!x))
+    const tables = groupStandings(b, evId) as any
+    const pd = planDraw(plan, tables)
+    // nothing is known before a result: no highlight at 0-0 (the level order is only A, B, C …).
+    // A group's own place (winner) shows once that group has a result; a "best runner-up"
+    // comes from any group, so it shows only once every group has a result.
+    const started = (pool: string) => b.matches.some(m => m.event_id === evId && m.bracket_key == null && m.status === 'finished'
+      && b.teams.some(t => t.id === m.team_a_id && (t.pool ?? '') === pool))
+    const allStarted = Object.keys(tables).every(started)
+    const out = new Set<string>()
+    pd.tokens.forEach((pair, i) => pair.forEach((tk, j) => {
+      const id = pd.pairs[i][j]
+      if (!id) return
+      const pool = /^([A-Z])\d$/.exec(tk)?.[1]
+      if (pool ? started(pool) : allStarted) out.add(id)
+    }))
+    return out
   }, [b, evId])
   const [open, setOpen] = useState<string | null>(null)
   // every team gets the same fixed row (logo height + a little air), never stretched
