@@ -55,9 +55,9 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
     <PinCtx.Provider value={pinned}>
     <div className="min-h-screen bg-canvas text-fg">
       <div className="sticky top-0 z-40 border-b border-line bg-canvas px-4 pb-2 pt-3 lg:px-6" style={{ paddingTop: 'max(var(--pp-top), 0.75rem)' }}>
-        {/* back | logo + name in the middle | map, referee */}
-        <div className="mx-auto grid max-w-6xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 lg:gap-3">
-          <div className="flex min-w-0 items-center">
+        {/* back | logo + name in the middle | map, referee: every bottom on the words' baseline */}
+        <div className="mx-auto grid max-w-6xl grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-2 lg:gap-3">
+          <div className="mb-[5px] flex min-w-0 items-center sm:mb-1.5 lg:mb-2">
             <Link to="/" aria-label="Back to lobby"
               className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line bg-surface text-fg-muted active:bg-surface-2 lg:h-11 lg:w-11">
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>
@@ -77,7 +77,7 @@ export default function HubBoard({ hub, self }: { hub: Hub; self: Bundle | null 
               })()}
             </div>
           </div>
-          <div className="flex min-w-0 items-center justify-end gap-1.5">
+          <div className="mb-[5px] flex min-w-0 items-center justify-end gap-1.5 sm:mb-1.5 lg:mb-2">
             {hub.map && <MapButton src={hub.map} label={<span className="hidden sm:inline">Map</span>} className="h-8 justify-center px-2 sm:px-2.5 lg:h-10 lg:text-sm" />}
             <Link to={`/c/${hub.code}/referee`} className="flex h-8 items-center justify-center rounded-lg border border-line px-2.5 text-xs text-fg-muted lg:h-10 lg:px-3 lg:text-sm">Referee</Link>
             <FullscreenButton className="hidden h-8 w-8 place-items-center rounded-lg border border-line p-1.5 text-fg-muted sm:grid lg:h-10 lg:w-10" />
