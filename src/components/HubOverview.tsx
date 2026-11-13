@@ -18,7 +18,8 @@ import { slotRows, slotTime, clockOfCode, type SlotRow } from '../lib/timetable'
 import MapButton, { CourtTag } from './CourtMap'
 import { gameTitle, koSlotLabel, provisionalTeam, slotStage, stageName } from '../lib/pool'
 
-const FULL_EVERY_MS = 60000
+const FULL_EVERY_MS = 180000
+const NEWS_EVERY_MS = 20000
 export function useOthers(codes: string[], everyMs = 30000) {
   const [got, setGot] = useState<Record<string, Bundle | null>>({})
   useEffect(() => {
@@ -27,7 +28,7 @@ export function useOthers(codes: string[], everyMs = 30000) {
     // (one request per code); teams, rules and announcements are re-read once a minute.
     // A phone that is locked or on another tab does not poll at all.
     const have: Record<string, Bundle | null> = {}
-    let lastFull = 0, busy = false
+    let lastFull = 0, lastNews = 0, busy = false
     const load = async (force = false) => {
       if (busy) return
       if (!force && typeof document !== 'undefined' && document.visibilityState !== 'visible') return
@@ -48,7 +49,14 @@ export function useOthers(codes: string[], everyMs = 30000) {
           } catch { return [c, prev ?? null] as const }      // a failed poll keeps what is on screen
         }))
         for (const [c, b] of rows) have[c] = b
-        if (alive) setGot(Object.fromEntries(rows))
+        // announcements between full reads: their own tiny read every 20 s
+        if (full) lastNews = Date.now()
+        else if (Date.now() - lastNews >= NEWS_EVERY_MS && codes.every(c => have[c])) {
+          lastNews = Date.now()
+          const fresh = await api.refreshAnnouncements(codes.map(c => have[c]!)).catch(() => null)
+          if (fresh) codes.forEach((c, i) => { have[c] = fresh[i] })
+        }
+        if (alive) setGot(Object.fromEntries(codes.map(c => [c, have[c] ?? null])))
       } finally { busy = false }
     }
     void load(true)

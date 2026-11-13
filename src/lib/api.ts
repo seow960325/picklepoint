@@ -240,6 +240,16 @@ function merge(prev: Bundle, rows: any[], t0: number): Bundle | null {
   return { ...prev, matches, fetched_at: t0, scores_since: mark || prev.scores_since }
 }
 
+/** Only the organiser's announcements of these categories (a few hundred bytes). */
+export async function refreshAnnouncements(prevs: Bundle[]): Promise<Bundle[] | null> {
+  if (IS_DEMO || !prevs.length) return null
+  const ids = prevs.flatMap(b => b.events.map(e => e.id))
+  const { data, error } = await sb!.from('events').select('id,announcement,announce_at,announcements').in('id', ids)
+  if (error || !data) return null
+  const by = new Map((data as any[]).map(r => [r.id, r]))
+  return prevs.map(b => ({ ...b, events: b.events.map(e => (by.has(e.id) ? { ...e, ...by.get(e.id) } : e)) }))
+}
+
 export type LiveStatus = 'live' | 'down'
 export type RowChange = { type: 'INSERT' | 'UPDATE' | 'DELETE'; row: any; oldId?: string }
 
