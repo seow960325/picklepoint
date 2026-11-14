@@ -14,6 +14,11 @@ export interface KoPlan {
   /** a winner drawn against the runner-up of its own pool: swap that runner-up
    *  with another one (R1/R2, then R2/R3, then R1/R3 — the first swap that works) */
   swapSamePool?: boolean
+  /** NEW draws only (never set for MCMD / MCXD, which are already played): after the same-pool
+   *  swap, also keep every group's teams out of the same half (quarter-final pair + its semi-final
+   *  partner). Positions are rearranged with the fewest moves; a team's TITLE (Group B winner,
+   *  Best runner-up 2 …) always stays its own, because tokens are resolved from the standings. */
+  avoidSameHalf?: boolean
 }
 
 export const KO_PLANS: Record<string, KoPlan> = {
@@ -72,6 +77,8 @@ export interface PlanDraw<R extends PlanRow> {
   winners: { ranked: R[]; level: boolean[] }
   runners: { ranked: R[]; level: boolean[] }
   swapped: boolean
+  /** plan asked for avoidSameHalf: true = no group has two teams in one half; false = no clean draw exists */
+  clean?: boolean
 }
 
 /** The draw a plan gives for these group tables (each pool already in final order). */
@@ -107,10 +114,41 @@ export function planDraw<R extends PlanRow>(plan: KoPlan, tables: Record<string,
       if (!samePool(trial)) { tokens = trial; swapped = true; break }
     }
   }
+  let clean: boolean | undefined
+  if (plan.avoidSameHalf && plan.pairs.length <= 4) {
+    const flat = tokens.flat()
+    const poolOf = (t: string) => resolve(t)?.team.pool ?? ''
+    const pools = flat.map(poolOf)
+    if (pools.every(Boolean)) {
+      const n = flat.length
+      const half = (i: number) => Math.floor(i / 4)   // slots 0-3 = QF1+QF2 half, 4-7 = QF3+QF4 half
+      const ok = (perm: number[]) => {
+        for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++)
+          if (half(i) === half(j) && pools[perm[i]] === pools[perm[j]]) return false
+        return true
+      }
+      const cur = flat.map((_, i) => i)
+      if (ok(cur)) clean = true
+      else {
+        let best: number[] | null = null, bestMoves = 99
+        const used = new Array(n).fill(false), perm: number[] = []
+        const rec = (i: number, moves: number) => {
+          if (moves >= bestMoves) return
+          if (i === n) { if (ok(perm)) { best = perm.slice(); bestMoves = moves } return }
+          for (let k = 0; k < n; k++) if (!used[k]) {
+            used[k] = true; perm[i] = k; rec(i + 1, moves + (k === i ? 0 : 1)); used[k] = false
+          }
+        }
+        if (n <= 8) rec(0, 0)
+        if (best) { tokens = tokens.map((_, j) => [flat[(best as number[])[j * 2]], flat[(best as number[])[j * 2 + 1]]] as [string, string]); swapped = true; clean = true }
+        else clean = false
+      }
+    }
+  }
   const pairs = tokens.map(([a, b]) => [resolve(a)?.team.id ?? null, resolve(b)?.team.id ?? null] as [string | null, string | null])
   const nR = Math.max(0, ...plan.pairs.flat().map(t => /^R(\d+)$/.exec(t)).map(m => m ? Number(m[1]) : 0))
   return {
-    pairs, tokens, winners, swapped,
+    pairs, tokens, winners, swapped, clean,
     runners: { ranked: runAll.ranked, level: runAll.level.map((l, i) => l && i < nR) },
   }
 }
