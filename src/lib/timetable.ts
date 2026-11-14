@@ -59,6 +59,8 @@ export function slotOf(b: Bundle, m: Match): number | null {
     return arr ? arr[Math.min(Math.max(0, roundIdx(b, m)), arr.length - 1)] ?? null : null
   }
   if (m.bracket_key == null) return m.slot ?? null
+  // a knockout game with its own slot in the database (MC26, 0067): show that slot, so a slot swap on the day is shown too
+  if (m.slot != null) return m.slot
   const off = KO_OFFSET[m.bracket_key]
   if (off == null) return null
   const last = Math.max(0, ...b.matches.filter(x => x.event_id === m.event_id && x.bracket_key == null && x.slot != null).map(x => x.slot!))
