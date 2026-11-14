@@ -14,6 +14,7 @@ import { PlayClock } from '../components/GroupsKo'
 import { koCourtLabel, isCb, sportBundle } from '../lib/multisport'
 import { cbKo, cbKoGame } from '../lib/captainball'
 import { courtChoices, gameTitle } from '../lib/pool'
+import { groupsLocked } from '../lib/hub'
 import CbScorer from './CbScorer'
 import { autoSeedRows } from '../lib/autoseed'
 
@@ -129,6 +130,9 @@ export default function CourtScore() {
             : <>Starts by itself in a moment.</>}
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2">
+          {groupsLocked(code) && slotWait && !busyTeam && (
+            <ForceStart matchId={waiting.id} token={token} onDone={reload} />
+          )}
           {courtChoices(bundle, court.id).length > 1 && (
             <button onClick={() => setPicking(true)}
               className="flex min-h-[40px] items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold active:bg-surface-2">
@@ -960,6 +964,34 @@ function RotatePrompt({ onIgnore }: { onIgnore: () => void }) {
       <button onClick={onIgnore} className="text-xs text-fg-subtle underline underline-offset-4">
         score in portrait anyway
       </button>
+    </div>
+  )
+}
+
+/** MC26 / TEST: start this court's waiting group game now, before the earlier slot is over.
+ *  The server refuses (and says who) when a team or player of it is on another court. */
+function ForceStart({ matchId, token, onDone }: { matchId: string; token: string; onDone: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const go = async () => {
+    setBusy(true); setErr(null)
+    try { await api.courtForceStart(matchId, token); onDone() }
+    catch (e: any) {
+      const m = String(e?.message ?? e)
+      setErr(/PLAYER_BUSY/.test(m) ? `Not now: ${m.split('PLAYER_BUSY:')[1]?.trim() || 'a player'} is on another court.`
+        : /TEAM_BUSY/.test(m) ? 'Not now: a team of this game is still playing.'
+        : /COURT_BUSY/.test(m) ? 'This court already has a game.'
+        : 'Could not start. Try again.')
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <button onClick={go} disabled={busy}
+        className="flex min-h-[40px] items-center rounded-xl bg-brand px-4 py-2 text-sm font-bold text-brand-fg disabled:opacity-50">
+        {busy ? 'Starting…' : 'Force start next game'}
+      </button>
+      {err && <div className="max-w-xs text-xs text-red-500">{err}</div>}
     </div>
   )
 }

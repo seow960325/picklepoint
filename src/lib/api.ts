@@ -329,6 +329,13 @@ export async function courtPickMatch(matchId: string, courtId: string, token: st
   return rpc<Match>('court_pick_match', { p_match_id: matchId, p_token: token })
 }
 
+/** Migration 0069 (MC26 + TEST only): start this court's waiting group game before the earlier slot
+ *  is over; refused when a team or a player of it is on court anywhere. */
+export async function courtForceStart(matchId: string, token: string): Promise<Match> {
+  if (IS_DEMO) throw new Error('NOT_ALLOWED')
+  return rpc<Match>('court_force_start', { p_match_id: matchId, p_token: token })
+}
+
 export async function flipSides(matchId: string, token: string): Promise<Match> {
   if (IS_DEMO) return demo.flipSides(matchId)
   return rpc<Match>('flip_sides', { p_match_id: matchId, p_token: token })

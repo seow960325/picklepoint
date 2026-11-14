@@ -1,0 +1,6 @@
+-- PicklePoint 0069 (MC26 + TESTMC only), applied live via Supabase on 2026-11-14.
+-- 1) _pool_dispatch is back to the original rule (a group game waits for the earlier slot).
+-- 2) court_force_start(match, court token): the referee starts this court's waiting group game
+--    before the slot is over. Refused (COURT_BUSY / TEAM_BUSY / PLAYER_BUSY: names) when the court is
+--    busy, a team of the game is on court, or a player of it is on court in either category.
+--    Only for MCMD, MCXD, TESTMD, TESTXD (NOT_ALLOWED otherwise). Full SQL: see Supabase migration history.

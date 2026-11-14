@@ -1,6 +1,2 @@
--- PicklePoint 0068 (MC26 + TESTMC only): in the group stage a court starts its next game as soon as
--- its own teams are free; it no longer waits for the other courts to finish the earlier slot.
--- Other competitions (PBMD/PBXD = YC26, BM*) keep the slot wait.
--- Applied live via Supabase on 2026-11-14. Only change vs the old _pool_dispatch: v_free flag,
--- and the strict-mode slot check is now (v_free or not exists (...)).
--- To undo: re-run the previous _pool_dispatch (strict branch without v_free).
+-- 0068 was applied live and then superseded by 0069 (same day): the automatic early start was replaced
+-- by the referee's "Force start next game" button. Nothing to run here.
