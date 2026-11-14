@@ -139,7 +139,7 @@ export function LiveNext({ hub, bundleOf, onOpen }: { hub: Hub; bundleOf: (code:
     const side = (s: 'a' | 'b') => {
       const id = s === 'a' ? m.team_a_id : m.team_b_id
       const pid = id ?? (ev ? provisionalTeam(b, ev, m, s, groupStandings) : null)
-      return pid ? name(b, pid) : ev && (ev.bracket_preview || ev.format === 'groups_ko') ? koSlotLabel(b, ev, m, s) : 'To be decided'
+      return pid ? name(b, pid) : ev && (ev.bracket_preview || ev.format === 'groups_ko') ? koSlotLabel(b, ev, m, s, groupStandings) : 'To be decided'
     }
     const done = m.status === 'finished'
     const cls = (s: 'a' | 'b') => {

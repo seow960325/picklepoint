@@ -29,13 +29,13 @@ function Side({ b, ev, m, s, big }: { b: Bundle; ev: EventCfg; m: Match; s: 'a' 
   const win = done && m.winner_id === id
   const lose = done && !!id && m.winner_id !== id
   // where this place comes from: "Group A winner", "Best runner-up 3", "Winner QF1", "Loser SF2"
-  const slot = ev.bracket_preview || ev.format === 'groups_ko' || koPlanOf(b.competition?.code) ? koSlotLabel(b, ev, m, s) : 'To be decided'
+  const slot = ev.bracket_preview || ev.format === 'groups_ko' || koPlanOf(b.competition?.code) ? koSlotLabel(b, ev, m, s, groupStandings) : 'To be decided'
   if (!id) {
     return (
       <div className={`flex min-h-[2.75rem] items-center border-l-[3px] border-transparent px-2.5 ${big ? 'py-2.5' : 'py-2'}`}>
         <span className="min-w-0 flex-1 leading-tight">
           <span className={`block italic text-fg-muted ${big ? 'text-[15px]' : 'text-[13px]'}`}>{slot}</span>
-          {feedHint(b, m, s) && <span className="block text-[10.5px] leading-tight text-fg-subtle">{feedHint(b, m, s)}</span>}
+          {feedHint(b, m, s, groupStandings) && <span className="block text-[10.5px] leading-tight text-fg-subtle">{feedHint(b, m, s, groupStandings)}</span>}
         </span>
       </div>
     )

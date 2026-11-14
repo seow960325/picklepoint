@@ -1456,11 +1456,11 @@ function PMatch({ b, m, medalOf }: { b: Bundle; m?: Match; medalOf?: (id: string
   const bye = m.team_b_id == null && m.team_a_id != null && m.status === 'finished'
   // fixed bracket shown before the teams are known (bracket_preview events)
   const ev = eventOf(b, m)
-  const slot = (s: 'a' | 'b') => ev && (ev.bracket_preview || ev.format === 'groups_ko' || koPlanOf(b.competition?.code)) ? koSlotLabel(b, ev, m, s) : undefined
+  const slot = (s: 'a' | 'b') => ev && (ev.bracket_preview || ev.format === 'groups_ko' || koPlanOf(b.competition?.code)) ? koSlotLabel(b, ev, m, s, groupStandings) : undefined
   const decided = m.status === 'finished'
   const live = m.status === 'live'
   // printed plan: the fixed slot is always written on the game, and a group winner shows as soon as its group is done
-  const caption = bracketCaption(b, m)
+  const caption = bracketCaption(b, m, groupStandings)
   const idA = m.team_a_id ?? (ev ? provisionalTeam(b, ev, m, 'a', groupStandings) : null)
   const idB = m.team_b_id ?? (ev ? provisionalTeam(b, ev, m, 'b', groupStandings) : null)
   const tierOf = useContext(McCtx)

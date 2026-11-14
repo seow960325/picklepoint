@@ -1470,7 +1470,7 @@ function KoSlots({ bundle, ev, token, run }: any) {
           <p className="text-xs text-fg-subtle">Only if the automatic draw is wrong or a team withdraws. Pick the team for a place. A team that is already in another game of the same round changes places with the team it replaces. A game that already has a point cannot be changed. After a change here the app no longer redraws this round by itself.</p>
           {ko.map((m: any) => (
             <div key={m.id} className={`rounded-lg border border-line p-2.5 text-sm ${started(m) ? 'opacity-50' : ''}`}>
-              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-fg-subtle">{bracketCaption(bundle, m) ?? m.round}{started(m) ? ' · started' : ''}</div>
+              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-fg-subtle">{bracketCaption(bundle, m, groupStandings) ?? m.round}{started(m) ? ' · started' : ''}</div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {(['a', 'b'] as const).map(side => (
                   <select key={side} disabled={started(m)} value={(side === 'a' ? m.team_a_id : m.team_b_id) ?? ''}

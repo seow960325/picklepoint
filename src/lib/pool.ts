@@ -17,7 +17,7 @@
  */
 import type { Bundle, EventCfg, Match, Team } from './types'
 import { finalGameNo } from './finals.ts'
-import { koPlanOf, slotName } from './koplan.ts'
+import { koPlanOf, slotName, planDraw, type KoPlan } from './koplan.ts'
 import { roundRobinPairs, standardSeedOrder, seedBracket, type DraftMatch, type DraftTeam } from './draw.ts'
 
 export const isPoolDispatch = (ev?: EventCfg | null) => ev?.court_dispatch === 'pool'
@@ -310,10 +310,22 @@ export function koShort(b: Bundle, m: Match): string {
   return `${tag}${i}`
 }
 
+type GroupTables = (b: Bundle, eventId: string) => Record<string, Array<{ team: { id: string } }>>
+
+/** The printed pairs of a knockout plan. Once every group game is finished and the groups tables
+ *  are given, this is the draw as it was really made (after the same-pool runner-up swap), so a
+ *  bracket label never disagrees with who actually plays. Labels only: no team or score is touched. */
+export function drawnPairs(b: Bundle, eventId: string, plan: KoPlan, tables?: GroupTables): Array<[string, string]> {
+  if (!tables) return plan.pairs
+  const grp = b.matches.filter(x => x.event_id === eventId && x.bracket_key == null)
+  if (!grp.length || grp.some(x => x.status !== 'finished')) return plan.pairs
+  return planDraw(plan, tables(b, eventId) as any).tokens
+}
+
 /** What goes in an empty slot before its team is known: "Group A winner",
  *  "Winner QF1", "Loser SF2". Only used when bracket_preview is on. Matches
  *  the fixed draw seedBracket() writes when one team per group advances. */
-export function koSlotLabel(b: Bundle, ev: EventCfg, m: Match, slot: 'a' | 'b'): string {
+export function koSlotLabel(b: Bundle, ev: EventCfg, m: Match, slot: 'a' | 'b', tables?: GroupTables): string {
   const ko = b.matches.filter(x => x.event_id === ev.id && x.bracket_key != null)
   const winFeed = ko.find(x => x.next_match_id === m.id && x.next_slot === slot)
   if (winFeed) return `Winner ${koShort(b, winFeed)}`
@@ -325,7 +337,7 @@ export function koSlotLabel(b: Bundle, ev: EventCfg, m: Match, slot: 'a' | 'b'):
   const size = Number(first[1]), j = Number(first[2])
   // printed knockout plan (MCMD / MCXD fundraiser)
   const plan = koPlanOf(b.competition?.code)
-  if (plan) { const tk = plan.pairs[j]; return tk ? slotName(tk[slot === 'a' ? 0 : 1]) : 'TBD' }
+  if (plan) { const tk = drawnPairs(b, ev.id, plan, tables)[j]; return tk ? slotName(tk[slot === 'a' ? 0 : 1]) : 'TBD' }
   const groups = [...new Set(b.teams.filter(t => t.event_id === ev.id).map(t => t.pool ?? 'A'))].sort()
   const adv = ev.advance_per_group ?? 1
   if (adv === 1) {
@@ -484,18 +496,18 @@ export function gameTitle(b: Bundle, m: Match): string {
 }
 
 /** Printed plan, first knockout round: the fixed slot, e.g. "Group A winner v Best runner-up 3". */
-export function planCaption(b: Bundle, m: Match): string | null {
+export function planCaption(b: Bundle, m: Match, tables?: GroupTables): string | null {
   const plan = koPlanOf(b.competition?.code)
   const j = plan ? new RegExp(`^KO-${plan.pairs.length * 2}-(\\d+)$`).exec(m.bracket_key ?? '') : null
   if (!plan || !j) return null
-  const tk = plan.pairs[Number(j[1])]
+  const tk = drawnPairs(b, m.event_id, plan, tables)[Number(j[1])]
   return tk ? `${slotName(tk[0])} v ${slotName(tk[1])}` : null
 }
 
 /** Bracket box caption: the game code always, plus the printed slot for the first round. "QF1 · Group A winner v Best runner-up 3", "SF1". */
-export function bracketCaption(b: Bundle, m: Match): string | null {
+export function bracketCaption(b: Bundle, m: Match, tables?: GroupTables): string | null {
   if (m.bracket_key == null) return null
-  const pc = planCaption(b, m)
+  const pc = planCaption(b, m, tables)
   return pc ? `${koCode(b, m)} · ${pc}` : koCode(b, m)
 }
 
@@ -519,11 +531,11 @@ export function provisionalTeam(b: Bundle, ev: EventCfg, m: Match, s: 'a' | 'b',
 
 /** Where a "Winner QF1" place really comes from, so nobody has to trace the lines:
  *  from a quarter-final: "Group A winner v Best runner-up 3"; from a later round: "QF1 v QF2". */
-export function feedHint(b: Bundle, m: Match, slot: 'a' | 'b'): string | null {
+export function feedHint(b: Bundle, m: Match, slot: 'a' | 'b', tables?: GroupTables): string | null {
   const ko = b.matches.filter(x => x.event_id === m.event_id && x.bracket_key != null)
   const f = ko.find(x => x.next_match_id === m.id && x.next_slot === slot) ?? ko.find(x => x.loser_match_id === m.id && x.loser_slot === slot)
   if (!f) return null
-  const pc = planCaption(b, f)
+  const pc = planCaption(b, f, tables)
   if (pc) return pc
   const feeders = ko.filter(x => x.next_match_id === f.id).sort((x, y) => (x.next_slot ?? '').localeCompare(y.next_slot ?? ''))
   return feeders.length === 2 ? `${koCode(b, feeders[0])} v ${koCode(b, feeders[1])}` : null
