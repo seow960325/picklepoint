@@ -9,7 +9,7 @@ import {
 } from '../lib/store'
 import { displayScores, rulesOf, servingSide, serverCourt as serverCourtOf, scoreCall, activeServerNo } from '../lib/scoring'
 import type { Bundle, EventCfg, Match } from '../lib/types'
-import { Screen, Pill, Spinner, FullscreenButton, Flag, Emblem, ThemeToggle, ShrinkText, Monogram, hasFlag, PairName, EventLogo } from '../components/ui'
+import { Screen, Pill, Spinner, FullscreenButton, Flag, Emblem, ThemeToggle, ShrinkText, Monogram, hasFlag, PairName, StackName, EventLogo } from '../components/ui'
 import Court from '../components/Court'
 import { IS_DEMO, demo, refresh as fetchBundle } from '../lib/api'
 import { fullscreenSupported } from '../lib/fullscreen'
@@ -1547,7 +1547,7 @@ function PCentre({ b, finals, thirdM, champId, podium }: {
     <div className="flex flex-col px-2 lg:px-5">
       <div className="mb-2 flex h-8 items-center justify-center border-b-2 border-gold/60 pb-1 text-center font-cer text-base font-bold uppercase tracking-[0.3em] text-gold">Final</div>
       <div className="flex flex-1 flex-col items-center justify-center gap-2">
-        <div className={`${finalT ? finalT.box : 'w-52'} flex flex-col gap-2 transition-all duration-500`}>{finals.length > 1 ? <FinalSeriesBox b={b} games={finals} champId={champId} medalOf={medalOf} /> : <PMatch b={b} m={finals[0]} medalOf={medalOf} />}</div>
+        <div className={`${finals.length > 1 && (!finalT || finalT.box === 'w-44' || finalT.box === 'w-52') ? 'w-64' : finalT ? finalT.box : 'w-52'} flex flex-col gap-2 transition-all duration-500`}>{finals.length > 1 ? <FinalSeriesBox b={b} games={finals} champId={champId} medalOf={medalOf} /> : <PMatch b={b} m={finals[0]} medalOf={medalOf} />}</div>
         <div className="my-1 flex flex-col items-center">
           <Trophy lit={!!champId} fight={fight} />
           {champId
@@ -1578,7 +1578,7 @@ function FinalSeriesBox({ b, games, champId, medalOf }: { b: Bundle; games: Matc
     return (
       <div className={`flex items-center gap-2 border-l-2 px-2.5 py-1.5 ${win ? 'border-gold bg-gold/15' : lose ? 'border-transparent opacity-45' : 'border-transparent'}`}>
         <Emblem logo={teamLogo(b, id)} flagName={teamSideName(b, id)} className="h-6 w-6 shrink-0 rounded-[2px] object-contain" />
-        <span className={`min-w-0 flex-1 text-xs leading-tight ${win ? 'font-bold text-fg' : 'font-medium text-fg-muted'}`}>{id ? <PairName name={teamName(b, id)} /> : '—'}</span>
+        <span className={`min-w-0 flex-1 text-xs leading-tight ${win ? 'font-bold text-fg' : 'font-medium text-fg-muted'}`}>{id ? <StackName name={teamName(b, id)} /> : '—'}</span>
         {medal && <span className="shrink-0 text-xs leading-none">{medal === 'gold' ? '🥇' : medal === 'silver' ? '🥈' : '🥉'}</span>}
         {games.map(g => {
           const w = wonBy(id, g)
