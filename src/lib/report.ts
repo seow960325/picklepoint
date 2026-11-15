@@ -208,9 +208,10 @@ function catBlocks(c: Cat, hub: Hub, out: Block[]) {
   }
   const sc = (r: Row) => (r.m.status === 'scheduled' ? '-' : `${r.sa} - ${r.sb}`)
   const stg = (r: Row) => r.stage.replace(/^Round robin · /, '')
-  const GW = [82, 50, 36, 0, 50, 0, 0], GA: Record<number, Al> = { 2: 'center', 3: 'right', 4: 'center' }
-  const GH = ['Stage', 'Time', 'Court', 'Team', 'Score', 'Team', 'Winner']
-  const game = (r: Row) => [stg(r), r.time, r.court, r.a, sc(r), r.bName, r.winner || (r.m.status === 'finished' ? 'Draw' : r.status)]
+  // Length = time the game took on the referee clock (blank when the clock was not used properly)
+  const GW = [74, 46, 34, 0, 46, 0, 0, 40], GA: Record<number, Al> = { 2: 'center', 3: 'right', 4: 'center', 7: 'right' }
+  const GH = ['Stage', 'Time', 'Court', 'Team', 'Score', 'Team', 'Winner', 'Length']
+  const game = (r: Row) => [stg(r), r.time, r.court, r.a, sc(r), r.bName, r.winner || (r.m.status === 'finished' ? 'Draw' : r.status), realSecs(r) ? dur(r.secs) : '']
   const ko = rows.filter(r => r.isKo).sort((x, y) => x.m.sequence - y.m.sequence)
   if (!bracket && ko.length) out.push({ k: 'h3', t: 'Knockout' }, { k: 'table', head: GH, w: GW, al: GA, bold: [4], win: 6, body: ko.map(game) })
   const rec = records(c, rows)
