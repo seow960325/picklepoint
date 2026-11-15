@@ -6,6 +6,7 @@ import { Screen } from '../components/ui'
 
 export default function Join() {
   const [code, setCode] = useState(lastCode())
+  const [askNew, setAskNew] = useState(false)
   const nav = useNavigate()
 
   const go = (e: React.FormEvent) => {
@@ -50,10 +51,22 @@ export default function Join() {
           ⚡ QUICK START
         </Link>
 
-        <Link to="/new"
-          className="mt-3 block rounded-2xl border border-line bg-surface py-4 text-center font-display text-lg font-bold tracking-wide text-fg-muted active:bg-surface-2">
+        {/* new competitions go through the organiser: show the contact (the /new page itself is unchanged) */}
+        <button type="button" onClick={() => setAskNew(v => !v)}
+          className="mt-3 block w-full rounded-2xl border border-line bg-surface py-4 text-center font-display text-lg font-bold tracking-wide text-fg-muted active:bg-surface-2">
           + NEW COMPETITION
-        </Link>
+        </button>
+        {askNew && (
+          <div className="mt-3 rounded-2xl border-2 border-gold/60 bg-gold/10 px-4 py-4 text-center">
+            <p className="text-sm font-semibold leading-snug">To create a new competition, please contact us for info:</p>
+            <a href="tel:+60177743891" className="mt-1 block font-display text-2xl font-bold tracking-wide">+6017-774 3891</a>
+            <div className="mt-3 flex justify-center gap-2">
+              <a href="https://wa.me/60177743891?text=Hi%2C%20I%20would%20like%20info%20on%20creating%20a%20competition%20on%20PicklePoint"
+                target="_blank" rel="noreferrer" className="rounded-lg bg-[#25D366] px-4 py-2 text-sm font-bold text-black">WhatsApp</a>
+              <a href="tel:+60177743891" className="rounded-lg border border-line px-4 py-2 text-sm font-bold">Call</a>
+            </div>
+          </div>
+        )}
 
         {IS_DEMO && (
           <button
