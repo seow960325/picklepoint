@@ -74,7 +74,7 @@ export interface BoxM {
   win: 'a' | 'b' | null; ids: Array<string | null>; winId: string | null; note?: string
 }
 export type Block =
-  | { k: 'h1'; t: string; sub: string; note: string; arts: Art[] }
+  | { k: 'h1'; t: string; sub: string; arts: Art[] }
   | { k: 'h2'; t: string; sub: string; hue?: 0 | 1 | null; art: Art } | { k: 'h3'; t: string } | { k: 'p'; t: string }
   | { k: 'podium'; items: Array<[string, string, string]> }   // [label, name, small line]: 1st is the hero card
   | { k: 'tiles'; items: Array<[string, string]> }
@@ -167,17 +167,16 @@ function catBlocks(c: Cat, hub: Hub, out: Block[]) {
   const timed = done.filter(realSecs)
   const avg = timed.length ? Math.round(timed.reduce((s, r) => s + r.secs!, 0) / timed.length) : 0
   const long = top(timed, r => r.secs!)
-  const g = (r?: Row) => (r ? `${r.a}  ${r.sa} - ${r.sb}  ${r.bName}` : '-')
   const st = (r?: Row) => r?.stage ?? ''
   const fig = (label: string, list: Row[]): string[][] =>
-    list.map((r, i) => [i === 0 ? label : '', g(r), st(r)])
+    list.map((r, i) => [i === 0 ? label : '', r.a, `${r.sa} - ${r.sb}`, r.bName, st(r)])
   out.push({ k: 'h3', t: 'Key figures' }, { k: 'tiles', items: [
     ['Teams', String(c.b.teams.filter(t => evsOf(c, hub).some(e => e.id === t.event_id)).length)],
     ['Games played', `${done.length} / ${rows.length}`],
     ['Total points', String(pts)],
     ['Avg points / game', done.length ? (pts / done.length).toFixed(1) : '-'],
     ...(avg ? [['Avg game length', dur(avg)] as [string, string]] : []),
-  ] }, { k: 'table', kv: true, head: ['', '', ''], w: [140, 0, 120], body: [
+  ] }, { k: 'table', kv: true, head: ['', '', '', '', ''], w: [116, 0, 46, 0, 112], al: { 1: 'right', 2: 'center' }, bold: [2], body: [
     ...fig(`Biggest win${big[0] ? ` (by ${margin(big[0])})` : ''}`, big),
     ...fig(`Closest game${close[0] ? ` (by ${margin(close[0])})` : ''}`, close),
     ...fig(`Highest-scoring${high[0] ? ` (${high[0].sa + high[0].sb} pts)` : ''}`, high),
@@ -189,8 +188,8 @@ function catBlocks(c: Cat, hub: Hub, out: Block[]) {
       const pools = [...new Set(c.b.teams.filter(t => t.event_id === ev.id).map(t => t.pool ?? 'A'))].sort()
       for (const pl of pools) {
         const t = cbStandings(c.b, ev.id, pl)
-        if (t.length) out.push({ k: 'h3', t: `Group ${pl}` }, { k: 'table', head: ['#', 'Team', 'P', 'W', 'D', 'L', 'PF', 'PA', '+/-', 'Pts'],
-          w: [24, 0, 32, 32, 32, 32, 36, 36, 40, 36], al: R(0, 2, 3, 4, 5, 6, 7, 8, 9), bold: [1, 9],
+        if (t.length) out.push({ k: 'h3', t: `Group ${pl}` }, { k: 'table', head: ['#', 'Team', 'Played', 'Won', 'Drawn', 'Lost', 'Scored', 'Conceded', '+/-', 'Points'],
+          w: [24, 0, 40, 34, 38, 34, 42, 52, 36, 42], al: R(0, 2, 3, 4, 5, 6, 7, 8, 9), bold: [1, 9],
           body: t.map((r, i) => [i + 1, r.team.name, r.p, r.w, r.d, r.l, r.pf, r.pa, plus(r.diff), r.pts]) })
       }
     } else if (ev.format === 'groups_ko') {
@@ -199,11 +198,11 @@ function catBlocks(c: Cat, hub: Hub, out: Block[]) {
       const withPl = Object.values(gt).flat().some(r => players(r.team) && players(r.team) !== r.team.name)
       for (const k of Object.keys(gt).sort())
         out.push({ k: 'h3', t: `Group ${k}` }, withPl
-          ? { k: 'table', head: ['#', 'Team', 'Players', 'P', 'W', 'L', 'PF', 'PA', '+/-'],
-            w: [24, 150, 0, 32, 32, 32, 36, 36, 40], al: R(0, 3, 4, 5, 6, 7, 8), bold: [1],
+          ? { k: 'table', head: ['#', 'Team', 'Players', 'Played', 'Won', 'Lost', 'Scored', 'Conceded', '+/-'],
+            w: [24, 130, 0, 40, 34, 34, 42, 52, 36], al: R(0, 3, 4, 5, 6, 7, 8), bold: [1],
             body: gt[k].map((r, i) => [i + 1, r.team.name, players(r.team) || r.team.name, r.played, r.won, r.lost, r.pf, r.pa, plus(r.diff)]) }
-          : { k: 'table', head: ['#', 'Team', 'P', 'W', 'L', 'PF', 'PA', '+/-'],
-            w: [24, 0, 32, 32, 32, 36, 36, 40], al: R(0, 2, 3, 4, 5, 6, 7), bold: [1],
+          : { k: 'table', head: ['#', 'Team', 'Played', 'Won', 'Lost', 'Scored', 'Conceded', '+/-'],
+            w: [24, 0, 40, 34, 34, 42, 52, 36], al: R(0, 2, 3, 4, 5, 6, 7), bold: [1],
             body: gt[k].map((r, i) => [i + 1, r.team.name, r.played, r.won, r.lost, r.pf, r.pa, plus(r.diff)]) })
     }
   }
@@ -215,9 +214,9 @@ function catBlocks(c: Cat, hub: Hub, out: Block[]) {
   const ko = rows.filter(r => r.isKo).sort((x, y) => x.m.sequence - y.m.sequence)
   if (!bracket && ko.length) out.push({ k: 'h3', t: 'Knockout' }, { k: 'table', head: GH, w: GW, al: GA, bold: [4], win: 6, body: ko.map(game) })
   const rec = records(c, rows)
-  out.push({ k: 'h3', t: 'Team records (all games)' }, { k: 'table', head: ['#', 'Team', 'P', 'W', 'L', 'PF', 'PA', '+/-', 'Win %', 'Best'],
-    w: [24, 0, 32, 32, 32, 36, 36, 40, 44, 36], al: R(0, 2, 3, 4, 5, 6, 7, 8, 9), bold: [1],
-    body: rec.map((r, i) => [i + 1, r.name, r.p, r.w, r.l, r.pf, r.pa, plus(r.pf - r.pa), r.p ? `${Math.round((r.w / r.p) * 100)}%` : '-', r.best]) })
+  out.push({ k: 'h3', t: 'Team records (all games)' }, { k: 'table', head: ['#', 'Team', 'Played', 'Won', 'Lost', 'Scored', 'Conceded', '+/-', 'Win %'],
+    w: [24, 0, 40, 34, 34, 42, 52, 36, 40], al: R(0, 2, 3, 4, 5, 6, 7, 8), bold: [1],
+    body: rec.map((r, i) => [i + 1, r.name, r.p, r.w, r.l, r.pf, r.pa, plus(r.pf - r.pa), r.p ? `${Math.round((r.w / r.p) * 100)}%` : '-']) })
   out.push({ k: 'h3', t: 'All games' }, { k: 'table', head: GH, w: GW, al: GA, bold: [4], win: 6, body: rows.map(game) })
 }
 
@@ -227,8 +226,7 @@ export function reportBlocks(hub: Hub, cats: Cat[]): Block[] {
   const title = hubTitle(hub, cats.map(c => c.b.competition.name))
   const when = dateOf(cats)
   const out: Block[] = [{ k: 'h1', t: title, arts: [...new Set(cats.map(c => sportOf(c, hub)))],
-    sub: `Full results & analysis${when ? `  |  ${new Date(when + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}`,
-    note: `pickle-point.vercel.app/c/${hub.code}  |  downloaded ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` }]
+    sub: `Full results & analysis${when ? `  |  ${new Date(when + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}` }]
   if (!hub.noChurch) {
     const res = cats.map(c => categoryResult(c.b))
     const mt = medalTable(res, cats.map(c => c.b))
@@ -263,8 +261,7 @@ export function teamBlocks(hub: Hub, c: Cat, teamId: string): Block[] {
   const title = hubTitle(hub, [c.b.competition.name])
   const when = c.b.competition.event_date ?? ''
   const out: Block[] = [{ k: 'h1', t: title, arts: [sportOf(c, hub)],
-    sub: `Team report${when ? `  |  ${new Date(when + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}`,
-    note: `pickle-point.vercel.app/c/${hub.code}  |  downloaded ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` }]
+    sub: `Team report${when ? `  |  ${new Date(when + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}` }]
   out.push(banner(c, hub))
   const all = rowsOf(c, hub)
   const mine = all.filter(r => r.m.team_a_id === teamId || r.m.team_b_id === teamId)
@@ -320,17 +317,18 @@ export function teamBlocks(hub: Hub, c: Cat, teamId: string): Block[] {
   const pf = done.reduce((s, r) => s + us(r), 0), pa = done.reduce((s, r) => s + them(r), 0)
   out.push({ k: 'tiles', items: [
     ['Played', String(done.length)], ['Won', String(W_)], ['Lost', String(done.length - W_ - D_)],
-    ['Points for', String(pf)], ['Points against', String(pa)], ['+/-', plus(pf - pa)],
+    ['Scored', String(pf)], ['Conceded', String(pa)], ['+/-', plus(pf - pa)],
     ['Win %', done.length ? `${Math.round((W_ / done.length) * 100)}%` : '-'],
   ] })
 
   const br = bracketFor(c, hub)
-  if (br) out.push({ ...br, hl: teamId })
+  const inKo = (x: BoxM) => x.ids.includes(teamId)
+  if (br && (inKo(br.final) || (br.third && inKo(br.third)) || br.rows.flat().some(inKo))) out.push({ ...br, hl: teamId })
 
   if (grp) out.push({ k: 'h3', t: `Group ${grp.pool}` }, grp.cb
-    ? { k: 'table', head: ['#', 'Team', 'P', 'W', 'D', 'L', 'PF', 'PA', '+/-', 'Pts'], w: [24, 0, 32, 32, 32, 32, 36, 36, 40, 36],
+    ? { k: 'table', head: ['#', 'Team', 'Played', 'Won', 'Drawn', 'Lost', 'Scored', 'Conceded', '+/-', 'Points'], w: [24, 0, 40, 34, 38, 34, 42, 52, 36, 42],
         al: R(0, 2, 3, 4, 5, 6, 7, 8, 9), bold: [1, 9], hl: grp.pos - 1, body: grp.rows.map(r => r.cells) }
-    : { k: 'table', head: ['#', 'Team', 'Players', 'P', 'W', 'L', 'PF', 'PA', '+/-'], w: [24, 150, 0, 32, 32, 32, 36, 36, 40],
+    : { k: 'table', head: ['#', 'Team', 'Players', 'Played', 'Won', 'Lost', 'Scored', 'Conceded', '+/-'], w: [24, 130, 0, 40, 34, 34, 42, 52, 36],
         al: R(0, 3, 4, 5, 6, 7, 8), bold: [1], hl: grp.pos - 1, body: grp.rows.map(r => r.cells) })
 
   const stg = (r: Row) => r.stage.replace(/^Round robin · /, '')
@@ -343,22 +341,21 @@ export function teamBlocks(hub: Hub, c: Cat, teamId: string): Block[] {
   const mg = (r: Row) => us(r) - them(r)
   const pick = (list: Row[], val: (r: Row) => number) => { if (!list.length) return []; const b = Math.max(...list.map(val)); return list.filter(r => val(r) === b) }
   const wins = done.filter(r => mg(r) > 0), losses = done.filter(r => mg(r) < 0)
-  const line = (r: Row) => `${us(r)} - ${them(r)}  v  ${oppName(r)}`
-  const fig = (label: string, list: Row[]) => list.map((r, i) => [i === 0 ? label : '', line(r), stg(r)])
+  const fig = (label: string, list: Row[]) => list.map((r, i) => [i === 0 ? label : '', `${us(r)} - ${them(r)}`, 'v', oppName(r), stg(r)])
   const kv = [
     ...fig(`Biggest win${wins.length ? ` (by ${Math.max(...wins.map(mg))})` : ''}`, pick(wins, mg)),
     ...fig(`Closest game${done.length ? ` (by ${Math.min(...done.map(r => Math.abs(mg(r))))})` : ''}`, pick(done, r => -Math.abs(mg(r)))),
     ...fig(`Heaviest loss${losses.length ? ` (by ${Math.max(...losses.map(r => -mg(r)))})` : ''}`, pick(losses, r => -mg(r))),
     ...fig(`Longest game${done.some(realSecs) ? ` (${dur(Math.max(...done.filter(realSecs).map(r => r.secs!)))})` : ''}`, pick(done.filter(realSecs), r => r.secs!)),
   ]
-  if (kv.length) out.push({ k: 'h3', t: 'Key games' }, { k: 'table', kv: true, head: ['', '', ''], w: [140, 0, 120], body: kv })
+  if (kv.length) out.push({ k: 'h3', t: 'Key games' }, { k: 'table', kv: true, head: ['', '', '', '', ''], w: [116, 46, 16, 0, 112], al: { 1: 'center', 2: 'center' }, bold: [1], body: kv })
 
   // the teams it met: how each of them did over the whole day
   const recs = records(c, all)
   const opp = [...new Map(sorted.filter(r => oppId(r)).map(r => [oppId(r)!, r])).values()]
   const withPl = opp.some(r => { const t = c.b.teams.find(x => x.id === oppId(r)); return !!players(t) && players(t) !== t?.name })
-  if (opp.length) out.push({ k: 'h3', t: 'Teams met' }, { k: 'table', head: ['Opponent', 'Players', 'Finished', 'P', 'W', 'L', '+/-', 'Head to head'].filter((_, i) => withPl || i !== 1),
-    w: (withPl ? [110, 0, 92, 26, 26, 26, 36, 70] : [0, 110, 30, 30, 30, 40, 80]), al: withPl ? R(3, 4, 5, 6) : R(2, 3, 4, 5), bold: [0],
+  if (opp.length) out.push({ k: 'h3', t: 'Teams met' }, { k: 'table', head: ['Opponent', 'Players', 'Finished', 'Played', 'Won', 'Lost', '+/-', 'Head to head'].filter((_, i) => withPl || i !== 1),
+    w: (withPl ? [100, 0, 86, 40, 32, 32, 36, 72] : [0, 110, 40, 34, 34, 40, 84]), al: withPl ? R(3, 4, 5, 6) : R(2, 3, 4, 5), bold: [0],
     body: opp.map(r => {
       const id = oppId(r)!, t = c.b.teams.find(x => x.id === id), rc = recs.find(x => x.name === t?.name)
       const h2h = done.filter(g => oppId(g) === id)
@@ -474,14 +471,18 @@ export async function reportPdf(hub: Hub, cats: Cat[], logoIn?: Logo | null, tea
     doc.setFillColor(...WHITE).roundedRect(x, by, w, h, 3, 3, 'F')
     ;([['a', m.a, m.sa], ['b', m.b, m.sb]] as const).forEach(([s, name, score], i) => {
       const ry = by + i * rh, win = m.win === s, me = !!hlId && m.ids[i] === hlId
-      if (win) doc.setFillColor(...theme.soft).rect(x + 1, ry + 0.5, w - sw - 1, rh - 1, 'F')
+      if (win || me) doc.setFillColor(...(me ? [254, 240, 138] as RGB : theme.soft)).rect(x + 1, ry + 0.5, w - sw - 1, rh - 1, 'F')
       if (win) doc.setFillColor(...GOLD).rect(x, ry + 1.5, 3.5, rh - 3, 'F')
       doc.setFillColor(...(win ? theme.main : [241, 245, 249] as RGB)).rect(x + w - sw, ry + (i ? 0 : 1.5), sw - 1.5, rh - 1.5, 'F')
-      doc.setFont('helvetica', win ? 'bold' : 'normal').setFontSize(fs).setTextColor(...(win ? INK : MUTE))
+      doc.setFont('helvetica', win || me ? 'bold' : 'normal').setFontSize(fs).setTextColor(...(win || me ? INK : MUTE))
       doc.text(fit(name, w - sw - pad - 3), x + pad, ry + rh / 2 + fs * 0.35)
       doc.setFont('helvetica', 'bold').setTextColor(...(win ? WHITE : MUTE))
       doc.text(clean(score), x + w - sw / 2 - 0.7, ry + rh / 2 + fs * 0.35, { align: 'center' })
-      if (me) doc.setDrawColor(250, 204, 21).setLineWidth(1.6).roundedRect(x - 1.5, ry - 0.5 + (i ? 0 : 0.5), w + 3, rh + 1, 2, 2, 'S')
+      if (me) {
+        // the team of a team report: yellow row, thick frame and a pointer, easy to spot on the whole bracket
+        doc.setDrawColor(250, 204, 21).setLineWidth(2.4).roundedRect(x - 2, ry - 1 + (i ? 0 : 0.5), w + 4, rh + 2, 2, 2, 'S')
+        doc.setFillColor(250, 204, 21).triangle(x - 11, ry + rh / 2 - 5, x - 11, ry + rh / 2 + 5, x - 4, ry + rh / 2, 'F')
+      }
     })
     doc.setDrawColor(...LINE).setLineWidth(0.5).line(x + 2, by + rh, x + w - sw, by + rh)
     return { top: by, bot: by + h, cx: x + w / 2, m }
@@ -529,9 +530,8 @@ export async function reportPdf(hub: Hub, cats: Cat[], logoIn?: Logo | null, tea
         const lh = 62, lw = Math.min(92, (logo.w / logo.h) * lh)
         try { doc.addImage(logo.data, 'PNG', M, 19, lw, lh, undefined, 'FAST'); tx = M + lw + 14 } catch { /* no logo */ }
       }
-      doc.setFont('helvetica', 'bold').setFontSize(23).setTextColor(255); doc.text(fit(b.t, W - M - tx - (b.arts.length > 1 ? 150 : 70)), tx, 48)
-      doc.setFont('helvetica', 'normal').setFontSize(10.5).setTextColor(253, 224, 71); doc.text(clean(b.sub).toUpperCase(), tx, 66, { charSpace: 0.6 })
-      doc.setFontSize(8).setTextColor(148, 163, 184); doc.text(clean(b.note), tx, 81)
+      doc.setFont('helvetica', 'bold').setFontSize(23).setTextColor(255); doc.text(fit(b.t, W - M - tx - (b.arts.length > 1 ? 150 : 70)), tx, 52)
+      doc.setFont('helvetica', 'normal').setFontSize(10.5).setTextColor(253, 224, 71); doc.text(clean(b.sub).toUpperCase(), tx, 71, { charSpace: 0.6 })
       y = 124
     } else if (b.k === 'p') {
       doc.setFont('helvetica', 'normal').setFontSize(9.5).setTextColor(...MUTE); doc.text(clean(b.t), M, y + 10); y += 18
@@ -689,7 +689,7 @@ export async function reportPdf(hub: Hub, cats: Cat[], logoIn?: Logo | null, tea
           if (d.section === 'head') d.cell.styles.halign = b.al?.[i] ?? 'left'
           if (d.section === 'body') {
             if (b.kv && i === 0) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.textColor = th.dark }
-            if (b.kv && i === 2) d.cell.styles.textColor = MUTE
+            if (b.kv && i === b.w.length - 1) d.cell.styles.textColor = MUTE
             if (bold.has(i)) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.textColor = INK }
             if (b.win === i) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.textColor = /^Lost/.test(String(d.cell.raw)) ? [185, 28, 28] : WIN }
             if (b.hl === d.row.index) { d.cell.styles.fillColor = th.soft; d.cell.styles.fontStyle = 'bold'; d.cell.styles.textColor = th.dark }
