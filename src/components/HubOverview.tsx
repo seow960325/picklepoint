@@ -32,6 +32,8 @@ export function useOthers(codes: string[], everyMs = 30000) {
     const load = async (force = false) => {
       if (busy) return
       if (!force && typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      // every game finished (event over): no background polling; a reopen or reconnect still reads fresh
+      if (!force && codes.length > 0 && codes.every(c => have[c] && have[c]!.matches.length > 0 && have[c]!.matches.every(m => m.status === 'finished'))) return
       busy = true
       try {
         const full = force || Date.now() - lastFull >= FULL_EVERY_MS

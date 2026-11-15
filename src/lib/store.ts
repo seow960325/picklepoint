@@ -115,6 +115,9 @@ export function useCompetition(code: string | undefined, opts?: { preview?: bool
   const [visible, setVisible] = useState(() => typeof document === 'undefined' || document.visibilityState === 'visible')
   const liveOk = useRef(false)
   const lastLiveFetch = useRef(Date.now())
+  // event over (every game finished): no background polling; reopen/reconnect still reads fresh
+  const allDone = useRef(false)
+  useEffect(() => { allDone.current = !!bundle && bundle.matches.length > 0 && bundle.matches.every(m => m.status === 'finished') }, [bundle])
   useEffect(() => {
     const onWake = () => {
       const v = document.visibilityState === 'visible'
@@ -128,7 +131,7 @@ export function useCompetition(code: string | undefined, opts?: { preview?: bool
     // viewers: 60 s while the live channel is healthy, 5 s while it is down
     // (refused at the connection limit, dropped, reconnecting). Others: 20 s.
     const poll = setInterval(() => {
-      if (document.visibilityState !== 'visible') return
+      if (document.visibilityState !== 'visible' || allDone.current) return
       const gap = !viewer ? 20000 : liveOk.current ? 60000 : 5000
       if (Date.now() - lastLiveFetch.current >= gap - 500) { lastLiveFetch.current = Date.now(); refreshLive() }
     }, 4000)
