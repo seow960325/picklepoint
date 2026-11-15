@@ -455,6 +455,13 @@ export async function reportPdf(hub: Hub, cats: Cat[], logoIn?: Logo | null, tea
   const room = (h: number) => { if (y + h > H - M - 14) newPage() }
   // standard PDF fonts cannot draw emoji or symbols outside Latin-1: keep text plain
   const clean = (v: unknown) => String(v ?? '').replace(/[–—]/g, '-').replace(/[^\x20-\x7E\xA0-\xFF]/g, '')
+  /** set the largest font size (down to 5) at which the text fits the width */
+  const shrink = (t: string, w: number, size: number, style: 'bold' | 'normal') => {
+    doc.setFont('helvetica', style)
+    let fs = size
+    while (fs > 5 && (doc.setFontSize(fs), doc.getTextWidth(clean(t))) > w) fs -= 0.2
+    doc.setFontSize(fs)
+  }
   const fit = (t: string, w: number) => { let x = clean(t); while (x.length > 3 && doc.getTextWidth(x) > w) x = x.slice(0, -2); return x === clean(t) ? x : x.trimEnd() + '...' }
   const medal = (cx: number, cy: number, r: number, i: number, dark: boolean) => {
     const [rim, face] = MEDALS[Math.min(i, 3)]
@@ -580,8 +587,9 @@ export async function reportPdf(hub: Hub, cats: Cat[], logoIn?: Logo | null, tea
           doc.setFillColor(...MEDALS[Math.min(i, 3)][0]).roundedRect(x, y, 4, ch, 2, 2, 'F')
           medal(x + 30, y + ch / 2, 15, i, false)
           doc.setFont('helvetica', 'bold').setFontSize(7).setTextColor(...MUTE); doc.text(clean(place).toUpperCase(), x + 54, y + (pl ? 17 : 22), { charSpace: 1.2 })
-          doc.setFontSize(n > 2 ? 8.6 : 11.5).setTextColor(...INK); doc.text(fit(team, cw - 60), x + 54, y + (pl ? 32 : 37))
-          doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(...MUTE); if (pl) doc.text(fit(pl, cw - 60), x + 54, y + 44)
+          // names are never cut: the type gets smaller until the whole name fits the card
+          shrink(team, cw - 60, n > 2 ? 8.6 : 11.5, 'bold'); doc.setTextColor(...INK); doc.text(clean(team), x + 54, y + (pl ? 32 : 37))
+          if (pl) { shrink(pl, cw - 60, 8, 'normal'); doc.setTextColor(...MUTE); doc.text(clean(pl), x + 54, y + 44) }
         })
         y += ch + 8
       }
