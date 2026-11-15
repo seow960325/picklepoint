@@ -831,3 +831,9 @@ export async function adminSetCbRules(token: string, eventId: string, rules: unk
   if (IS_DEMO) return demo.adminSetCbRules(eventId, rules)
   await rpc('admin_set_cb_rules', { p_token: token, p_event_id: eventId, p_rules: rules })
 }
+
+/** Count a results-PDF download (full report or one team's). Never blocks or breaks the download. */
+export function logReportDownload(hub: string, kind: 'full' | 'team', cat?: string, team?: string): void {
+  if (IS_DEMO) return
+  void sb!.rpc('log_report_download', { p_hub: hub, p_kind: kind, p_cat: cat ?? null, p_team: team ?? null }).then(() => {}, () => {})
+}

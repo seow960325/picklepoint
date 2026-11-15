@@ -23,7 +23,7 @@ function Downloads({ hub, bundleOf }: { hub: Hub; bundleOf: (code: string) => Bu
   const day = (cats: Cat[]) => cats[0]?.b.competition.event_date ?? new Date().toISOString().slice(0, 10)
   const all = async () => {
     setBusy('all')
-    try { const cats = await load(); saveFile(`${hub.code}-full-results-${day(cats)}.pdf`, await reportPdf(hub, cats), 'application/pdf') }
+    try { const cats = await load(); saveFile(`${hub.code}-full-results-${day(cats)}.pdf`, await reportPdf(hub, cats), 'application/pdf'); api.logReportDownload(hub.code, 'full') }
     finally { setBusy('') }
   }
   const one = async () => {
@@ -34,6 +34,7 @@ function Downloads({ hub, bundleOf }: { hub: Hub; bundleOf: (code: string) => Bu
       const name = cats.find(c => c.code === cat)?.b.teams.find(t => t.id === team)?.name ?? 'team'
       const file = name.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '')
       saveFile(`${hub.code}-${file}-${day(cats)}.pdf`, await reportPdf(hub, cats, undefined, { code: cat, id: team }), 'application/pdf')
+      api.logReportDownload(hub.code, 'team', cat, name)
     } finally { setBusy('') }
   }
   const c = hub.cats.find(x => x.code === cat)
