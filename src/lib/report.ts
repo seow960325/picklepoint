@@ -3,7 +3,7 @@
  *  front page already has. No server, no cost. Used by the results announcement. */
 import type { Bundle, EventCfg, Match, Team } from './types'
 import type { Hub } from './hub'
-import { hubTitle } from './hub'
+import { hubTitle, catHue } from './hub'
 import { groupStandings } from './store'
 import { cbStandings } from './captainball'
 import { categoryResult, medalTable, needsFourth } from './medals'
@@ -62,25 +62,30 @@ function records(c: Cat, rows: Row[]): Rec[] {
   return [...r.values()].sort((a, z) => z.w - a.w || (z.pf - z.pa) - (a.pf - a.pa) || z.pf - a.pf || a.name.localeCompare(z.name))
 }
 
-/** the report as plain blocks: drawn as a PDF (reportPdf) */
+/** the report as plain blocks: drawn as a PDF (reportPdf). Column widths are fixed per
+ *  kind of table (0 = shares the space left), so every table of a kind lines up exactly. */
+type Al = 'right' | 'center'
 export type Block =
-  | { k: 'h1'; t: string } | { k: 'p'; t: string } | { k: 'h2'; t: string } | { k: 'h3'; t: string }
-  | { k: 'table'; head: string[]; body: Array<Array<string | number>>; num?: number[]; kv?: boolean }
+  | { k: 'h1'; t: string; sub: string; note: string }
+  | { k: 'h2'; t: string; hue?: 0 | 1 | null } | { k: 'h3'; t: string } | { k: 'p'; t: string }
+  | { k: 'podium'; items: Array<[string, string, string]> }
+  | { k: 'tiles'; items: Array<[string, string]> }
+  | { k: 'table'; head: string[]; body: Array<Array<string | number>>; w: number[]; al?: Record<number, Al>
+      kv?: boolean; bold?: number[]; boldCell?: (row: number, col: number) => boolean }
 const plus = (n: number) => (n > 0 ? `+${n}` : String(n))
+const R = (...i: number[]): Record<number, Al> => Object.fromEntries(i.map(x => [x, 'right' as Al]))
 
 function catBlocks(c: Cat, hub: Hub, out: Block[]) {
   const rows = rowsOf(c, hub)
   const done = rows.filter(r => r.m.status === 'finished')
   const p = categoryResult(c.b).podium
-  out.push({ k: 'h2', t: c.label })
+  out.push({ k: 'h2', t: c.label, hue: catHue(c.label) })
   const pod = [['Champion', p.first], ['Runner-up', p.second], ['3rd place', p.third], ['4th place', p.fourth ?? null]]
     .filter(([, n]) => n) as Array<[string, string]>
-  const podRows = pod.map(([k, n]) => {
-    const t = c.b.teams.find(x => x.name === n)
-    return [k, n, players(t)]
-  })
-  const withPl = podRows.some(r => r[2])
-  if (pod.length) out.push({ k: 'table', head: withPl ? ['Place', 'Team', 'Players'] : ['Place', 'Team'], body: withPl ? podRows : podRows.map(r => r.slice(0, 2)) })
+  if (pod.length) out.push({ k: 'podium', items: pod.map(([k, n]) => {
+    const pl = players(c.b.teams.find(x => x.name === n))
+    return [k, n, pl && pl !== n ? pl : '']
+  }) })
   else out.push({ k: 'p', t: 'Final placings not decided yet.' })
 
   const pts = done.reduce((s, r) => s + r.sa + r.sb, 0)
@@ -91,16 +96,19 @@ function catBlocks(c: Cat, hub: Hub, out: Block[]) {
   const timed = done.filter(r => r.secs && r.secs > 60)
   const avg = timed.length ? Math.round(timed.reduce((s, r) => s + r.secs!, 0) / timed.length) : 0
   const long = [...timed].sort((a, z) => z.secs! - a.secs!)[0]
-  const g = (r?: Row) => (r ? `${r.a} ${r.sa}-${r.sb} ${r.bName} (${r.stage})` : '-')
-  out.push({ k: 'h3', t: 'Key figures' }, { k: 'table', kv: true, head: ['', ''], body: [
-    ['Teams', c.b.teams.filter(t => evsOf(c, hub).some(e => e.id === t.event_id)).length],
-    ['Games played', `${done.length} of ${rows.length}`],
-    ['Total points scored', pts],
-    ['Average points per game', done.length ? (pts / done.length).toFixed(1) : '-'],
-    ['Biggest win', g(big)],
-    ['Closest game', g(close)],
-    ['Highest-scoring game', g(high)],
-    ...(avg ? [['Average game length', dur(avg)], ['Longest game', `${g(long)} - ${dur(long?.secs)}`]] as Array<[string, string]> : []),
+  const g = (r?: Row) => (r ? `${r.a}  ${r.sa} - ${r.sb}  ${r.bName}` : '-')
+  const st = (r?: Row) => r?.stage ?? ''
+  out.push({ k: 'h3', t: 'Key figures' }, { k: 'tiles', items: [
+    ['Teams', String(c.b.teams.filter(t => evsOf(c, hub).some(e => e.id === t.event_id)).length)],
+    ['Games played', `${done.length} / ${rows.length}`],
+    ['Total points', String(pts)],
+    ['Avg points / game', done.length ? (pts / done.length).toFixed(1) : '-'],
+    ...(avg ? [['Avg game length', dur(avg)] as [string, string]] : []),
+  ] }, { k: 'table', kv: true, head: ['', '', ''], w: [120, 0, 150], body: [
+    ['Biggest win', g(big), st(big)],
+    ['Closest game', g(close), st(close)],
+    ['Highest-scoring game', g(high), st(high)],
+    ...(long ? [['Longest game', g(long), `${st(long)} - ${dur(long.secs)}`]] : []),
   ] })
 
   for (const ev of evsOf(c, hub)) {
@@ -109,24 +117,33 @@ function catBlocks(c: Cat, hub: Hub, out: Block[]) {
       for (const pl of pools) {
         const t = cbStandings(c.b, ev.id, pl)
         if (t.length) out.push({ k: 'h3', t: `Group ${pl}` }, { k: 'table', head: ['#', 'Team', 'P', 'W', 'D', 'L', 'PF', 'PA', '+/-', 'Pts'],
-          body: t.map((r, i) => [i + 1, r.team.name, r.p, r.w, r.d, r.l, r.pf, r.pa, plus(r.diff), r.pts]), num: [0, 2, 3, 4, 5, 6, 7, 8, 9] })
+          w: [24, 0, 32, 32, 32, 32, 36, 36, 40, 36], al: R(0, 2, 3, 4, 5, 6, 7, 8, 9), bold: [1, 9],
+          body: t.map((r, i) => [i + 1, r.team.name, r.p, r.w, r.d, r.l, r.pf, r.pa, plus(r.diff), r.pts]) })
       }
     } else if (ev.format === 'groups_ko') {
       const gt = groupStandings(c.b, ev.id)
       for (const k of Object.keys(gt).sort())
         out.push({ k: 'h3', t: `Group ${k}` }, { k: 'table', head: ['#', 'Team', 'Players', 'P', 'W', 'L', 'PF', 'PA', '+/-'],
-          body: gt[k].map((r, i) => [i + 1, r.team.name, players(r.team), r.played, r.won, r.lost, r.pf, r.pa, plus(r.diff)]), num: [0, 3, 4, 5, 6, 7, 8] })
+          w: [24, 150, 0, 32, 32, 32, 36, 36, 40], al: R(0, 3, 4, 5, 6, 7, 8), bold: [1],
+          body: gt[k].map((r, i) => [i + 1, r.team.name, players(r.team), r.played, r.won, r.lost, r.pf, r.pa, plus(r.diff)]) })
     }
   }
-  const ko = rows.filter(r => r.isKo).sort((x, y) => x.m.sequence - y.m.sequence)
   const sc = (r: Row) => (r.m.status === 'scheduled' ? '-' : `${r.sa} - ${r.sb}`)
-  if (ko.length) out.push({ k: 'h3', t: 'Knockout' }, { k: 'table', head: ['Stage', 'Time', 'Court', 'Team', 'Score', 'Team', 'Winner'],
-    body: ko.map(r => [r.stage, r.time, r.court, r.a, sc(r), r.bName, r.winner]), num: [2, 4] })
+  const winCell = (list: Row[], a: number, b: number) => (row: number, col: number) => {
+    const m = list[row]?.m
+    return !!m && m.status === 'finished' && ((col === a && m.winner_id === m.team_a_id) || (col === b && m.winner_id === m.team_b_id))
+  }
+  const ko = rows.filter(r => r.isKo).sort((x, y) => x.m.sequence - y.m.sequence)
+  if (ko.length) out.push({ k: 'h3', t: 'Knockout (winner in bold)' }, { k: 'table', head: ['Stage', 'Time', 'Court', 'Team', 'Score', 'Team', 'Length'],
+    w: [100, 52, 38, 0, 54, 0, 44], al: { 2: 'center', 3: 'right', 4: 'center', 6: 'right' }, bold: [4], boldCell: winCell(ko, 3, 5),
+    body: ko.map(r => [r.stage, r.time, r.court, r.a, sc(r), r.bName, dur(r.secs)]) })
+  const rec = records(c, rows)
   out.push({ k: 'h3', t: 'Team records (all games)' }, { k: 'table', head: ['#', 'Team', 'P', 'W', 'L', 'PF', 'PA', '+/-', 'Win %', 'Best'],
-    body: records(c, rows).map((r, i) => [i + 1, r.name, r.p, r.w, r.l, r.pf, r.pa, plus(r.pf - r.pa), r.p ? `${Math.round((r.w / r.p) * 100)}%` : '-', r.best]),
-    num: [0, 2, 3, 4, 5, 6, 7, 8, 9] })
-  out.push({ k: 'h3', t: 'All games' }, { k: 'table', head: ['Time', 'Court', 'Stage', 'Team', 'Score', 'Team', 'Winner', 'Length'],
-    body: rows.map(r => [r.time, r.court, r.stage, r.a, sc(r), r.bName, r.winner || r.status, dur(r.secs)]), num: [1, 4, 7] })
+    w: [24, 0, 32, 32, 32, 36, 36, 40, 44, 36], al: R(0, 2, 3, 4, 5, 6, 7, 8, 9), bold: [1],
+    body: rec.map((r, i) => [i + 1, r.name, r.p, r.w, r.l, r.pf, r.pa, plus(r.pf - r.pa), r.p ? `${Math.round((r.w / r.p) * 100)}%` : '-', r.best]) })
+  out.push({ k: 'h3', t: 'All games (winner in bold)' }, { k: 'table', head: ['Stage', 'Time', 'Court', 'Team', 'Score', 'Team', 'Length'],
+    w: [100, 52, 38, 0, 54, 0, 44], al: { 2: 'center', 3: 'right', 4: 'center', 6: 'right' }, bold: [4], boldCell: winCell(rows, 3, 5),
+    body: rows.map(r => [r.stage, r.time, r.court, r.a, sc(r), r.bName, dur(r.secs)]) })
 }
 
 const dateOf = (cats: Cat[]) => cats.find(c => c.b.competition.event_date)?.b.competition.event_date ?? ''
@@ -134,16 +151,17 @@ const dateOf = (cats: Cat[]) => cats.find(c => c.b.competition.event_date)?.b.co
 export function reportBlocks(hub: Hub, cats: Cat[]): Block[] {
   const title = hubTitle(hub, cats.map(c => c.b.competition.name))
   const when = dateOf(cats)
-  const out: Block[] = [{ k: 'h1', t: title },
-    { k: 'p', t: `Full results & analysis${when ? ` - ${new Date(when + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}` },
-    { k: 'p', t: `Downloaded ${new Date().toLocaleString('en-GB')} from pickle-point.vercel.app/c/${hub.code}` }]
+  const out: Block[] = [{ k: 'h1', t: title,
+    sub: `Full results & analysis${when ? `  |  ${new Date(when + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}`,
+    note: `pickle-point.vercel.app/c/${hub.code}  |  downloaded ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` }]
   if (!hub.noChurch) {
     const res = cats.map(c => categoryResult(c.b))
     const mt = medalTable(res, cats.map(c => c.b))
     const four = needsFourth(mt)
     out.push({ k: 'h2', t: 'Total Champion' }, { k: 'table', head: ['#', 'Church', 'Gold', 'Silver', 'Bronze', ...(four ? ['4th'] : [])],
-      body: mt.map((r, i) => [i + 1, r.name, r.gold, r.silver, r.bronze, ...(four ? [r.fourth] : [])]), num: [0, 2, 3, 4, 5] },
-    { k: 'h3', t: 'Category winners' }, { k: 'table', head: ['Category', 'Champion', 'Runner-up', '3rd place'],
+      w: [24, 0, 60, 60, 60, ...(four ? [60] : [])], al: R(0, 2, 3, 4, 5), bold: [1],
+      body: mt.map((r, i) => [i + 1, r.name, r.gold, r.silver, r.bronze, ...(four ? [r.fourth] : [])]) },
+    { k: 'h3', t: 'Category winners' }, { k: 'table', head: ['Category', 'Champion', 'Runner-up', '3rd place'], w: [150, 0, 0, 0], bold: [1],
       body: res.map((r, i) => [cats[i].label, r.podium.first ?? '-', r.podium.second ?? '-', r.podium.third ?? '-']) })
   }
   for (const c of cats) catBlocks(c, hub, out)
@@ -155,40 +173,92 @@ export async function reportPdf(hub: Hub, cats: Cat[]): Promise<Blob> {
   const [{ jsPDF }, at] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
   const autoTable = ((at as any).autoTable ?? (at as any).default?.default ?? at.default) as typeof at.default
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
-  const W = doc.internal.pageSize.getWidth(), M = 36
-  let y = M
-  const room = (h: number) => { if (y + h > doc.internal.pageSize.getHeight() - M) { doc.addPage(); y = M } }
+  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 36, U = W - 2 * M
+  type RGB = [number, number, number]
+  const INK: RGB = [15, 23, 42], SLATE: RGB = [30, 41, 59], MUTE: RGB = [100, 116, 139], LINE: RGB = [226, 232, 240], SOFT: RGB = [248, 250, 252]
+  const ACCENT: RGB = [202, 138, 4], BLUE: RGB = [29, 78, 216], PINK: RGB = [190, 24, 93]
+  const MEDAL: RGB[] = [[202, 138, 4], [148, 163, 184], [180, 115, 60], [100, 116, 139]]
+  let y = M, title = ''
+  const room = (h: number) => { if (y + h > H - M - 14) { doc.addPage(); y = M } }
   // standard PDF fonts cannot draw emoji or symbols outside Latin-1: keep text plain
-  const clean = (v: unknown) => String(v ?? '').replace(/[\u2013\u2014]/g, '-').replace(/[^\x20-\x7E\xA0-\xFF]/g, '')
+  const clean = (v: unknown) => String(v ?? '').replace(/[–—]/g, '-').replace(/[^\x20-\x7E\xA0-\xFF]/g, '')
+  const fit = (t: string, w: number) => { let x = clean(t); while (x.length > 3 && doc.getTextWidth(x) > w) x = x.slice(0, -2); return x === clean(t) ? x : x.trimEnd() + '...' }
   for (const b of reportBlocks(hub, cats)) {
-    if (b.k === 'h1') { doc.setFont('helvetica', 'bold').setFontSize(20); doc.text(clean(b.t), M, y + 16); y += 26 }
-    else if (b.k === 'p') { doc.setFont('helvetica', 'normal').setFontSize(10).setTextColor(90); doc.text(clean(b.t), M, y + 10); doc.setTextColor(0); y += 15 }
-    else if (b.k === 'h2') {
-      room(70); y += 10
-      doc.setFillColor(17, 17, 17).roundedRect(M, y, W - 2 * M, 24, 4, 4, 'F')
-      doc.setFont('helvetica', 'bold').setFontSize(14).setTextColor(255); doc.text(clean(b.t), M + 10, y + 16); doc.setTextColor(0); y += 32
-    } else if (b.k === 'h3') { room(110); doc.setFont('helvetica', 'bold').setFontSize(11.5); doc.text(clean(b.t), M, y + 12); y += 17 }
-    else {
-      const num = new Set(b.num ?? [])
+    if (b.k === 'h1') {
+      title = clean(b.t)
+      doc.setFillColor(...INK).rect(0, 0, W, 92, 'F')
+      doc.setFillColor(...ACCENT).rect(0, 92, W, 4, 'F')
+      doc.setFont('helvetica', 'bold').setFontSize(24).setTextColor(255); doc.text(fit(b.t, U), M, 44)
+      doc.setFont('helvetica', 'normal').setFontSize(11).setTextColor(226, 232, 240); doc.text(clean(b.sub), M, 64)
+      doc.setFontSize(8.5).setTextColor(148, 163, 184); doc.text(clean(b.note), M, 80)
+      y = 112
+    } else if (b.k === 'p') {
+      doc.setFont('helvetica', 'normal').setFontSize(9.5).setTextColor(...MUTE); doc.text(clean(b.t), M, y + 10); y += 18
+    } else if (b.k === 'h2') {
+      if (y > 130) { doc.addPage(); y = M }          // every category starts on its own page
+      const col = b.hue === 0 ? BLUE : b.hue === 1 ? PINK : SLATE
+      doc.setFillColor(...col).roundedRect(M, y, U, 28, 4, 4, 'F')
+      doc.setFont('helvetica', 'bold').setFontSize(14).setTextColor(255); doc.text(clean(b.t).toUpperCase(), M + 12, y + 19)
+      y += 40
+    } else if (b.k === 'h3') {
+      room(96); y += 6
+      doc.setFillColor(...ACCENT).rect(M, y + 1, 3, 12, 'F')
+      doc.setFont('helvetica', 'bold').setFontSize(11).setTextColor(...INK); doc.text(clean(b.t), M + 9, y + 11)
+      y += 20
+    } else if (b.k === 'podium') {
+      const gap = 8, n = b.items.length, cw = (U - gap * (n - 1)) / n, ch = 62
+      room(ch + 10)
+      b.items.forEach(([place, team, pl], i) => {
+        const x = M + i * (cw + gap)
+        doc.setFillColor(...SOFT).setDrawColor(...LINE).setLineWidth(0.6).roundedRect(x, y, cw, ch, 4, 4, 'FD')
+        doc.setFillColor(...MEDAL[Math.min(i, 3)]).rect(x, y, cw, 4, 'F')
+        doc.setFont('helvetica', 'bold').setFontSize(7.5).setTextColor(...MEDAL[Math.min(i, 3)]); doc.text(clean(place).toUpperCase(), x + 10, y + 19)
+        doc.setFontSize(11).setTextColor(...INK); doc.text(fit(team, cw - 20), x + 10, y + 36)
+        doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(...MUTE); if (pl) doc.text(fit(pl, cw - 20), x + 10, y + 50)
+      })
+      y += ch + 10
+    } else if (b.k === 'tiles') {
+      const gap = 8, n = b.items.length, cw = (U - gap * (n - 1)) / n, ch = 44
+      room(ch + 8)
+      b.items.forEach(([label, val], i) => {
+        const x = M + i * (cw + gap)
+        doc.setFillColor(...SOFT).setDrawColor(...LINE).setLineWidth(0.6).roundedRect(x, y, cw, ch, 4, 4, 'FD')
+        doc.setFont('helvetica', 'bold').setFontSize(15).setTextColor(...INK); doc.text(clean(val), x + cw / 2, y + 21, { align: 'center' })
+        doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(...MUTE); doc.text(clean(label).toUpperCase(), x + cw / 2, y + 35, { align: 'center' })
+      })
+      y += ch + 8
+    } else {
+      const fixed = b.w.reduce((s, x) => s + x, 0), flexN = b.w.filter(x => !x).length
+      const widths = b.w.map(x => x || (U - fixed) / Math.max(1, flexN))
+      const bold = new Set(b.bold ?? [])
       autoTable(doc, {
-        startY: y, margin: { left: M, right: M },
+        startY: y, margin: { left: M, right: M, top: M, bottom: M + 14 }, tableWidth: U,
         head: b.kv ? undefined : [b.head.map(clean)], body: b.body.map(r => r.map(clean)),
-        theme: 'striped', styles: { fontSize: 8.5, cellPadding: 3.5, overflow: 'linebreak' },
-        headStyles: { fillColor: [235, 235, 235], textColor: 20, fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [248, 248, 248] },
-        columnStyles: Object.fromEntries([...num].map(i => [i, { halign: 'right' }])) as any,
+        theme: 'plain', rowPageBreak: 'avoid',
+        styles: { font: 'helvetica', fontSize: 8.5, cellPadding: { top: 4.5, bottom: 4.5, left: 5, right: 5 }, overflow: 'linebreak', textColor: SLATE, lineColor: LINE, lineWidth: { bottom: 0.5 } as any, valign: 'middle' },
+        headStyles: { fillColor: SLATE, textColor: 255, fontStyle: 'bold', fontSize: 8, lineWidth: 0 },
+        alternateRowStyles: { fillColor: SOFT },
+        columnStyles: Object.fromEntries(widths.map((w, i) => [i, { cellWidth: w, halign: b.al?.[i] ?? 'left' }])) as any,
         didParseCell: d => {
-          if (b.kv && d.column.index === 0) d.cell.styles.fontStyle = 'bold'
-          if (d.section === 'head' && num.has(d.column.index)) d.cell.styles.halign = 'right'
+          const i = d.column.index
+          if (d.section === 'head') d.cell.styles.halign = b.al?.[i] ?? 'left'
+          if (d.section === 'body') {
+            if (b.kv && i === 0) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.textColor = INK }
+            if (b.kv && i === 2) d.cell.styles.textColor = MUTE
+            if (bold.has(i) || b.boldCell?.(d.row.index, i)) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.textColor = INK }
+          }
         },
       })
-      y = ((doc as any).lastAutoTable?.finalY ?? y) + 8
+      y = ((doc as any).lastAutoTable?.finalY ?? y) + 10
     }
   }
   const n = doc.getNumberOfPages()
   for (let i = 1; i <= n; i++) {
-    doc.setPage(i); doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(130)
-    doc.text(`PicklePoint - page ${i} of ${n}`, W / 2, doc.internal.pageSize.getHeight() - 16, { align: 'center' })
+    doc.setPage(i)
+    doc.setDrawColor(...LINE).setLineWidth(0.6).line(M, H - 30, W - M, H - 30)
+    doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(...MUTE)
+    doc.text(`${title}  |  Full results`, M, H - 18)
+    doc.text(`Page ${i} of ${n}`, W - M, H - 18, { align: 'right' })
   }
   return doc.output('blob')
 }
