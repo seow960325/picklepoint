@@ -835,5 +835,10 @@ export async function adminSetCbRules(token: string, eventId: string, rules: unk
 /** Count a results-PDF download (full report or one team's). Never blocks or breaks the download. */
 export function logReportDownload(hub: string, kind: 'full' | 'team', cat?: string, team?: string): void {
   if (IS_DEMO) return
-  void sb!.rpc('log_report_download', { p_hub: hub, p_kind: kind, p_cat: cat ?? null, p_team: team ?? null }).then(() => {}, () => {})
+  let dev: string | null = null
+  try {
+    dev = localStorage.getItem('pp_dev')
+    if (!dev) { dev = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('pp_dev', dev) }
+  } catch { /* private mode: no device id */ }
+  void sb!.rpc('log_report_download', { p_hub: hub, p_kind: kind, p_cat: cat ?? null, p_team: team ?? null, p_device: dev }).then(() => {}, () => {})
 }
