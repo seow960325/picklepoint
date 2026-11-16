@@ -133,7 +133,7 @@ export default function Announcements({ hub, bundleOf }: { hub: Hub; bundleOf: (
         <div key={a.key} className="pp-flash flex items-start gap-2.5 rounded-xl border-2 border-gold/60 bg-gold/10 px-3 py-2.5">
           <span className="mt-0.5 text-lg leading-none">📢</span>
           <div className="min-w-0 flex-1">
-            <span className="block whitespace-pre-line text-sm font-semibold leading-snug">{a.text.replace(DOWNLOAD_MARK, ' ').trim()}</span>
+            <span className="block whitespace-pre-line text-justify text-sm font-semibold leading-snug [text-align-last:left] [hyphens:auto]" lang="en">{a.text.replace(DOWNLOAD_MARK, ' ').trim()}</span>
             {DOWNLOAD_MARK.test(a.text) && <Downloads hub={hub} bundleOf={bundleOf} />}
           </div>
         </div>
