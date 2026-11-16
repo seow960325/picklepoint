@@ -23,7 +23,7 @@ function CloseBar({ code }: { code: string }) {
   const secs = Math.round((until - now) / 1000)
   const two = (n: number) => String(n).padStart(2, '0')
   const left = secs <= 0 ? 'Downloads closed'
-    : secs >= 86400 ? `${Math.floor(secs / 86400)}d ${two(Math.floor((secs % 86400) / 3600))}:${two(Math.floor((secs % 3600) / 60))}`
+    : secs >= 86400 ? `${Math.floor(secs / 86400)}d ${two(Math.floor((secs % 86400) / 3600))}:${two(Math.floor((secs % 3600) / 60))}:${two(secs % 60)}`
     : `${two(Math.floor(secs / 3600))}:${two(Math.floor((secs % 3600) / 60))}:${two(secs % 60)}`
   const pct = Math.max(6, Math.min(100, 100 - (secs / (7 * 86400)) * 100))
   // green until 2 days left, orange for the last 2 days, red for the last 8 hours
