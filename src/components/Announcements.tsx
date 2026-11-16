@@ -2,9 +2,32 @@
  *  page; when the organiser un-pins one, it disappears on the next refresh. */
 import type { Bundle } from '../lib/types'
 import type { Hub } from '../lib/hub'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import * as api from '../lib/api'
-import { reportPdf, teamsOf, saveFile, DOWNLOAD_MARK, type Cat } from '../lib/report'
+import { reportPdf, teamsOf, saveFile, DOWNLOAD_MARK, DOWNLOAD_UNTIL, type Cat } from '../lib/report'
+
+/** Time left to download: a bar that fills as the closing time comes closer (same look as the "My team" countdown). */
+function CloseBar({ code }: { code: string }) {
+  const until = DOWNLOAD_UNTIL[code] ? new Date(DOWNLOAD_UNTIL[code]).getTime() : 0
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => { const t = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(t) }, [])
+  if (!until) return null
+  const secs = Math.round((until - now) / 1000)
+  const two = (n: number) => String(n).padStart(2, '0')
+  const left = secs <= 0 ? 'Downloads closed'
+    : secs >= 86400 ? `${Math.floor(secs / 86400)}d ${two(Math.floor((secs % 86400) / 3600))}:${two(Math.floor((secs % 3600) / 60))}`
+    : `${two(Math.floor(secs / 3600))}:${two(Math.floor((secs % 3600) / 60))}:${two(secs % 60)}`
+  const pct = Math.max(6, Math.min(100, 100 - (secs / (7 * 86400)) * 100))
+  const warn = secs <= 86400
+  return (
+    <span className="relative block h-7 w-full overflow-hidden rounded-md bg-black/50 ring-1 ring-white/15" title="Time left to download your results">
+      <span className={`absolute inset-y-0 left-0 transition-[width] duration-1000 ease-linear ${warn ? 'bg-gold' : 'bg-emerald-500'}`} style={{ width: `${secs <= 0 ? 100 : pct}%` }} />
+      <span className="tabular absolute inset-0 flex items-center justify-center font-display text-[13px] font-bold leading-none text-white [text-shadow:0_1px_2px_rgba(0,0,0,.9)]">
+        {secs <= 0 ? left : `⏳ Download closes in ${left}`}
+      </span>
+    </span>
+  )
+}
 
 /** "[download]" in an announcement: the full results PDF, and one team's own report (pick category, then team). */
 function Downloads({ hub, bundleOf }: { hub: Hub; bundleOf: (code: string) => Bundle | null }) {
@@ -44,6 +67,7 @@ function Downloads({ hub, bundleOf }: { hub: Hub; bundleOf: (code: string) => Bu
   const sel = 'min-h-[40px] w-full rounded-lg border border-gold/50 bg-surface-2 px-2 text-sm font-semibold text-fg'
   return (
     <div className="mt-2 space-y-2">
+      <CloseBar code={hub.code} />
       <div className="flex flex-wrap gap-2">
         <button type="button" disabled={!!busy} onClick={all} className={`${btn} bg-gold text-black`}>
           ⬇ {busy === 'all' ? 'Preparing…' : 'Full results & analysis (PDF)'}

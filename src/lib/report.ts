@@ -731,3 +731,10 @@ export function saveFile(name: string, data: string | Blob, type: string) {
 
 /** marker an organiser puts in an announcement to show the download buttons (hidden from the text) */
 export const DOWNLOAD_MARK = /\s*\[download\]\s*/i
+
+/** When the results downloads close, per competition code (shown as a countdown bar next to the download buttons;
+ *  a code with no entry shows no bar). Results stay live for 7 days after the 14 Nov 2026 events. */
+export const DOWNLOAD_UNTIL: Record<string, string> = {
+  MC26: '2026-11-22T23:59:59+08:00',
+  YC26: '2026-11-22T23:59:59+08:00',
+}
