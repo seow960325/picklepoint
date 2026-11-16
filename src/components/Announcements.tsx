@@ -7,6 +7,14 @@ import * as api from '../lib/api'
 import { reportPdf, teamsOf, saveFile, DOWNLOAD_MARK, DOWNLOAD_UNTIL, type Cat } from '../lib/report'
 
 /** Time left to download: a bar that fills as the closing time comes closer (same look as the "My team" countdown). */
+function DownIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 4v11M7 11l5 5 5-5M5 20h14" />
+    </svg>
+  )
+}
+
 function CloseBar({ code }: { code: string }) {
   const until = DOWNLOAD_UNTIL[code] ? new Date(DOWNLOAD_UNTIL[code]).getTime() : 0
   const [now, setNow] = useState(() => Date.now())
@@ -20,10 +28,10 @@ function CloseBar({ code }: { code: string }) {
   const pct = Math.max(6, Math.min(100, 100 - (secs / (7 * 86400)) * 100))
   const warn = secs <= 86400
   return (
-    <span className="relative block h-7 w-full overflow-hidden rounded-md bg-black/50 ring-1 ring-white/15" title="Time left to download your results">
+    <span className="relative block h-11 w-full overflow-hidden rounded-lg bg-black/50 ring-1 ring-white/15" title="Time left to download your results">
       <span className={`absolute inset-y-0 left-0 transition-[width] duration-1000 ease-linear ${warn ? 'bg-gold' : 'bg-emerald-500'}`} style={{ width: `${secs <= 0 ? 100 : pct}%` }} />
-      <span className="tabular absolute inset-0 flex items-center justify-center font-display text-[13px] font-bold leading-none text-white [text-shadow:0_1px_2px_rgba(0,0,0,.9)]">
-        {secs <= 0 ? left : `⏳ Download closes in ${left}`}
+      <span className="tabular absolute inset-0 flex items-center justify-center font-display text-sm font-bold uppercase leading-none tracking-wide text-white [text-shadow:0_1px_2px_rgba(0,0,0,.9)]">
+        {secs <= 0 ? left : `Closes in ${left}`}
       </span>
     </span>
   )
@@ -63,17 +71,17 @@ function Downloads({ hub, bundleOf }: { hub: Hub; bundleOf: (code: string) => Bu
   const c = hub.cats.find(x => x.code === cat)
   const b = cat ? bundleOf(cat) : null
   const teams = c && b ? teamsOf({ code: c.code, label: c.label, b }, hub) : []
-  const btn = 'inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold disabled:opacity-60'
+  const btn = 'flex h-11 w-full items-center justify-center gap-2 rounded-lg px-3 text-sm font-bold disabled:opacity-60'
   const sel = 'min-h-[40px] w-full rounded-lg border border-gold/50 bg-surface-2 px-2 text-sm font-semibold text-fg'
   return (
     <div className="mt-2 space-y-2">
       <CloseBar code={hub.code} />
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-2">
         <button type="button" disabled={!!busy} onClick={all} className={`${btn} bg-gold text-black`}>
-          ⬇ {busy === 'all' ? 'Preparing…' : 'Full results & analysis (PDF)'}
+          <DownIcon /> {busy === 'all' ? 'Preparing…' : 'Full results & analysis (PDF)'}
         </button>
         <button type="button" disabled={!!busy} onClick={() => setOpen(o => !o)} className={`${btn} border border-gold/60 text-fg`}>
-          ⬇ My team report (PDF)
+          <DownIcon /> My team report (PDF)
         </button>
       </div>
       {open && (
@@ -93,8 +101,8 @@ function Downloads({ hub, bundleOf }: { hub: Hub; bundleOf: (code: string) => Bu
               <option value="">Choose a team…</option>
               {teams.map(t => <option key={t.id} value={t.id}>{t.name}{t.pool ? `  (Group ${t.pool})` : ''}</option>)}
             </select>
-            <button type="button" disabled={!team || !!busy} onClick={one} className={`${btn} w-full justify-center bg-gold text-black`}>
-              ⬇ {busy === 'team' ? 'Preparing…' : 'Download team report'}
+            <button type="button" disabled={!team || !!busy} onClick={one} className={`${btn} bg-gold text-black`}>
+              <DownIcon /> {busy === 'team' ? 'Preparing…' : 'Download team report'}
             </button>
           </>)}
         </div>
