@@ -26,10 +26,11 @@ function CloseBar({ code }: { code: string }) {
     : secs >= 86400 ? `${Math.floor(secs / 86400)}d ${two(Math.floor((secs % 86400) / 3600))}:${two(Math.floor((secs % 3600) / 60))}`
     : `${two(Math.floor(secs / 3600))}:${two(Math.floor((secs % 3600) / 60))}:${two(secs % 60)}`
   const pct = Math.max(6, Math.min(100, 100 - (secs / (7 * 86400)) * 100))
-  const warn = secs <= 86400
+  // green until 2 days left, orange for the last 2 days, red for the last 8 hours
+  const colour = secs <= 8 * 3600 ? 'hsl(0 78% 50%)' : secs <= 2 * 86400 ? 'hsl(30 92% 50%)' : 'hsl(152 72% 40%)'
   return (
     <span className="relative block h-11 w-full overflow-hidden rounded-lg bg-black/50 ring-1 ring-white/15" title="Time left to download your results">
-      <span className={`absolute inset-y-0 left-0 transition-[width] duration-1000 ease-linear ${warn ? 'bg-gold' : 'bg-emerald-500'}`} style={{ width: `${secs <= 0 ? 100 : pct}%` }} />
+      <span className="absolute inset-y-0 left-0 transition-[width,background-color] duration-1000 ease-linear" style={{ width: `${secs <= 0 ? 100 : pct}%`, backgroundColor: colour }} />
       <span className="tabular absolute inset-0 flex items-center justify-center font-display text-sm font-bold uppercase leading-none tracking-wide text-white [text-shadow:0_1px_2px_rgba(0,0,0,.9)]">
         {secs <= 0 ? left : `Closes in ${left}`}
       </span>
